@@ -1,19 +1,19 @@
 CC ============================================================================
-CC MISC.AGF -- Synapse Optics public-domain catalog for LensHH-LT
+CC MISC.AGF -- public-domain glass catalog
 CC ============================================================================
 CC Built from public sources only. Each entry cites its origin in CC comments.
-CC Repo memory:
-CC   project_misc_agf_public_only          -- no OpticStudio redistribution
-CC   project_zemax_air_relative_vacuum     -- VACUUM index < 1, not = 1
-CC   project_zemax_agf_ed_status_trap      -- ED line last field MUST be 0
-CC   feedback_no_fabrication_glass_codes   -- cite source, do not invent
+CC Constraints this file is built to:
+CC   no OpticStudio catalog content is redistributed here
+CC   VACUUM is relative to air, so its index is < 1 and not = 1
+CC   the ED line's last field must be 0, or Zemax silently drops the formula
+CC   every entry cites a published source; none is inferred from a glass code
 CC
 CC Catalog version: 1.4  (2026-05-17 — added BACD9 for Ross Optical catalog)
 CC Maintainer:      Synapse Optics
-CC Target consumer: LensHH-LT (vendor stock-lens import for Edmund Optics,
-CC                  Thorlabs, Newport, etc., where vendor .zmx files reference
+CC Purpose:         vendor stock-lens import for Edmund Optics, Thorlabs,
+CC                  Newport and the like, where vendor .zmx files reference
 CC                  materials not present in the standard SCHOTT/OHARA/CDGM/
-CC                  HOYA/SUMITA/CORNING_FS/CORNING_B/LIGHTPATH catalogs).
+CC                  HOYA/SUMITA/CORNING_FS/CORNING_B/LIGHTPATH catalogs.
 CC
 CC Air-index convention: Zemax / OpticStudio uses air at 1 atm, 20 C as the
 CC n=1 reference. All indices in this file are *relative to air at STP*. For
@@ -267,9 +267,9 @@ CC         "___BLANK 1.517 52" model-glass spec found in the GLAS lines of
 CC         hybrid asphere doublets 49-656 through 49-665. The replica is the
 CC         UV-cured polymer layer deposited on a glass substrate; Edmund does
 CC         not publish a vendor name or Sellmeier, so the .zmx ships with a
-CC         model-glass (nd/Vd-only) entry. LensHH-LT has no model-glass
-CC         support (see project_lhlt_model_glass), so we materialize the
-CC         model as a named catalog entry to enable .zmx import.
+CC         model-glass (nd/Vd-only) entry. A program that resolves
+CC         only named catalog glasses cannot read that, so the model is
+CC         materialized here as a named entry to make those files importable.
 CC
 CC Synthesis method (Schmidt-Penninger style, 1-term Sellmeier):
 CC   n^2 - 1 = K1 * L^2 / (L^2 - L1)
@@ -284,8 +284,8 @@ CC    @ 587.6 nm (d-line): n approx 1.51700   <-- catalog table value
 CC    @ 656.3 nm (C-line): n approx 1.51406
 CC Vd (computed F/d/C) approx 51.96
 CC
-CC IMPORTANT: This entry exists ONLY to enable LensHH-LT import of the 9
-CC Edmund hybrid-doublet .zmx files. Do NOT use for design work. The actual
+CC IMPORTANT: This entry exists ONLY to make the 9 Edmund hybrid-doublet
+CC .zmx files importable. Do NOT use for design work. The actual
 CC polymer dispersion is unknown beyond the (nd, Vd) point; the implied
 CC Sellmeier shape is an assumption. For real design with these lenses, use
 CC the Edmund prescription tables directly or contact Edmund for the UV

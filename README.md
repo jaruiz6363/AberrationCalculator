@@ -8,6 +8,32 @@ you what that lens is: the surfaces and materials as stated, the refractive inde
 material at every wavelength in the file, the first-order layout, and the aberration
 coefficients that follow from them.
 
+## How far the coefficients get you
+
+Predicting a spot from coefficients costs a small fraction of tracing rays for one, which is
+what makes it attractive early in a design, before the shape is settled enough to be worth a
+full evaluation. The question is where the prediction stops being worth quoting.
+`docs/spot-prediction.md` measures that on five lenses, at both conjugates, against rays this
+program traces itself.
+
+Cooke triplet, f/5, 20° half-field, as error in the predicted RMS spot radius:
+
+| field | 3rd | 3rd + 5th | + 7th-order spherical | full 7th |
+|---|---|---|---|---|
+| 0.7 | +79.1% | +6.6% | +5.2% | +1.6% |
+| 0.8 | +97.7% | +9.2% | +8.2% | +1.4% |
+| 0.9 | +127.0% | +14.5% | +13.9% | **+0.4%** |
+
+The `+ 7th-order spherical` column adds that one coefficient on its own - the one tertiary
+quantity already available elsewhere, and it barely moves the off-axis error. What closes the
+gap is the other nineteen coefficients.
+
+**The order a design needs is a property of that design, not a general rule.** Of the five
+lenses measured, one is described by third order alone, two need the full seventh to reach a
+per cent, one is not well described at seventh, and one - a hard-corrected asphere - is not
+described at all. That last case is examined rather than glossed: the series is still
+converging there, and what runs out is the extraction at seventh order rather than the method.
+
 ## Two things for OpticStudio users
 
 Beside the calculator itself, the repository holds two programs that report third-, fifth-
@@ -37,12 +63,8 @@ no other program - only the lens file:
 and the MCP server offers the same as `seventh_order`, so an assistant can ask for it
 directly. All three print the identical report from one formatter.
 
-How much any of it buys is measured in `docs/spot-prediction.md`, against rays this program
-traces itself. On a Cooke triplet at nine tenths of the field, third and fifth order together
-predict the spot to +14.5 per cent; adding seventh-order spherical aberration alone - the one
-tertiary quantity that was already available elsewhere - gets to +13.9; adding the other
-nineteen coefficients gets to **+0.4**. On axis the position reverses and spherical aberration
-is the whole of it. The order a design needs is a property of that design.
+What either of them buys over the orders already available is the section above, and
+`docs/spot-prediction.md` in full.
 
 See `macros/README.md` and `zosapi/README.md`. Note the repository holds **two solution
 files**: `AberrationCalculator.sln` is .NET 8, and `ForbesAberrationCalculatorZOSAPI.sln`
@@ -83,7 +105,8 @@ Working, and validated in `docs/verification.md`:
 
 - `abcalc`, the command-line tool, and the six file readers
 - bundled glass catalogs and index resolution - nothing to point at, nothing to install
-- the paraxial trace, which agrees with LensHH-LT to every digit it prints
+- the paraxial trace, which agrees with an independent implementation to every
+  digit it prints
 - Seidel third-order coefficients
 - Buchdahl/Rimmer fifth- and seventh-order coefficients, split into intrinsic,
   aspheric and induced parts, per surface and totalled

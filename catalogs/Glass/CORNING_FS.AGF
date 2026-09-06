@@ -6,8 +6,8 @@ CC "HPFS 7979, 7980, 8655 Fused Silica", July 2015
 CC Source: https://www.corning.com (Corning Advanced Optics)
 CC
 CC Catalog version: 1.1   (2026-05-16)
-CC Compiled by Synapse Optics for use with LensHH-LT and other optical
-CC design software supporting the Zemax AGF (Ascii Glass File) format.
+CC Compiled by Synapse Optics for use with optical design software
+CC supporting the Zemax AGF (Ascii Glass File) format.
 CC
 CC Sellmeier formula (Zemax/OpticStudio FormulaType 2):
 CC     n^2 - 1 = K1 L^2/(L^2 - L1) + K2 L^2/(L^2 - L2) + K3 L^2/(L^2 - L3)

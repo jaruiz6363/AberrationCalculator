@@ -9,7 +9,7 @@ namespace AberrationCalculator.Tests;
 
 /// <summary>
 /// The Seidel sums, checked against properties that follow from the physics rather than
-/// against another program's output. Agreement with LensHH-LT is recorded separately in
+/// against another program's output. Agreement with other implementations is recorded in
 /// docs/verification.md; matching one implementation proves only that two things agree,
 /// which is worth much less than a result that must hold for any correct implementation.
 /// </summary>

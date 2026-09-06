@@ -2,8 +2,8 @@ CC ============================================================================
 CC CORNING_B.AGF -- Corning narrowband prescription glasses
 CC ============================================================================
 CC Catalog version: 1.1   (2026-05-16)
-CC Compiled by Synapse Optics for use with LensHH-LT and other optical
-CC design software supporting the Zemax AGF (Ascii Glass File) format.
+CC Compiled by Synapse Optics for use with optical design software
+CC supporting the Zemax AGF (Ascii Glass File) format.
 CC
 CC ----- History -----
 CC v1.0 (2026-05-08): Initial release. Contained Sellmeier fits for Corning
