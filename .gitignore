@@ -1,0 +1,14 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+artifacts/
+
+# Written by the FixBinaries project, never committed: it names where OpticStudio is
+# installed and which release it is, and that is nobody else's business.
+ZemaxPaths.props
+
+# Runtime logs. One got committed once; it named an unrelated private project.
+logs/
+*.log

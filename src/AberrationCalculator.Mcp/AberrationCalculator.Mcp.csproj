@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>abcalc-mcp</AssemblyName>
+    <RootNamespace>AberrationCalculator.Mcp</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AberrationCalculator.Core\AberrationCalculator.Core.csproj" />
+    <ProjectReference Include="..\AberrationCalculator.IO\AberrationCalculator.IO.csproj" />
+  </ItemGroup>
+
+</Project>

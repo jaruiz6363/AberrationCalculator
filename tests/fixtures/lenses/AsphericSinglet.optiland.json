@@ -1,0 +1,17 @@
+{
+  "aperture": { "type": "EPD", "value": 20.0 },
+  "fields": { "field_type": "angle", "fields": [ { "y": 0.0 }, { "y": 0.5 } ] },
+  "wavelengths": {
+    "wavelengths": [ { "value": 0.55, "is_primary": true, "weight": 1.0, "unit": "um" } ]
+  },
+  "surface_group": {
+    "surfaces": [
+      { "geometry": { "type": "Plane", "cs": { "z": 0.0 } }, "thickness": 1e308 },
+      { "geometry": { "type": "EvenAsphere", "radius": 100.0, "conic": -0.5,
+                      "coefficients": [ 1.0e-7, 2.0e-11, 3.0e-15 ], "cs": { "z": 0.0 } },
+        "thickness": 292.8557, "is_stop": true,
+        "material_post": { "type": "Material", "name": "N-BK7" } },
+      { "geometry": { "type": "Plane", "cs": { "z": 292.8557 } }, "thickness": 0.0 }
+    ]
+  }
+}
