@@ -5,7 +5,9 @@
 ! G. W. Forbes, "Order doubling in the computation of aberration coefficients,"
 ! J. Opt. Soc. Am. 73(6), 782 (1983), Sec. 3(a).
 !
-! STATUS: STAGES 1 AND 2. The truncated series ring, and the trace built on it. It
+! STATUS: STAGES 1, 2 AND 3. The truncated series ring, the trace built on it, and
+! conics and even aspheres - which is what BUCH7 cannot do and the reason this
+! exists. It
 ! prints the four series S, T, V, W that carry the whole aberration content of a
 ! system - but NOT the twenty named coefficients, which need the inversion of stage
 ! 4 and are not a printing step. See "Staging" below for what that means.
@@ -104,8 +106,18 @@
 !      printout: T(0,0,0) is the focal length and -1/V(0,0,0) is the same thing by a
 !      different route. ***
 !
-!   3. Aspheres. Extra coefficients in f_i and nothing else changes - mkfig already
-!      has the shape for it, and the refusal at the top is the only thing in the way.
+!   3. ASPHERES. Extra coefficients in f_i and nothing else changes.
+!      *** DONE. Checked against the C# on a Cooke triplet carrying a conic on one
+!      surface and even-asphere figuring at r^2, r^4, r^6 and r^8 on two others: all
+!      four series again to 8E-16. The macro now carries STANDARD and EVENASPH
+!      surfaces and declines any other type, because PARM on a toroid or a grating is
+!      not an aspheric coefficient and reading it as one would be a confident wrong
+!      answer rather than an error.
+!
+!      Only PARM 1 to 4 take part - they are r^2 to r^8. An r^10 term or above enters
+!      the figure past the truncation and CANNOT reach the seventh order; it is not
+!      being ignored, it genuinely does not appear. The macro says so when it meets
+!      one rather than silently dropping it. ***
 !
 !   4. THE TWENTY NAMED COEFFICIENTS. These are NOT simply read off S, T, V and W.
 !      The transverse aberration is built as a series in the ray SCALE, its
@@ -456,23 +468,53 @@ IF (nsm > 60)
    GOTO 900
 ENDIF
 
-! Stage 2 is the spherical case. A conic or an aspheric term is carried by exactly
-! the same code - that is Forbes' whole point and it is what stage 3 turns on - but
-! it has not been checked yet, and an unchecked answer that looks plausible is worse
-! than a refusal.
-asph = 0
+! ---------------------------------------------------------------------------------
+! Which surfaces this can carry.
+!
+! A conic and an even asphere are handled by exactly the same code as a sphere: they
+! are only more coefficients in f. That is Forbes' whole point, and it is why this
+! macro reaches systems BUCH7 declines.
+!
+! What is refused is a surface type whose PARAMETERS MEAN SOMETHING ELSE. PARM on a
+! toroid or a grating is not an aspheric coefficient, and reading it as one would
+! produce a confident wrong answer rather than an error - so the type is read and
+! checked rather than assumed from the parameters being non-zero.
+!
+! Only PARM 1 to 4 are used. They multiply p, p^2, p^3 and p^4, which is r^2 to r^8.
+! An r^10 term or above enters the figure at degree five or more, past the
+! truncation, and so contributes NOTHING at seventh order - it is not being ignored,
+! it genuinely does not appear.
+! ---------------------------------------------------------------------------------
+
+badtyp = 0
 FOR gi = 1, nsm, 1
-   IF (ABSO(CONI(gi)) > eps) THEN asph = 1
-   FOR gj = 1, 8, 1
-      IF (ABSO(PARM(gj, gi)) > eps) THEN asph = 1
+   gdum = SPRO(gi, 0)
+   gtyp$ = $BUFFER()
+   gok = 0
+   IF (SCOM(gtyp$, "STANDARD") == 0) THEN gok = 1
+   IF (SCOM(gtyp$, "EVENASPH") == 0) THEN gok = 1
+   IF (gok == 0)
+      badtyp = 1
+      FORMAT 5.0 INT
+      PRINT "Surface ", gi, " is of type ", gtyp$
+   ENDIF
+   ! An even asphere may carry figuring past r^8. It cannot reach the seventh order,
+   ! but a reader is owed the fact that it was dropped rather than left out.
+   FOR gj = 5, 8, 1
+      IF (ABSO(PARM(gj, gi)) > eps)
+         FORMAT 5.0 INT
+         PRINT "NOTE: surface ", gi, " parameter ", gj, " is beyond r^8 and cannot"
+         PRINT "reach the seventh order, so it takes no part in what follows."
+      ENDIF
    NEXT
 NEXT
-IF (asph == 1)
+
+IF (badtyp == 1)
    PRINT " "
-   PRINT "This system carries a conic or an aspheric term. Forbes' formulation handles"
-   PRINT "those with the same code as a sphere - they are only more coefficients in the"
-   PRINT "surface figure - but that path is stage 3 and has not been checked yet, so it"
-   PRINT "is refused rather than guessed at."
+   PRINT "FORBES carries STANDARD and EVENASPH surfaces. On any other type the"
+   PRINT "parameter columns mean something other than aspheric coefficients, and"
+   PRINT "reading them as if they did would give a confident wrong answer rather"
+   PRINT "than an error - so it declines instead."
    GOTO 900
 ENDIF
 
@@ -512,6 +554,10 @@ gz = 0
 FOR gi = 1, nsm, 1
    ccur = CURV(gi)
    ccon = CONI(gi)
+   cas1 = PARM(1, gi)
+   cas2 = PARM(2, gi)
+   cas3 = PARM(3, gi)
+   cas4 = PARM(4, gi)
    cbase = 1 + gi * 8
    cvz = gz
    GOSUB mkfig
@@ -1152,6 +1198,15 @@ SUB mkfig
       uc = fu6
       GOSUB umul
    ENDIF
+
+   ! The even asphere. sag += alpha_j p^j, which is alpha_j r^(2j) - the same code
+   ! path as the conic and the reason this route has no separate aspheric machinery.
+   ! Added outside the block above so that a FLAT surface carrying figuring works.
+   VEC3(fu6 + 1) = VEC3(fu6 + 1) + cas1
+   VEC3(fu6 + 2) = VEC3(fu6 + 2) + cas2
+   VEC3(fu6 + 3) = VEC3(fu6 + 3) + cas3
+   VEC3(fu6 + 4) = VEC3(fu6 + 4) + cas4
+
    VEC2(cbase) = cvz
    FOR ei2 = 1, nfig - 1, 1
       VEC2(cbase + ei2) = VEC3(fu6 + ei2)
