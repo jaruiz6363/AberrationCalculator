@@ -21,7 +21,7 @@
 !
 !   Thirty-four coefficients are hard to read as a statement about image quality. One
 !   RMS radius is easy to read and throws away most of what they say. Printing both,
-!   truncated three ways, says something neither gives alone: how much of the spot each
+!   truncated four ways, says something neither gives alone: how much of the spot each
 !   ORDER accounts for, and therefore whether the design is limited by aberration the
 !   third order already describes or by something only the seventh reaches.
 !
@@ -65,7 +65,7 @@
 !   seventh order is within 0.7 per cent on axis and about 2 per cent out to nine
 !   tenths of the field, and falls apart at the very edge - minus 13 per cent at H = 1.
 !   The third order alone is out by a quarter on axis and by more than a factor of two
-!   at the edge, which is why three columns are printed rather than one.
+!   at the edge, which is why four columns are printed rather than one.
 !
 ! THE ZPL TRAPS: see macros/README.md. Every variable here is distinct ignoring case
 ! and none collides with a built-in function name - in particular the field-count is
@@ -105,7 +105,7 @@ dbg = 0
 ! Field steps printed, from 0 to 1 inclusive.
 nsteps = 10
 
-SETVECSIZE 200
+SETVECSIZE 300
 
 ! ---------------------------------------------------------------------------------
 ! The handshake. BUCH7 writes slot 45 last of all, so it is set only if BUCH7 got as
@@ -520,6 +520,55 @@ IF (nz != 19)
 ENDIF
 
 ! ---------------------------------------------------------------------------------
+! Which column each term first appears in.
+!
+!   1   3rd        the five primary coefficients
+!   2   3rd+5th    and the twelve secondary
+!   3   +B7 only   and seventh-order SPHERICAL aberration alone, which is Robb's tau1
+!   4   full 7th   and the other eighteen tau
+!
+! THE THIRD COLUMN IS THERE BECAUSE B7 IS NOT NEW. FIFTHORD prints it, and so does
+! BUCH7's own fifth-order working, so it was available long before the Table I
+! arrangement existed. Separating it says what the eighteen tau that were NOT already
+! available actually buy - which is the question the seventh order exists to answer.
+!
+! On the Cooke triplet the answer is stark and is in docs/spot-prediction.md: on axis
+! B7 is the whole of the seventh order and the other eighteen add nothing, because on
+! axis there is no field. At nine tenths of the field B7 moves the error from +14.5
+! per cent to +13.9, near enough to nothing, and the other eighteen take it to +0.4.
+!
+! A term's order is its total degree a + b. B7 is picked out as the term of degree
+! seven whose degree is entirely in the aperture, a = 7, which is what seventh-order
+! spherical aberration means. There is exactly one such term in each of eps_y and
+! eps_z, and that is checked below rather than assumed.
+! ---------------------------------------------------------------------------------
+
+nb7y = 0
+FOR ia = 1, ny, 1
+   VEC1(200 + ia) = 4
+   IF ((VEC1(50 + ia) + VEC1(100 + ia)) <= 3) THEN VEC1(200 + ia) = 1
+   IF ((VEC1(50 + ia) + VEC1(100 + ia)) == 5) THEN VEC1(200 + ia) = 2
+   IF (VEC1(50 + ia) == 7) THEN VEC1(200 + ia) = 3
+   IF (VEC1(200 + ia) == 3) THEN nb7y = nb7y + 1
+NEXT
+
+nb7z = 0
+FOR ia = 1, nz, 1
+   VEC2(200 + ia) = 4
+   IF ((VEC2(50 + ia) + VEC2(100 + ia)) <= 3) THEN VEC2(200 + ia) = 1
+   IF ((VEC2(50 + ia) + VEC2(100 + ia)) == 5) THEN VEC2(200 + ia) = 2
+   IF (VEC2(50 + ia) == 7) THEN VEC2(200 + ia) = 3
+   IF (VEC2(200 + ia) == 3) THEN nb7z = nb7z + 1
+NEXT
+
+IF ((nb7y != 1) | (nb7z != 1))
+   PRINT "ROBB cannot identify seventh-order spherical aberration uniquely; there"
+   PRINT "should be exactly one term of aperture degree seven in each of eps_y and"
+   PRINT "eps_z, and the tables above no longer have that shape."
+   GOTO 999
+ENDIF
+
+! ---------------------------------------------------------------------------------
 ! Report
 ! ---------------------------------------------------------------------------------
 
@@ -544,9 +593,10 @@ IF (has7 > 0.5)
 ELSE
    PRINT " "
    PRINT "NOTE: BUCH7 reported no seventh order beyond B7, so tau2 to tau19 are zero"
-   PRINT "and the 'full 7th' column below differs from '3rd+5th' only by B7. On a"
-   PRINT "system with figured surfaces that is expected - BUCH7's Table I arrangement"
-   PRINT "is for spheres - and the seventh-order column should not be read as complete."
+   PRINT "and the 'full 7th' column below is IDENTICAL to '+B7 only'. Two columns"
+   PRINT "reading the same is the symptom, and it means the last column is not the"
+   PRINT "full seventh order and must not be read as one. On a system with figured"
+   PRINT "surfaces that is expected - BUCH7's Table I arrangement is for spheres."
 ENDIF
 PRINT " "
 PRINT "Distortion is absent by construction: E, E5 and tau20 move the patch without"
@@ -595,7 +645,7 @@ PRINT " "
 PRINT "RMS spot RADIUS in lens units, referenced to the CENTROID, at the GAUSSIAN"
 PRINT "image plane."
 PRINT " "
-PRINT "     H            3rd        3rd+5th       full 7th"
+PRINT "     H            3rd        3rd+5th       +B7 only       full 7th"
 
 ! ---------------------------------------------------------------------------------
 ! The double sum. Terms are selected by total degree a + b, which is 3 for the third
@@ -607,14 +657,14 @@ hstep = 1 / nsteps
 FOR istep = 0, nsteps, 1
    hh = istep * hstep
 
-   FOR iord = 3, 7, 2
+   FOR icol = 1, 4, 1
       acc = 0
 
       ! eps_y against itself
       FOR ia = 1, ny, 1
-         IF ((VEC1(50 + ia) + VEC1(100 + ia)) <= iord)
+         IF (VEC1(200 + ia) <= icol)
             FOR ib = 1, ny, 1
-               IF ((VEC1(50 + ib) + VEC1(100 + ib)) <= iord)
+               IF (VEC1(200 + ib) <= icol)
                   thv = VEC3((VEC1(150 + ia) - 1) * 9 + VEC1(150 + ib))
                   IF (ABSO(thv) > eps)
                      radf = 2 / (VEC1(50 + ia) + VEC1(50 + ib) + 2)
@@ -630,9 +680,9 @@ FOR istep = 0, nsteps, 1
 
       ! eps_z against itself
       FOR ia = 1, nz, 1
-         IF ((VEC2(50 + ia) + VEC2(100 + ia)) <= iord)
+         IF (VEC2(200 + ia) <= icol)
             FOR ib = 1, nz, 1
-               IF ((VEC2(50 + ib) + VEC2(100 + ib)) <= iord)
+               IF (VEC2(200 + ib) <= icol)
                   thv = VEC3((VEC2(150 + ia) - 1) * 9 + VEC2(150 + ib))
                   IF (ABSO(thv) > eps)
                      radf = 2 / (VEC2(50 + ia) + VEC2(50 + ib) + 2)
@@ -650,7 +700,7 @@ FOR istep = 0, nsteps, 1
       ! survive a pupil average, and the mean of eps_z is zero by symmetry.
       mnc = 0
       FOR ia = 1, ny, 1
-         IF ((VEC1(50 + ia) + VEC1(100 + ia)) <= iord)
+         IF (VEC1(200 + ia) <= icol)
             IF (VEC1(150 + ia) == 1)
                hpw = VEC1(100 + ia)
                hfac = 1
@@ -666,7 +716,7 @@ FOR istep = 0, nsteps, 1
       ! can cancel to a very small negative number. That is dust, not a quantity.
       rmsv = 0
       IF (msq > 0) THEN rmsv = SQRT(msq)
-      VEC3(120 + iord) = rmsv
+      VEC3(120 + icol) = rmsv
    NEXT
 
    ! Held and printed in one statement rather than appended to an open print line
@@ -674,14 +724,20 @@ FOR istep = 0, nsteps, 1
    FORMAT 6.2
    PRINT hh,
    FORMAT 15.6 EXP
-   PRINT VEC3(123), VEC3(125), VEC3(127)
+   PRINT VEC3(121), VEC3(122), VEC3(123), VEC3(124)
 NEXT
 
 PRINT " "
-PRINT "The three columns are the same sum over nested subsets of the same terms, so"
-PRINT "the difference between two of them is exactly what that order buys. On a Cooke"
-PRINT "triplet the third order alone is out by a quarter on axis; see"
-PRINT "docs/spot-prediction.md, which measures this against traced rays."
+PRINT "The four columns are the same sum over NESTED subsets of the same terms, so the"
+PRINT "difference between two adjacent ones is exactly what that step buys."
+PRINT " "
+PRINT "The one to read is '+B7 only' against 'full 7th'. B7 was available before any of"
+PRINT "the Table I work - FIFTHORD prints it, and so does BUCH7's fifth-order working -"
+PRINT "so that gap is what the eighteen tau add that nothing else could give you. On a"
+PRINT "Cooke triplet it is nothing on axis, where B7 is the whole of the seventh order,"
+PRINT "and a factor of thirty-five at nine tenths of the field."
+PRINT " "
+PRINT "docs/spot-prediction.md measures all four against traced rays on five lenses."
 
 ! ---------------------------------------------------------------------------------
 ! The optional second route. Robb's Eq. (2) is evaluated ray by ray on an equal-area

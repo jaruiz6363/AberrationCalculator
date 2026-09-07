@@ -524,7 +524,7 @@ It was inverted because the natural thing to run is the macro whose answer you w
 
 Thirty-four coefficients are hard to read as a statement about image quality. One RMS
 radius is easy to read and throws away most of what they say. Printing both, truncated
-three ways, says something neither gives alone: **how much of the spot each order accounts
+four ways, says something neither gives alone: **how much of the spot each order accounts
 for**, and so whether a design is limited by aberration the third order already describes
 or by something only the seventh reaches.
 
@@ -696,8 +696,9 @@ is not an estimate of this lens at any field.
 `tau2` to `tau19` come from BUCH7's Table I arrangement, which is for **spherical surfaces
 only**. On a figured system BUCH7 refuses before reaching stage E, so this macro is not
 reached either. Slot 46 exists so that a different parent can say it has only third and
-fifth order, in which case the seventh-order column differs from `3rd+5th` by `B7` alone
-and should not be read as complete.
+fifth order, in which case `full 7th` comes out **identical to `+B7 only`**. Two columns
+reading the same is the symptom, and it means the last column is not the full seventh order
+and must not be read as one.
 
 Stage E is reached only if stage D completed. BUCH7's earlier refusals - an afocal system,
 a chief ray carrying no field - skip it, which is right: there would be no seventh order to
@@ -727,18 +728,27 @@ the defocus warning - unlike the Double Gauss sample above.
 
     RMS spot RADIUS in lens units, referenced to the CENTROID, at the GAUSSIAN image plane
 
-         H            3rd        3rd+5th       full 7th
-      0.00  1.740010E-002  1.433710E-002  1.378753E-002
-      0.10  1.767375E-002  1.437992E-002  1.382400E-002
-      0.20  1.852787E-002  1.455733E-002  1.397830E-002
-      0.30  2.004758E-002  1.499266E-002  1.437061E-002
-      0.40  2.233527E-002  1.581682E-002  1.514452E-002
-      0.50  2.547637E-002  1.708349E-002  1.637350E-002
-      0.60  2.952267E-002  1.871917E-002  1.795926E-002
-      0.70  3.449472E-002  2.053853E-002  1.957802E-002
-      0.80  4.039287E-002  2.230508E-002  2.071257E-002
-      0.90  4.720787E-002  2.381192E-002  2.087998E-002
-      1.00  5.492754E-002  2.499401E-002  2.061997E-002
+         H            3rd        3rd+5th       +B7 only       full 7th
+      0.00  1.740010E-002  1.433710E-002  1.378753E-002  1.378753E-002
+      0.10  1.767375E-002  1.437992E-002  1.383288E-002  1.382400E-002
+      0.20  1.852787E-002  1.455733E-002  1.402013E-002  1.397830E-002
+      0.30  2.004758E-002  1.499266E-002  1.447805E-002  1.437061E-002
+      0.40  2.233527E-002  1.581682E-002  1.534174E-002  1.514452E-002
+      0.50  2.547637E-002  1.708349E-002  1.666392E-002  1.637350E-002
+      0.60  2.952267E-002  1.871917E-002  1.836584E-002  1.795926E-002
+      0.70  3.449472E-002  2.053853E-002  2.025730E-002  1.957802E-002
+      0.80  4.039287E-002  2.230508E-002  2.210065E-002  2.071257E-002
+      0.90  4.720787E-002  2.381192E-002  2.369201E-002  2.087998E-002
+      1.00  5.492754E-002  2.499401E-002  2.497242E-002  2.061997E-002
+
+**Read the last two columns against each other.** `B7` was available long before any of the
+Table I work - FIFTHORD prints it, and so does BUCH7's own fifth-order working - so the gap
+between those two is what the eighteen tau add that nothing else could give you. On axis
+they are identical to every digit, because on axis there is no field and spherical
+aberration is the whole of the seventh order. At `H = 0.9` they are 2.369E-02 against
+2.088E-02, which against a traced 0.020799 is +13.9 per cent against +0.4 - a factor of
+thirty-five in the error, and all of it from coefficients that were not previously
+available.
 
 Three of those can be checked without this repository at all: the `full 7th` column at
 `H = 0`, `0.7` and `1.0` must equal the `prms` values the `rms_spot` tool reports for
