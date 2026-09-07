@@ -299,3 +299,197 @@ factor on each. The macro had been built on Table I's normalised basis, where th
 is scaled to unit angle at the first surface, while the coefficients are defined on the
 physically scaled chief ray. Stage A now works from the marginal and chief rays as
 traced, with the surface factors written as the C# writes them.
+
+---
+
+## STRESS.ZPL
+
+Sasian's lens stress and relaxation parameters - the power distribution `W`, the symmetry
+about the stop `S`, and the real-ray metric `R` - as system totals and, which he does not
+tabulate, per surface.
+
+J. Sasian, *Introduction to Lens Design*, Cambridge University Press, section 12.2. The
+quantities are his (12.5) to (12.8); the reference values are his Table 12.1 and the
+n sin(I) plot is his Figure 12.3. He says in that section that the W and S values and
+those plots were produced by writing a macro inside a lens design program. This is one.
+
+### Why
+
+A lens acquires its power either gradually, spread over several weak surfaces, or
+violently, by pitting strong positive against strong negative. The second buys degrees of
+freedom - a flat field, mainly - and pays for them in higher-order aberration and in
+tolerances. Nothing in a spot diagram distinguishes the two, and nothing in a Seidel table
+does either: both report the aberration that survived, not the effort spent producing it.
+
+`W` measures how hard the surfaces are working, `S` how far the lens departs from symmetry
+about the stop, and `R` does what `W` does but on real rays, so it knows about the aperture
+and field the lens is actually used over. Smaller is more relaxed in all three.
+
+The normalisations are the interesting part and they are Sasian's. `W` carries the factors
+`n_k' u_k'` and `(1 - m)` that make it independent of scale and of the conjugate. `S`
+carries the stop factors `Abar_stop` and `y_stop` as well, which additionally make it
+independent of field and of F/#. So these are numbers you can compare between two lenses
+that share nothing.
+
+### What this adds to the parameters as published
+
+`W` and `S` are each one number for a whole lens. That tells you a lens is stressed
+without telling you where. Both are RMS over surfaces, so the macro prints the per-surface
+term going into each sum; the surface with the largest term is the one carrying the
+stress. On the Cooke sample below, surface 4 carries the largest weighted power and
+surface 3 the largest asymmetry, and they are not the same surface.
+
+### Status
+
+| what | checked against | result |
+|---|---|---|
+| W and S, and both per-surface tables | an independent implementation outside OpticStudio, from the same prescription | agrees; W = 1.055890, S = 0.917432 |
+| the conventions behind them | Sasian's Table 12.1 | 1.06 and 0.92 here against his 1.12 and 0.89 - a different triplet |
+| n sin(I), all four rays | an independent real ray trace, itself checked against OpticStudio's own ray intercepts to 2.3E-14 lens units | agrees to every digit printed |
+| every ZPL function and keyword used | the ZPL reference in the OpticStudio help | 26 functions and 13 keywords, all present |
+
+### What is actually proven, and what is not
+
+**The arithmetic is checked; the absolute values are not, and cannot be from published
+numbers.** Sasian's Table 12.1 gives W = 1.12 and S = 0.89 for *his* Cooke triplet. The
+OpticStudio sample used here is a different lens, so the 1.06 and 0.92 obtained cannot be
+compared with his entry by entry. What that near-agreement does settle is the
+**conventions** - the sign of the chief-ray refraction invariant, whether the stop factors
+sit in the numerator or the denominator, what `k` counts - because getting any of those
+wrong moves the answer by a factor, not by six per cent. Two different triplets landing
+within six per cent of each other is what a correct arrangement looks like; it is not what
+a wrong one looks like.
+
+The arithmetic itself is checked the only way it can be, against a second implementation
+of the same equations written outside OpticStudio and driven from the same prescription.
+
+One thing that check needed first: the independent computation used catalogue glasses, and
+a glass name alone does not say whose glass it is. The indices OpticStudio actually used
+were recovered from its own optical path lengths - optical path over geometric path,
+segment by segment - and match the catalogue values to ten decimal places for both SK16
+and F2. Without that, an agreement to four figures would have proved nothing about the
+fourth figure.
+
+### Two checks the macro makes on itself, every run
+
+Both are printed, and both are the sort that can fail.
+
+`w = phi*y` must equal `n'u' - nu`, which is Sasian's (12.5) and an identity of the
+paraxial refraction equation. It holding says the index handling, the mirror sign flips
+and the ray basis are mutually consistent. OpticStudio's sign convention makes it
+`n'u' - nu = -phi*y`; Sasian writes them equal, which is the same statement in his.
+
+`n sin(I)` from the `RAID` operand must equal `n sin(I)` worked out from the ray direction
+and the surface normal, which come from a different part of the program. These part company
+on a system with coordinate breaks or tilts, which is one of the things that makes such a
+system not the sort this macro is for - so the check earns its place rather than merely
+passing.
+
+### The one arbitrary choice, made visible rather than buried
+
+Sasian writes "a system of k surfaces" and does not say what to do about surfaces that are
+not optical surfaces at all - a dummy plane, a stop floating in air. They contribute
+nothing to either sum, since `phi` is zero and so is `delta(u/n)`, but counting them still
+shrinks W and S by `sqrt(kept/counted)`.
+
+This macro counts a surface when the index changes across it, so refraction and reflection
+count and dummies do not, which makes W and S properties of the lens rather than of how the
+file was typed. **The value on the other convention is printed underneath**, because the
+choice is arbitrary enough to be worth seeing both ways. On a lens with no dummy surfaces
+the two lines are equal; where they differ the reader decides. The Cooke sample has no
+dummy surfaces, so it does not discriminate - a Petzval objective with a separate stop
+surface would move by about five per cent.
+
+### Limits
+
+Rotationally symmetric and sequential; a non-axial system is refused. Not afocal, since
+both W and S divide by `n_k' u_k'`. Unit magnification makes Sasian's `(1 - m)` factor
+vanish and W and S with it - a property of the definition, not of the lens - so the macro
+says so and prints the unnormalised RMS rather than dividing by zero.
+
+**Aspheres are fine here**, which is worth stating because `BUCH7.ZPL` in this folder
+refuses them. W and S are built on the paraxial trace and a conic or an even-asphere term
+does not touch it: such a surface carries no vertex power, which is the same reason Sasian
+gives for aspheres being absent from the Petzval sum. R is a real-ray quantity and
+OpticStudio's own angle of incidence carries the figuring correctly.
+
+Vignetting factors move the real rays, so they move R and the n sin(I) table but not W and
+S. If factors are set, the `Py = +/-1` rays sit at the vignetted edge of the pupil rather
+than the full one - usually what you want, never what you expect. The macro reports it.
+
+### A fourth ZPL trap, which this macro found
+
+The three in the BUCH7 section above all still apply. This one is new:
+
+4. **`OPEV` traces rays of its own.** It evaluates an optimization operand, and the ray
+   operands trace to do it, so `RAYL`, `RAYM`, `RANX` and the rest - which report the ray
+   traced *last* - come back describing the operand's ray rather than yours. Reading them
+   after an `OPEV` call returns plausible numbers for the wrong ray. Everything wanted from
+   a `RAYTRACE` is therefore read out before the first `OPEV` of that pass, not interleaved
+   with it.
+
+The case-insensitivity trap deserves its restatement. Writing this macro it bit three times
+in one sitting, twice in the PowerShell used to check the macro rather than in the macro
+itself: `$I` silently clobbered a loop counter `$i` and produced an infinite loop, and `$t`
+silently clobbered a thickness array `$T` and produced a ray trace that agreed with
+OpticStudio on surface 1 and disagreed on every surface after it. Both looked like physics
+bugs. Neither was.
+
+### Expected output, Cooke 40 degree field
+
+Run against `C:\ProgramData\Zemax\Samples\Sequential\Objectives\Cooke 40 degree field.zmx`
+at the primary wavelength, 0.55 um. Stop at surface 4, object at infinity, so `m = 0` and
+Sasian's `(1 - m)` factor is 1.
+
+    Lagrange invariant         1.819851
+    n_k' u_k'                 -0.100000
+    Stop surface                      4
+    Abar at the stop           0.478801
+    Marginal y at the stop     3.800852
+
+     Surf            phi              y        w = phi y         W term
+        1  2.828288E-002  5.000000E+000  1.414144E-001 -1.414144E+000
+        2  1.428784E-003  4.715974E+000  6.738109E-003 -6.738109E-002
+        3 -2.807578E-002  3.825940E+000 -1.074163E-001  1.074163E+000
+        4 -3.073415E-002  3.800852E+000 -1.168160E-001  1.168160E+000
+        5  7.813498E-003  4.162261E+000  3.252182E-002 -3.252182E-001
+        6  3.384596E-002  4.241508E+000  1.435579E-001 -1.435579E+000
+
+     Surf           Abar     delta(u/n)              y         S term
+        1  1.736295E-001 -5.371140E-002  5.000000E+000  2.562266E-001
+        2  4.944718E-001 -9.444108E-002  4.715974E+000  1.210146E+000
+        3  5.003551E-001  1.327002E-001  3.825940E+000 -1.395893E+000
+        4  4.788009E-001  9.153203E-002  3.800852E+000 -9.153203E-001
+        5  5.073451E-001 -5.953575E-002  4.162261E+000  6.908357E-001
+        6  1.864152E-001 -1.165440E-001  4.241508E+000  5.063556E-001
+
+    W  (index-changing surfaces)    1.055890
+    S  (index-changing surfaces)    0.917432
+    W  (all surfaces counted)       1.055890
+    S  (all surfaces counted)       0.917432
+
+     Surf   marginal(0,1)     chief(1,0)         (1,+1)         (1,-1)
+        1   2.271324E-001  1.631584E-001  3.765930E-001  5.027624E-002
+        2   1.613820E-001  4.690591E-001  3.125282E-001  6.119860E-001
+        3   3.216885E-001  4.652921E-001  1.678046E-001  7.226106E-001
+        4   2.717694E-001  4.778641E-001  6.982383E-001  2.172980E-001
+        5   1.367177E-001  4.984117E-001  6.219992E-001  3.529278E-001
+        6   3.306640E-001  1.395184E-001  1.614162E-001  4.432840E-001
+        R   2.526545E-001  3.998682E-001  4.412349E-001  4.596190E-001
+
+The two W and S pairs are equal because this file carries no dummy surfaces; on a file that
+does, they will differ.
+
+Sasian remarks of his own triplet that surfaces 3 and 4 carry the largest n sin(I). They do
+here too - 0.72 on surface 3 for the `(1,-1)` ray and 0.70 on surface 4 for `(1,+1)` - on a
+different triplet, which is the sort of agreement a structural claim about a lens form
+should produce.
+
+### Provenance
+
+Written from Sasian's published equations. `FIFTHORD.ZPL` and the `Wavefront Aberrations
+from Sasian.zpl` macro shipped with OpticStudio were read as references for the ZPL
+interface only - keyword names, the paraxial conventions, the handling of mirrors through
+`ISMS` - and no code from either is reproduced here. Every ZPL function and keyword used
+was checked against the ZPL reference in the OpticStudio help rather than written from
+memory.
