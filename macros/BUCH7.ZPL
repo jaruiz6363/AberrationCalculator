@@ -1434,6 +1434,73 @@ PRINT "The third and fifth orders above are unconverted per surface - multiply b
 PRINT "the F/number, which is done for their totals. Check the third order against"
 PRINT "Analyze > Aberrations > Seidel Coefficients and the fifth against FIFTHORD."
 
+
+! =================================================================================
+! STAGE E - publish the coefficients into the call buffer, so that a parent macro
+! can pick them up. ROBB.ZPL is the one that does: it calls this macro and turns
+! what comes back into an RMS spot radius by Robb's analytic merit function,
+! J. Opt. Soc. Am. 66, 1037 (1976).
+!
+! This macro does NOT call ROBB. The direction is the other way round, which is what
+! makes both files runnable on their own: BUCH7 by itself prints the coefficients as
+! it always has, and ROBB by itself prints a spot, calling this macro to get what it
+! needs. Were both to call each other the pair would recurse until OpticStudio gave
+! up, so the call lives in exactly one of them.
+!
+! Run directly, the writes below go into this macro's own buffer and nobody reads
+! them, which costs nothing and changes none of the output above.
+!
+! Thirty-four of the thirty-seven coefficients go across. E, E5 and tau20 are left
+! behind on purpose: distortion displaces the image patch without resizing it, so it
+! cannot enter a spot radius, and Robb's corresponding terms vanish identically.
+!
+! Everything sent is in TRANSVERSE measure, which for the third and fifth orders
+! means the running sums multiplied by the F/number - the same conversion applied to
+! the totals printed above - and for the seventh order means VEC1(21) to VEC1(39),
+! which stage D already converted per tau. Sending the unconverted per-surface
+! quantities instead would give a spot in no units at all.
+!
+! The call buffer holds fifty-one numeric slots and thirty-four are needed, so the
+! whole coefficient set fits with room for the two control values. Slot 45 carries a
+! handshake, so that a caller can tell the difference between coefficients that are
+! genuinely zero and a run of this macro that never got here.
+!
+! This stage is reached only if stage D completed. The earlier GOTO 999 exits -
+! an afocal system, a chief ray with no field - skip it, and slot 45 is then never
+! written, which is exactly how the caller learns that there is nothing to use.
+! =================================================================================
+
+CALLSETDBL 1, sumb * fnum
+CALLSETDBL 2, sumf * fnum
+CALLSETDBL 3, sumc * fnum
+CALLSETDBL 4, sump * fnum
+
+CALLSETDBL 5, sB5 * fnum
+CALLSETDBL 6, sF1 * fnum
+CALLSETDBL 7, sF2 * fnum
+CALLSETDBL 8, sM1 * fnum
+CALLSETDBL 9, sM2 * fnum
+CALLSETDBL 10, sM3 * fnum
+CALLSETDBL 11, sN1 * fnum
+CALLSETDBL 12, sN2 * fnum
+CALLSETDBL 13, sN3 * fnum
+CALLSETDBL 14, sC5 * fnum
+CALLSETDBL 15, sP5 * fnum
+
+! B7 is Robb's tau1, and stage D holds it already converted. It is reached twice
+! over inside this macro - through the fifth-order working and through Table I - so
+! VEC1(21) and sB7 * fnum are the same number by two routes. Sending VEC1(21) keeps
+! it consistent with tau2 onward, which have no second route.
+CALLSETDBL 16, VEC1(21)
+
+FOR rbk = 2, 19, 1
+   CALLSETDBL rbk + 15, VEC1(20 + rbk)
+NEXT
+
+! Written last, so that it is set only if everything above it was.
+CALLSETDBL 45, 761976
+CALLSETDBL 46, 1
+
 LABEL 999
 IF (ABSO(paraxmode) < eps) THEN PARAXIAL OFF
 END

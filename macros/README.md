@@ -19,7 +19,7 @@ for that is upstream of the surface the total blames, and a table of totals cann
 
 ### Status
 
-All four stages are written and all four pass, at either conjugate.
+All five stages are written and all five pass, at either conjugate.
 
 | stage | contents | agrees with | result |
 |---|---|---|---|
@@ -27,6 +27,7 @@ All four stages are written and all four pass, at either conjugate.
 | B | fifth order per surface, intrinsic and induced, plus B7 | FIFTHORD | 18 of 18 totals, both conjugates |
 | C | Buchdahl's Table I, t1 to t155, per surface | `reference/CookeTriplet_TableI.txt` | 155 of 155 to 7e-16 |
 | D | the twenty tau, intrinsic and induced per surface | that file's tau block, and a Forbes series trace at 250 mm | 420 of 420; 20 of 20 to every printed digit |
+| E | publishes the coefficients into the call buffer for `ROBB.ZPL` to read and turn into an RMS spot radius | `Prms.cs`, and the `rms_spot` tool, on the same lens | 33 of 33 to every printed digit |
 
 ### Where the numbers come from, and what merely agrees with them
 
@@ -493,3 +494,261 @@ interface only - keyword names, the paraxial conventions, the handling of mirror
 `ISMS` - and no code from either is reproduced here. Every ZPL function and keyword used
 was checked against the ZPL reference in the OpticStudio help rather than written from
 memory.
+
+---
+
+## ROBB.ZPL
+
+The RMS spot radius predicted from the coefficients BUCH7 computes, with no rays traced.
+Robb's analytic merit function.
+
+P. N. Robb, "Analytic merit function based on Buchdahl's aberration coefficients,"
+*J. Opt. Soc. Am.* **66**(10), 1037-1041 (1976). His Eq. (2) writes where a ray meets the
+Gaussian image plane; his Eq. (4) is the variance of that over the pupil.
+
+**Run this one.** It calls `BUCH7.ZPL` itself to get the coefficients it needs, so BUCH7's
+whole output appears first and the spot table follows it. Both files are runnable on their
+own: BUCH7 alone prints the coefficients as it always has, and ROBB prints those and then
+what they imply about the spot.
+
+The call goes in one direction only. BUCH7 publishes its totals into the call buffer and
+calls nothing; ROBB calls BUCH7 and reads them back. Were both to call each other the pair
+would recurse until OpticStudio gave up, so the call lives in exactly one of them.
+
+It was written the other way round first - BUCH7 as the parent calling ROBB - which works
+equally well, because the call buffer carries data in both directions: the shipped
+`PARENT.ZPL`/`CHILD.ZPL` example ends with the child writing a value the parent then reads.
+It was inverted because the natural thing to run is the macro whose answer you want.
+
+### Why
+
+Thirty-four coefficients are hard to read as a statement about image quality. One RMS
+radius is easy to read and throws away most of what they say. Printing both, truncated
+three ways, says something neither gives alone: **how much of the spot each order accounts
+for**, and so whether a design is limited by aberration the third order already describes
+or by something only the seventh reaches.
+
+On the Cooke triplet below that difference is the whole story. On axis the third order
+over-predicts the spot by a quarter; at the edge of the field by more than a factor of two.
+A designer reading only the third order would be looking at the wrong lens.
+
+### How it works, and why there is no table of magic constants in it
+
+Every term of `eps_y` and `eps_z` has the form `coefficient * rho^a * H^b * f(theta)`, so
+the pupil average of a product of two terms separates completely:
+
+    <eps_i eps_j> = c_i c_j * <f_i f_j>_theta * H^(b_i + b_j) * 2/(a_i + a_j + 2)
+
+The radial factor is the average of `rho^(a_i+a_j)` over the unit disc, in closed form. The
+theta factor takes one of **eleven** values, because only eleven of the eighty-one pairings
+of the nine theta functions survive a full turn - everything odd in theta vanishes, the
+cosine family never pairs with the sine family, and the constant pairs only with itself.
+
+So the macro carries 25 `eps_y` rows, 19 `eps_z` rows and a 13-entry theta table, and the
+whole double sum is elementary. **The pupil is not sampled at all**: there are no rings, no
+spokes and no convergence to worry about. The only approximation is the truncation of the
+series itself.
+
+Assembling the same thing as an explicit quadratic form would have meant transcribing 232
+constants. This way the transcription is 44 rows whose structure mirrors `Prms.cs` line for
+line, which is also what makes it checkable against it.
+
+### Status
+
+| what | checked against | result |
+|---|---|---|
+| the term tables and theta table, **parsed out of the ZPL file itself** | `Prms.cs` in this repository, all 34 coefficients distinct and non-zero | agrees to 5.6E-16 relative at H = 0, 0.3, 0.7 and 1.0 |
+| the same, on a real lens | `Prms.cs` on the Cooke triplet, three orders x eleven fields | 33 of 33 to every digit printed |
+| the whole chain end to end | the `rms_spot` MCP tool on the same lens | 2.061997E-02 against 0.020619968 at full field |
+| single aberrations acting alone | the closed forms in `PrmsTests.cs` - `B/2`, `B5^2/6`, `B7^2/8` | exact |
+| BUCH7's half of the interface | the transverse totals this README already records for BUCH7 | all eighteen identical |
+| every ZPL function and keyword used | the ZPL reference in the OpticStudio help | 11 functions, all present |
+
+### The checker was made to fail before it was believed
+
+A checker that reports nothing wrong proves nothing until it has been shown able to report
+something. Two deliberate faults were injected into `ROBB.ZPL` and the checker re-run:
+
+| fault injected | worst relative error reported |
+|---|---|
+| none - the file as shipped | 5.6E-16 |
+| one theta index wrong, `VEC3(59)` written as `VEC3(57)` | 1.2E-2 |
+| one rho power wrong, the M3 term's `a` from 3 to 2 | 7.7E-3 |
+
+The first of those is not hypothetical. It is the error that was actually made writing the
+table, and it is what the check caught. Note that it left `H = 0` exactly right and only
+showed up off axis, which is precisely the shape of mistake that a single on-axis spot
+check would have passed.
+
+The checker reads the term tables **out of the macro file** rather than from a copy of
+them, so what it validates is the file as written, not what it was meant to say.
+
+### The interface to BUCH7
+
+BUCH7 gained a stage E which publishes its totals into the call buffer. It does not call
+anything; ROBB calls BUCH7 and reads the buffer back after it returns. The buffer holds 51
+numeric slots and 34 are needed, so the whole set fits:
+
+| slot | contents |
+|---|---|
+| 1-4 | `B F C Pi` - third order |
+| 5-15 | `B5 F1 F2 M1 M2 M3 N1 N2 N3 C5 Pi5` - fifth order |
+| 16 | `B7`, which is Robb's `tau1` |
+| 17-34 | `tau2` to `tau19` - seventh order |
+| 45 | `761976`, a handshake, written last of all |
+| 46 | 1 if the seventh order is present |
+
+Slot 45 is written **last**, so it is set only if BUCH7 got all the way to the end. If BUCH7
+declined - an aspheric surface, an afocal system, a chief ray carrying no field - the slot
+is still zero and ROBB says there is nothing to report rather than printing a table. That
+distinguishes a failed run from a lens whose coefficients are genuinely zero, which is what
+a well-corrected system would legitimately produce.
+
+Two smaller things the inversion forced, both to avoid resting on undocumented behaviour.
+`CALLMACRO` is the **first statement** in ROBB, before it touches any vector: BUCH7 uses
+`VEC1` to `VEC4` heavily and sizes them to its own needs, so ROBB builds its tables after
+BUCH7 has finished with them rather than around it. And ROBB's settings - `eps`, `dbg`,
+`nsteps` - are assigned **below** the call, because BUCH7 happens to use the names `eps`,
+`dbg` and `kk` itself and ZPL nowhere documents whether a child shares the parent's ordinary
+variables. The call buffer exists precisely so that one need not rely on it.
+
+Everything is in **transverse measure** and in lens units. Unconverted coefficients would
+give a number in no units at all.
+
+**Distortion is deliberately absent.** `E`, `E5` and `tau20` displace the whole patch
+without changing its size, so they cannot enter a spot radius, and Robb's corresponding
+terms vanish identically. Thirty-four coefficients cross, not thirty-seven.
+
+### What it is blind to, which its author said first
+
+The reference is the **Gaussian image plane**, so this is not the spot at best focus and
+moving the image plane does not change it. Robb says so in his own Conclusions: the image
+plane "ceases to become a design variable", optimising the last thickness "will not have
+the slightest effect on the solution and will only consume computing time or cause the
+optimization algorithm to become unstable", and focus must be adjusted afterwards by the
+method of Sands (1973). A design whose spot is dominated by defocus will read better here
+than it deserves.
+
+It is also referenced to the **centroid**, as Robb specifies - the variance about the mean
+intersection, not about the chief ray.
+
+### The defocus warning, and the run that earned it
+
+This is the one misreading the output invites, and prose was not enough to prevent it.
+**Most lens files are not at paraxial focus**, because that is not where an optimiser puts
+the image plane, and a spot diagram taken at the drawn plane is then not comparable with
+this table at all.
+
+The first real run of the macro was on the OpticStudio `Double Gauss 28 degree field`
+sample. ROBB reported 27.36 um on axis; OpticStudio's spot diagram said about 8 to 10. That
+looks like a broken macro and is not one:
+
+| field | traced at the file's own plane | traced at **paraxial focus** | ROBB predicts | error |
+|---|---|---|---|---|
+| H = 0 | 8.32 um | 27.251 um | 27.357 um | +0.4 % |
+| H = 0.71 | 6.10 um | 24.483 um | 24.739 um | +1.0 % |
+| H = 1 | 9.95 um | 29.880 um | 29.039 um | -2.8 % |
+
+The sample's image plane sits **0.1834 mm inside paraxial focus**. At f/2.99 that defocus
+alone is about 21.7 um RMS. Move OpticStudio's image plane to the paraxial distance and its
+own traced rays agree with ROBB to well under a per cent on axis. Nothing was wrong.
+
+So the macro now **measures** the defocus rather than cautioning about it. It traces a
+paraxial marginal ray, takes the paraxial focus as `-y/u` from the last surface, compares
+that with `THIC`, and prints the comparison **before** the table, because it decides what
+the table can honestly be held against:
+
+    Image plane:
+       paraxial focus, from the last surface     57.497969
+       where this lens file puts it              57.314538
+       defocus                                    0.183431
+       RMS radius a PERFECT lens would show at that plane   2.172386E-02
+
+    *** WARNING - THIS LENS IS NOT AT PARAXIAL FOCUS. ***
+
+A lens that *is* at paraxial focus gets a single line saying the table is directly
+comparable with a spot diagram.
+
+The blur figure is exact for defocus acting alone: a ray at normalised pupil height `rho`
+misses the plane by `defocus * u * rho`, and the average of `rho^2` over the pupil is `1/2`,
+so the RMS radius is `|defocus * u| / sqrt(2)`. On the Double Gauss the paraxial trace's own
+marginal ray height at the image surface is 0.030722, which is `0.183431 * 0.167486` - the
+same quantity before the `sqrt(2)`.
+
+It is reported as the **scale** of the discrepancy and not as a correction to apply. Defocus
+and aberration vary together across the pupil, so they do not simply add in quadrature: 8.32
+and 21.72 do not make 27.25. The only honest comparison is to move the plane.
+
+### How good the prediction is, measured rather than asserted
+
+`docs/spot-prediction.md` compares it against traced rays on five lenses at both
+conjugates. The table below is consistent with it to the digit: at `H = 0` the full seventh
+order gives 1.378753E-02 against a traced 0.013698, which is the +0.7 per cent that
+document records, and at `H = 1` it gives 2.061997E-02 against a traced 0.023604, the -12.6
+per cent it records there.
+
+So the honest summary is that the full seventh order is worth about one to two per cent
+across four fifths of the field and **falls apart at the very edge**. The third order alone
+is not an estimate of this lens at any field.
+
+### Limits
+
+`tau2` to `tau19` come from BUCH7's Table I arrangement, which is for **spherical surfaces
+only**. On a figured system BUCH7 refuses before reaching stage E, so this macro is not
+reached either. Slot 46 exists so that a different parent can say it has only third and
+fifth order, in which case the seventh-order column differs from `3rd+5th` by `B7` alone
+and should not be read as complete.
+
+Stage E is reached only if stage D completed. BUCH7's earlier refusals - an afocal system,
+a chief ray carrying no field - skip it, which is right: there would be no seventh order to
+send.
+
+### The optional second route
+
+Setting `dbg = 1` at the head of ROBB also integrates Eq. (2) numerically over an
+equal-area pupil grid, 24 rings by 48 spokes, and prints the two side by side. It is off by
+default because it is slow and because its sampling error - around 1E-5 relative - is
+larger than anything the analytic route can get wrong subtly. It is there because a table
+of powers and indices transcribed by hand is exactly the sort of thing that can be wrong in
+a way that still looks plausible.
+
+The kth ring sits at `rho = sqrt((k - 1/2)/n)`, the equal-area midpoint rather than the
+outer edge. Sampling at the edge weights the pupil outward and converges from above;
+`docs/spot-prediction.md` has the numbers.
+
+### Expected output, CookeTriplet
+
+Run **ROBB** against `CookeTriplet.zmx` at wavelength 2 (0.55 um). BUCH7's own output comes
+first, through stage D, and this follows it. The coefficients are the ones this README
+already records for BUCH7.
+
+That fixture is at paraxial focus, so it draws the "directly comparable" line rather than
+the defocus warning - unlike the Double Gauss sample above.
+
+    RMS spot RADIUS in lens units, referenced to the CENTROID, at the GAUSSIAN image plane
+
+         H            3rd        3rd+5th       full 7th
+      0.00  1.740010E-002  1.433710E-002  1.378753E-002
+      0.10  1.767375E-002  1.437992E-002  1.382400E-002
+      0.20  1.852787E-002  1.455733E-002  1.397830E-002
+      0.30  2.004758E-002  1.499266E-002  1.437061E-002
+      0.40  2.233527E-002  1.581682E-002  1.514452E-002
+      0.50  2.547637E-002  1.708349E-002  1.637350E-002
+      0.60  2.952267E-002  1.871917E-002  1.795926E-002
+      0.70  3.449472E-002  2.053853E-002  1.957802E-002
+      0.80  4.039287E-002  2.230508E-002  2.071257E-002
+      0.90  4.720787E-002  2.381192E-002  2.087998E-002
+      1.00  5.492754E-002  2.499401E-002  2.061997E-002
+
+Three of those can be checked without this repository at all: the `full 7th` column at
+`H = 0`, `0.7` and `1.0` must equal the `prms` values the `rms_spot` tool reports for
+wavelength 0.55 at fields 0, 14 and 20 degrees, which are 0.013787534, 0.019578024 and
+0.020619968.
+
+### Provenance
+
+Written from Robb's published equations and from `src/AberrationCalculator.Core/Aberrations/Prms.cs`,
+which is this project's own implementation of them. The `Wavefront Aberrations from
+Sasian.zpl` macro shipped with OpticStudio was read as a reference for the ZPL interface
+only, and no code from it is reproduced here. Every ZPL function and keyword used was
+checked against the ZPL reference in the OpticStudio help rather than written from memory.
