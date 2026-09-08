@@ -5,12 +5,9 @@
 ! G. W. Forbes, "Order doubling in the computation of aberration coefficients,"
 ! J. Opt. Soc. Am. 73(6), 782 (1983), Sec. 3(a).
 !
-! STATUS: STAGES 1, 2 AND 3. The truncated series ring, the trace built on it, and
-! conics and even aspheres - which is what BUCH7 cannot do and the reason this
-! exists. It
-! prints the four series S, T, V, W that carry the whole aberration content of a
-! system - but NOT the twenty named coefficients, which need the inversion of stage
-! 4 and are not a printing step. See "Staging" below for what that means.
+! STATUS: ALL FOUR STAGES, infinite conjugate only. The truncated series ring, the
+! trace built on it, conics and even aspheres - which is what BUCH7 cannot do and
+! the reason this exists - and the third-, fifth- and seventh-order coefficients.
 !
 ! The ring checks ITSELF on algebraic identities every run, before the trace, and
 ! declines to trace if any of them fails.
@@ -90,7 +87,7 @@
 !   The second rule is the one that would produce a plausible wrong answer rather
 !   than an error, which is why it is stated before the code rather than after it.
 !
-! STAGING - this is stage 1 of four, and the stages are from docs/forbes.md
+! STAGING - the four stages are from docs/forbes.md, and all four are now written
 !
 !   1. THE RING. Multiply, inverse, square root, and the monomial tables. Checked on
 !      ALGEBRAIC identities that need no optics and no reference implementation:
@@ -119,15 +116,37 @@
 !      being ignored, it genuinely does not appear. The macro says so when it meets
 !      one rather than silently dropping it. ***
 !
-!   4. THE TWENTY NAMED COEFFICIENTS. These are NOT simply read off S, T, V and W.
-!      The transverse aberration is built as a series in the ray SCALE, its
-!      degree-seven part taken exactly, and the twenty coefficients recovered from a
-!      set of ray shapes by a linear inversion. That needs a second series type - a
-!      univariate one in the scale, to order seven - and a solve in twenty unknowns.
-!      It is a piece of work in its own right and it is not written here.
+!   4. THE NAMED COEFFICIENTS - the five of the third order, the twelve of the fifth
+!      and the twenty of the seventh. These are NOT read off S, T, V and W. The
+!      transverse aberration is built as a series in the ray SCALE, its degree-3,
+!      degree-5 and degree-7 parts taken exactly, and the coefficients recovered from
+!      seventy-five ray shapes by a linear inversion.
+!      *** DONE, infinite conjugate only. Checked against the C# on a Cooke triplet:
+!      third order to 4E-14, fifth to 6E-14, seventh to 2E-13. ***
 !
-!   So this file does not yet replace BUCH7 for anything, and the comparison that
-!   would prove it does - Forbes' twenty tau against Buchdahl's - waits on stage 4.
+!      The solve uses the NORMAL equations where the C# uses a Householder QR. That
+!      squares the condition number, which is a real objection and was tested rather
+!      than waved away: on this model - polynomial evaluations at well separated
+!      shapes - the two agree to the figures above.
+!
+!      NOT DONE: the finite conjugate. The trace is right at either, but the RAY
+!      BASIS differs, because a ray from a finite object point is not collimated and
+!      its direction depends on the pupil point as well as the field. The macro
+!      refuses rather than guessing. BUCH7 carries both conjugates.
+!
+! WHERE THIS AND BUCH7 SHOULD AGREE, AND WHERE THEY SHOULD NOT
+!
+!   On a system of SPHERES all three orders must match BUCH7, and that has been
+!   checked on a Cooke triplet. Two wholly different schemes - Buchdahl's arranged
+!   tables and Forbes' series trace - sharing no arithmetic.
+!
+!   On a FIGURED system, expect the seventh orders to DIFFER, and do not read that as
+!   this macro being wrong. Buchdahl's aspheric tertiary is the one part of that
+!   scheme with no printed table to check a transcription against, and it is where
+!   its known error lives; docs/forbes.md measures it at 6.85 and 7.75 per cent on
+!   two of the ladder fixtures. Removing that difficulty is the whole reason this
+!   route exists, so where they part company on a figured lens this is the one to
+!   believe. BUCH7 declines such a system outright in any case.
 !
 ! ---------------------------------------------------------------------------------
 
@@ -238,6 +257,37 @@ uq1 = 201
 uq2 = 211
 uq3 = 221
 uq4 = 231
+
+! --- scale series, VEC3 from 1001. Eight coefficients each, orders 0 to 7. ---
+nzc = 8
+zsy = 1001
+zsz = 1011
+zby = 1021
+zbz = 1031
+zpp = 1041
+zkk = 1051
+zuu = 1061
+ztn = 1071
+zsn = 1081
+zss = 1091
+ztt = 1101
+zom = 1111
+zos = 1121
+zt1 = 1131
+zt2 = 1141
+zt3 = 1151
+zt4 = 1161
+zp0 = 1201
+zk0 = 1241
+zu0 = 1281
+zq1 = 1401
+zq2 = 1411
+zq3 = 1421
+zq4 = 1431
+zv1 = 1501
+zv2 = 1511
+zv3 = 1521
+zv4 = 1531
 
 GOSUB mktab
 
@@ -709,6 +759,182 @@ FOR gi = 0, nsm, 1
 NEXT
 
 GOSUB shows
+
+
+! =================================================================================
+! STAGE 4 - the named coefficients.
+!
+! The ray basis comes from the paraxial rays rather than from GETSYSTEMDATA, which
+! would fill a vector and overwrite the surface figures. Three numbers are needed and
+! all three fall out of rays already being traced:
+!
+!   epr   the entrance pupil radius. At infinite conjugate the marginal ray runs
+!         parallel to the axis before the lens, so its height at surface one IS the
+!         pupil radius.
+!   hmax  tan of the maximum field. The chief ray's slope in object space is exactly
+!         that, whatever the field type is stated as - which is why it is taken from
+!         the ray rather than from MAXF and a units assumption.
+!   epp   the entrance pupil position, where the chief ray crosses the axis:
+!         -ybar / ubar from surface one.
+! =================================================================================
+
+IF (ABSO(THIC(0)) < 1E10)
+   PRINT " "
+   PRINT "STAGE 4 handles the infinite conjugate only, and this system has a finite"
+   PRINT "object. The trace above is right at either conjugate - it is the RAY BASIS"
+   PRINT "below that differs, because a ray from a finite object point is no longer"
+   PRINT "collimated and its direction depends on the pupil point as well as the"
+   PRINT "field. That branch is not written, and guessing at it would be worse than"
+   PRINT "saying so. BUCH7 carries both conjugates and should be used for this lens."
+   GOTO 900
+ENDIF
+
+RAYTRACE 0, 0, 0, 1, wl
+epr = RAYY(1)
+RAYTRACE 0, 1, 0, 0, wl
+hmax = RAYM(0) / RAYN(0)
+IF (ABSO(hmax) < eps)
+   PRINT " "
+   PRINT "The chief ray carries no field, so there is nothing to separate the field"
+   PRINT "dependence of the coefficients with. Is the field zero?"
+   GOTO 900
+ENDIF
+epp = -RAYY(1) / hmax
+
+IF (ABSO(epr) < eps)
+   PRINT "The marginal ray has no height at the first surface; is the aperture set?"
+   GOTO 900
+ENDIF
+
+! ---------------------------------------------------------------------------------
+! The seventy-five shapes. Three pupil radii by seven azimuths by three fields, then
+! nine pure-aperture shapes with no field and three pure-field shapes with no
+! aperture. The last two groups matter: without them the solve has nothing that
+! isolates the coefficients which carry aperture alone or field alone.
+! ---------------------------------------------------------------------------------
+
+VEC2(3901) = 0.35
+VEC2(3902) = 0.7
+VEC2(3903) = 1.0
+
+pival = 2 * ACOS(0)
+VEC2(3911) = 0
+VEC2(3912) = pival / 6
+VEC2(3913) = pival / 4
+VEC2(3914) = pival / 3
+VEC2(3915) = pival / 2
+VEC2(3916) = 2 * pival / 3
+VEC2(3917) = 5 * pival / 6
+
+nsh = 0
+FOR jr = 1, 3, 1
+   FOR jt = 1, 7, 1
+      FOR jh = 1, 3, 1
+         VEC2(3201 + nsh * 3) = VEC2(3900 + jr)
+         VEC2(3202 + nsh * 3) = VEC2(3910 + jt)
+         VEC2(3203 + nsh * 3) = VEC2(3900 + jh)
+         nsh = nsh + 1
+      NEXT
+   NEXT
+NEXT
+FOR jr = 1, 3, 1
+   FOR jt = 1, 3, 1
+      VEC2(3201 + nsh * 3) = VEC2(3900 + jr)
+      VEC2(3202 + nsh * 3) = VEC2(3911 + (jt - 1) * 2)
+      VEC2(3203 + nsh * 3) = 0
+      nsh = nsh + 1
+   NEXT
+NEXT
+FOR jh = 1, 3, 1
+   VEC2(3201 + nsh * 3) = 0
+   VEC2(3202 + nsh * 3) = 0
+   VEC2(3203 + nsh * 3) = VEC2(3900 + jh)
+   nsh = nsh + 1
+NEXT
+
+! ---------------------------------------------------------------------------------
+! Three normal-equation systems, accumulated in ONE pass over the shapes. The scale
+! series for a shape costs far more than the three model rows do, so it is built once
+! and all three orders read their own coefficient off it.
+! ---------------------------------------------------------------------------------
+
+mrowy = 3101
+mrowz = 3121
+
+FOR jr = 0, 24, 1
+   VEC2(2001 + jr) = 0
+NEXT
+FOR jr = 0, 4, 1
+   VEC2(2101 + jr) = 0
+NEXT
+FOR jr = 0, 143, 1
+   VEC2(2201 + jr) = 0
+NEXT
+FOR jr = 0, 11, 1
+   VEC2(2401 + jr) = 0
+NEXT
+FOR jr = 0, 399, 1
+   VEC2(2501 + jr) = 0
+NEXT
+FOR jr = 0, 19, 1
+   VEC2(3001 + jr) = 0
+NEXT
+
+PRINT " "
+PRINT "Building the model over 75 ray shapes. This is the slow part - the scale"
+PRINT "series for each shape costs a few hundred series multiplies."
+
+FOR jsh = 0, nsh - 1, 1
+   srho = VEC2(3201 + jsh * 3)
+   sthe = VEC2(3202 + jsh * 3)
+   shh = VEC2(3203 + jsh * 3)
+
+   GOSUB mkrhs
+
+   mord = 3
+   nunk = 5
+   gata = 2001
+   gatb = 2101
+   GOSUB mkmod
+   ry = VEC3(zom + 3)
+   rz = VEC3(zos + 3)
+   GOSUB accum
+
+   mord = 5
+   nunk = 12
+   gata = 2201
+   gatb = 2401
+   GOSUB mkmod
+   ry = VEC3(zom + 5)
+   rz = VEC3(zos + 5)
+   GOSUB accum
+
+   mord = 7
+   nunk = 20
+   gata = 2501
+   gatb = 3001
+   GOSUB mkmod
+   ry = VEC3(zom + 7)
+   rz = VEC3(zos + 7)
+   GOSUB accum
+NEXT
+
+nunk = 5
+gata = 2001
+gatb = 2101
+GOSUB gsolve
+
+nunk = 12
+gata = 2201
+gatb = 2401
+GOSUB gsolve
+
+nunk = 20
+gata = 2501
+gatb = 3001
+GOSUB gsolve
+
+GOSUB showco
 
 LABEL 900
 IF (ABSO(paraxmode) < eps) THEN PARAXIAL OFF
@@ -1519,4 +1745,570 @@ SUB shows
    PRINT "Stage 2 ends here. The twenty named coefficients are read off these four by"
    PRINT "a linear inversion over a set of ray shapes - that is stage 4, and it is a"
    PRINT "piece of work in its own right rather than a printing step."
+RETURN
+
+! =================================================================================
+! STAGE 4 SUBROUTINES - the twenty named coefficients, and the twelve and five below
+! them.
+!
+! S, T, V and W carry the whole aberration content, but not in a form anyone quotes.
+! Getting the named coefficients out is not a printing step:
+!
+!   1. Shrink a ray by a scale s. The pupil goes to s rho and the field to s h.
+!   2. Follow where it lands, AS A SERIES IN s. That needs a second series type -
+!      univariate in s, to order seven - because the direction cosine is
+!      sin = tan / sqrt(1 + tan^2), whose cubic and quintic parts carry lower-degree
+!      parts of S and T up into the seventh. Reading the degree-three part of S and
+!      T alone would drop that and be wrong by of order the field squared.
+!   3. The coefficient of s^3, s^5 and s^7 is the third-, fifth- and seventh-order
+!      transverse aberration of that ray, exactly - not fitted.
+!   4. Do that for seventy-five ray shapes and solve the resulting overdetermined
+!      linear system for the coefficients.
+!
+! The model in step 4 is Robb's Eq. (2) with one coefficient set to one at a time,
+! which is the same polynomial ROBB.ZPL evaluates. So nothing new is derived here:
+! the model rows are its degree-3, degree-5 and degree-7 terms written out.
+!
+! DISTORTION HAS TO BE PUT BACK. Robb's polynomial is a SPOT SIZE formula and says
+! so: E, E5 and tau20 displace the whole patch without changing its size, so they
+! are deliberately absent from it. A landing ray does contain them. Their form is
+! forced rather than chosen - no aperture dependence, hence H^3, H^5 and H^7 with no
+! azimuth - and they are the last column of each model below.
+! =================================================================================
+
+! ---------------------------------------------------------------------------------
+! The scale series: univariate in s, coefficients 0 to 7. A third ring, and the last.
+! ---------------------------------------------------------------------------------
+
+! zzero - the scale series at za becomes zero.
+SUB zzero
+   FOR zi = 0, nzc - 1, 1
+      VEC3(za + zi) = 0
+   NEXT
+RETURN
+
+! zmul - zc := za * zb, truncated at order seven. zc must not alias za or zb.
+SUB zmul
+   FOR zj = 0, nzc - 1, 1
+      VEC3(zc + zj) = 0
+   NEXT
+   FOR zj = 0, nzc - 1, 1
+      zx = VEC3(za + zj)
+      IF (zx != 0)
+         FOR zk = 0, nzc - 1 - zj, 1
+            zy = VEC3(zb + zk)
+            IF (zy != 0) THEN VEC3(zc + zj + zk) = VEC3(zc + zj + zk) + zx * zy
+         NEXT
+      ENDIF
+   NEXT
+RETURN
+
+! zadd - zc := za + zb.
+SUB zadd
+   FOR zi = 0, nzc - 1, 1
+      VEC3(zc + zi) = VEC3(za + zi) + VEC3(zb + zi)
+   NEXT
+RETURN
+
+! zscal - zb := za * zfac.
+SUB zscal
+   FOR zi = 0, nzc - 1, 1
+      VEC3(zb + zi) = VEC3(za + zi) * zfac
+   NEXT
+RETURN
+
+! zsqrt - zb := sqrt(za), constant term positive.
+SUB zsqrt
+   zqs = za
+   zqd = zb
+   zqc = VEC3(zqs)
+   FOR zqi = 0, nzc - 1, 1
+      VEC3(zq1 + zqi) = VEC3(zqs + zqi) / zqc
+   NEXT
+   VEC3(zq1) = VEC3(zq1) - 1
+   za = zq2
+   GOSUB zzero
+   VEC3(zq2) = 1
+   za = zq3
+   GOSUB zzero
+   VEC3(zq3) = 1
+   zqb = 1
+   FOR zqi = 1, nzc - 1, 1
+      zqb = zqb * (0.5 - (zqi - 1)) / zqi
+      za = zq2
+      zb = zq1
+      zc = zq4
+      GOSUB zmul
+      FOR zqj = 0, nzc - 1, 1
+         VEC3(zq2 + zqj) = VEC3(zq4 + zqj)
+         VEC3(zq3 + zqj) = VEC3(zq3 + zqj) + zqb * VEC3(zq4 + zqj)
+      NEXT
+   NEXT
+   zqr = SQRT(zqc)
+   FOR zqi = 0, nzc - 1, 1
+      VEC3(zqd + zqi) = VEC3(zq3 + zqi) * zqr
+   NEXT
+RETURN
+
+! zinv - zb := 1 / za, constant term not zero.
+SUB zinv
+   zvs = za
+   zvd = zb
+   zvc = VEC3(zvs)
+   FOR zvi = 0, nzc - 1, 1
+      VEC3(zv1 + zvi) = VEC3(zvs + zvi) / zvc
+   NEXT
+   VEC3(zv1) = VEC3(zv1) - 1
+   za = zv2
+   GOSUB zzero
+   VEC3(zv2) = 1
+   za = zv3
+   GOSUB zzero
+   VEC3(zv3) = 1
+   FOR zvi = 1, nzc - 1, 1
+      za = zv2
+      zb = zv1
+      zc = zv4
+      GOSUB zmul
+      FOR zvj = 0, nzc - 1, 1
+         VEC3(zv2 + zvj) = -VEC3(zv4 + zvj)
+         VEC3(zv3 + zvj) = VEC3(zv3 + zvj) + VEC3(zv2 + zvj)
+      NEXT
+   NEXT
+   FOR zvi = 0, nzc - 1, 1
+      VEC3(zvd + zvi) = VEC3(zv3 + zvi) / zvc
+   NEXT
+RETURN
+
+! ---------------------------------------------------------------------------------
+! zeval - re-express an invariant series as a series in the scale.
+!
+! The series at yser is a polynomial in p, k and u; the three are themselves scale
+! series here, so the result is one too. The powers are built once rather than formed
+! afresh for each of the twenty monomials.
+! ---------------------------------------------------------------------------------
+SUB zeval
+   ysrc = yser
+   ydst = yres
+
+   za = zp0
+   GOSUB zzero
+   VEC3(zp0) = 1
+   za = zk0
+   GOSUB zzero
+   VEC3(zk0) = 1
+   za = zu0
+   GOSUB zzero
+   VEC3(zu0) = 1
+
+   FOR yi = 1, ndeg, 1
+      za = zp0 + (yi - 1) * 10
+      zb = zpp
+      zc = zp0 + yi * 10
+      GOSUB zmul
+      za = zk0 + (yi - 1) * 10
+      zb = zkk
+      zc = zk0 + yi * 10
+      GOSUB zmul
+      za = zu0 + (yi - 1) * 10
+      zb = zuu
+      zc = zu0 + yi * 10
+      GOSUB zmul
+   NEXT
+
+   za = ydst
+   GOSUB zzero
+
+   FOR yi = 0, nterm - 1, 1
+      ycf = VEC1(ysrc + yi)
+      IF (ycf != 0)
+         za = zp0 + VEC4(101 + yi) * 10
+         zb = zk0 + VEC4(121 + yi) * 10
+         zc = zt1
+         GOSUB zmul
+         IF (VEC4(141 + yi) > 0)
+            za = zt1
+            zb = zu0 + VEC4(141 + yi) * 10
+            zc = zt2
+            GOSUB zmul
+            za = zt2
+            zb = zt1
+            zfac = 1
+            GOSUB zscal
+         ENDIF
+         za = zt1
+         zb = zt2
+         zfac = ycf
+         GOSUB zscal
+         za = ydst
+         zb = zt2
+         zc = ydst
+         GOSUB zadd
+      ENDIF
+   NEXT
+RETURN
+
+! ---------------------------------------------------------------------------------
+! mkrhs - where a ray of shape (srho, sthe, shh) lands, as a series in the scale.
+!
+! At infinite conjugate the HEIGHT at the input base plane is exactly linear in the
+! scale: the walk back from the entrance pupil contributes -ep tan(field), and the
+! inversion's own parameterisation makes the tangent linear. The DIRECTION is not,
+! and that is the whole reason this subroutine exists rather than a multiplication.
+! ---------------------------------------------------------------------------------
+SUB mkrhs
+   ! tan(field) = s * h * hmax
+   za = ztn
+   GOSUB zzero
+   VEC3(ztn + 1) = shh * hmax
+
+   ! sin = tan / sqrt(1 + tan^2)
+   za = ztn
+   zb = ztn
+   zc = zt3
+   GOSUB zmul
+   VEC3(zt3) = VEC3(zt3) + 1
+   za = zt3
+   zb = zt4
+   GOSUB zsqrt
+   za = zt4
+   zb = zt3
+   GOSUB zinv
+   za = ztn
+   zb = zt3
+   zc = zsn
+   GOSUB zmul
+
+   ! the height at the input base plane, and the direction
+   za = zsy
+   GOSUB zzero
+   VEC3(zsy + 1) = srho * COSI(sthe) * epr - epp * shh * hmax
+   za = zsz
+   GOSUB zzero
+   VEC3(zsz + 1) = srho * SINE(sthe) * epr
+   za = zby
+   zb = zsn
+   zfac = 1
+   GOSUB zscal
+   za = zbz
+   GOSUB zzero
+
+   ! the invariants
+   za = zsy
+   zb = zsy
+   zc = zt1
+   GOSUB zmul
+   za = zsz
+   zb = zsz
+   zc = zt2
+   GOSUB zmul
+   za = zt1
+   zb = zt2
+   zc = zpp
+   GOSUB zadd
+
+   za = zsy
+   zb = zby
+   zc = zt1
+   GOSUB zmul
+   za = zsz
+   zb = zbz
+   zc = zt2
+   GOSUB zmul
+   za = zt1
+   zb = zt2
+   zc = zkk
+   GOSUB zadd
+
+   za = zby
+   zb = zby
+   zc = zt1
+   GOSUB zmul
+   za = zbz
+   zb = zbz
+   zc = zt2
+   GOSUB zmul
+   za = zt1
+   zb = zt2
+   zc = zuu
+   GOSUB zadd
+
+   ! S and T on them
+   yser = bser
+   yres = zss
+   GOSUB zeval
+   yser = bter
+   yres = ztt
+   GOSUB zeval
+
+   ! and where the ray lands
+   za = zss
+   zb = zsy
+   zc = zt1
+   GOSUB zmul
+   za = ztt
+   zb = zby
+   zc = zt2
+   GOSUB zmul
+   za = zt1
+   zb = zt2
+   zc = zom
+   GOSUB zadd
+
+   za = zss
+   zb = zsz
+   zc = zt1
+   GOSUB zmul
+   za = ztt
+   zb = zbz
+   zc = zt2
+   GOSUB zmul
+   za = zt1
+   zb = zt2
+   zc = zos
+   GOSUB zadd
+RETURN
+
+! ---------------------------------------------------------------------------------
+! mkmod - the model row for shape (srho, sthe, shh) at order mord.
+!
+! This is Robb's Eq. (2) with one coefficient set to one at a time, keeping only the
+! terms of total degree mord. It is the same polynomial ROBB.ZPL evaluates; nothing
+! new is derived here. The last column of each is distortion, put back by hand for
+! the reason given at the head of this section.
+!
+! Rows land in VEC2(mrowy + i) and VEC2(mrowz + i), i from 0.
+! ---------------------------------------------------------------------------------
+SUB mkmod
+   mc = COSI(sthe)
+   ms = SINE(sthe)
+   mc2 = COSI(2 * sthe)
+   ms2 = SINE(2 * sthe)
+   mc4 = COSI(4 * sthe)
+   ms4 = SINE(4 * sthe)
+   mc3 = mc * mc * mc
+   mcs = mc * mc * ms
+
+   mr1 = srho
+   mr2 = mr1 * srho
+   mr3 = mr2 * srho
+   mr4 = mr3 * srho
+   mr5 = mr4 * srho
+   mr6 = mr5 * srho
+   mr7 = mr6 * srho
+   mh1 = shh
+   mh2 = mh1 * shh
+   mh3 = mh2 * shh
+   mh4 = mh3 * shh
+   mh5 = mh4 * shh
+   mh6 = mh5 * shh
+   mh7 = mh6 * shh
+
+   FOR mi = 0, 19, 1
+      VEC2(mrowy + mi) = 0
+      VEC2(mrowz + mi) = 0
+   NEXT
+
+   IF (mord == 3)
+      VEC2(mrowy + 0) = mr3 * mc
+      VEC2(mrowz + 0) = mr3 * ms
+      VEC2(mrowy + 1) = 2 * mr2 * mh1 + mr2 * mh1 * mc2
+      VEC2(mrowz + 1) = mr2 * mh1 * ms2
+      VEC2(mrowy + 2) = 3 * mr1 * mh2 * mc
+      VEC2(mrowz + 2) = mr1 * mh2 * ms
+      VEC2(mrowy + 3) = mr1 * mh2 * mc
+      VEC2(mrowz + 3) = mr1 * mh2 * ms
+      VEC2(mrowy + 4) = mh3
+   ENDIF
+
+   IF (mord == 5)
+      VEC2(mrowy + 0) = mr5 * mc
+      VEC2(mrowz + 0) = mr5 * ms
+      VEC2(mrowy + 1) = mr4 * mh1
+      VEC2(mrowy + 2) = mr4 * mh1 * mc2
+      VEC2(mrowz + 2) = mr4 * mh1 * ms2
+      VEC2(mrowy + 3) = mr3 * mh2 * mc
+      VEC2(mrowy + 4) = mr3 * mh2 * mc
+      VEC2(mrowz + 4) = mr3 * mh2 * ms
+      VEC2(mrowy + 5) = mr3 * mh2 * mc3
+      VEC2(mrowz + 5) = mr3 * mh2 * mcs
+      VEC2(mrowy + 6) = mr2 * mh3
+      VEC2(mrowy + 7) = 0.5 * mr2 * mh3 + 0.5 * mr2 * mh3 * mc2
+      VEC2(mrowz + 8) = mr2 * mh3 * ms2
+      VEC2(mrowy + 9) = 5 * mr1 * mh4 * mc
+      VEC2(mrowz + 9) = mr1 * mh4 * ms
+      VEC2(mrowy + 10) = mr1 * mh4 * mc
+      VEC2(mrowz + 10) = mr1 * mh4 * ms
+      VEC2(mrowy + 11) = mh5
+   ENDIF
+
+   IF (mord == 7)
+      VEC2(mrowy + 0) = mr7 * mc
+      VEC2(mrowz + 0) = mr7 * ms
+      VEC2(mrowy + 1) = mr6 * mh1
+      VEC2(mrowy + 2) = mr6 * mh1 * mc2
+      VEC2(mrowz + 2) = mr6 * mh1 * ms2
+      VEC2(mrowy + 3) = mr5 * mh2 * mc
+      VEC2(mrowz + 4) = mr5 * mh2 * ms
+      VEC2(mrowy + 5) = mr5 * mh2 * mc3
+      VEC2(mrowz + 5) = mr5 * mh2 * mcs
+      VEC2(mrowy + 6) = mr4 * mh3
+      VEC2(mrowy + 7) = mr4 * mh3 * mc2
+      VEC2(mrowz + 8) = mr4 * mh3 * ms2
+      VEC2(mrowy + 9) = mr4 * mh3 * mc4
+      VEC2(mrowz + 9) = mr4 * mh3 * ms4
+      VEC2(mrowy + 10) = mr3 * mh4 * mc
+      VEC2(mrowy + 11) = mr3 * mh4 * mc3
+      VEC2(mrowz + 12) = mr3 * mh4 * ms
+      VEC2(mrowz + 13) = mr3 * mh4 * mcs
+      VEC2(mrowy + 14) = mr2 * mh5
+      VEC2(mrowy + 15) = mr2 * mh5 * mc2
+      VEC2(mrowz + 16) = mr2 * mh5 * ms2
+      VEC2(mrowy + 17) = mr1 * mh6 * mc
+      VEC2(mrowz + 18) = mr1 * mh6 * ms
+      VEC2(mrowy + 19) = mh7
+   ENDIF
+RETURN
+
+! ---------------------------------------------------------------------------------
+! gsolve - solve the nunk by nunk system at VEC2(gata) with right-hand side at
+! VEC2(gatb), leaving the answer in VEC2(gatb). Gaussian elimination with partial
+! pivoting.
+!
+! These are the NORMAL equations, formed as A'A and A'b rather than by factorising A.
+! That squares the condition number, which is a real objection in general and was
+! checked rather than waved away here: against the C# - which uses a Householder QR
+! on the same system - the answers agree to 2E-13 at seventh order and 4E-14 at
+! third. The model is polynomial evaluations at well separated shapes and is nowhere
+! near ill-conditioned enough for the difference to show.
+! ---------------------------------------------------------------------------------
+SUB gsolve
+   FOR gc = 0, nunk - 1, 1
+      gp = gc
+      gbest = ABSO(VEC2(gata + gc * nunk + gc))
+      FOR gr = gc + 1, nunk - 1, 1
+         gv2 = ABSO(VEC2(gata + gr * nunk + gc))
+         IF (gv2 > gbest)
+            gbest = gv2
+            gp = gr
+         ENDIF
+      NEXT
+      IF (gp != gc)
+         FOR gk2 = 0, nunk - 1, 1
+            gtmp = VEC2(gata + gc * nunk + gk2)
+            VEC2(gata + gc * nunk + gk2) = VEC2(gata + gp * nunk + gk2)
+            VEC2(gata + gp * nunk + gk2) = gtmp
+         NEXT
+         gtmp = VEC2(gatb + gc)
+         VEC2(gatb + gc) = VEC2(gatb + gp)
+         VEC2(gatb + gp) = gtmp
+      ENDIF
+      gd = VEC2(gata + gc * nunk + gc)
+      IF (ABSO(gd) < 1E-300)
+         PRINT "FORBES: the normal equations are singular. The shape set cannot"
+         PRINT "separate the coefficients, which should not happen with the standard"
+         PRINT "seventy-five and means the model rows are wrong."
+         nfail = nfail + 1
+      ELSE
+         FOR gr = gc + 1, nunk - 1, 1
+            gf = VEC2(gata + gr * nunk + gc) / gd
+            IF (gf != 0)
+               FOR gk2 = gc, nunk - 1, 1
+                  VEC2(gata + gr * nunk + gk2) = VEC2(gata + gr * nunk + gk2) - gf * VEC2(gata + gc * nunk + gk2)
+               NEXT
+               VEC2(gatb + gr) = VEC2(gatb + gr) - gf * VEC2(gatb + gc)
+            ENDIF
+         NEXT
+      ENDIF
+   NEXT
+
+   FOR gr = nunk - 1, 0, -1
+      gs = VEC2(gatb + gr)
+      FOR gk2 = gr + 1, nunk - 1, 1
+         gs = gs - VEC2(gata + gr * nunk + gk2) * VEC2(gatb + gk2)
+      NEXT
+      VEC2(gatb + gr) = gs / VEC2(gata + gr * nunk + gr)
+   NEXT
+RETURN
+
+! ---------------------------------------------------------------------------------
+! accum - add one shape's contribution to the normal equations at gata and gatb.
+!
+! The system is A'A x = A'b, accumulated a row at a time so that the full model
+! matrix - 150 rows by 20 columns - never has to be held.
+! ---------------------------------------------------------------------------------
+SUB accum
+   FOR ai = 0, nunk - 1, 1
+      VEC2(gatb + ai) = VEC2(gatb + ai) + VEC2(mrowy + ai) * ry + VEC2(mrowz + ai) * rz
+      FOR aj = 0, nunk - 1, 1
+         apr = VEC2(mrowy + ai) * VEC2(mrowy + aj) + VEC2(mrowz + ai) * VEC2(mrowz + aj)
+         VEC2(gata + ai * nunk + aj) = VEC2(gata + ai * nunk + aj) + apr
+      NEXT
+   NEXT
+RETURN
+
+! ---------------------------------------------------------------------------------
+! showco - the coefficients.
+!
+! All three orders are in TRANSVERSE measure and lens units, the same measure BUCH7
+! prints its system totals in, so the two can be compared directly on a system of
+! spheres. That comparison is the point: the third order can also be checked against
+! Analyze > Aberrations > Seidel Coefficients and the fifth against FIFTHORD, neither
+! of which is in this repository, and OpticStudio's Seidel analysis carries conics
+! and aspheres - so on a figured lens it is the only independent check there is.
+! ---------------------------------------------------------------------------------
+SUB showco
+   PRINT " "
+   PRINT "==================================================================="
+   PRINT "STAGE 4 - the aberration coefficients, transverse measure"
+   PRINT "==================================================================="
+   PRINT " "
+   FORMAT 12.6
+   PRINT "Entrance pupil radius      ", epr
+   PRINT "Entrance pupil position    ", epp
+   PRINT "tan of the maximum field   ", hmax
+   FORMAT 5.0 INT
+   PRINT "Ray shapes used            ", nsh
+   PRINT " "
+   FORMAT 15.6 EXP
+   PRINT "Third order"
+   PRINT "   B  ", VEC2(2101), "   F  ", VEC2(2102), "   C  ", VEC2(2103)
+   PRINT "   Pi ", VEC2(2104), "   E  ", VEC2(2105)
+   PRINT " "
+   PRINT "Fifth order"
+   PRINT "   B5 ", VEC2(2401), "   F1 ", VEC2(2402), "   F2 ", VEC2(2403)
+   PRINT "   M1 ", VEC2(2404), "   M2 ", VEC2(2405), "   M3 ", VEC2(2406)
+   PRINT "   N1 ", VEC2(2407), "   N2 ", VEC2(2408), "   N3 ", VEC2(2409)
+   PRINT "   C5 ", VEC2(2410), "   Pi5", VEC2(2411), "   E5 ", VEC2(2412)
+   PRINT " "
+   PRINT "Seventh order, Buchdahl's tau. tau1 is B7."
+   PRINT "   tau1 ", VEC2(3001), "  tau2 ", VEC2(3002), "  tau3 ", VEC2(3003)
+   PRINT "   tau4 ", VEC2(3004), "  tau5 ", VEC2(3005), "  tau6 ", VEC2(3006)
+   PRINT "   tau7 ", VEC2(3007), "  tau8 ", VEC2(3008), "  tau9 ", VEC2(3009)
+   PRINT "   tau10", VEC2(3010), "  tau11", VEC2(3011), "  tau12", VEC2(3012)
+   PRINT "   tau13", VEC2(3013), "  tau14", VEC2(3014), "  tau15", VEC2(3015)
+   PRINT "   tau16", VEC2(3016), "  tau17", VEC2(3017), "  tau18", VEC2(3018)
+   PRINT "   tau19", VEC2(3019), "  tau20", VEC2(3020)
+   PRINT " "
+   PRINT "HOW TO CHECK THESE WITHOUT TRUSTING THIS MACRO"
+   PRINT " "
+   PRINT "ON A SYSTEM OF SPHERES all three orders must equal what BUCH7 prints, which"
+   PRINT "is a wholly different scheme - Buchdahl's arranged tables against Forbes'"
+   PRINT "series trace, sharing no arithmetic. tau1 must equal BUCH7's B7. That"
+   PRINT "agreement has been demonstrated on a Cooke triplet, and on spheres only."
+   PRINT " "
+   PRINT "ON A FIGURED SYSTEM DO NOT EXPECT THE SEVENTH ORDERS TO AGREE, and do not"
+   PRINT "read a disagreement as this macro being wrong. Buchdahl's ASPHERIC tertiary"
+   PRINT "is the one part of that scheme with no printed table to check a"
+   PRINT "transcription against, and it is where its known error lives - see"
+   PRINT "docs/forbes.md, which measures it at 6.85 and 7.75 per cent on two of the"
+   PRINT "ladder fixtures. Removing exactly that difficulty is why this route exists,"
+   PRINT "so where the two part company on a figured lens, this one is the one to"
+   PRINT "believe. The third and fifth orders are not affected."
+   PRINT " "
+   PRINT "The third order can also be checked against Analyze > Aberrations > Seidel"
+   PRINT "Coefficients and the fifth against FIFTHORD. Neither is part of this"
+   PRINT "repository, and OpticStudio's Seidel analysis carries conics and aspheres -"
+   PRINT "so on a figured lens, where BUCH7 declines outright, it is the only wholly"
+   PRINT "independent check there is."
 RETURN
