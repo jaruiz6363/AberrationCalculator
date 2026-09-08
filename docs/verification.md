@@ -94,3 +94,22 @@ and `spot-prediction.md` says what it is used for instead.
 designs measured, one is described by third order alone, two need the full seventh to reach a
 per cent, one is not well described at seventh, and one is not described at all. See
 `spot-prediction.md`.
+
+**Lateral color is not reachable from these coefficients at all, and this was measured rather
+than assumed.** It is the chromatic difference of the chief ray's height, so it looks like the
+distortion terms differenced between wavelengths — but distortion coefficients are referred to
+each wavelength's OWN paraxial image plane, and lateral color is defined at one shared plane.
+Carrying a chief ray between those planes needs its ANGULAR aberration, about 11 mrad at the
+corner of the Cooke triplet, and the transverse polynomial has no angular term. The size of
+what is missing settles it: between its own focus and the shared plane that ray moves 9.4E-02
+mm, while the whole lateral color there is 4.0E-04 — a factor of two hundred. `tau20` and its
+nineteen companions cannot answer this question and no care with them will.
+
+It can be reached by developing the Forbes series to the shared plane, whose output base plane
+is an input, and that was built and measured before being discarded: exact over the inner half
+of the field, the wrong SIGN in the outer quarter at seventh order, and needing degree 7 - the
+fifteenth order - to hold the corner to ten per cent. The reason is that lateral color is a
+small residue of large cancelling terms, so what governs it is not the order but how completely
+two errors far larger than the answer cancel. It was discarded because tracing two chief rays
+gives the same figure exactly, in 4.7 microseconds against 142 milliseconds. Recorded here so
+that the next attempt starts from the measurement rather than from the idea.

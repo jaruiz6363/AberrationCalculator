@@ -62,7 +62,7 @@ public class McpToolsTests
             // coefficient breakdown, which is a nest of groups and int/fig/ind/tot rows that
             // reads far better ruled than flattened into one row per cell.
             if (tool.Name is "analyse_lens" or "aspheric_screen" or "seventh_order"
-                          or "distortion") continue;
+                          or "distortion_from_coefficients") continue;
             Assert.Contains('\t', tool.Run(writer));
         }
     }

@@ -139,18 +139,21 @@ internal static class Tools
                + "when the system has no field, or when the series trace does not close on "
                + "this design."),
 
-        new Tool("distortion",
-            "DISTORTION per cent across the field, predicted from the coefficients and traced, "
-          + "at third, fifth and seventh order, with the error of each. Both mappings: "
-          + "F-tan(theta) first, then F-theta, with the exact relation between them. "
-          + "Reconciles the paraxial image plane the "
-          + "prediction must be made at with the image surface the file defines, which is where "
-          + "a design program quotes. On a FIGURED design the seventh-order term comes from the "
-          + "Forbes series trace, not from the scheme's aspheric arrangement, which real rays "
-          + "reject; the report names the route it used. Ends by reading E, E5 and tau20 back "
-          + "out of the traced rays, which is a check the predicted RMS spot cannot make: those "
-          + "three move the whole patch without changing its size, so they are absent from a "
-          + "spot and unverified by it. Readable text.",
+        new Tool("distortion_from_coefficients",
+            "How far the ABERRATION COEFFICIENTS can be trusted for distortion, measured "
+          + "against rays. NOT the way to obtain a distortion figure - tracing one chief ray "
+          + "gives that exactly, at the same speed, with no error at the corner - so do not "
+          + "quote the predicted columns when asked what a lens's distortion is; the traced "
+          + "column beside them is the answer. What this gives that a trace cannot is WHICH "
+          + "ORDER the distortion is: third order is stop position and symmetry, the higher "
+          + "orders are not, and they respond to different changes. Third, fifth and seventh "
+          + "order across the field in both mappings, F-tan(theta) and F-theta; the paraxial "
+          + "image plane the coefficients live at reconciled with the image surface the file "
+          + "defines, where a design program quotes; and E, E5 and tau20 read back out of the "
+          + "rays with an error bar, which is a check the predicted RMS spot cannot make. On a "
+          + "FIGURED design the seventh-order term comes from the Forbes series trace, since "
+          + "the scheme's aspheric arrangement is a reconstruction the rays reject. Readable "
+          + "text.",
             w => w.BuildDistortionText()),
 
         new Tool("surface_share",

@@ -1,7 +1,17 @@
-# Distortion, predicted against traced
+# Distortion from the aberration coefficients
 
 Third-, fifth- and seventh-order coefficients predict a distortion figure. This measures how
 close that prediction gets, against the chief ray this program traces, on six designs.
+
+**The subject here is the coefficients, not distortion.** Nobody should use this to find out
+what a lens's distortion is: one traced chief ray gives that exactly, in 2.4 microseconds
+against the 46 the coefficients cost to build, and it does not go 34 per cent wrong at the
+corner. Distortion is used here because it is the cleanest window onto the coefficients there
+is — at zero pupil radius only three of them survive, and they separate by their power of the
+field, so each can be measured on its own.
+
+What the coefficients give a designer that a trace cannot is which ORDER the distortion is,
+and which SURFACE it comes from. This document is about whether they can be trusted to say so.
 
 It is the counterpart of `spot-prediction.md`, and it answers a question that document
 cannot. A predicted RMS spot mixes eighteen coefficients into one number, so errors that
@@ -340,7 +350,7 @@ inside four per cent at the corner where third order is out by twenty.
 
 ## Reproducing it
 
-    abcalc <lensfile> --distortion
+    abcalc <lensfile> --distortion-coefficients
 
 and the MCP server offers the same as `distortion`. Both print the identical report from one
 formatter, including the coefficient recovery. The finite-conjugate rows above are the

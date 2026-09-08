@@ -78,7 +78,7 @@ breakdowns that read far better ruled than flattened into one row per cell.
 | `surface_share` | each surface's share of the spot, and how much of it is induced |
 | `seventh_order` | third, fifth and seventh order per surface, intrinsic and induced, the seventh by the Forbes series trace - the one that handles aspheres (*text*) |
 | `aspheric_screen` | whether a design would exercise the aspheric seventh-order path hard enough to test it (*text*) |
-| `distortion` | F-tan(theta) and F-theta distortion per cent across the field, predicted against traced; Forbes' seventh order on a figured design (*text*) |
+| `distortion_from_coefficients` | how far the coefficients can be trusted for distortion, against rays - NOT the way to get a distortion figure, for which the traced column beside them is the answer (*text*) |
 
 Formats are taken from the extension: `.zmx`, `.seq`, `.otx`, `.opt`, `.len`, `.osl`, `.json`
 (Optiland) and `.lhlt`.

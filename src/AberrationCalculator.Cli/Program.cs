@@ -33,13 +33,14 @@ OPTIONS
       --stdout-only   Same as --no-files.
   -q, --quiet         Write the files but print nothing except errors.
       --glass <dir>   Use this folder of .agf catalogs instead of the bundled ones.
-      --distortion    Distortion predicted from the coefficients against distortion
-                      traced, at third, fifth and seventh order, over a ladder of
-                      field fractions. Write nothing else. Both mappings, F-tan(theta)
-                      then F-theta. On a figured design the seventh
-                      order is taken from the Forbes series trace rather than from
-                      the scheme's aspheric arrangement, which real rays reject; the
-                      report says which route it used.
+      --distortion-coefficients
+                      What the aberration coefficients make of DISTORTION, against
+                      the rays. Not a distortion report - tracing one chief ray gives
+                      that exactly and no slower. This asks how far the coefficients
+                      can be trusted: third, fifth and seventh order over a ladder of
+                      field fractions, both mappings, and E, E5 and tau20 read back
+                      out of the rays with an error bar. Write nothing else.
+                      Abbreviates to --distortion.
       --screen [h]    Report whether this design would test the aspheric seventh-order
                       path, and write nothing else. Optional field fraction,
                       default 1.0 (the corner).
@@ -128,7 +129,7 @@ EXIT CODES
                         forbesDegree = fd; i++;
                     }
                     break;
-                case "--distortion": distortion = true; break;
+                case "--distortion-coefficients": case "--distortion": distortion = true; break;
                 case "--screen":
                     screen = true;
                     // Optional field fraction. The corner is the default but is also where

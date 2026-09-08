@@ -34,15 +34,21 @@ per cent, one is not well described at seventh, and one - a hard-corrected asphe
 described at all. That last case is examined rather than glossed: the series is still
 converging there, and what runs out is the extraction at seventh order rather than the method.
 
-**Distortion is measured separately, and it reaches something a spot cannot.**
+**Distortion asks the same question of the coefficients, and reaches something a spot cannot.**
 
-    abcalc <lensfile> --distortion
+    abcalc <lensfile> --distortion-coefficients
 
-It reports both mappings — F-tan(theta) first, then F-theta, with the exact relation between
-them — and reconciles the paraxial image plane it must predict at with the image surface the
-file defines, which is where a design program quotes. On a figured design
-the seventh-order term is taken from Forbes' series trace automatically, because the scheme's
-aspheric arrangement is a reconstruction the rays reject; the report says which route it used.
+**This is not a way to obtain a distortion figure.** Tracing one chief ray gives that exactly,
+at the same speed, and does not degrade at the corner where the seventh order is out by a
+third. What the coefficients give that a trace cannot is WHICH ORDER the distortion is —
+third order is stop position and symmetry, the higher orders are not, and they answer to
+different changes — and which SURFACE it comes from.
+
+It reports both mappings, F-tan(theta) and F-theta with the exact relation between them, and
+reconciles the paraxial image plane the coefficients live at with the image surface the file
+defines, where a design program quotes. On a figured design the seventh-order term is taken
+from Forbes' series trace, because the scheme's aspheric arrangement is a reconstruction the
+rays reject; the report says which route it used.
 
 At zero pupil radius the polynomial keeps three terms — `E h^3 + E5 h^5 + tau20 h^7` — and
 they are separated by their power of the field alone, so each is measured against traced rays

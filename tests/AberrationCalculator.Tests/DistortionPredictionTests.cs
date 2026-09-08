@@ -460,11 +460,11 @@ public class DistortionPredictionTests
     public void TheMcpServerOffersIt()
     {
         var writer = Mcp.Tools.Open(Fixtures.Lens("CookeTriplet"), null);
-        var tool = Mcp.Tools.All.Single(t => t.Name == "distortion");
+        var tool = Mcp.Tools.All.Single(t => t.Name == "distortion_from_coefficients");
 
         string text = tool.Run(writer);
         Assert.Equal(writer.BuildDistortionText(), text);
-        Assert.Contains("DISTORTION: PREDICTED AGAINST TRACED", text);
+        Assert.Contains("DISTORTION FROM THE ABERRATION COEFFICIENTS", text);
         Assert.Contains("Tau20", text);
     }
 
@@ -622,7 +622,7 @@ public class DistortionPredictionTests
         }
 
         Assert.Equal(0, code);
-        Assert.Contains("DISTORTION: PREDICTED AGAINST TRACED", captured.ToString());
+        Assert.Contains("DISTORTION FROM THE ABERRATION COEFFICIENTS", captured.ToString());
 
         // And it writes nothing: this mode answers one question and leaves the folder alone.
         Assert.False(File.Exists(Path.Combine(Fixtures.LensDir, "CookeTriplet.report.txt")),

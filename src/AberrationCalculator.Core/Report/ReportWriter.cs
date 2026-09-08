@@ -606,7 +606,7 @@ public sealed class ReportWriter
         double field = MaxField();
         var sb = new StringBuilder();
 
-        sb.AppendLine("DISTORTION: PREDICTED AGAINST TRACED");
+        sb.AppendLine("DISTORTION FROM THE ABERRATION COEFFICIENTS, AGAINST TRACED RAYS");
         sb.AppendLine("--------------------------------------------------------------------------------");
         sb.AppendLine("Predicted: Robb's polynomial at zero pupil radius, eps_y = E h^3 + E5 h^5 + tau20 h^7.");
         sb.AppendLine("Traced:    the ray through the centre of the paraxial entrance pupil, at paraxial focus.");
