@@ -587,6 +587,242 @@ public sealed class ReportWriter
         => AsphericDiagnostic.Screen(_sys, PrimaryIndices, MaxField(), h).ToString();
 
     /// <summary>
+    /// Distortion predicted from the coefficients against distortion traced, at each of a
+    /// ladder of field fractions and at three truncations of the same set. See
+    /// <see cref="DistortionPrediction"/> for what is predicted and what is traced.
+    ///
+    /// <para>Readable text rather than a table, and separate from the report, for the reason
+    /// the aspheric screen and the Forbes breakdown are: it traces rays, which nothing else
+    /// the report prints does, and it is a measurement of the prediction rather than a
+    /// prediction.</para>
+    ///
+    /// <para>Both mappings are columns of one table rather than two tables with an essay
+    /// between them. What the reader is owed is the definition of each column and the numbers;
+    /// which mapping their design is specified against, and whether an error of a given size
+    /// matters to them, are theirs to know and not this program's to pronounce on.</para>
+    /// </summary>
+    public string BuildDistortionText()
+    {
+        double field = MaxField();
+        var sb = new StringBuilder();
+
+        sb.AppendLine("DISTORTION: PREDICTED AGAINST TRACED");
+        sb.AppendLine("--------------------------------------------------------------------------------");
+        sb.AppendLine("Predicted: Robb's polynomial at zero pupil radius, eps_y = E h^3 + E5 h^5 + tau20 h^7.");
+        sb.AppendLine("Traced:    the ray through the centre of the paraxial entrance pupil, at paraxial focus.");
+        sb.AppendLine("h:         fractional field in the tangent sense, tan(theta) = h tan(theta_max).");
+        sb.AppendLine("Ideal:     f tan(theta) for F-tan(th), f theta for F-theta.");
+        sb.AppendLine();
+
+        if (Math.Abs(field) < 1e-15)
+        {
+            sb.AppendLine("This design has no off-axis field, so it has no distortion to measure.");
+            return sb.ToString();
+        }
+
+        var p = ParaxialTrace.Trace(_sys, PrimaryIndices, field);
+        var totals = TertiaryForDistortion(p, field, out string route);
+        var rows = DistortionPrediction.Compare(_sys, PrimaryIndices, p, totals, field);
+
+        sb.AppendLine(route);
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv, "  E     {0,12}   3rd order distortion", Sci(totals.E)));
+        sb.AppendLine(string.Format(Inv, "  E5    {0,12}   5th", Sci(totals.E5)));
+        sb.AppendLine(string.Format(Inv, "  tau20 {0,12}   7th", Sci(totals.Tau20)));
+        sb.AppendLine();
+
+        sb.AppendLine("                  traced, per cent      predicted F-tan(th), per cent"
+                    + "      error, % of traced");
+        sb.AppendLine(string.Format(Inv, Layout, "H", "field", "F-tan(th)", "F-theta",
+                                    "3rd", "3rd+5th", "full 7th", "3rd", "3rd+5th", "full 7th"));
+        sb.AppendLine("  " + new string('-', 100));
+
+        foreach (var r in rows)
+        {
+            if (!r.Ok)
+            {
+                sb.AppendLine(string.Format(Inv, "  {0,4:F2} {1,8:F3}   the chief ray does not get "
+                                               + "through at this field", r.H, r.Field));
+                continue;
+            }
+            sb.AppendLine(string.Format(Inv, Layout,
+                r.H.ToString("F2", Inv), r.Field.ToString("F3", Inv),
+                Pct(r.TracedPercent), Pct(r.TracedPercentFTheta),
+                Pct(r.Percent(r.Third)), Pct(r.Percent(r.Fifth)), Pct(r.Percent(r.Seventh)),
+                Err(r.RelativeError(3)), Err(r.RelativeError(5)), Err(r.RelativeError(7))));
+        }
+        sb.AppendLine();
+
+        ImagePlaneNote(sb, p, totals, field, rows);
+
+        sb.AppendLine("  COEFFICIENTS READ BACK OUT OF THE RAYS");
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv, RecoveryLayout, "", "used", "from rays", "  ratio"));
+        foreach (var r in DistortionPrediction.Recover(_sys, PrimaryIndices, p, totals, field))
+        {
+            sb.AppendLine(string.Format(Inv, RecoveryLayout,
+                r.Name, Sci(r.Reported), Sci(r.FromRays),
+                r.Reliable ? RatioWithUncertainty(r.Ratio, r.Spread) : "   not resolved"));
+        }
+        sb.AppendLine();
+        sb.AppendLine("  The +/- is what the ray measurement is worth, so the ratio means nothing beyond");
+        sb.AppendLine("  it. \"not resolved\" means the term is too small for the ray trace to measure at");
+        sb.AppendLine("  these fields, not that it disagrees.");
+        sb.AppendLine();
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// The coefficient set to predict distortion from, with the seventh-order term taken by
+    /// whichever route is trustworthy for this design, and a line saying which and why.
+    ///
+    /// <para><b>Figured: Forbes.</b> The Buchdahl scheme needs an aspheric tertiary
+    /// arrangement Buchdahl never published, so this program's is a reconstruction, and real
+    /// rays say it is wrong - by a factor of two on some designs. There is no reason to show a
+    /// designer a number that is known to be wrong, or to make them choose.</para>
+    ///
+    /// <para><b>Unfigured: either.</b> The two routes agree to roundoff on all twenty tau at
+    /// both conjugates, so the choice is empty and the scheme's own value is kept, which
+    /// leaves everything validated at infinite conjugate bit-identical.</para>
+    ///
+    /// <para><b>E and E5 always come from the scheme</b>, at both conjugates and figured or
+    /// not. The Forbes inversion produces the tertiary only, and it is not needed: the
+    /// aspheric third and fifth orders are established by closed-form conic surfaces, which
+    /// is a printed answer rather than a reconstruction. See <c>docs/verification.md</c>.</para>
+    /// </summary>
+    private BuchdahlTerms TertiaryForDistortion(ParaxialResult p, double field, out string route)
+    {
+        var totals = Buchdahl(p).Totals;
+
+        bool figured = false;
+        for (int i = 1; i <= _sys.LastOpticalSurface(); i++)
+            if (_sys.Surfaces[i].IsFigured) { figured = true; break; }
+
+        if (!figured)
+        {
+            route = "Every surface is spherical: tau20 is Buchdahl's scheme's, and the Forbes series\n"
+                  + "trace agrees with it to roundoff.";
+            return totals;
+        }
+
+        var forbes = Forbes.ForbesCoefficients.Invert(_sys, PrimaryIndices, p, field);
+        if (forbes == null)
+        {
+            route = "This design is FIGURED, so tau20 should be the Forbes series trace's - but the\n"
+                  + "trace does not close on it, and the scheme's value is used instead. Its aspheric\n"
+                  + "arrangement is a reconstruction that rays reject on some designs, so the\n"
+                  + "seventh-order column is unreliable here.";
+            return totals;
+        }
+
+        var used = totals.Clone();
+        used.Tau20 = forbes.Tau[20];
+        route = "This design is FIGURED: tau20 is the FORBES series trace's. E and E5 are Buchdahl's\n"
+              + "scheme's, as they are at every design. See docs/distortion-prediction.md.";
+        return used;
+    }
+
+    /// <summary>
+    /// What the same lens reads at the image surface the FILE defines, when that is not the
+    /// paraxial image plane.
+    ///
+    /// <para>This is the number a design program prints, and it differs: shifting the plane
+    /// scales both the real and the ideal height, and not by quite the same factor. On the
+    /// Cooke triplet in this repository the file sits 0.207 lens units inside paraxial focus
+    /// and the full-field distortion reads 0.0620 per cent there against 0.0486 at paraxial
+    /// focus - a difference of a quarter, entirely from the plane.</para>
+    ///
+    /// <para>The table cannot simply be moved there. The coefficients are referred to the
+    /// paraxial image plane and Robb's polynomial has no defocus term, so a prediction quoted
+    /// at any other plane would be comparing two different things. So the comparison stays at
+    /// paraxial focus and the design program's figure is given beside it, with the reason.</para>
+    /// </summary>
+    private void ImagePlaneNote(StringBuilder sb, ParaxialResult p, BuchdahlTerms totals,
+                                double field, IReadOnlyList<DistortionPrediction.Row> rows)
+    {
+        int last = _sys.LastOpticalSurface();
+        double lastToImage = 0.0;
+        for (int i = last; i < _sys.Surfaces.Count - 1; i++)
+        {
+            double t = _sys.Surfaces[i].Thickness;
+            if (!double.IsInfinity(t) && !double.IsNaN(t)) lastToImage += t;
+        }
+        double offset = p.ParaxialFocusDistance - lastToImage;
+        if (Math.Abs(offset) < 1e-9 || rows.Count == 0) return;
+
+        var atFile = DistortionPrediction.Compare(_sys, PrimaryIndices, p, totals, field,
+                                                  new[] { rows[rows.Count - 1].H },
+                                                  atParaxialFocus: false);
+        if (atFile.Count == 0 || !atFile[0].Ok) return;
+
+        // Only worth saying when the two planes give materially different figures. A design
+        // saved AT paraxial focus still lands a fraction of a micron away through rounding,
+        // and a paragraph about a tenth of a per cent of a distortion figure would be noise.
+        double here = rows[rows.Count - 1].TracedPercent;
+        if (Math.Abs(here) < 1e-12) return;
+        if (Math.Abs(atFile[0].TracedPercent / here - 1.0) < 0.01) return;
+
+        sb.AppendLine(string.Format(Inv,
+            "  The file's image surface is {0:0.0000} lens units {1} paraxial focus. Measured there,",
+            Math.Abs(offset), offset > 0 ? "inside" : "beyond"));
+        sb.AppendLine(string.Format(Inv,
+            "  traced F-tan(th) at H = {0:F2} is {1:F4} % rather than {2:F4} %. The table is at paraxial",
+            atFile[0].H, atFile[0].TracedPercent, rows[rows.Count - 1].TracedPercent));
+        sb.AppendLine("  focus, where the coefficients are referred and where the polynomial can be");
+        sb.AppendLine("  compared with rays at all.");
+        sb.AppendLine();
+    }
+
+    /// <summary>Column widths of the distortion table, shared by its header and its rows.</summary>
+    private const string Layout =
+        "  {0,4} {1,8} {2,10} {3,10}   {4,10} {5,10} {6,10}   {7,8} {8,8} {9,8}";
+
+
+    /// <summary>A relative error as a signed percentage, or a dash when it is not defined.</summary>
+    private static string Err(double v) =>
+        double.IsNaN(v) || double.IsInfinity(v)
+            ? "-"
+            : (100.0 * v).ToString("+0.0;-0.0;0.0", Inv) + "%";
+
+    /// <summary>
+    /// A ratio with its uncertainty, printed to the precision the uncertainty allows.
+    ///
+    /// <para>0.9975 +/- 0.0505 claims four digits the measurement has not got, and a reader
+    /// who takes the 0.9975 seriously has been misled by the formatting rather than by the
+    /// number. So the decimals follow the uncertainty: two of them when it is 5 per cent,
+    /// five when the two estimates agreed to a part in a hundred thousand.</para>
+    /// </summary>
+    private static string RatioWithUncertainty(double ratio, double uncertainty)
+    {
+        int dp = uncertainty >= 0.05 ? 2
+               : uncertainty >= 0.005 ? 3
+               : uncertainty >= 0.0005 ? 4 : 5;
+        string f = "F" + dp.ToString(Inv);
+
+        // An uncertainty that rounds to zero is not zero, and saying so beats printing a
+        // string of noughts that reads as exactness.
+        double floor = 0.5 * Math.Pow(10.0, -dp);
+        string plusMinus = uncertainty < floor
+            ? "<" + floor.ToString(f, Inv)
+            : uncertainty.ToString(f, Inv);
+
+        // The value is padded so that the +/- of every row sits in one column: three rows
+        // whose signs and widths differ are read down, not across.
+        return string.Format(Inv, "{0,7} +/- {1}", ratio.ToString(f, Inv), plusMinus);
+    }
+
+    /// <summary>Column widths of the coefficient-recovery table.</summary>
+    private const string RecoveryLayout = "  {0,-8} {1,12} {2,13}   {3}";
+
+    /// <summary>An unsigned percentage - for a magnitude, where a leading + would mislead.</summary>
+    private static string Mag(double v) =>
+        double.IsNaN(v) || double.IsInfinity(v) ? "-" : (100.0 * v).ToString("0.0", Inv) + "%";
+
+    /// <summary>A distortion figure, already in per cent.</summary>
+    private static string Pct(double v) =>
+        double.IsNaN(v) || double.IsInfinity(v) ? "-" : v.ToString("0.0000", Inv);
+
+    /// <summary>
     /// Third, fifth and seventh order per surface, intrinsic and induced, the seventh by the
     /// Forbes series trace. Null when the coefficients cannot be separated - a system with no
     /// field, or a design the series does not close on.

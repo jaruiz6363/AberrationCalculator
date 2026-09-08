@@ -161,12 +161,7 @@ public static class ForbesReport
         return w.ToString();
     }
 
-    private static bool IsFigured(Surface s)
-    {
-        if (Math.Abs(s.Conic) > 1e-12) return true;
-        foreach (double a in s.AsphericCoefficients) if (Math.Abs(a) > 1e-30) return true;
-        return false;
-    }
+    private static bool IsFigured(Surface s) => s.IsFigured;
 
     private static void Head(StringBuilder w, string[] names)
     {

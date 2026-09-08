@@ -132,6 +132,25 @@ public class Surface
         Curvature + 2.0 * (AsphericCoefficients.Length > 0 ? AsphericCoefficients[0] : 0.0);
 
     /// <summary>
+    /// Whether the surface is figured: a conic, or any aspheric term.
+    ///
+    /// <para>This is the test that decides which route may be trusted for the seventh order.
+    /// Buchdahl's scheme and Forbes' series trace agree to roundoff on all twenty tertiary
+    /// coefficients wherever every surface is unfigured; where one is not, the scheme needs
+    /// an aspheric arrangement Buchdahl never published and which is reconstructed here, and
+    /// real rays say the reconstruction is wrong. See <c>docs/distortion-prediction.md</c>.</para>
+    /// </summary>
+    public bool IsFigured
+    {
+        get
+        {
+            if (Math.Abs(Conic) > 1e-12) return true;
+            foreach (double a in AsphericCoefficients) if (Math.Abs(a) > 1e-30) return true;
+            return false;
+        }
+    }
+
+    /// <summary>
     /// The surface rewritten as a sphere at its own vertex curvature plus polynomial figuring,
     /// which is the form every aberration treatment here wants.
     ///

@@ -6,6 +6,8 @@ using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.IO;
 using AberrationCalculator.Core.Report;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("AberrationCalculator.Tests")]
+
 namespace AberrationCalculator.Cli;
 
 /// <summary>
@@ -31,6 +33,13 @@ OPTIONS
       --stdout-only   Same as --no-files.
   -q, --quiet         Write the files but print nothing except errors.
       --glass <dir>   Use this folder of .agf catalogs instead of the bundled ones.
+      --distortion    Distortion predicted from the coefficients against distortion
+                      traced, at third, fifth and seventh order, over a ladder of
+                      field fractions. Write nothing else. Both mappings, F-tan(theta)
+                      then F-theta. On a figured design the seventh
+                      order is taken from the Forbes series trace rather than from
+                      the scheme's aspheric arrangement, which real rays reject; the
+                      report says which route it used.
       --screen [h]    Report whether this design would test the aspheric seventh-order
                       path, and write nothing else. Optional field fraction,
                       default 1.0 (the corner).
@@ -83,10 +92,15 @@ EXIT CODES
         }
     }
 
-    private static int Run(string[] args)
+    /// <summary>
+    /// The command line proper, separated from <c>Main</c> so the tests can run it. What a
+    /// flag actually does is not visible from anywhere else: the report builders are covered
+    /// on their own, and a flag wired to the wrong one would pass every one of those tests.
+    /// </summary>
+    internal static int Run(string[] args)
     {
         string? lensPath = null, outDir = null, glassDir = null;
-        bool writeFiles = true, quiet = false, screen = false, forbes = false;
+        bool writeFiles = true, quiet = false, screen = false, forbes = false, distortion = false;
         double screenH = 1.0;
         int forbesDegree = 3;
 
@@ -114,6 +128,7 @@ EXIT CODES
                         forbesDegree = fd; i++;
                     }
                     break;
+                case "--distortion": distortion = true; break;
                 case "--screen":
                     screen = true;
                     // Optional field fraction. The corner is the default but is also where
@@ -152,6 +167,10 @@ EXIT CODES
 
         // The screen answers one question and writes nothing, so it short-circuits the rest.
         if (screen) { Console.Write(writer.BuildAsphericScreenText(screenH)); return writer.Unresolved.Count > 0 ? 2 : 0; }
+
+        // And so does the distortion check, which is a measurement rather than a report and
+        // is the only one of these that traces rays.
+        if (distortion) { Console.Write(writer.BuildDistortionText()); return writer.Unresolved.Count > 0 ? 2 : 0; }
 
         // So does the Forbes report, which is a different question about the same lens.
         if (forbes)

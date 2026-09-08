@@ -50,7 +50,8 @@ computes the seventh-order set this program exists for, so neither could be.
 | third order against OpticStudio's Seidel, finite conjugate | 30 of 30 |
 | fifth order against FIFTHORD, finite conjugate | 18 of 18 totals |
 | the per-surface split | intrinsic + figuring + induced = total, to 1.8E-14 |
-| the suite | 552 tests, and everything they read is in this repository |
+| E, E5 and tau20 against traced chief rays | each to under one per cent wherever the two routes agree, at both conjugates |
+| the suite | 597 tests, and everything they read is in this repository |
 
 ## What is not established
 
@@ -60,6 +61,27 @@ of this subject with no printed answer to check against. This program's version 
 disagrees with Forbes on the small tertiary coefficients of a figured design — tau15 by a
 factor of nearly five including its sign, tau20 by half — while the large ones agree to under
 one per cent. Use Forbes for figured systems; that is what `zosapi/` exists for.
+
+**A second ray route says the same thing about `tau20`.** The inversion above (evidence 3) is
+the general one. This is a narrower instrument over the same rays: at zero pupil radius the
+transverse polynomial has three terms separated by their power of the field alone, so `E`,
+`E5` and `tau20` fall out by differencing, with no basis, no least-squares solve and no model
+of the other seventeen coefficients. The two agree on `tau20` to between 0.03 and 1.2 per cent
+across the figured fixtures. Wherever the two routes agree the
+rays agree with both, four figured designs included; wherever they disagree by more than the
+recovery's own error bar the rays land on Forbes, six designs, no exceptions, over gaps from
+11 per cent to a factor of 3.8. One further design has a 3.2 per cent gap against a 5.1 per
+cent error bar and settles nothing; it is reported as no verdict. `E` and `E5`
+come back exactly throughout, which is what confines the reading to the seventh-order aspheric
+arrangement. Which route is the wrong one is something a disagreement between the two could
+not establish.
+
+**On a purely spherical system the two never disagree, and this was checked rather than
+assumed.** Across the seven all-spherical fixtures and the finite-conjugate triplet, the worst
+departure over all twenty tau is 3E-15 of the largest of them — roundoff — on seven of the
+eight, and 2E-08 on the near-degenerate flat fixture. The rays return `tau20` on all eight. So nothing above touches the part of the scheme Buchdahl actually published: what
+it convicts is this repository's reconstruction of the aspheric arrangement he did not, and it
+convicts it in one coefficient of the twenty. See `distortion-prediction.md`.
 
 **A predicted spot cannot settle it, and this is measured rather than assumed.** On that same
 design the two routes agree on the spot to one part in ten thousand while disagreeing on the

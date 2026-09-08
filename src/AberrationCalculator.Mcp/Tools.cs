@@ -139,6 +139,20 @@ internal static class Tools
                + "when the system has no field, or when the series trace does not close on "
                + "this design."),
 
+        new Tool("distortion",
+            "DISTORTION per cent across the field, predicted from the coefficients and traced, "
+          + "at third, fifth and seventh order, with the error of each. Both mappings: "
+          + "F-tan(theta) first, then F-theta, with the exact relation between them. "
+          + "Reconciles the paraxial image plane the "
+          + "prediction must be made at with the image surface the file defines, which is where "
+          + "a design program quotes. On a FIGURED design the seventh-order term comes from the "
+          + "Forbes series trace, not from the scheme's aspheric arrangement, which real rays "
+          + "reject; the report names the route it used. Ends by reading E, E5 and tau20 back "
+          + "out of the traced rays, which is a check the predicted RMS spot cannot make: those "
+          + "three move the whole patch without changing its size, so they are absent from a "
+          + "spot and unverified by it. Readable text.",
+            w => w.BuildDistortionText()),
+
         new Tool("surface_share",
             "Per surface: its share of the spot and the fraction of that which is induced "
           + "rather than its own. Tab-separated.",

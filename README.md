@@ -34,6 +34,27 @@ per cent, one is not well described at seventh, and one - a hard-corrected asphe
 described at all. That last case is examined rather than glossed: the series is still
 converging there, and what runs out is the extraction at seventh order rather than the method.
 
+**Distortion is measured separately, and it reaches something a spot cannot.**
+
+    abcalc <lensfile> --distortion
+
+It reports both mappings — F-tan(theta) first, then F-theta, with the exact relation between
+them — and reconciles the paraxial image plane it must predict at with the image surface the
+file defines, which is where a design program quotes. On a figured design
+the seventh-order term is taken from Forbes' series trace automatically, because the scheme's
+aspheric arrangement is a reconstruction the rays reject; the report says which route it used.
+
+At zero pupil radius the polynomial keeps three terms — `E h^3 + E5 h^5 + tau20 h^7` — and
+they are separated by their power of the field alone, so each is measured against traced rays
+**on its own** rather than inside a sum where errors cancel. It needs no fit and no model of
+the other seventeen coefficients, and it is a check B7 cannot pass, having no field in it.
+`docs/distortion-prediction.md` has the measurement, and it corroborates what
+`CoefficientInversion` already establishes by the full twenty-coefficient inversion: on a
+**figured** design this program's own `tau20` is out by up to a factor of four and Forbes' is
+what the rays agree with — which convicts the one part of the scheme that had to be
+reconstructed here, because Buchdahl never published it. On spherical designs the two routes
+agree to roundoff and the rays back both.
+
 ## Two things for OpticStudio users
 
 Beside the calculator itself, the repository holds two programs that report third-, fifth-

@@ -21,6 +21,9 @@
     <ProjectReference Include="..\..\src\AberrationCalculator.Core\AberrationCalculator.Core.csproj" />
     <ProjectReference Include="..\..\src\AberrationCalculator.IO\AberrationCalculator.IO.csproj" />
     <ProjectReference Include="..\..\src\AberrationCalculator.Mcp\AberrationCalculator.Mcp.csproj" />
+    <!-- So that the command line's own argument handling is tested, and not only the
+         report builders it calls. -->
+    <ProjectReference Include="..\..\src\AberrationCalculator.Cli\AberrationCalculator.Cli.csproj" />
   </ItemGroup>
 
   <ItemGroup>
