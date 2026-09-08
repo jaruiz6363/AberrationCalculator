@@ -234,8 +234,16 @@ ENDIF
 ! Which conjugate, and which field type. The conjugate decides only what gets
 ! printed; the FIELD TYPE decides how the scale ladder reaches the field. Those two
 ! are deliberately kept apart - see the head of this file.
-infconj = 0
-IF (ABSO(THIC(0)) > 1E10) THEN infconj = 1
+!
+! THE BOUNDARY GOES ON THE INFINITE SIDE, and that is not fussiness. OpticStudio
+! returns EXACTLY 1E10 for an object thickness of INFINITY, so a test written as
+! "> 1E10" is false for a lens at infinity and reads it as finite. This macro shipped
+! that way for one run: on an infinite-conjugate asphere it printed "finite", an
+! object distance of ten thousand million, an object height of -4.09 that means
+! nothing, and a magnification of zero. BUCH7 has always had the polarity below,
+! which is why it never showed there.
+infconj = 1
+IF (ABSO(THIC(0)) < 1E10) THEN infconj = 0
 
 fldtyp = FTYP()
 fangle = 0

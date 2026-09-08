@@ -543,8 +543,20 @@ nsm = ns - 1
 
 ! Which conjugate. THIC(0) is enormous for an object at infinity, and the ray
 ! basis of stage 4 differs between the two even though the trace does not.
-infconj = 0
-IF (ABSO(THIC(0)) > 1E10) THEN infconj = 1
+!
+! THE BOUNDARY GOES ON THE INFINITE SIDE. OpticStudio shows INFINITY in the lens
+! data editor but ZPL's THIC(0) hands back the sentinel EXACTLY 1E10, so a test
+! written as "> 1E10" is false at infinity and takes the finite branch. Here that is
+! not cosmetic: with objd = 1E10 the ray mkrhs builds keeps its full aperture and
+! loses ALL of its field - 0.0 per cent of the intended direction, and 4.19 mm out
+! in height at the base plane. Every coefficient carrying no field would come out
+! right and every coefficient carrying field would be wrong, which is the same
+! signature as the reversed zscal this file has already been bitten by once.
+!
+! This was found from RAYINV, which carried the same line but only ever used it to
+! decide what to PRINT. BUCH7 has always had the polarity below.
+infconj = 1
+IF (ABSO(THIC(0)) < 1E10) THEN infconj = 0
 
 IF (nsm < 1)
    PRINT "FORBES needs at least one optical surface."

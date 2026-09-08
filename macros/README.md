@@ -1325,3 +1325,55 @@ a trap fired — case-insensitive names, empty `FOR` ranges, `INT` printing zero
 trailing comments. They catch recurrences, not first occurrences. What has actually caught
 faults *before* they shipped is the numerical checking against an independent implementation,
 not the syntax auditing.
+
+### A seventh ZPL trap, and the one that has cost the most
+
+**`INFINITY` in the lens data editor is exactly `1E10` to `THIC()`.** OpticStudio displays the
+word; ZPL hands back the sentinel. So a conjugate test written as
+
+```
+IF (ABSO(THIC(0)) > 1E10) THEN infconj = 1
+```
+
+is **false for a lens at infinity**, because `1E10 > 1E10` is not true. The boundary has to go
+on the infinite side, which is the polarity BUCH7 has always had and the reason it never
+showed there:
+
+```
+infconj = 1
+IF (ABSO(THIC(0)) < 1E10) THEN infconj = 0
+```
+
+**How it surfaced.** RAYINV was run on an infinite-conjugate asphere and printed `Conjugate
+finite`, an object distance of ten thousand million, an object height of `-4.09` that means
+nothing, and a magnification of zero — while the thirty-seven coefficients came out **right**.
+They came out right because RAYINV keeps the conjugate and the field mapping deliberately
+apart: the conjugate decides only what is printed, the field type decides the ladder, and the
+paraxial image height is measured rather than derived from either. The wrong label was the
+only symptom it could produce.
+
+**FORBES carried the identical line, and there it was not cosmetic.** `infconj` selects the
+ray basis in `mkrhs`, so on any `DISZ INFINITY` lens FORBES built rays from `objd = 1E10`:
+
+| | height at base plane | direction (sin) |
+|---|---|---|
+| what it should build | 0.8099181901 | 0.3420201433 |
+| what it did build | 4.9999999895 | 0.0000000009 |
+
+Full aperture, and **0.0 per cent of the intended field** — the same signature as the reversed
+`zscal` this file was bitten by once before: every coefficient carrying no field exactly
+right, every coefficient carrying field wrong.
+
+**Read the FORBES infinite-conjugate results in this file with that in mind.** They were
+verified before the finite conjugate was added, which is when `infconj` first appeared. After
+that change FORBES was verified at the *finite* conjugate only — so between those two points
+its infinite-conjugate path was untested, and by this analysis it was wrong. The recorded
+numbers describe a version that predates the defect; they need re-running against the fixed
+one before they can be relied on again.
+
+**What this says about the checking.** The macro that found it is the one whose only symptom
+was a misprinted label, and it found it because a human read the header rather than the
+coefficients. Nothing numerical would have caught it: RAYINV's own answers were right, and
+FORBES' were wrong in a way that still agrees with everything on an axial fan. There is no
+audit for this one and it is not clear what an audit would look like — the fix is that the
+conjugate is now decided in one place per macro, with the boundary written down beside it.
