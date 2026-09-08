@@ -1177,10 +1177,17 @@ RAYINV reproduces it:
 
 | | worst disagreement with the series routes |
 |---|---|
-| third order | **identical to all seven printed digits** |
-| fifth order | 1.7E-06 |
-| the twenty tau | 9.1E-04, at `tau12` |
+| third order | **identical to all seven printed digits**, all five |
+| fifth order | 1.7E-06, at `F1` |
+| the twenty tau | 1.0E-03, at `tau12` |
 | `tau1` against `B7` | 1.3E-05 |
+
+Those are from a run made *after* the conjugate-boundary fix, against a FORBES which was
+itself re-checked against the C# on the same lens and matched 37 of 37 to every printed digit
+— so the "series routes" column is not one implementation but two agreeing. The third order
+and `tau1` reproduce the earlier record exactly; `tau12` was recorded as 9.1E-04 before and
+measures 1.0E-03 now, which is the same coefficient at the same size and is quoted here as
+measured rather than as remembered.
 
 **That is the argument.** The ladder, the odd fit, the rescaling, the model and the solve are
 the same code on a sphere and on an asphere — only the surface figures differ. Shown correct
