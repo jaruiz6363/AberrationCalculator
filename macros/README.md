@@ -1364,12 +1364,21 @@ Full aperture, and **0.0 per cent of the intended field** — the same signature
 `zscal` this file was bitten by once before: every coefficient carrying no field exactly
 right, every coefficient carrying field wrong.
 
-**Read the FORBES infinite-conjugate results in this file with that in mind.** They were
-verified before the finite conjugate was added, which is when `infconj` first appeared. After
-that change FORBES was verified at the *finite* conjugate only — so between those two points
-its infinite-conjugate path was untested, and by this analysis it was wrong. The recorded
-numbers describe a version that predates the defect; they need re-running against the fixed
-one before they can be relied on again.
+**How long FORBES was wrong, and how that was closed.** `infconj` arrived with the finite
+conjugate; after that change FORBES was verified at the *finite* conjugate only. So from that
+commit until this fix its infinite-conjugate path was untested and, by the analysis above,
+wrong — while the infinite-conjugate results recorded in this file were measured *before*
+`infconj` existed and so describe a version that predates the defect.
+
+That gap is now closed by measurement rather than by argument. FORBES was re-run on
+`CookeTriplet` against the C# reference, and **all thirty-seven coefficients are identical to
+every printed digit** — including `tau1` against `B7` by Buchdahl's own working. The third and
+fifth order are worth separating out: the C# reaches them through Buchdahl's scheme and the
+ZPL through Forbes' series trace, so that agreement is two methods rather than two runs.
+
+The lesson is the ordering, not the arithmetic. The finite conjugate was added, verified at
+the finite conjugate, and pushed — and the conjugate that already worked was never re-run.
+A change that introduces a branch invalidates the branch it did not take.
 
 **What this says about the checking.** The macro that found it is the one whose only symptom
 was a misprinted label, and it found it because a human read the header rather than the
