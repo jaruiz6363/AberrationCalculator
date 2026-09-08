@@ -5,7 +5,7 @@
 ! G. W. Forbes, "Order doubling in the computation of aberration coefficients,"
 ! J. Opt. Soc. Am. 73(6), 782 (1983), Sec. 3(a).
 !
-! STATUS: ALL FOUR STAGES, infinite conjugate only. The truncated series ring, the
+! STATUS: ALL FOUR STAGES, both conjugates. The truncated series ring, the
 ! trace built on it, conics and even aspheres - which is what BUCH7 cannot do and
 ! the reason this exists - and the third-, fifth- and seventh-order coefficients.
 !
@@ -129,10 +129,12 @@
 !      than waved away: on this model - polynomial evaluations at well separated
 !      shapes - the two agree to the figures above.
 !
-!      NOT DONE: the finite conjugate. The trace is right at either, but the RAY
-!      BASIS differs, because a ray from a finite object point is not collimated and
-!      its direction depends on the pupil point as well as the field. The macro
-!      refuses rather than guessing. BUCH7 carries both conjugates.
+!      BOTH CONJUGATES. The trace is right at either; it is the RAY BASIS that
+!      differs, because a ray from a finite object point is not collimated - its
+!      direction depends on the pupil point as well as the field, and its sagittal
+!      direction no longer vanishes. Checked on the Cooke triplet with the object
+!      250 mm away against BUCH7 and the C#: all thirty-seven to the seven figures
+!      those print.
 !
 ! WHERE THIS AND BUCH7 SHOULD AGREE, AND WHERE THEY SHOULD NOT
 !
@@ -539,6 +541,11 @@ wl = PWAV()
 ns = NSUR()
 nsm = ns - 1
 
+! Which conjugate. THIC(0) is enormous for an object at infinity, and the ray
+! basis of stage 4 differs between the two even though the trace does not.
+infconj = 0
+IF (ABSO(THIC(0)) > 1E10) THEN infconj = 1
+
 IF (nsm < 1)
    PRINT "FORBES needs at least one optical surface."
    GOTO 900
@@ -808,32 +815,56 @@ GOSUB shows
 !         -ybar / ubar from surface one.
 ! =================================================================================
 
-IF (ABSO(THIC(0)) < 1E10)
-   PRINT " "
-   PRINT "STAGE 4 handles the infinite conjugate only, and this system has a finite"
-   PRINT "object. The trace above is right at either conjugate - it is the RAY BASIS"
-   PRINT "below that differs, because a ray from a finite object point is no longer"
-   PRINT "collimated and its direction depends on the pupil point as well as the"
-   PRINT "field. That branch is not written, and guessing at it would be worse than"
-   PRINT "saying so. BUCH7 carries both conjugates and should be used for this lens."
+RAYTRACE 0, 0, 0, 1, wl
+IF (RAYE() != 0)
+   PRINT "The paraxial marginal ray will not trace. Is the aperture set?"
    GOTO 900
 ENDIF
+mgy = RAYY(1)
+mgu = RAYM(0) / RAYN(0)
 
-RAYTRACE 0, 0, 0, 1, wl
-epr = RAYY(1)
 RAYTRACE 0, 1, 0, 0, wl
-hmax = RAYM(0) / RAYN(0)
-IF (ABSO(hmax) < eps)
+IF (RAYE() != 0)
+   PRINT "The paraxial chief ray will not trace. Is a field defined?"
+   GOTO 900
+ENDIF
+ubar0 = RAYM(0) / RAYN(0)
+IF (ABSO(ubar0) < eps)
    PRINT " "
    PRINT "The chief ray carries no field, so there is nothing to separate the field"
    PRINT "dependence of the coefficients with. Is the field zero?"
    GOTO 900
 ENDIF
-epp = -RAYY(1) / hmax
+epp = -RAYY(1) / ubar0
 
+! The entrance pupil RADIUS is the marginal ray's height AT THE PUPIL, which is its
+! height at surface one carried forward over the pupil distance. At infinite
+! conjugate the marginal ray runs parallel to the axis and this reduces to its
+! height at surface one; at a finite conjugate it does not, and taking the height at
+! surface one there would shrink the aperture by a per cent or two in silence.
+epr = mgy + epp * mgu
 IF (ABSO(epr) < eps)
-   PRINT "The marginal ray has no height at the first surface; is the aperture set?"
+   PRINT "The entrance pupil has no radius; is the aperture set?"
    GOTO 900
+ENDIF
+
+objd = 0
+objh = 0
+hmax = 0
+IF (infconj == 1)
+   ! The chief ray's slope in object space IS the tangent of the field, whatever
+   ! the field type is stated as - which is why it is taken from the ray rather
+   ! than from MAXF and an assumption about units.
+   hmax = ubar0
+ELSE
+   ! The object is at a finite distance, so the field is an object HEIGHT and the
+   ! chief ray's height at surface zero is exactly that.
+   objd = THIC(0)
+   objh = RAYY(0)
+   IF (ABSO(objh) < eps)
+      PRINT "The object has no height, so the field cannot be separated."
+      GOTO 900
+   ENDIF
 ENDIF
 
 ! ---------------------------------------------------------------------------------
@@ -1784,10 +1815,36 @@ SUB shows
    FORMAT 12.6
    PRINT "Paraxial focus distance    ", gpfd
    PRINT " "
+   ! ONLY -1/V IS A CHECK AT EITHER CONJUGATE. V is the optical power, so its
+   ! constant term is minus the reciprocal of the focal length wherever the object
+   ! sits. T(0,0,0) and S(0,0,0) are NOT universal: they describe the input base
+   ! plane's relation to the output plane, which is a conjugate pair only when the
+   ! object is at infinity. An earlier version labelled all three as though they
+   ! held always, so on a finite-conjugate lens it printed 58.78 beside 50.00 and
+   ! said nothing about the difference. That is the sort of quiet disagreement the
+   ! rest of this file exists to refuse.
    PRINT "First-order checks on the constant terms, which need no reference:"
-   PRINT "   T(0,0,0) is the focal length      ", VEC1(bter)
-   PRINT "   -1 / V(0,0,0) is the same thing   ", -1 / VEC1(bver)
-   PRINT "   S(0,0,0) is zero at focus         ", VEC1(bser)
+   PRINT "   -1 / V(0,0,0) is the focal length ", -1 / VEC1(bver)
+   IF (infconj == 1)
+      PRINT "   T(0,0,0) is the same thing        ", VEC1(bter)
+      PRINT "   S(0,0,0) is zero at focus         ", VEC1(bser)
+      wdif = ABSO(VEC1(bter) + 1 / VEC1(bver)) / (1 + ABSO(VEC1(bter)))
+      IF (wdif > 1E-6)
+         PRINT " "
+         PRINT "   WARNING: those two reach the focal length by different paths - T"
+         PRINT "   through the transfers and V through the refractions - and they"
+         PRINT "   disagree, so the trace is wrong."
+      ENDIF
+   ELSE
+      PRINT "   T(0,0,0)                          ", VEC1(bter)
+      PRINT "   S(0,0,0)                          ", VEC1(bser)
+      PRINT " "
+      PRINT "   The object is at a finite distance, so T(0,0,0) is NOT the focal"
+      PRINT "   length and S(0,0,0) is NOT zero. Both describe where the input base"
+      PRINT "   plane - the first surface's vertex - sits relative to the output"
+      PRINT "   plane, and those are a conjugate pair only at infinite conjugate."
+      PRINT "   Only the focal length above is a check here."
+   ENDIF
    PRINT " "
    PRINT " m   p  k  u              S              T              V              W"
 
@@ -2018,47 +2075,119 @@ RETURN
 ! and that is the whole reason this subroutine exists rather than a multiplication.
 ! ---------------------------------------------------------------------------------
 SUB mkrhs
-   ! tan(field) = s * h * hmax
-   za = ztn
-   GOSUB zzero
-   VEC3(ztn + 1) = shh * hmax
+   IF (infconj == 1)
 
-   ! sin = tan / sqrt(1 + tan^2)
-   za = ztn
-   zb = ztn
-   zc = zt3
-   GOSUB zmul
-   VEC3(zt3) = VEC3(zt3) + 1
-   za = zt3
-   zb = zt4
-   GOSUB zsqrt
-   za = zt4
-   zb = zt3
-   GOSUB zinv
-   za = ztn
-   zb = zt3
-   zc = zsn
-   GOSUB zmul
+      ! INFINITE CONJUGATE. The beam is collimated, so the HEIGHT at the input base
+      ! plane is exactly linear in the scale - the walk back from the entrance pupil
+      ! contributes -ep tan(field) and the tangent is linear by the inversion's own
+      ! parameterisation. The DIRECTION is not, and that is why this is a series.
 
-   ! the height at the input base plane, and the direction
-   za = zsy
-   GOSUB zzero
-   VEC3(zsy + 1) = srho * COSI(sthe) * epr - epp * shh * hmax
-   za = zsz
-   GOSUB zzero
-   VEC3(zsz + 1) = srho * SINE(sthe) * epr
-   ! zscal is zb := za * zfac - SOURCE in za, DESTINATION in zb. These two were
-   ! once the other way round, which copied the still-empty zby into zsn instead of
-   ! the other way about, so the direction cosine bm was zero for every ray. The
-   ! symptom was that every coefficient carrying no field came out exactly right
-   ! and every coefficient carrying field came out wrong, because with bm zero the
-   ! invariants k and u vanish and the ray has aperture but no field.
-   za = zsn
-   zb = zby
-   zfac = 1
-   GOSUB zscal
-   za = zbz
-   GOSUB zzero
+      ! tan(field) = s * h * hmax
+      za = ztn
+      GOSUB zzero
+      VEC3(ztn + 1) = shh * hmax
+
+      ! sin = tan / sqrt(1 + tan^2)
+      za = ztn
+      zb = ztn
+      zc = zt3
+      GOSUB zmul
+      VEC3(zt3) = VEC3(zt3) + 1
+      za = zt3
+      zb = zt4
+      GOSUB zsqrt
+      za = zt4
+      zb = zt3
+      GOSUB zinv
+      za = ztn
+      zb = zt3
+      zc = zsn
+      GOSUB zmul
+
+      za = zsy
+      GOSUB zzero
+      VEC3(zsy + 1) = srho * COSI(sthe) * epr - epp * shh * hmax
+      za = zsz
+      GOSUB zzero
+      VEC3(zsz + 1) = srho * SINE(sthe) * epr
+
+      ! zscal is zb := za * zfac - SOURCE in za, DESTINATION in zb. These two were
+      ! once the other way round, which copied the still-empty zby into zsn instead
+      ! of the other way about, so the direction cosine bm was zero for every ray.
+      ! The symptom was that every coefficient carrying no field came out exactly
+      ! right and every coefficient carrying field came out wrong, because with bm
+      ! zero the invariants k and u vanish and the ray has aperture but no field.
+      za = zsn
+      zb = zby
+      zfac = 1
+      GOSUB zscal
+      za = zbz
+      GOSUB zzero
+
+   ELSE
+
+      ! FINITE CONJUGATE. The ray is the straight line from the object point to the
+      ! chosen point on the entrance pupil. Its POSITION where it crosses surface
+      ! one's vertex plane is a weighted mean of the two, so the normalisation
+      ! cancels and it stays exactly linear in the scale, as the collimated case is.
+      !
+      ! Its DIRECTION is not linear: the transverse numerators scale with the ray
+      ! and the axial one does not, so the normalising root carries lower-degree
+      ! parts of S and T up into the seventh. And the SAGITTAL direction no longer
+      ! vanishes - a skew ray from a finite object point is tilted out of the
+      ! meridian - which is why bs is built here and is zero only above.
+
+      wdd = epp + objd
+      wyp = srho * COSI(sthe) * epr
+      wxp = srho * SINE(sthe) * epr
+      whb = shh * objh
+
+      za = zsy
+      GOSUB zzero
+      VEC3(zsy + 1) = (whb * epp + wyp * objd) / wdd
+      za = zsz
+      GOSUB zzero
+      VEC3(zsz + 1) = wxp * objd / wdd
+
+      ! the unnormalised direction, in zt3 and zt4
+      za = zt3
+      GOSUB zzero
+      VEC3(zt3 + 1) = (wyp - whb) / wdd
+      za = zt4
+      GOSUB zzero
+      VEC3(zt4 + 1) = wxp / wdd
+
+      ! 1 / sqrt(1 + dy^2 + dx^2), into ztn
+      za = zt3
+      zb = zt3
+      zc = ztn
+      GOSUB zmul
+      za = zt4
+      zb = zt4
+      zc = zsn
+      GOSUB zmul
+      za = ztn
+      zb = zsn
+      zc = ztn
+      GOSUB zadd
+      VEC3(ztn) = VEC3(ztn) + 1
+      za = ztn
+      zb = zsn
+      GOSUB zsqrt
+      za = zsn
+      zb = ztn
+      GOSUB zinv
+
+      za = zt3
+      zb = ztn
+      zc = zby
+      GOSUB zmul
+      za = zt4
+      zb = ztn
+      zc = zbz
+      GOSUB zmul
+
+   ENDIF
 
    ! the invariants
    za = zsy
@@ -2344,7 +2473,19 @@ SUB showco
    FORMAT 12.6
    PRINT "Entrance pupil radius      ", epr
    PRINT "Entrance pupil position    ", epp
-   PRINT "tan of the maximum field   ", hmax
+
+   ! How the field is measured depends on the conjugate, so print the quantity that
+   ! is actually being used. Printing "tan of the maximum field 0.000000" at a
+   ! finite conjugate is true - hmax is not used there - but it reads as a failure.
+   IF (infconj == 1)
+      PRINT "Object at infinity"
+      PRINT "tan of the maximum field   ", hmax
+   ELSE
+      PRINT "Object distance            ", objd
+      PRINT "Maximum object height      ", objh
+      PRINT "   The field is an object height at this conjugate, not an angle, so"
+      PRINT "   there is no tangent to report."
+   ENDIF
    FORMAT 5.0 INT
    PRINT "Ray shapes used            ", nsh
    PRINT " "

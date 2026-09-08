@@ -900,6 +900,68 @@ which is what makes it unusable rather than merely imprecise.
 The third and fifth orders are not affected either way.
 
 
+
+### The finite conjugate
+
+The trace is right at either conjugate — the object position enters it only through the ray
+basis. Stage 4 is where the two differ, and it now carries both.
+
+**Why they differ.** At infinite conjugate the beam is collimated, so a ray's height at the
+input base plane is `rho·epr − ep·tan(field)` and its sagittal direction is zero: a
+collimated beam tilts in the meridian only. At a finite conjugate the ray is the straight
+line from the object point to the chosen point on the entrance pupil. Its position where it
+crosses surface one's vertex plane is a weighted mean of the two, so it stays exactly linear
+in the scale — but its **direction** depends on the pupil point as well as the field, and its
+**sagittal direction no longer vanishes**, because a skew ray from a finite object point is
+tilted out of the meridian.
+
+**A correctness fix that came with it.** `epr` was the marginal ray's height at surface one.
+That is the entrance pupil radius only when the beam is collimated. On the Cooke at 250 mm
+the marginal ray is at 4.7799 at surface one where the pupil radius is 5.0000 — a 4.4 per
+cent aperture error that would have gone unnoticed, because nothing else in the output would
+have looked wrong. It is now carried forward to the pupil, `epr = y1 + ep·u0`, which reduces
+to the old form at infinite conjugate.
+
+**Checked** on the Cooke triplet with the object 250 mm away, against BUCH7 and the C#: all
+thirty-seven coefficients to the seven figures those print.
+
+    Third order
+       B    -4.373036E-02   F     2.897349E-02   C     5.350709E-02
+       Pi   -1.581199E-01   E    -1.023213E-01
+
+    Fifth order
+       B5    1.093968E-02   F1    1.901174E-02   F2    1.297716E-02
+       M1    2.808447E-02   M2    2.275551E-02   M3    3.281702E-02
+       N1   -1.647215E-02   N2   -5.407001E-02   N3   -1.943421E-02
+       C5   -1.531533E-02   Pi5   7.294664E-02   E5   -1.838898E-02
+
+    tau1    2.305287E-03  ... tau20  -2.181701E-03
+
+`tau1` equals BUCH7's `B7` here as it does at infinite conjugate, and **FIFTHORD agrees with
+BUCH7 on all eighteen at this conjugate too** — so the target FORBES has to hit is
+corroborated by something outside this repository before FORBES is compared with it.
+
+### A first-order check that was wrong, and how it showed
+
+The trace prints three constant terms as "first-order checks needing no reference". Two of
+them were mislabelled.
+
+Only `-1/V(0,0,0)` is the focal length at either conjugate, because `V` is the optical power.
+`T(0,0,0)` and `S(0,0,0)` describe where the input base plane sits relative to the output
+plane, and those are a conjugate pair **only** when the object is at infinity. Labelled as
+universal truths, they printed this on a finite-conjugate lens:
+
+    T(0,0,0) is the focal length         58.780874
+    -1 / V(0,0,0) is the same thing      49.999982
+    S(0,0,0) is zero at focus            -0.235123
+
+Two contradictory numbers under labels asserting they are the same thing, and no comparison
+between them — a check that should have fired and stayed silent instead. It now labels them
+per conjugate, explains what they are when the object is finite, and **actually compares**
+`T` against `-1/V` at infinite conjugate rather than printing both and hoping the reader
+notices. `S(0,0,0)` at a finite conjugate is the magnification, which on this lens reads
+-0.235123 and is right.
+
 ### The aspheric case, checked against something that ships with OpticStudio
 
 This is the check that matters most, because it needs **nothing from this repository** and it
@@ -961,10 +1023,8 @@ the C# agreeing coefficient-for-coefficient, and on the trace beneath them agree
 
 ### Limits
 
-**Infinite conjugate only.** The trace is right at either, but the *ray basis* differs: a ray
-from a finite object point is not collimated and its direction depends on the pupil point as
-well as the field. That branch is not written and the macro refuses rather than guessing.
-BUCH7 carries both conjugates.
+**Both conjugates.** Checked at 250 mm on the Cooke against BUCH7 and the C#: all
+thirty-seven coefficients to the seven figures those print.
 
 `STANDARD` and `EVENASPH` surfaces only. Any other type is declined **by name**, because
 `PARM` on a toroid or a grating is not an aspheric coefficient and reading it as one would
