@@ -79,7 +79,13 @@ Printed unconverted, tau1 and tau20 could not be compared with each other. The o
 overlap between the conventions, tau1 against B7, is computed by two different routes
 and agrees, which is the check that ties the two halves of the listing together.
 
-### The companion
+### The companions
+
+`FORBES.ZPL` in this folder computes the same three orders by Forbes' series trace; see below. On a
+system of spheres the two agree on all thirty-seven coefficients to every printed digit,
+which is the strongest check either has: Buchdahl arranged tables against a series trace,
+sharing no arithmetic and no code. On a FIGURED system BUCH7 declines outright and FORBES
+does not, which is the whole point of having it.
 
 `zosapi/` holds FORBES7, which computes the same three orders by G. W. Forbes' series
 trace, *J. Opt. Soc. Am.* **73**, 782 (1983), as a C# program driving OpticStudio through
@@ -761,4 +767,198 @@ Written from Robb's published equations and from `src/AberrationCalculator.Core/
 which is this project's own implementation of them. The `Wavefront Aberrations from
 Sasian.zpl` macro shipped with OpticStudio was read as a reference for the ZPL interface
 only, and no code from it is reproduced here. Every ZPL function and keyword used was
+checked against the ZPL reference in the OpticStudio help rather than written from memory.
+
+---
+
+## FORBES.ZPL
+
+Third-, fifth- and seventh-order aberration coefficients by G. W. Forbes' Lagrangian series
+trace — **including on conics and even aspheres**, which is what `BUCH7.ZPL` cannot do and
+the reason this exists.
+
+G. W. Forbes, "Order doubling in the computation of aberration coefficients," *J. Opt. Soc.
+Am.* **73**(6), 782 (1983), Sec. 3(a).
+
+### Why, given BUCH7 already exists
+
+BUCH7 refuses a conic or an aspheric term, and the refusal is honest: Buchdahl gives the
+aspheric scheme in the monograph but never published an **arranged table** for it the way
+Table I arranges the spherical case, so a transcription would have no printed answer to
+check against.
+
+Forbes removes the difficulty rather than solving it. He writes the ith surface as
+
+    x = f_i(y . y)
+
+with `f_i` a power series. A sphere, a conic and an even asphere differ **only** in the
+coefficients of `f_i` and are traced by identical code. There is no D and L split, no hat
+and check pass, no carrying ratio — the entire class of fault the aspheric Buchdahl
+arrangement is prone to cannot be expressed in this formulation.
+
+### The one idea it rests on
+
+For a rotationally symmetric system every quantity carried through a ray trace is either a
+scalar function of the three rotational invariants
+
+    p = y0 . y0 ,    k = y0 . b0 ,    u = b0 . b0
+
+or a vector `S y0 + T b0` with `S` and `T` such scalars. So the whole trace reduces to
+arithmetic on **one data type**: a power series in `p`, `k`, `u` truncated at total degree
+three — twenty coefficients.
+
+Each invariant is quadratic in the ray coordinates, so a term of degree `m` multiplies `y0`
+or `b0` to give order `2m + 1`. Degree 1 is the primary aberrations, degree 2 the secondary,
+degree 3 the tertiary.
+
+Forbes' headline result, order doubling, is **not** used. It reaches order `2M` from a trace
+carried to order `M`, an economy for orders far beyond the seventh; here the concatenation
+machinery it needs would be the larger part of the work and the larger part of the risk.
+
+### Status
+
+| stage | contents | checked against | result |
+|---|---|---|---|
+| 1 | the truncated series ring in `p, k, u` | `InvariantSeries` in the C# | multiply, inverse and square root **bit-identical**, 0.0 |
+| 2 | the trace — transfer and refraction, carrying S, T, V, W | `ForbesTrace` in the C# | 4 series x 20 coefficients, 7E-15 on the Cooke |
+| 3 | conics and even aspheres | the same, with a conic and r²–r⁸ figuring | 8E-16; and confirmed in OpticStudio on `CookeTriplet_SPOTM_START_LO_ASPHERE` |
+| 4 | the 5 third-, 12 fifth- and 20 seventh-order coefficients | BUCH7 and the C# | **all 37 to every printed digit** |
+
+The macro re-checks the ring on **every run** before it traces, and declines to trace if any
+identity fails.
+
+### What makes it possible in ZPL at all
+
+`GOSUB`, `SUB` and `RETURN` — up to a hundred subroutines. A series multiply is called dozens
+of times per surface and inlining it would be unreadable.
+
+But **all ZPL variables are global**, so a subroutine has no locals. Two rules keep that
+safe, and an awk audit enforces both:
+
+1. Every subroutine's working variables carry a prefix of its own — `q` for `smul`, `n` for
+   `sinv`, `z` for the scale ring, and so on.
+2. **A subroutine that calls another copies its parameters first.** `sa`/`sb`/`sc` are
+   argument registers a nested call overwrites, so `sinv` begins `nsrc = sa`, `ndst = sb`.
+
+The audit found one real fragility before it could bite — `sdiff` sharing the loop counter
+`gi` with the trace.
+
+### Three faults it shipped with, and how each was found
+
+Worth recording because the three needed quite different tools.
+
+**A wrong θ index in `ROBB`'s sibling table** — caught by the model checker, which reads the
+tables out of the file and was itself made to fail first.
+
+**An empty `FOR` range.** Trap #3 in the BUCH7 section above: ZPL reports an empty range as
+an infinite loop rather than executing it zero times. `gsolve`'s elimination runs
+`FOR gr = gc + 1, nunk - 1, 1`, which is empty on the last column. Knowing the trap and
+writing it into this file's own header was **not enough** — so there is now an audit for it,
+and it reports that this was the only place in `macros/` it could have bitten.
+
+**A reversed copy, which is the instructive one.** `zscal` is `zb := za * zfac`, source in
+`za`. In `mkrhs` the two were reversed, so instead of copying the computed direction cosine
+into `bm` it copied the still-empty `bm` into `sin`. Every ray then had aperture and **no
+direction**, so the invariants `k` and `u` vanished.
+
+The symptom was sharp: every coefficient carrying no field came out *exactly* right — `B`,
+`B5`, `tau1` — and every coefficient carrying field came out wrong, with `Pi` and `Pi5`
+collapsing to machine zero, because with only the meridional rows surviving their columns
+become proportional to `C` and `C5`.
+
+**Three hypotheses read off that signature were all wrong.** So the macro was made to print
+its own intermediates for one ray shape instead, and `bm` came back identically zero while
+`ym` and `p` were exact — which named the line. Forcing `bm` to zero in the working outside
+OpticStudio then reproduced the wrong output *digit for digit*, which is how it is known to
+have been the only fault rather than one of several. All 28 copy and scale call sites were
+then listed and checked for direction; `mkrhs` was the only reversed one.
+
+That diagnostic is kept behind `dbg4 = 0` rather than deleted. It cost one run and settled a
+question three rounds of code-reading had not.
+
+### Where this and BUCH7 should agree, and where they should not
+
+**On a system of spheres** all three orders must match BUCH7, and that is checked: all 37
+coefficients agree on the Cooke triplet to every printed digit. Two wholly different schemes
+— Buchdahl's arranged tables and Forbes' series trace — sharing no arithmetic and no code.
+
+**On a figured system the comparison splits, and it splits exactly:**
+
+- **`tau1`, which is `B7`, IS RIGHT in the Buchdahl route even for an asphere.** It is not
+  reached through the aspheric table at all — it falls out of the fifth-order working, which
+  is why BUCH7 arrives at it twice over and gets the same number both ways.
+- **`tau2` to `tau20` are not.** Those nineteen rest on an arrangement re-derived with no
+  printed answer to check against.
+
+*How wrong, and against what:* the judge is neither scheme but a **ray inversion**, which
+recovers the coefficients from real traced rays. By that measure the Buchdahl route gets
+`Ladder1_A4`, `Ladder1_Conic` and `Ladder1_FiguredSphere` right, and two others wrong —
+`Ladder2_A4_Second` by 6.85 per cent and `Ladder2_FiguredSphere_Then_A4` by 7.75. So it is
+not wrong on every asphere; it is wrong on some, **with no way to tell in advance which**,
+which is what makes it unusable rather than merely imprecise.
+
+The third and fifth orders are not affected either way.
+
+### Limits
+
+**Infinite conjugate only.** The trace is right at either, but the *ray basis* differs: a ray
+from a finite object point is not collimated and its direction depends on the pupil point as
+well as the field. That branch is not written and the macro refuses rather than guessing.
+BUCH7 carries both conjugates.
+
+`STANDARD` and `EVENASPH` surfaces only. Any other type is declined **by name**, because
+`PARM` on a toroid or a grating is not an aspheric coefficient and reading it as one would
+be a confident wrong answer rather than an error.
+
+Only `PARM` 1 to 4 take part — r² to r⁸. An r¹⁰ term or above enters the figure past the
+truncation and **cannot reach the seventh order**; it is not being ignored, it genuinely
+does not appear, and the macro says so when it meets one.
+
+It is slow. Seventy-five ray shapes, each costing a few hundred series multiplies.
+
+### A fifth ZPL trap
+
+`FORMAT n.0 INT` **prints a zero as blank.** The first draft's monomial table came out with
+the `m = 0` row unlabelled and every zero power missing, so `p^0 k^0 u^3` read as
+`blank blank 3`. Fixed format has no such trouble. Nothing else in `macros/` prints an
+integer that can be zero, so the other three files are unaffected.
+
+### Expected output, CookeTriplet
+
+Run against `CookeTriplet.zmx` at the primary wavelength. The trace prints S, T, V, W first;
+these are the coefficients that follow.
+
+    Third order
+       B    -3.480019E-02   F     6.174430E-03   C     4.453368E-02
+       Pi   -1.285785E-01   E     9.292942E-03
+
+    Fifth order
+       B5    7.691912E-03   F1    9.196030E-03   F2    6.270814E-03
+       M1    2.732059E-02   M2    2.163254E-02   M3    3.182199E-02
+       N1   -1.457431E-02   N2   -3.253849E-02   N3   -1.521610E-02
+       C5   -1.303741E-02   Pi5   5.733012E-02   E5    1.484277E-03
+
+    Seventh order, Buchdahl's tau. tau1 is B7.
+       tau1    1.681450E-03  tau2    1.556696E-03  tau3    1.146383E-03
+       tau4    3.820781E-03  tau5    3.086343E-03  tau6   -7.418192E-04
+       tau7   -7.553284E-03  tau8   -7.157220E-03  tau9   -4.282416E-03
+       tau10  -5.072596E-04  tau11   1.341386E-02  tau12   1.461144E-03
+       tau13   3.345284E-03  tau14   3.453259E-03  tau15   1.049465E-02
+       tau16   9.644176E-03  tau17   2.707664E-03  tau18  -4.593489E-02
+       tau19  -1.394715E-03  tau20   1.083496E-03
+
+Every one of those matches BUCH7 or the C# on the same lens. Two can be checked without this
+repository at all: the third order against **Analyze > Aberrations > Seidel Coefficients**
+and the fifth against **FIFTHORD** — and OpticStudio's Seidel analysis carries conics and
+aspheres, so on a figured lens, where BUCH7 declines outright, it is the only wholly
+independent check there is.
+
+The trace also prints two first-order checks needing no reference: `T(0,0,0)` is the focal
+length and `-1/V(0,0,0)` is the same thing by a different route. On the Cooke both read
+49.999982.
+
+### Provenance
+
+Written from Forbes' published equations and from `src/AberrationCalculator.Core/Forbes`,
+which is this project's own implementation of them. Every ZPL function and keyword used was
 checked against the ZPL reference in the OpticStudio help rather than written from memory.
