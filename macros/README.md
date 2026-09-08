@@ -899,6 +899,66 @@ which is what makes it unusable rather than merely imprecise.
 
 The third and fifth orders are not affected either way.
 
+
+### The aspheric case, checked against something that ships with OpticStudio
+
+This is the check that matters most, because it needs **nothing from this repository** and it
+works on exactly the systems BUCH7 declines.
+
+`FIFTHORD.ZPL` ships with OpticStudio and **carries aspheres** — it prints the aspheric
+contribution surface by surface. Its transverse totals are the same eighteen quantities
+`FORBES.ZPL` prints: `B` through `E5`, and `B7`, which is `tau1`.
+
+Run on `CookeTriplet_SPOTM_START_LO_ASPHERE.zmx` — r⁴ and r⁶ figuring on two surfaces, a
+lens BUCH7 refuses outright:
+
+| | FORBES.ZPL | FIFTHORD | rel diff |
+|---|---|---|---|
+| B | −5.882911E-04 | −5.8829E-04 | 1.9E-06 |
+| F | −2.649959E-03 | −2.6500E-03 | −1.5E-05 |
+| C | 6.039270E-02 | 6.0393E-02 | −5.0E-06 |
+| Pi | −1.291448E-01 | −1.2914E-01 | 3.7E-05 |
+| E | −2.084687E-02 | −2.0847E-02 | −6.2E-06 |
+| B5 | −4.218846E-03 | −4.2188E-03 | 1.1E-05 |
+| F1 | 2.350097E-02 | 2.3501E-02 | −1.3E-06 |
+| F2 | 1.567027E-02 | 1.5670E-02 | 1.7E-05 |
+| M1 | −5.119278E-03 | −5.1193E-03 | −4.3E-06 |
+| M2 | 7.573690E-03 | 7.5737E-03 | −1.3E-06 |
+| M3 | −4.985060E-03 | −4.9851E-03 | −8.0E-06 |
+| N1 | −4.463661E-03 | −4.4637E-03 | −8.7E-06 |
+| N2 | 9.183179E-03 | 9.1832E-03 | −2.3E-06 |
+| N3 | −4.087099E-03 | −4.0871E-03 | −2.4E-07 |
+| C5 | −1.474444E-02 | −1.4744E-02 | 3.0E-05 |
+| Pi5 | 5.624082E-02 | 5.6241E-02 | −3.2E-06 |
+| E5 | −8.256648E-04 | −8.2566E-04 | 5.8E-06 |
+| **B7 = tau1** | **1.268066E-03** | **1.2681E-03** | −2.7E-05 |
+
+**All eighteen agree to every digit FIFTHORD prints.** The worst difference, 3.7E-05, is its
+own five-figure rounding.
+
+Two things follow that were previously asserted rather than shown.
+
+**`B7` survives the aspheric case.** FIFTHORD's `B7` and Forbes' `tau1` agree on a figured
+lens. That is the direct evidence for the split stated above — `tau1` comes out of the
+fifth-order working, not the aspheric table, so it is right where `tau2` to `tau20` are not.
+
+**The third and fifth orders are unaffected by the aspheric difficulty**, which the split
+claimed but nothing here had demonstrated until now: seventeen of the eighteen are third or
+fifth order, and all seventeen agree.
+
+The third order can also be had from **Analyze > Aberrations > Seidel Coefficients**, which
+carries aspheres as well. Converting its sums to transverse measure — `W040 = SI/8`,
+`W131 = SII/2`, `W222 = SIII/2`, `W220 = SIV/4`, `W311 = SV/2`, then differentiating the
+wavefront and dividing by `n'u'` — gives `B −5.900E-04`, `F −2.650E-03`, `C 6.0395E-02`,
+`Pi −1.29145E-01`, `E −2.0845E-02`, against the macro's five to within the figures
+OpticStudio prints. A third route, agreeing.
+
+**What this does not check.** `tau2` to `tau20` on an asphere. FIFTHORD stops at `B7` and the
+Seidel analysis at third order, so nineteen of the twenty tertiary coefficients have no
+independent check on a figured system — which is precisely the gap this route exists to
+fill, and precisely why it cannot be closed from inside OpticStudio. Their standing rests on
+the C# agreeing coefficient-for-coefficient, and on the trace beneath them agreeing to 8E-16.
+
 ### Limits
 
 **Infinite conjugate only.** The trace is right at either, but the *ray basis* differs: a ray
@@ -947,11 +1007,9 @@ these are the coefficients that follow.
        tau16   9.644176E-03  tau17   2.707664E-03  tau18  -4.593489E-02
        tau19  -1.394715E-03  tau20   1.083496E-03
 
-Every one of those matches BUCH7 or the C# on the same lens. Two can be checked without this
-repository at all: the third order against **Analyze > Aberrations > Seidel Coefficients**
-and the fifth against **FIFTHORD** — and OpticStudio's Seidel analysis carries conics and
-aspheres, so on a figured lens, where BUCH7 declines outright, it is the only wholly
-independent check there is.
+Every one of those matches BUCH7 or the C# on the same lens. And eighteen of them can be
+checked without this repository at all, on a FIGURED lens as well as a spherical one, by
+running FIFTHORD - see "The aspheric case" above.
 
 The trace also prints two first-order checks needing no reference: `T(0,0,0)` is the focal
 length and `-1/V(0,0,0)` is the same thing by a different route. On the Cooke both read
