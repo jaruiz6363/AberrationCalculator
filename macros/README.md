@@ -1163,6 +1163,33 @@ exercise — **`tau2` to `tau20` agree to better than 7E-04**, worst at `tau15`.
 Three routes, on an asphere: Buchdahl's tables (via FIFTHORD, for the eighteen it reaches),
 Forbes' series, and real rays. Nothing is left resting on a single method.
 
+
+### Why the aspheric result can be believed
+
+RAYINV's whole value is on figured systems, where nothing else reaches `tau2` to `tau20`.
+But that is exactly where it cannot itself be checked — so its credibility has to be
+established somewhere else and carried over.
+
+That somewhere else is a **sphere**, where the answer is independently known three times:
+BUCH7 from Buchdahl's arranged tables, FORBES from Forbes' series trace, and FIFTHORD from
+OpticStudio's own installation, all agreeing to every printed digit. On the Cooke triplet
+RAYINV reproduces it:
+
+| | worst disagreement with the series routes |
+|---|---|
+| third order | **identical to all seven printed digits** |
+| fifth order | 1.7E-06 |
+| the twenty tau | 9.1E-04, at `tau12` |
+| `tau1` against `B7` | 1.3E-05 |
+
+**That is the argument.** The ladder, the odd fit, the rescaling, the model and the solve are
+the same code on a sphere and on an asphere — only the surface figures differ. Shown correct
+where the answer is known, it can be used where it is not.
+
+Without this run the aspheric agreement between RAYINV and FORBES would prove much less, because
+two routes agreeing can be two errors meeting. Agreeing *and* both reproducing a triply-known
+answer on a sphere is a different claim, and it is the one that carries the aspheric case.
+
 ### Read the tolerance correctly
 
 **Expect a few parts in ten thousand, not machine precision**, and the macro says so in its
