@@ -1015,11 +1015,11 @@ wavefront and dividing by `n'u'` — gives `B −5.900E-04`, `F −2.650E-03`, `
 `Pi −1.29145E-01`, `E −2.0845E-02`, against the macro's five to within the figures
 OpticStudio prints. A third route, agreeing.
 
-**What this does not check.** `tau2` to `tau20` on an asphere. FIFTHORD stops at `B7` and the
-Seidel analysis at third order, so nineteen of the twenty tertiary coefficients have no
-independent check on a figured system — which is precisely the gap this route exists to
-fill, and precisely why it cannot be closed from inside OpticStudio. Their standing rests on
-the C# agreeing coefficient-for-coefficient, and on the trace beneath them agreeing to 8E-16.
+**What this does not check, and what now does.** FIFTHORD stops at `B7` and the Seidel
+analysis at third order, so neither reaches `tau2` to `tau20` on a figured system. That gap
+is now closed from the other side by `RAYINV.ZPL`, which recovers the coefficients from real
+traced rays and uses no series at all: on this same lens all nineteen agree with FORBES to
+better than 7E-04. See its section below.
 
 ### Limits
 
@@ -1080,3 +1080,125 @@ length and `-1/V(0,0,0)` is the same thing by a different route. On the Cooke bo
 Written from Forbes' published equations and from `src/AberrationCalculator.Core/Forbes`,
 which is this project's own implementation of them. Every ZPL function and keyword used was
 checked against the ZPL reference in the OpticStudio help rather than written from memory.
+
+---
+
+## RAYINV.ZPL
+
+Third-, fifth- and seventh-order coefficients recovered from **real traced rays**, by
+inverting the transverse aberration rather than by any series.
+
+### Why, and it is a narrow reason
+
+BUCH7 computes the coefficients from Buchdahl's arranged tables; FORBES from Forbes' series
+trace. On a system of spheres those two agree on all thirty-seven to every printed digit,
+and FIFTHORD — which ships with OpticStudio and needs nothing from this repository — agrees
+with both on eighteen of them.
+
+On an **aspheric** system that structure falls apart:
+
+| | reaches |
+|---|---|
+| BUCH7 | nothing — it declines outright |
+| FIFTHORD | third order, fifth order, and `B7`. Eighteen quantities, then it stops |
+| Seidel analysis | third order, then it stops |
+
+So `tau2` to `tau20` on a figured lens — **nineteen coefficients, and precisely the ones
+Buchdahl's aspheric arrangement gets wrong** — had nothing to be checked against except a
+second implementation of the same series method. That is not a check; it is the same
+argument twice.
+
+This macro is the third opinion. It uses no series at all.
+
+### How
+
+Each of the 75 shapes is traced at a **ladder of twelve scales** — shrink the ray by `s` and
+the pupil goes to `s·rho`, the field to `s·h`. The paraxial image height is subtracted, an
+odd polynomial in `s` is fitted through the twelve landings, and the coefficients of `s³`,
+`s⁵` and `s⁷` are the third-, fifth- and seventh-order transverse aberration of that shape,
+*measured*. Those feed the same 20-unknown model FORBES uses.
+
+**The ladder is the whole game and is not arbitrary.** Measured against `B7` on an axial fan
+— where the degree-seven part is that coefficient alone — a ladder to `s = 1` with powers to
+`s¹¹` recovers it only to about 1.5 per cent, because the ninth order and above are still
+large at full aperture and the fit cannot separate them. Twelve points to six tenths with
+powers to `s¹⁵` recovers it to better than one part in a million.
+
+**The paraxial image height is subtracted before fitting**, and that is fatal rather than
+untidy if skipped: at seven tenths of the field it is some twelve millimetres sitting on a
+third-order term of two hundredths, so the fit would have to cancel three orders of magnitude
+to reach the aberration at all.
+
+**The fit is done in `t = s/s_max`, not in `s`.** The powers run to fifteen, so in `s` the
+normal-equations matrix spans thirty orders of magnitude and its diagonal ratio is 6.8E+06;
+rescaled it is 4.2. That was tested *before* the macro was written, because it decides
+whether an ordinary Gaussian elimination suffices or a Householder QR is needed — which is
+the difference between something ZPL can carry and something it cannot. It suffices.
+
+### The model is shared with FORBES on purpose
+
+Both routes fit the same twenty coefficients through the same linear model — Robb's Eq. (2)
+with one coefficient set to one at a time. **The independence lives entirely in the
+right-hand side**: series arithmetic there, OpticStudio's own ray trace here. Were the two to
+use different bases they would not be computing the same quantity and the comparison would
+mean nothing, so the shared model is what makes the check a check rather than a coincidence.
+
+### What it establishes
+
+On `CookeTriplet_SPOTM_START_LO_ASPHERE` — r⁴ and r⁶ figuring on two surfaces, a lens BUCH7
+refuses:
+
+| | RAYINV, real rays | FORBES, series | FIFTHORD | rays vs series |
+|---|---|---|---|---|
+| B | −5.882910E-04 | −5.882911E-04 | −5.8829E-04 | −1.7E-07 |
+| C | 6.039270E-02 | 6.039270E-02 | 6.0393E-02 | 0 |
+| Pi | −1.291448E-01 | −1.291448E-01 | −1.2914E-01 | 0 |
+| B5 | −4.218855E-03 | −4.218846E-03 | −4.2188E-03 | 2.1E-06 |
+| Pi5 | 5.624080E-02 | 5.624082E-02 | 5.6241E-02 | −3.6E-07 |
+| **B7 = tau1** | 1.268010E-03 | 1.268066E-03 | 1.2681E-03 | −4.4E-05 |
+
+The third order agrees to seven digits, the fifth to about 1E-05, and — the point of the
+exercise — **`tau2` to `tau20` agree to better than 7E-04**, worst at `tau15`.
+
+Three routes, on an asphere: Buchdahl's tables (via FIFTHORD, for the eighteen it reaches),
+Forbes' series, and real rays. Nothing is left resting on a single method.
+
+### Read the tolerance correctly
+
+**Expect a few parts in ten thousand, not machine precision**, and the macro says so in its
+own output. A traced ray carries every order at once and the fit has to separate them, so
+this arrives with a fitting residual where a series arrives exactly.
+
+A disagreement at that level is the fit. A disagreement at **per cent** level is not — and on
+an aspheric system it would be worth taking seriously, because that is the size of the error
+the aspheric Buchdahl arrangement carries (6.85 and 7.75 per cent on two of the ladder
+fixtures).
+
+### Limits
+
+Infinite conjugate: the paraxial height it subtracts is `efl·tan(field)`, the collimated
+form. FORBES carries both conjugates and this does not.
+
+Rotationally symmetric and sequential. Rays that will not trace are dropped rather than
+fudged, and the count is printed; if many are lost the remaining shapes may not span the
+coefficients, and it says so.
+
+It is **not** slow, despite the 900 real rays — those turn out to be cheap next to FORBES'
+series arithmetic, which was the opposite of what was expected.
+
+### A sixth ZPL trap
+
+**Comments are whole-line only.** There is no trailing comment: a `!` after a statement does
+not start one, so the parser reads on and reports the next word as an unknown symbol. Eight
+declaration lines here carried their descriptions on the right and the macro would not run at
+all — `Syntax error: Unknown symbol SCALES`.
+
+It only surfaced now because the other four macros contain **zero** trailing comments between
+them; whole-line commenting had been a habit rather than a known requirement. There is an
+audit for it now, which ignores `!=` and any `!` inside a string literal.
+
+Worth recording honestly: every audit in this folder is retrospective. Each was written after
+a trap fired — case-insensitive names, empty `FOR` ranges, `INT` printing zero as blank, now
+trailing comments. They catch recurrences, not first occurrences. What has actually caught
+faults *before* they shipped is the numerical checking against an independent implementation,
+not the syntax auditing.
