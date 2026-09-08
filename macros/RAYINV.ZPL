@@ -65,11 +65,58 @@
 !   same quantity and the comparison would mean nothing, so the shared model is what
 !   makes the check a check.
 !
+! THE FIELD VARIABLE, WHICH IS WHERE THE CONJUGATES WOULD DIFFER AND DO NOT
+!
+!   The ladder shrinks the field along with the pupil, so the macro has to hand
+!   OpticStudio a NORMALISED field coordinate that moves the aberration-theory field
+!   variable - the paraxial image height - in exact proportion to the scale. Whether
+!   the normalised coordinate already does that turns on the FIELD TYPE, and not on
+!   the conjugate, which is why carrying the finite conjugate costs so little here:
+!
+!     ANGLE. The normalised coordinate is a fraction of the ANGLE while the field
+!       variable goes as its TANGENT, so the scale must be run through
+!       atan(s h tan a_max) / a_max. This holds at EITHER conjugate, and the reason
+!       is worth stating because it is what makes the finite conjugate nearly free:
+!       OpticStudio gives the object-space CHIEF RAY the field angle itself, at both
+!       conjugates, so a finite object sits at height -(t + ep) tan(field) - still
+!       exactly linear in the tangent, only with a different constant in front of it,
+!       and the constant divides out of a ratio. That was measured against
+!       OpticStudio rather than taken on trust, and then wired into the check below.
+!     OBJECT HEIGHT, and PARAXIAL IMAGE HEIGHT. Both are already linear in the
+!       normalised coordinate, so the scale is handed over unchanged.
+!     REAL IMAGE HEIGHT. REFUSED. OpticStudio iterates the chief ray until it lands
+!       where it was asked to, which makes the image height linear in the coordinate
+!       BY CONSTRUCTION and folds the distortion into the field variable itself. The
+!       ladder would then be running a field of s + O(s^3) rather than s, and every
+!       order above the third would take a share of the order below it. The third
+!       order would survive and the rest would be quietly wrong, which is the worse
+!       of the two ways to fail.
+!
+!   The earlier version of this macro applied the angle mapping whatever the field
+!   type was. That was right for the one conjugate it accepted and wrong for paraxial
+!   image height, which it would have taken without comment.
+!
+!   THE PARAXIAL IMAGE HEIGHT IS MEASURED, NOT ASSUMED. It is taken by tracing the
+!   paraxial chief ray at full field and projecting it to the same plane the real
+!   rays are caught on, which makes it the right thing to subtract by definition
+!   rather than by a formula that happens to agree. The old efl tan(field) is that
+!   same quantity divided by the image space index, so the two part company when the
+!   image sits in glass; projecting costs one paraxial ray and is right in both.
+!
 ! LIMITS
 !
-!   Infinite conjugate. The paraxial image height subtracted below is efl tan(field),
-!   which is the infinite-conjugate form; FORBES carries both conjugates and this
-!   does not.
+!   Either conjugate, but field type angle, object height or paraxial image height
+!   only - real image height and theodolite angles are refused, for the reason above.
+!
+!   REAL RAY AIMING IS REFUSED. With it on the normalised pupil coordinate aims at
+!   the real stop rather than at the paraxial entrance pupil, so rho stops being the
+!   variable these coefficients are defined in: it differs from it by the pupil
+!   aberration. The third order would be untouched, because that enters at degree
+!   three and shifts the third order only at degree five, and the fifth and seventh
+!   would disagree with FORBES by a few per cent. That reads exactly like a fault in
+!   one of the two routes and is not one, which is why it is refused rather than
+!   noted. Ray aiming is far likelier to be on at a finite conjugate than at
+!   infinity, so this guard earns its keep mostly on the path just added.
 !
 !   Rotationally symmetric and sequential. It is SLOW: nine hundred real ray traces,
 !   and each of the seventy-five shapes then takes two eight-by-eight solves.
@@ -87,6 +134,18 @@
 
 eps = 1E-10
 paraxmode = PMOD()
+
+! The system data is read BEFORE the vectors are sized, and the four numbers wanted
+! from it are taken out into scalars immediately. SETVECSIZE resizes all four
+! vectors together and DISCARDS EVERYTHING IN THEM, so a GETSYSTEMDATA on the far
+! side of it would be reading a vector that is about to be thrown away - or, worse,
+! would be fine here and not somewhere else. The guards that use these four are
+! further down, with the other guards, where they read better.
+GETSYSTEMDATA 3
+sysefl = VEC3(7)
+sysmag = VEC3(16)
+rayaim = VEC3(19)
+nonaxi = VEC3(33)
 
 SETVECSIZE 4000
 
@@ -146,12 +205,61 @@ IF (nsm < 1)
    GOTO 900
 ENDIF
 
-IF (ABSO(THIC(0)) < 1E10)
-   PRINT "RAYINV handles the infinite conjugate only. The paraxial image height it"
-   PRINT "subtracts before fitting is efl tan(field), which is the collimated form."
-   PRINT "FORBES.ZPL carries both conjugates and should be used for this lens."
+IF (nonaxi > 0.5)
+   PRINT "This system is not rotationally symmetric. Every coefficient below is"
+   PRINT "defined only for a system that is, so there is nothing here to compute."
    GOTO 900
 ENDIF
+
+IF (rayaim > 1.5)
+   PRINT "REAL RAY AIMING IS ON, and this macro cannot be trusted with it."
+   PRINT " "
+   PRINT "The normalised pupil coordinate then aims at the real stop rather than at"
+   PRINT "the paraxial entrance pupil, so rho stops being the variable in which these"
+   PRINT "coefficients are defined - it differs from it by the pupil aberration. The"
+   PRINT "third order would still come out right and the fifth and seventh would"
+   PRINT "disagree with FORBES by a few per cent, which reads exactly like a fault in"
+   PRINT "one of the two routes and is not one."
+   PRINT " "
+   PRINT "Turn ray aiming off and run it again."
+   GOTO 900
+ENDIF
+IF (rayaim > 0.5)
+   PRINT "NOTE: paraxial ray aiming is on. On a centred system with no pupil shift"
+   PRINT "that leaves the pupil coordinate where this macro needs it, but if the"
+   PRINT "fifth order disagrees with FORBES it is the first thing to turn off."
+   PRINT " "
+ENDIF
+
+! Which conjugate, and which field type. The conjugate decides only what gets
+! printed; the FIELD TYPE decides how the scale ladder reaches the field. Those two
+! are deliberately kept apart - see the head of this file.
+infconj = 0
+IF (ABSO(THIC(0)) > 1E10) THEN infconj = 1
+
+fldtyp = FTYP()
+fangle = 0
+IF (fldtyp < 0.5) THEN fangle = 1
+
+IF (fldtyp > 2.5)
+   PRINT "The field type is real image height or theodolite angles, and neither can"
+   PRINT "be used here."
+   PRINT " "
+   PRINT "With real image height OpticStudio iterates the chief ray until it lands"
+   PRINT "where it was asked to, so the image height is linear in the field"
+   PRINT "coordinate BY CONSTRUCTION and the distortion is folded into the field"
+   PRINT "variable itself. The scale ladder would then be running a field of"
+   PRINT "s + O(s^3) rather than s, and every order above the third would take a"
+   PRINT "share of the order below it - the third order right, the rest quietly"
+   PRINT "wrong, which is the worse of the two ways to fail."
+   PRINT " "
+   PRINT "Convert the fields to angle or object height and run it again."
+   GOTO 900
+ENDIF
+
+fdesc$ = "angle"
+IF (fldtyp > 0.5) THEN fdesc$ = "object height"
+IF (fldtyp > 1.5) THEN fdesc$ = "paraxial image height"
 
 RAYTRACE 0, 0, 0, 1, wl
 IF (RAYE() != 0)
@@ -165,11 +273,19 @@ IF (ABSO(mgu) < eps)
    GOTO 900
 ENDIF
 
-! The focal length, and the paraxial focus. A ray entering parallel to the axis at
-! height y leaves with slope u and crosses the axis a focal length later, so both
-! fall out of the marginal ray already traced.
-efl = -mgy / mgu
+! The paraxial focus, where the axial marginal ray crosses the axis. It is the same
+! construction at either conjugate, and it is where the rays are caught - not the
+! image surface the file happens to carry - so that the answer does not move when
+! someone refocuses the lens.
 gpfd = -RAYY(nsm) / mgu
+
+! -mgy / mgu is the focal length only at the infinite conjugate, where the marginal
+! ray arrives collimated and its height at surface one IS the pupil height it was
+! launched at. At a finite conjugate the same ratio is a working distance and means
+! nothing, so the focal length is taken from the system data there. Nothing below
+! depends on this either way; it is printed for orientation and no more.
+efl = sysefl
+IF (infconj == 1) THEN efl = -mgy / mgu
 
 RAYTRACE 0, 1, 0, 0, wl
 IF (RAYE() != 0)
@@ -177,16 +293,91 @@ IF (RAYE() != 0)
    GOTO 900
 ENDIF
 hmax = RAYM(0) / RAYN(0)
-IF (ABSO(hmax) < eps)
-   PRINT "The chief ray carries no field. Is the field zero?"
+objh = RAYY(0)
+
+amax = 0
+IF (fangle == 1)
+   IF (ABSO(hmax) < eps)
+      PRINT "The chief ray carries no field angle. Is the field zero?"
+      GOTO 900
+   ENDIF
+   amax = ATAN(hmax)
+ENDIF
+
+! THE PARAXIAL IMAGE HEIGHT AT FULL FIELD, MEASURED rather than assumed: the
+! paraxial chief ray projected to the very plane the real rays are caught on. That
+! is what makes it the right thing to subtract by definition instead of by a formula
+! which happens to agree - efl tan(field) is this divided by the image space index.
+! gpfd is used here bare, where the real trace below subtracts RAYZ from it. That is
+! not an oversight: a paraxial ray lands on the TANGENT PLANE by construction, so
+! there is no sag to take off, and writing it this way keeps hpmax right whatever
+! OpticStudio chooses to report for RAYZ in paraxial mode. The real rays do have a
+! sag and do subtract it.
+hpmax = RAYY(nsm) + gpfd * RAYM(nsm) / RAYN(nsm)
+IF (ABSO(hpmax) < eps)
+   PRINT "The paraxial image height at full field is zero, so there is no field with"
+   PRINT "which to separate the field-dependent coefficients."
    GOTO 900
 ENDIF
-amax = ATAN(hmax)
+
+! ---------------------------------------------------------------------------------
+! THE FIELD MAPPING, PROVED ON THIS SYSTEM RATHER THAN ASSUMED.
+!
+! Everything below rests on one claim: that the normalised coordinate shoot builds
+! puts the paraxial image height at exactly its intended fraction of full field. That
+! claim is about OpticStudio's field conventions and not about optics, and it is the
+! kind of thing which is easy to get wrong and impossible to see in the output - a
+! field mapping off by half a per cent moves every field-dependent coefficient and
+! reads as a fault in FORBES.
+!
+! It cost nothing to prove instead. The chief ray is sent at the coordinate the
+! ladder would use for seven tenths of full field, and the paraxial image height has
+! to come back as seven tenths of hpmax. One paraxial ray settles it on THIS system,
+! whatever the field type and whichever conjugate.
+! ---------------------------------------------------------------------------------
+
+qfr = 0.7
+qhy = qfr
+IF (fangle == 1) THEN qhy = ATAN(qfr * hmax) / amax
+
+RAYTRACE 0, qhy, 0, 0, wl
+IF (RAYE() != 0)
+   PRINT "The paraxial chief ray will not trace at seven tenths of full field."
+   GOTO 900
+ENDIF
+qchk = RAYY(nsm) + gpfd * RAYM(nsm) / RAYN(nsm)
+qerr = ABSO(qchk - qfr * hpmax) / ABSO(hpmax)
+
+IF (qerr > 1E-8)
+   FORMAT 12.4 EXP
+   PRINT "THE FIELD MAPPING IS NOT LINEAR IN THE SCALE. Relative error ", qerr
+   PRINT " "
+   PRINT "At seven tenths of full field the paraxial image height should be seven"
+   PRINT "tenths of its full-field value and it is not, so the ladder would be"
+   PRINT "shrinking a field of s + O(s^3) rather than s. Every order above the third"
+   PRINT "would then take a share of the order below it - the third order right, the"
+   PRINT "rest quietly wrong. Whatever this system's field convention is, it is not"
+   PRINT "one this macro knows how to scale."
+   GOTO 900
+ENDIF
 
 FORMAT 12.6
-PRINT "Effective focal length     ", efl
+PRINT "Field type                  ", fdesc$
+IF (infconj == 1)
+   PRINT "Conjugate                   infinite"
+   PRINT "Effective focal length     ", efl
+   PRINT "tan of the maximum field   ", hmax
+ELSE
+   PRINT "Conjugate                   finite"
+   PRINT "Object distance            ", THIC(0)
+   PRINT "Object height at full field", objh
+   PRINT "Paraxial magnification     ", sysmag
+   PRINT "Effective focal length     ", efl
+ENDIF
 PRINT "Paraxial focus distance    ", gpfd
-PRINT "tan of the maximum field   ", hmax
+PRINT "Paraxial image height      ", hpmax
+FORMAT 12.4 EXP
+PRINT "Field mapping residual     ", qerr
 PRINT " "
 
 ! ---------------------------------------------------------------------------------
@@ -370,10 +561,21 @@ END
 ! shoot - trace the current shape at all twelve scales and store the transverse
 ! aberration, meridional in VEC1(vey..) and sagittal in VEC1(vez..).
 !
-! The field is set through the NORMALISED coordinate, so the angle wanted -
-! atan(s h hmax) - is divided by the maximum field angle rather than handed over in
-! degrees. The paraxial image height, efl tan(field), is subtracted here for the
-! reason given at the head of this file.
+! The field is set through the NORMALISED coordinate, and kfr - the fraction of full
+! field this rung is meant to sit at - is what the coefficients are defined against.
+! Turning kfr into that coordinate is the ONE place the field type enters:
+!
+!   angle           the coordinate is a fraction of the ANGLE and kfr is a fraction
+!                   of its TANGENT, so it goes through atan(kfr tan a_max) / a_max
+!   object height,  already linear in the coordinate, so kfr is handed over as it is
+!   paraxial image
+!
+! Neither branch asks which conjugate it is on, and that is the point: a finite
+! object at distance t sits at height -t tan(field), so the angle mapping is the same
+! there as at infinity. See the head of this file.
+!
+! hpmax kfr is the paraxial image height for this rung, and subtracting it is fatal
+! rather than untidy to skip - it is the whole of the degree-one term.
 !
 ! The landing is taken at the PARAXIAL FOCUS, not at the image surface the file
 ! happens to carry, so that the answer does not move when someone refocuses the lens.
@@ -384,8 +586,9 @@ SUB shoot
       ksc = VEC1(vsc + ki)
       kpy = ksc * srho * COSI(sthe)
       kpx = ksc * srho * SINE(sthe)
-      ktan = ksc * shh * hmax
-      khy = ATAN(ktan) / amax
+      kfr = ksc * shh
+      khy = kfr
+      IF (fangle == 1) THEN khy = ATAN(kfr * hmax) / amax
 
       RAYTRACE 0, khy, kpx, kpy, wl
       IF (RAYE() != 0)
@@ -394,7 +597,7 @@ SUB shoot
          kdz = gpfd - RAYZ(nsm)
          kyy = RAYY(nsm) + kdz * RAYM(nsm) / RAYN(nsm)
          kxx = RAYX(nsm) + kdz * RAYL(nsm) / RAYN(nsm)
-         VEC1(vey + ki) = kyy - efl * ktan
+         VEC1(vey + ki) = kyy - hpmax * kfr
          VEC1(vez + ki) = kxx
       ENDIF
    NEXT

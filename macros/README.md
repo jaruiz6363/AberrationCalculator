@@ -1201,14 +1201,110 @@ an aspheric system it would be worth taking seriously, because that is the size 
 the aspheric Buchdahl arrangement carries (6.85 and 7.75 per cent on two of the ladder
 fixtures).
 
+### The finite conjugate
+
+RAYINV now carries both conjugates, and the interesting part is how little the trace itself
+had to change: nothing. The ray basis is OpticStudio's own normalised pupil and field
+coordinates, and OpticStudio already aims those correctly whichever side the object is on.
+What changed is the two quantities the macro subtracts and divides by.
+
+**What the conjugate does not decide.** The scale ladder has to move the field variable in
+exact proportion to `s`, and whether the normalised field coordinate already does that turns
+on the **field type**, not on the conjugate:
+
+| field type | mapping | why |
+|---|---|---|
+| angle | `atan(s·h·tan a_max) / a_max` | the coordinate is a fraction of the *angle*, the field variable goes as its *tangent* |
+| object height | `s·h`, unchanged | already linear |
+| paraxial image height | `s·h`, unchanged | already linear |
+| real image height | **refused** | see below |
+
+The angle mapping is identical at both conjugates, and the reason is worth stating because it
+is what makes the finite conjugate nearly free: OpticStudio gives the **object-space chief
+ray** the field angle itself at either conjugate, so a finite object sits at height
+`-(t + ep)·tan(field)` — still exactly linear in the tangent, only with a different constant
+in front, and the constant divides out of a ratio. That was measured against OpticStudio,
+not assumed. On the Cooke at 250 mm the chief ray's object-space slope at full field is
+`0.363970234` against `tan 20° = 0.363970234`.
+
+The earlier version applied the angle mapping whatever the field type was. That was right for
+the one conjugate it accepted and wrong for paraxial image height, which it would have taken
+without comment.
+
+**Real image height is refused.** OpticStudio iterates the chief ray until it lands where it
+was asked to, which makes the image height linear in the coordinate *by construction* and
+folds the distortion into the field variable itself. The ladder would then be shrinking a
+field of `s + O(s³)` rather than `s`, and every order above the third would take a share of
+the order below it — third order right, the rest quietly wrong. That is the worse of the two
+ways to fail, so it is refused rather than noted.
+
+**Two corrections came with it.** `efl = -y₁/u_k` is the focal length only when the marginal
+ray arrives collimated; at a finite conjugate it is a working distance and means nothing, so
+the focal length is taken from the system data there and is printed for orientation only.
+And the paraxial image height is now **measured** — the paraxial chief ray projected to the
+same plane the real rays are caught on — rather than computed as `efl·tan(field)`, which is
+that quantity divided by the image space index and so parts company with it when the image
+sits in glass.
+
+### The field mapping is proved on each run, not assumed
+
+All of the above rests on one claim: that the normalised coordinate the macro builds puts the
+paraxial image height at exactly its intended fraction of full field. That claim is about
+OpticStudio's field conventions, not about optics, and a mapping off by half a per cent would
+move every field-dependent coefficient and read as a fault in FORBES.
+
+So the macro proves it, on the actual system, every run. The chief ray is sent at the
+coordinate the ladder would use for seven tenths of full field, and the paraxial image height
+has to come back as seven tenths of `hpmax`. One paraxial ray. The residual is printed.
+
+The check is worth having because it fires. Against the shipped mapping on the finite Cooke
+it reads `7.9E-17`; with the mapping deliberately broken:
+
+| injected fault | residual | verdict |
+|---|---|---|
+| angle fields treated as linear | 1.5E-02 | refused |
+| maximum field angle wrong by 2 per cent | 1.5E-02 | refused |
+| `hmax` from the *refracted* slope at surface 1 | 5.0E-03 | refused |
+| the mapping as shipped | 7.9E-17 | passes |
+
+The third of those is not hypothetical. It is the mistake this work nearly shipped: the
+direction cosines OpticStudio reports at a surface are those *after* refraction, and reading
+them as the incoming slope makes the max field angle come out 16.4° instead of 20°.
+
+### Checked at the finite conjugate
+
+On `CookeTripletFinite` — the Cooke triplet with the object 250 mm away, angle fields, 20°
+— against the answer this repository already agrees on by two other routes (FORBES' series
+trace and Buchdahl, corroborated by FIFTHORD on the eighteen it reaches):
+
+| | worst disagreement, real rays against the series |
+|---|---|
+| third order | 6.4E-08, at `E` |
+| fifth order | 2.9E-06, at `N2` |
+| the twenty tau | 6.9E-04, at `tau12` |
+
+That is the same band as the infinite-conjugate spherical run, and worst at the same
+coefficient. The mirror used for this check traces its own skew rays and shares no code with
+the ZPL or with the C#; it was itself validated against OpticStudio's own intercepts and
+direction cosines, meridional and skew, to 1E-10 before being trusted.
+
 ### Limits
 
-Infinite conjugate: the paraxial height it subtracts is `efl·tan(field)`, the collimated
-form. FORBES carries both conjugates and this does not.
+Field type angle, object height or paraxial image height. Real image height and theodolite
+angles are refused, for the reason above.
 
-Rotationally symmetric and sequential. Rays that will not trace are dropped rather than
-fudged, and the count is printed; if many are lost the remaining shapes may not span the
-coefficients, and it says so.
+**Real ray aiming is refused.** With it on the normalised pupil coordinate aims at the real
+stop rather than at the paraxial entrance pupil, so `rho` stops being the variable these
+coefficients are defined in — it differs from it by the pupil aberration. The third order
+would be untouched, since that enters at degree three and shifts the third order only at
+degree five, and the fifth and seventh would disagree with FORBES by a few per cent. That
+reads exactly like a fault in one of the two routes and is not one. Ray aiming is far
+likelier to be on at a finite conjugate than at infinity, so this guard earns its keep mostly
+on the path just added. Paraxial ray aiming is noted rather than refused.
+
+Rotationally symmetric — now checked, not assumed — and sequential. Rays that will not trace
+are dropped rather than fudged, and the count is printed; if many are lost the remaining
+shapes may not span the coefficients, and it says so.
 
 It is **not** slow, despite the 900 real rays — those turn out to be cheap next to FORBES'
 series arithmetic, which was the opposite of what was expected.
