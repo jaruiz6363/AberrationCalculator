@@ -150,13 +150,22 @@
 !
 !     tau2 TO tau20 ARE NOT RIGHT there. Buchdahl gives the aspheric scheme in the
 !     monograph but never published an ARRANGED TABLE for it, and this project could
-!     not resolve his instructions into one. Those nineteen rest on an arrangement
-!     re-derived here with no printed answer to check it against, and that is where
-!     the error lives - docs/forbes.md measures 6.85 and 7.75 per cent on two of the
-!     ladder fixtures. So on a figured lens do not read a disagreement in tau2 to
-!     tau20 as this macro being wrong. Removing exactly that difficulty is why this
-!     route exists: Forbes has no aspheric table to arrange, because a sphere, a
-!     conic and an asphere are the same code with different coefficients in f.
+!     not resolve his instructions into one. Those nineteen therefore rest on an
+!     arrangement re-derived here, and that is the only part of the work with no
+!     printed answer to check against.
+!
+!     HOW WRONG, AND AGAINST WHAT. The judge is neither scheme: it is a ray
+!     inversion, which recovers all twenty coefficients from REAL TRACED RAYS.
+!     Measured against it, the Buchdahl route gets the aspheric fixtures
+!     Ladder1_A4, Ladder1_Conic and Ladder1_FiguredSphere right, and two others
+!     wrong - Ladder2_A4_Second by 6.85 per cent, Ladder2_FiguredSphere_Then_A4 by
+!     7.75. So it is not wrong on every asphere. It is wrong on some, and there is
+!     no way to tell in advance which, which is what makes it unusable rather than
+!     merely imprecise.
+!
+!     Removing exactly that difficulty is why this route exists: Forbes has no
+!     aspheric table to arrange, because a sphere, a conic and an asphere are the
+!     same code with different coefficients in f.
 !
 !   The third and fifth orders are not affected either way.
 !
@@ -170,6 +179,12 @@ eps = 1E-10
 ! Read before anything changes it, and restored at label 900 - including on the
 ! paths that leave early, which is why it is set here and not beside the trace.
 paraxmode = PMOD()
+
+! Set to 1 to print the stage 4 intermediates for the first ray shape - ym, bm, the
+! invariants, S and T on them, and where the ray lands. That block is what found the
+! one transcription fault stage 4 shipped with, and it is left in because the next
+! fault of that kind will be found the same way.
+dbg4 = 0
 
 ! Degree three is the tertiary. Twenty monomials: (d+1)(d+2)(d+3)/6.
 ndeg = 3
@@ -905,6 +920,37 @@ FOR jsh = 0, nsh - 1, 1
    shh = VEC2(3203 + jsh * 3)
 
    GOSUB mkrhs
+
+   ! TEMPORARY DIAGNOSTIC. Stage 4 gives the right answer for every coefficient
+   ! that carries no field and the wrong one for every coefficient that does, so
+   ! the fault is somewhere between the shape and the right-hand side rather than
+   ! in the model or the solve, both of which are checked separately. This prints
+   ! the intermediates for the first shape so the divergence can be located
+   ! against the same quantities computed outside OpticStudio.
+   IF ((jsh == 0) & (dbg4 == 1))
+      PRINT " "
+      PRINT "DIAGNOSTIC - shape 0, rho 0.35, theta 0, h 0.35"
+      FORMAT 12.6
+      PRINT "   srho ", srho, "  sthe ", sthe, "  shh ", shh
+      PRINT "   epr  ", epr, "  epp  ", epp, "  hmax ", hmax
+      PRINT " "
+      PRINT " coef              ym              bm               p               k"
+      FOR jd = 0, nzc - 1, 1
+         FORMAT 4.0
+         PRINT jd,
+         FORMAT 16.6 EXP
+         PRINT VEC3(zsy + jd), VEC3(zby + jd), VEC3(zpp + jd), VEC3(zkk + jd)
+      NEXT
+      PRINT " "
+      PRINT " coef               u         sSeries         tSeries            outM"
+      FOR jd = 0, nzc - 1, 1
+         FORMAT 4.0
+         PRINT jd,
+         FORMAT 16.6 EXP
+         PRINT VEC3(zuu + jd), VEC3(zss + jd), VEC3(ztt + jd), VEC3(zom + jd)
+      NEXT
+      PRINT " "
+   ENDIF
 
    mord = 3
    nunk = 5
@@ -2001,8 +2047,14 @@ SUB mkrhs
    za = zsz
    GOSUB zzero
    VEC3(zsz + 1) = srho * SINE(sthe) * epr
-   za = zby
-   zb = zsn
+   ! zscal is zb := za * zfac - SOURCE in za, DESTINATION in zb. These two were
+   ! once the other way round, which copied the still-empty zby into zsn instead of
+   ! the other way about, so the direction cosine bm was zero for every ray. The
+   ! symptom was that every coefficient carrying no field came out exactly right
+   ! and every coefficient carrying field came out wrong, because with bm zero the
+   ! invariants k and u vanish and the ray has aperture but no field.
+   za = zsn
+   zb = zby
    zfac = 1
    GOSUB zscal
    za = zbz
@@ -2201,13 +2253,20 @@ SUB gsolve
    FOR gc = 0, nunk - 1, 1
       gp = gc
       gbest = ABSO(VEC2(gata + gc * nunk + gc))
-      FOR gr = gc + 1, nunk - 1, 1
-         gv2 = ABSO(VEC2(gata + gr * nunk + gc))
-         IF (gv2 > gbest)
-            gbest = gv2
-            gp = gr
-         ENDIF
-      NEXT
+
+      ! GUARDED because ZPL treats an EMPTY range as an infinite loop rather than
+      ! executing it zero times. On the last column gc + 1 exceeds nunk - 1 and the
+      ! macro stops with "Infinite FOR LOOP detected". Every descending-bound loop
+      ! below carries the same guard for the same reason.
+      IF (gc < nunk - 1)
+         FOR gr = gc + 1, nunk - 1, 1
+            gv2 = ABSO(VEC2(gata + gr * nunk + gc))
+            IF (gv2 > gbest)
+               gbest = gv2
+               gp = gr
+            ENDIF
+         NEXT
+      ENDIF
       IF (gp != gc)
          FOR gk2 = 0, nunk - 1, 1
             gtmp = VEC2(gata + gc * nunk + gk2)
@@ -2225,23 +2284,27 @@ SUB gsolve
          PRINT "seventy-five and means the model rows are wrong."
          nfail = nfail + 1
       ELSE
-         FOR gr = gc + 1, nunk - 1, 1
-            gf = VEC2(gata + gr * nunk + gc) / gd
-            IF (gf != 0)
-               FOR gk2 = gc, nunk - 1, 1
-                  VEC2(gata + gr * nunk + gk2) = VEC2(gata + gr * nunk + gk2) - gf * VEC2(gata + gc * nunk + gk2)
-               NEXT
-               VEC2(gatb + gr) = VEC2(gatb + gr) - gf * VEC2(gatb + gc)
-            ENDIF
-         NEXT
+         IF (gc < nunk - 1)
+            FOR gr = gc + 1, nunk - 1, 1
+               gf = VEC2(gata + gr * nunk + gc) / gd
+               IF (gf != 0)
+                  FOR gk2 = gc, nunk - 1, 1
+                     VEC2(gata + gr * nunk + gk2) = VEC2(gata + gr * nunk + gk2) - gf * VEC2(gata + gc * nunk + gk2)
+                  NEXT
+                  VEC2(gatb + gr) = VEC2(gatb + gr) - gf * VEC2(gatb + gc)
+               ENDIF
+            NEXT
+         ENDIF
       ENDIF
    NEXT
 
    FOR gr = nunk - 1, 0, -1
       gs = VEC2(gatb + gr)
-      FOR gk2 = gr + 1, nunk - 1, 1
-         gs = gs - VEC2(gata + gr * nunk + gk2) * VEC2(gatb + gk2)
-      NEXT
+      IF (gr < nunk - 1)
+         FOR gk2 = gr + 1, nunk - 1, 1
+            gs = gs - VEC2(gata + gr * nunk + gk2) * VEC2(gatb + gk2)
+         NEXT
+      ENDIF
       VEC2(gatb + gr) = gs / VEC2(gata + gr * nunk + gr)
    NEXT
 RETURN
@@ -2322,9 +2385,15 @@ SUB showco
    PRINT "   tau2 TO tau20 ARE NOT RIGHT there. Buchdahl gives the aspheric scheme in"
    PRINT "   the monograph but never published an ARRANGED TABLE for it, and this"
    PRINT "   project could not resolve his instructions into one. Those nineteen rest"
-   PRINT "   on an arrangement re-derived with no printed answer to check against,"
-   PRINT "   and that is where the error lives - docs/forbes.md measures 6.85 and"
-   PRINT "   7.75 per cent on two of the ladder fixtures."
+   PRINT "   on an arrangement re-derived with no printed answer to check against."
+   PRINT " "
+   PRINT "   How wrong, and against what: the judge is neither scheme but a ray"
+   PRINT "   inversion, which recovers the coefficients from REAL TRACED RAYS. By"
+   PRINT "   that measure the Buchdahl route gets the fixtures Ladder1_A4,"
+   PRINT "   Ladder1_Conic and Ladder1_FiguredSphere right, and two others wrong -"
+   PRINT "   Ladder2_A4_Second by 6.85 per cent and Ladder2_FiguredSphere_Then_A4 by"
+   PRINT "   7.75. So it is not wrong on every asphere; it is wrong on some, with no"
+   PRINT "   way to tell in advance which."
    PRINT " "
    PRINT "So on a figured lens a disagreement in tau2 to tau20 is not this macro"
    PRINT "being wrong. Removing that difficulty is why this route exists: Forbes has"
