@@ -140,13 +140,28 @@
 !   checked on a Cooke triplet. Two wholly different schemes - Buchdahl's arranged
 !   tables and Forbes' series trace - sharing no arithmetic.
 !
-!   On a FIGURED system, expect the seventh orders to DIFFER, and do not read that as
-!   this macro being wrong. Buchdahl's aspheric tertiary is the one part of that
-!   scheme with no printed table to check a transcription against, and it is where
-!   its known error lives; docs/forbes.md measures it at 6.85 and 7.75 per cent on
-!   two of the ladder fixtures. Removing that difficulty is the whole reason this
-!   route exists, so where they part company on a figured lens this is the one to
-!   believe. BUCH7 declines such a system outright in any case.
+!   On a FIGURED system the comparison splits, and the split is exact rather than a
+!   matter of degree:
+!
+!     tau1, which is B7, IS RIGHT in the Buchdahl route even for an asphere. It is
+!     not reached through the aspheric table at all - it falls out of the fifth-order
+!     working, which is why BUCH7 arrives at it twice over and gets the same number
+!     both ways. Compare it with confidence.
+!
+!     tau2 TO tau20 ARE NOT RIGHT there. Buchdahl gives the aspheric scheme in the
+!     monograph but never published an ARRANGED TABLE for it, and this project could
+!     not resolve his instructions into one. Those nineteen rest on an arrangement
+!     re-derived here with no printed answer to check it against, and that is where
+!     the error lives - docs/forbes.md measures 6.85 and 7.75 per cent on two of the
+!     ladder fixtures. So on a figured lens do not read a disagreement in tau2 to
+!     tau20 as this macro being wrong. Removing exactly that difficulty is why this
+!     route exists: Forbes has no aspheric table to arrange, because a sphere, a
+!     conic and an asphere are the same code with different coefficients in f.
+!
+!   The third and fifth orders are not affected either way.
+!
+!   BUCH7.ZPL itself declines a figured system outright, so the comparison there is
+!   with the Buchdahl route in src/AberrationCalculator.Core, not with the macro.
 !
 ! ---------------------------------------------------------------------------------
 
@@ -2297,14 +2312,25 @@ SUB showco
    PRINT "series trace, sharing no arithmetic. tau1 must equal BUCH7's B7. That"
    PRINT "agreement has been demonstrated on a Cooke triplet, and on spheres only."
    PRINT " "
-   PRINT "ON A FIGURED SYSTEM DO NOT EXPECT THE SEVENTH ORDERS TO AGREE, and do not"
-   PRINT "read a disagreement as this macro being wrong. Buchdahl's ASPHERIC tertiary"
-   PRINT "is the one part of that scheme with no printed table to check a"
-   PRINT "transcription against, and it is where its known error lives - see"
-   PRINT "docs/forbes.md, which measures it at 6.85 and 7.75 per cent on two of the"
-   PRINT "ladder fixtures. Removing exactly that difficulty is why this route exists,"
-   PRINT "so where the two part company on a figured lens, this one is the one to"
-   PRINT "believe. The third and fifth orders are not affected."
+   PRINT "ON A FIGURED SYSTEM the comparison splits, and it splits exactly:"
+   PRINT " "
+   PRINT "   tau1, which is B7, IS RIGHT in the Buchdahl route even for an asphere."
+   PRINT "   It is not reached through the aspheric table at all - it falls out of"
+   PRINT "   the fifth-order working, which is why BUCH7 arrives at it twice over and"
+   PRINT "   gets the same number both ways. Compare it with confidence."
+   PRINT " "
+   PRINT "   tau2 TO tau20 ARE NOT RIGHT there. Buchdahl gives the aspheric scheme in"
+   PRINT "   the monograph but never published an ARRANGED TABLE for it, and this"
+   PRINT "   project could not resolve his instructions into one. Those nineteen rest"
+   PRINT "   on an arrangement re-derived with no printed answer to check against,"
+   PRINT "   and that is where the error lives - docs/forbes.md measures 6.85 and"
+   PRINT "   7.75 per cent on two of the ladder fixtures."
+   PRINT " "
+   PRINT "So on a figured lens a disagreement in tau2 to tau20 is not this macro"
+   PRINT "being wrong. Removing that difficulty is why this route exists: Forbes has"
+   PRINT "no aspheric table to arrange, because a sphere, a conic and an asphere are"
+   PRINT "the same code with different coefficients in f. The third and fifth orders"
+   PRINT "are not affected either way."
    PRINT " "
    PRINT "The third order can also be checked against Analyze > Aberrations > Seidel"
    PRINT "Coefficients and the fifth against FIFTHORD. Neither is part of this"
