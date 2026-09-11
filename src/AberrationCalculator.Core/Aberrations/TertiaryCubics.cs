@@ -34,9 +34,9 @@ public static class TertiaryCubics
     /// </summary>
     public sealed class Poly
     {
-        public readonly double[,,] C = new double[4, 4, 4];
+        public readonly Scalar[,,] C = new Scalar[4, 4, 4];
 
-        public static Poly Scalar(double s)
+        public static Poly Scalar(Scalar s)
         {
             var p = new Poly();
             p.C[0, 0, 0] = s;
@@ -44,7 +44,7 @@ public static class TertiaryCubics
         }
 
         /// <summary>a*xi + b*eta + c*zeta.</summary>
-        public static Poly Linear(double a, double b, double c)
+        public static Poly Linear(Scalar a, Scalar b, Scalar c)
         {
             var p = new Poly();
             p.C[1, 0, 0] = a; p.C[0, 1, 0] = b; p.C[0, 0, 1] = c;
@@ -61,7 +61,7 @@ public static class TertiaryCubics
             return r;
         }
 
-        public static Poly operator *(double s, Poly x)
+        public static Poly operator *(Scalar s, Poly x)
         {
             var r = new Poly();
             for (int a = 0; a < 4; a++)
@@ -78,13 +78,13 @@ public static class TertiaryCubics
             for (int b = 0; a + b < 4; b++)
             for (int c = 0; a + b + c < 4; c++)
             {
-                double xv = x.C[a, b, c];
+                Scalar xv = x.C[a, b, c];
                 if (xv == 0.0) continue;
                 for (int d = 0; a + d < 4; d++)
                 for (int e = 0; a + b + d + e < 4; e++)
                 for (int f = 0; a + b + c + d + e + f < 4; f++)
                 {
-                    double yv = y.C[d, e, f];
+                    Scalar yv = y.C[d, e, f];
                     if (yv == 0.0) continue;
                     r.C[a + d, b + e, c + f] += xv * yv;
                 }
@@ -103,9 +103,9 @@ public static class TertiaryCubics
     };
 
     /// <summary>Reads the ten cubic coefficients out of a polynomial, in table order.</summary>
-    public static double[] CubicPart(Poly p)
+    public static Scalar[] CubicPart(Poly p)
     {
-        var v = new double[10];
+        var v = new Scalar[10];
         for (int m = 0; m < 10; m++)
         {
             var (a, b, c) = Cubics[m];
@@ -132,15 +132,19 @@ public static class TertiaryCubics
         /// L side of the tertiary increment is built from. All zero for a sphere.</summary>
         public Poly G1 = new(), G2 = new(), G3 = new(), B1 = new(), B2 = new();
 
-        public Surface(double k, double c1, double c2, double c0 = 1.0, double c3 = 0.0)
-        {
-            double th1 = c0 / 2.0;                     // theta1 = c0/2, from (77.1) and Sec. 79
-            double th2 = th1 * th1, th3 = th2 * th1, th4 = th3 * th1, th5 = th4 * th1, th6 = th5 * th1;
-            double k2 = k * k;
+        public Surface(Scalar k, Scalar c1, Scalar c2) : this(k, c1, c2, 1.0, default) { }
 
-            double sigma0 = -1.0 / (2.0 * k);
-            double tau0 = (1.0 - k) / (2.0 * k);
-            double ms = -sigma0, mt = -tau0;           // the leading -sigma0, -tau0 of (77.4-5)
+        public Surface(Scalar k, Scalar c1, Scalar c2, Scalar c0) : this(k, c1, c2, c0, default) { }
+
+        public Surface(Scalar k, Scalar c1, Scalar c2, Scalar c0, Scalar c3)
+        {
+            Scalar th1 = c0 / 2.0;                     // theta1 = c0/2, from (77.1) and Sec. 79
+            Scalar th2 = th1 * th1, th3 = th2 * th1, th4 = th3 * th1, th5 = th4 * th1, th6 = th5 * th1;
+            Scalar k2 = k * k;
+
+            Scalar sigma0 = -1.0 / (2.0 * k);
+            Scalar tau0 = (1.0 - k) / (2.0 * k);
+            Scalar ms = -sigma0, mt = -tau0;           // the leading -sigma0, -tau0 of (77.4-5)
 
             // (77.4)
             var sigma1 = ms * Poly.Linear(0.5 * c0 * c0, -k2 * c0, k2 - 1.0);
@@ -207,9 +211,9 @@ public static class TertiaryCubics
             // cancellation once, by hand, gives the theta below; the c1^2 terms drop out of
             // theta3 exactly. Nothing is assumed by doing so: the Table I, II and III tests
             // pass through beta, so a wrong theta could not survive them.
-            double c0sq = c0 * c0, c0fifth = c0sq * c0sq * c0;
-            double theta2 = c0sq * c0 / 8.0 + c1 / 4.0;
-            double theta3 = c0fifth / 16.0 + c0sq * c1 / 4.0 + c2 / 6.0;
+            Scalar c0sq = c0 * c0, c0fifth = c0sq * c0sq * c0;
+            Scalar theta2 = c0sq * c0 / 8.0 + c1 / 4.0;
+            Scalar theta3 = c0fifth / 16.0 + c0sq * c1 / 4.0 + c2 / 6.0;
             var beta1 = Poly.Linear(th1, 0.0, 0.0);
             var beta2 = Quad(theta2, -2.0 * th2, 0.0, 0.0, 0.0, 0.0);
             var beta3 = Cubic(theta3, -6.0 * th1 * theta2, th3, 4.0 * th3, 0.0, 0.0);
@@ -221,7 +225,7 @@ public static class TertiaryCubics
             B1 = beta1;  B2 = beta2;
         }
 
-        private static Poly Quad(double xx, double xe, double xz, double ee, double ez, double zz)
+        private static Poly Quad(Scalar xx, Scalar xe, Scalar xz, Scalar ee, Scalar ez, Scalar zz)
         {
             var p = new Poly();
             p.C[2, 0, 0] = xx; p.C[1, 1, 0] = xe; p.C[1, 0, 1] = xz;
@@ -229,7 +233,7 @@ public static class TertiaryCubics
             return p;
         }
 
-        private static Poly Cubic(double xxx, double xxe, double xxz, double xee, double xez, double xzz)
+        private static Poly Cubic(Scalar xxx, Scalar xxe, Scalar xxz, Scalar xee, Scalar xez, Scalar xzz)
         {
             var p = new Poly();
             p.C[3, 0, 0] = xxx; p.C[2, 1, 0] = xxe; p.C[2, 0, 1] = xxz;
@@ -239,7 +243,10 @@ public static class TertiaryCubics
     }
 
     /// <summary>The ten coefficients of 16 S3 - Buchdahl's lambda, Table I. Index 0..9.</summary>
-    public static double[] Lambda(double k, double c1, double c2, double c0 = 1.0)
+    public static Scalar[] Lambda(Scalar k, Scalar c1, Scalar c2) => Lambda(k, c1, c2, 1.0);
+
+    /// <summary>The same, for a surface whose leading figuring coefficient is given.</summary>
+    public static Scalar[] Lambda(Scalar k, Scalar c1, Scalar c2, Scalar c0)
     {
         var s = new Surface(k, c1, c2, c0);
         var v = CubicPart(s.S3);
@@ -248,11 +255,14 @@ public static class TertiaryCubics
     }
 
     /// <summary>The six coefficients of 16 X3 - Buchdahl's 'nu, Table II. Index 0..5.</summary>
-    public static double[] NuPrime(double k, double c1, double c2, double c0 = 1.0)
+    public static Scalar[] NuPrime(Scalar k, Scalar c1, Scalar c2) => NuPrime(k, c1, c2, 1.0);
+
+    /// <summary>The same, for a surface whose leading figuring coefficient is given.</summary>
+    public static Scalar[] NuPrime(Scalar k, Scalar c1, Scalar c2, Scalar c0)
     {
         var s = new Surface(k, c1, c2, c0);
         var v = CubicPart(s.X3);
-        var r = new double[6];
+        var r = new Scalar[6];
         for (int m = 0; m < 6; m++) r[m] = 16.0 * v[m];
         return r;
     }
@@ -264,14 +274,14 @@ public static class TertiaryCubics
     /// <para>From (5.2) against (5.3), <c>nu = [lambda + (k-1) 'nu] / k</c>. That relation
     /// was checked against the printed tables before being relied on.</para>
     /// </summary>
-    public static double[] Nu(double k, double c1, double c2)
+    public static Scalar[] Nu(Scalar k, Scalar c1, Scalar c2)
     {
         var lambda = Lambda(k, c1, c2);
         var nuPrime = NuPrime(k, c1, c2);
-        var v = new double[10];
+        var v = new Scalar[10];
         for (int m = 0; m < 10; m++)
         {
-            double p = m < 6 ? nuPrime[m] : 0.0;
+            Scalar p = m < 6 ? nuPrime[m] : 0.0;
             v[m] = (lambda[m] + (k - 1.0) * p) / k;
         }
         return v;
@@ -282,16 +292,16 @@ public static class TertiaryCubics
     /// unfigured. These are what feed <see cref="TertiaryScriptT.Expand"/> to give the
     /// aspheric increment to the script-T.
     /// </summary>
-    public static (double[] Nu, double[] NuPrime) Increment(double k, double c1, double c2)
+    public static (Scalar[] Nu, Scalar[] NuPrime) Increment(Scalar k, Scalar c1, Scalar c2)
     {
         var nu = Nu(k, c1, c2);
         var nu0 = Nu(k, 0.0, 0.0);
         var np = NuPrime(k, c1, c2);
         var np0 = NuPrime(k, 0.0, 0.0);
 
-        var dn = new double[10];
+        var dn = new Scalar[10];
         for (int m = 0; m < 10; m++) dn[m] = nu[m] - nu0[m];
-        var dp = new double[6];
+        var dp = new Scalar[6];
         for (int m = 0; m < 6; m++) dp[m] = np[m] - np0[m];
         return (dn, dp);
     }
@@ -305,12 +315,12 @@ public static class TertiaryCubics
     /// plano surface goes through unharmed. At c0 = 0 the y term drops out entirely and the
     /// cubic is simply -v X3, which is not zero when the surface is figured.</para>
     /// </summary>
-    public static double[] DCubic(double k, double c1, double c2, double c0, double y, double v)
+    public static Scalar[] DCubic(Scalar k, Scalar c1, Scalar c2, Scalar c0, Scalar y, Scalar v)
     {
         var lambda = Lambda(k, c1, c2, c0);          // 16 S3
         var nuPrime = NuPrime(k, c1, c2, c0);        // 16 X3
-        double Y = c0 * y;
-        double vPrime = (1.0 - k) * Y + k * v;
+        Scalar Y = c0 * y;
+        Scalar vPrime = (1.0 - k) * Y + k * v;
 
         // S3 and X3 do not carry the same power of c0. Converting a cubic between the
         // unit-curvature form and this one costs c0 to the monomial weight for S3, and one
@@ -318,7 +328,7 @@ public static class TertiaryCubics
         // form has xi-hat/2, and the same offset runs through beta2 and beta3. So the X3
         // term carries an explicit c0 here. It is a multiplication, not a division, which is
         // the whole point of working in these variables.
-        var cubic = new double[10];
+        var cubic = new Scalar[10];
         for (int m = 0; m < 10; m++)
             cubic[m] = (Y * lambda[m] - (m < 6 ? c0 * vPrime * nuPrime[m] : 0.0)) / k;
         return cubic;
@@ -338,11 +348,11 @@ public static class TertiaryCubics
     /// figuring coefficient - which is exactly why paper II, treating only spherical
     /// surfaces, writes its (2.1) as ΔΛ = D I with no L term at all.</para>
     /// </summary>
-    public static double[] LCubic(
-        double k, double c1, double c2, double c3, double c0, double y, double v)
+    public static Scalar[] LCubic(
+        Scalar k, Scalar c1, Scalar c2, Scalar c3, Scalar c0, Scalar y, Scalar v)
     {
         var s = new Surface(k, c1, c2, c0, c3);
-        double vPrime = (1.0 - k) * c0 * y + k * v;
+        Scalar vPrime = (1.0 - k) * c0 * y + k * v;
 
         // D(n)/(N(1-k)), divided by c0 so that the product with gamma lands at the same
         // weight as DCubic. Both parts stay finite as c0 goes to zero.
@@ -366,10 +376,10 @@ public static class TertiaryCubics
     };
 
     /// <summary>Reads the six quadratic coefficients out of a polynomial, in table order.</summary>
-    public static double[] QuadraticPart(Poly p)
+    public static Scalar[] QuadraticPart(Poly p)
     {
         if (p == null) throw new ArgumentNullException(nameof(p));
-        var v = new double[6];
+        var v = new Scalar[6];
         for (int m = 0; m < 6; m++)
         {
             var (a, b, c) = Quadratics[m];
@@ -400,12 +410,12 @@ public static class TertiaryCubics
     /// aspheric secondary is already fixed by the bridge in
     /// <see cref="AsphericSchemeIncrements"/> - so anything common to the two cancels.</para>
     /// </summary>
-    public static (double[] D, double[] L) SecondaryHalves(
-        double k, double c1, double c2, double c0, double y, double v)
+    public static (Scalar[] D, Scalar[] L) SecondaryHalves(
+        Scalar k, Scalar c1, Scalar c2, Scalar c0, Scalar y, Scalar v)
     {
-        double vPrime = (1.0 - k) * c0 * y + k * v;
+        Scalar vPrime = (1.0 - k) * c0 * y + k * v;
 
-        Poly SecondD(double a1, double a2)
+        Poly SecondD(Scalar a1, Scalar a2)
         {
             var s = new Surface(k, a1, a2, c0);
             var x2 = s.B2 + s.B1 * s.S1;                 // X(2), by (63.4)
@@ -426,17 +436,17 @@ public static class TertiaryCubics
     /// with the scheme s1..s6 in the SAME sequence, and on a spherical system the ratio
     /// between them must be a single constant if they do.
     /// </summary>
-    public static double[] SecondaryDSpherical(double k, double c0, double y, double v)
+    public static Scalar[] SecondaryDSpherical(Scalar k, Scalar c0, Scalar y, Scalar v)
     {
-        double vPrime = (1.0 - k) * c0 * y + k * v;
+        Scalar vPrime = (1.0 - k) * c0 * y + k * v;
         var s = new Surface(k, 0.0, 0.0, c0);
         var x2 = s.B2 + s.B1 * s.S1;
         return QuadraticPart(y * s.S2 + (-vPrime) * x2);
     }
 
     /// <summary>What the figuring adds to <see cref="DCubic"/>: figured less unfigured.</summary>
-    public static double[] DCubicIncrement(
-        double k, double c1, double c2, double c0, double y, double v)
+    public static Scalar[] DCubicIncrement(
+        Scalar k, Scalar c1, Scalar c2, Scalar c0, Scalar y, Scalar v)
     {
         var figured = DCubic(k, c1, c2, c0, y, v);
         var bare = DCubic(k, 0.0, 0.0, c0, y, v);
@@ -454,14 +464,14 @@ public static class TertiaryCubics
     /// <para>Everything left - lambda, nu-prime, v" - is finite at <c>c0 = 0</c>, which is the
     /// same property <see cref="LCubic"/> already relies on.</para>
     /// </summary>
-    public static double[] DCubicOverC0(double k, double c1, double c2, double c0,
-                                        double y, double v)
+    public static Scalar[] DCubicOverC0(Scalar k, Scalar c1, Scalar c2, Scalar c0,
+                                        Scalar y, Scalar v)
     {
         var lambda = Lambda(k, c1, c2, c0);
         var nuPrime = NuPrime(k, c1, c2, c0);
-        double vPrime = (1.0 - k) * c0 * y + k * v;
+        Scalar vPrime = (1.0 - k) * c0 * y + k * v;
 
-        var cubic = new double[10];
+        var cubic = new Scalar[10];
         for (int m = 0; m < 10; m++)
             cubic[m] = (y * lambda[m] - (m < 6 ? vPrime * nuPrime[m] : 0.0)) / k;
         return cubic;
@@ -473,8 +483,8 @@ public static class TertiaryCubics
     /// <see cref="DCubicIncrement"/> and dividing the result by <c>c0</c> - except that it
     /// survives <c>c0 = 0</c>.
     /// </summary>
-    public static double[] DCubicIncrementOverC0(
-        double k, double c1, double c2, double c0, double y, double v)
+    public static Scalar[] DCubicIncrementOverC0(
+        Scalar k, Scalar c1, Scalar c2, Scalar c0, Scalar y, Scalar v)
     {
         var figured = DCubicOverC0(k, c1, c2, c0, y, v);
         var bare = DCubicOverC0(k, 0.0, 0.0, c0, y, v);
@@ -497,10 +507,10 @@ public static class TertiaryCubics
     /// </summary>
     public readonly struct Figuring
     {
-        public readonly double C1, C2, C3;
+        public readonly Scalar C1, C2, C3;
         public readonly bool Present;
 
-        private Figuring(double c1, double c2, double c3, bool present)
+        private Figuring(Scalar c1, Scalar c2, Scalar c3, bool present)
         {
             C1 = c1; C2 = c2; C3 = c3; Present = present;
         }
@@ -513,19 +523,19 @@ public static class TertiaryCubics
         /// before this is reached. Passing a raw curvature alongside a raw r-squared term would
         /// measure the figuring from the wrong sphere.
         /// </summary>
-        public static Figuring From(double conic, double a4, double a6, double a8,
-                                    double curvature, double scale)
+        public static Figuring From(Scalar conic, Scalar a4, Scalar a6, Scalar a8,
+                                    Scalar curvature, Scalar scale)
         {
-            if (Math.Abs(conic) < 1e-14 && a4 == 0.0 && a6 == 0.0 && a8 == 0.0) return None;
+            if (SMath.Abs(conic) < 1e-14 && a4 == 0.0 && a6 == 0.0 && a8 == 0.0) return None;
 
-            double cv = curvature, cv2 = cv * cv, cv3 = cv2 * cv;
-            double c1 = 8.0 * a4 + conic * cv3;
-            double c2 = 12.0 * a6
+            Scalar cv = curvature, cv2 = cv * cv, cv3 = cv2 * cv;
+            Scalar c1 = 8.0 * a4 + conic * cv3;
+            Scalar c2 = 12.0 * a6
                       + 0.75 * cv2 * (cv3 * conic * (conic + 2.0) - 2.0 * c1);
-            double t = cv3 * conic * (conic * conic + 3.0 * conic + 3.0) - 3.0 * c1;
+            Scalar t = cv3 * conic * (conic * conic + 3.0 * conic + 3.0) - 3.0 * c1;
             t = cv2 * (5.0 * cv2 * t - 12.0 * c2);
             t = (-6.0 * cv * c1 * c1 + t) / 8.0;
-            double c3 = 16.0 * a8 + t;
+            Scalar c3 = 16.0 * a8 + t;
 
             // HALVED, because the three lines above are the fifth-order code's convention and
             // this file wants Buchdahl's. (56.5) defines c1 = 4(th2 - th1^3) with th2 the r^4
@@ -541,7 +551,7 @@ public static class TertiaryCubics
             // the sweep over this file found nothing that fixed the quadratic without
             // breaking the linear part. theta2 and theta3 below are already Buchdahl's, taken
             // straight from (56.51), so they were being fed the wrong c as well.
-            double f2 = scale * scale, f3 = f2 * scale;
+            Scalar f2 = scale * scale, f3 = f2 * scale;
             return new Figuring(0.5 * c1 * f3, 0.5 * c2 * f3 * f2, 0.5 * c3 * f3 * f2 * f2, true);
         }
     }

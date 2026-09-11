@@ -16,7 +16,7 @@ namespace AberrationCalculator.Tests;
 /// <para>Table I of <i>J. Opt. Soc. Am.</i> <b>48</b>, 747 (1958) prints the value of every
 /// entry, for all six surfaces of the triplet used for illustration throughout the monograph
 /// and the papers. That is an oracle for the whole primary and secondary chain which owes
-/// nothing to a ray trace, to OpticStudio, or to any other program - and which, until now, was
+/// nothing to a ray trace or to any other program - and which, until now, was
 /// only ever spot-checked against the surface-1 column, where fourteen of the entries are zero
 /// by construction and can agree with anything.</para>
 ///

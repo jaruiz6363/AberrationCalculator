@@ -9,31 +9,31 @@ namespace AberrationCalculator.Core.Aberrations;
 public sealed class BuchdahlTerms
 {
     // Third order.
-    public double B, F, C, Pi, E;
+    public Scalar B, F, C, Pi, E;
 
     // Fifth order.
-    public double B5, F1, F2, M1, M2, M3, N1, N2, N3, C5, Pi5, E5;
+    public Scalar B5, F1, F2, M1, M2, M3, N1, N2, N3, C5, Pi5, E5;
 
     // Seventh order. B7 is Robb's tau1, and for a long time was the only one of the
     // twenty this program had - as it was the only one any of the six programs Johnson
     // surveyed in 1972 exposed. Tau2 onward come from Buchdahl's Table I scheme and are
     // present only for systems of spherical surfaces.
-    public double B7;
-    public double Tau2, Tau3, Tau4, Tau5, Tau6, Tau7, Tau8, Tau9, Tau10;
-    public double Tau11, Tau12, Tau13, Tau14, Tau15, Tau16, Tau17, Tau18, Tau19, Tau20;
+    public Scalar B7;
+    public Scalar Tau2, Tau3, Tau4, Tau5, Tau6, Tau7, Tau8, Tau9, Tau10;
+    public Scalar Tau11, Tau12, Tau13, Tau14, Tau15, Tau16, Tau17, Tau18, Tau19, Tau20;
 
     /// <summary>
     /// A second distortion-like fifth-order accumulator the recursion needs but which is
     /// not itself reported. It feeds the induced corrections to B7.
     /// </summary>
-    public double E5b;
+    public Scalar E5b;
 
     /// <summary>Companion third-order sums over the chief ray, used by the induced terms.</summary>
-    public double Bb, Fb, Cb, Eb;
+    public Scalar Bb, Fb, Cb, Eb;
 
     public BuchdahlTerms Clone() => (BuchdahlTerms)MemberwiseClone();
 
-    public double this[string name] => name switch
+    public Scalar this[string name] => name switch
     {
         "B" => B, "F" => F, "C" => C, "Pi" => Pi, "E" => E,
         "B5" => B5, "F1" => F1, "F2" => F2, "M1" => M1, "M2" => M2, "M3" => M3,
@@ -100,10 +100,10 @@ public sealed class BuchdahlResult
     public BuchdahlTerms[] PerSurface { get; init; } = Array.Empty<BuchdahlTerms>();
 
     /// <summary>Image-space F/number, the factor applied to the totals.</summary>
-    public double FNumber { get; init; }
+    public Scalar FNumber { get; init; }
 
     /// <summary>The optical invariant used throughout.</summary>
-    public double Lagrange { get; init; }
+    public Scalar Lagrange { get; init; }
 }
 
 /// <summary>
@@ -115,7 +115,7 @@ public sealed class BuchdahlResult
 /// of Optics, University of Rochester, 1963), which is why they are usually called the
 /// Buchdahl-Rimmer coefficients.
 ///
-/// This computation follows that method as realised in the ZEMAX macro FIFTHORD by
+/// This computation follows that method as realised in the widely circulated FIFTHORD macro by
 /// M. MacFarlane (1998), with the mirror index-sign correction of T. A. Mitchell (2003)
 /// and the Lagrange-invariant correction of J. Sasian (2019). See docs/references.md for
 /// the full chain and for what the macro did and did not contribute.
@@ -166,8 +166,8 @@ public static class BuchdahlCoefficients
         // The macro takes the F/number from the raw index, WITHOUT the mirror sign flip it
         // applies inside the loop. On a system with an odd number of mirrors the signed
         // index would flip the F/number, and with it every total.
-        double fnum = -0.5 / Math.Abs(p.N[last]) / p.U[last];
-        double lagrange = p.LagrangeInvariant;
+        Scalar fnum = -0.5 / SMath.Abs(p.N[last]) / p.U[last];
+        Scalar lagrange = p.LagrangeInvariant;
 
         var intrinsic = new BuchdahlTerms[count];
         var aspheric = new BuchdahlTerms?[count];
@@ -188,75 +188,75 @@ public static class BuchdahlCoefficients
         {
             var surf = system.Surfaces[i];
 
-            double cv = surf.VertexCurvature;
-            double index = p.N[i - 1];        // already sign-flipped for mirror spaces
-            double indexp = p.N[i];
-            if (Math.Abs(index) < 1e-15 || Math.Abs(indexp) < 1e-15) continue;
+            Scalar cv = surf.VertexCurvature;
+            Scalar index = p.N[i - 1];        // already sign-flipped for mirror spaces
+            Scalar indexp = p.N[i];
+            if (SMath.Abs(index) < 1e-15 || SMath.Abs(indexp) < 1e-15) continue;
 
-            double k = index / indexp;
-            double km1 = k - 1.0;
-            double deln = index - indexp;
+            Scalar k = index / indexp;
+            Scalar km1 = k - 1.0;
+            Scalar deln = index - indexp;
 
-            double py = p.Y[i], pu = p.U[i - 1], pup = p.U[i];
-            double pai = cv * py + pu;
-            double paip = pai * k;
+            Scalar py = p.Y[i], pu = p.U[i - 1], pup = p.U[i];
+            Scalar pai = cv * py + pu;
+            Scalar paip = pai * k;
 
-            double pyc = p.Ybar[i], puc = p.Ubar[i - 1], pucp = p.Ubar[i];
-            double paic = cv * pyc + puc;
-            double paicp = paic * k;
+            Scalar pyc = p.Ybar[i], puc = p.Ubar[i - 1], pucp = p.Ubar[i];
+            Scalar paic = cv * pyc + puc;
+            Scalar paicp = paic * k;
 
             // ── Third order ──────────────────────────────────────────────────────────
-            double P = cv * km1 * lagrange * lagrange / index;
-            double Sa = index * km1 * py * (pai + pup);
-            double Sb = index * km1 * pyc * (paic + pucp);
+            Scalar P = cv * km1 * lagrange * lagrange / index;
+            Scalar Sa = index * km1 * py * (pai + pup);
+            Scalar Sb = index * km1 * pyc * (paic + pucp);
 
-            double Ba = Sa * pai * pai;
-            double Fa = Sa * pai * paic;
-            double Ca = Sa * paic * paic;
-            double Bb = Sb * paic * paic;
-            double Fb = Sb * pai * paic;
-            double Cb = Sb * pai * pai;
-            double Ea = Fb + lagrange * km1 * paic * (pucp + puc);
-            double Eb = Fa - lagrange * km1 * pai * (pup + pu);
+            Scalar Ba = Sa * pai * pai;
+            Scalar Fa = Sa * pai * paic;
+            Scalar Ca = Sa * paic * paic;
+            Scalar Bb = Sb * paic * paic;
+            Scalar Fb = Sb * pai * paic;
+            Scalar Cb = Sb * pai * pai;
+            Scalar Ea = Fb + lagrange * km1 * paic * (pucp + puc);
+            Scalar Eb = Fa - lagrange * km1 * pai * (pup + pu);
 
             // ── Fifth order, intrinsic ───────────────────────────────────────────────
-            double w = (pai * pai + paip * paip + pup * pup - 3 * pu * pu) / 8.0;
-            double x73 = 3 * pai * paip + 2 * pup * pup - 3 * pu * pu;
-            double x74 = 3 * pai * paicp + 2 * pup * pucp - 3 * pu * puc;
-            double x75 = 3 * paic * paicp + 2 * pucp * pucp - 3 * puc * puc;
-            double x76 = pai * (3 * pu - pup);
-            double x77 = paic * (2 * pu - pup) + pai * puc;
-            double x78 = paic * (3 * puc - pucp);
-            double x42 = pyc * pai * (paic - puc) + py * paic * (pucp + puc);
-            double x82 = pyc * pu * (paic - puc) - py * paicp * (pucp + puc);
-            double x42b = py * paic * (pai - pu) + pyc * pai * (pup + pu);
-            double x82b = py * puc * (pai - pu) - pyc * paip * (pup + pu);
+            Scalar w = (pai * pai + paip * paip + pup * pup - 3 * pu * pu) / 8.0;
+            Scalar x73 = 3 * pai * paip + 2 * pup * pup - 3 * pu * pu;
+            Scalar x74 = 3 * pai * paicp + 2 * pup * pucp - 3 * pu * puc;
+            Scalar x75 = 3 * paic * paicp + 2 * pucp * pucp - 3 * puc * puc;
+            Scalar x76 = pai * (3 * pu - pup);
+            Scalar x77 = paic * (2 * pu - pup) + pai * puc;
+            Scalar x78 = paic * (3 * puc - pucp);
+            Scalar x42 = pyc * pai * (paic - puc) + py * paic * (pucp + puc);
+            Scalar x82 = pyc * pu * (paic - puc) - py * paicp * (pucp + puc);
+            Scalar x42b = py * paic * (pai - pu) + pyc * pai * (pup + pu);
+            Scalar x82b = py * puc * (pai - pu) - pyc * paip * (pup + pu);
 
-            double S1p = 3 * w * Sa * pai;
-            double S2p = Sa * (paic * x73 + pai * x74 - pucp * x76 - pup * x77) / 4.0;
-            double S3p = index * km1 * (x42 * x73 + x76 * x82
+            Scalar S1p = 3 * w * Sa * pai;
+            Scalar S2p = Sa * (paic * x73 + pai * x74 - pucp * x76 - pup * x77) / 4.0;
+            Scalar S3p = index * km1 * (x42 * x73 + x76 * x82
                                         + py * (pai + pup) * (pai * x75 - pup * x78)) / 4.0;
-            double S4p = Sa * (paic * x74 - pucp * x77);
-            double S5p = index * km1 * (x42 * x74 + x77 * x82
+            Scalar S4p = Sa * (paic * x74 - pucp * x77);
+            Scalar S5p = index * km1 * (x42 * x74 + x77 * x82
                                         + py * (pai + pup) * (paic * x75 - pucp * x78)) / 4.0;
-            double S6p = index * km1 * (x42 * x75 + x78 * x82) / 4.0;
-            double S1q = index * km1 * (x42b * x73 + x76 * x82b) / 4.0;
-            double t1p = 10 * w * w + Sa * pai * cv * (2 * pup - 5 * pu) / index / 8.0;
+            Scalar S6p = index * km1 * (x42 * x75 + x78 * x82) / 4.0;
+            Scalar S1q = index * km1 * (x42b * x73 + x76 * x82b) / 4.0;
+            Scalar t1p = 10 * w * w + Sa * pai * cv * (2 * pup - 5 * pu) / index / 8.0;
 
-            double B5 = pai * S1p;
-            double F1 = paic * S1p + pai * S2p;
-            double F2 = pai * S2p;
-            double M1 = 2 * paic * S2p;
-            double M2 = pai * S3p;
-            double M3 = pai * S4p;
-            double N1 = paic * S3p;
-            double N2 = paic * S4p + 2 * pai * S5p;
-            double N3 = pai * S5p;
-            double C5 = 0.5 * paic * S5p;
-            double P5 = pai * S6p - 0.5 * paic * S5p;
-            double E5 = paic * S6p;
-            double E5b = pai * S1q;
-            double B7 = Ba * t1p;
+            Scalar B5 = pai * S1p;
+            Scalar F1 = paic * S1p + pai * S2p;
+            Scalar F2 = pai * S2p;
+            Scalar M1 = 2 * paic * S2p;
+            Scalar M2 = pai * S3p;
+            Scalar M3 = pai * S4p;
+            Scalar N1 = paic * S3p;
+            Scalar N2 = paic * S4p + 2 * pai * S5p;
+            Scalar N3 = pai * S5p;
+            Scalar C5 = 0.5 * paic * S5p;
+            Scalar P5 = pai * S6p - 0.5 * paic * S5p;
+            Scalar E5 = paic * S6p;
+            Scalar E5b = pai * S1q;
+            Scalar B7 = Ba * t1p;
 
             // Record the intrinsic contribution before anything is added to it.
             intrinsic[i] = new BuchdahlTerms
@@ -269,14 +269,14 @@ public static class BuchdahlCoefficients
 
             // ── Aspheric figuring ────────────────────────────────────────────────────
             bool isAspheric = false;
-            double conic = 0.0, aterm = 0.0, bterm = 0.0, cterm = 0.0;
+            Scalar conic = 0.0, aterm = 0.0, bterm = 0.0, cterm = 0.0;
 
 // Vertex form: any r-squared coefficient has already been folded into cv above, and
             // the figuring below is measured from THAT sphere. Reading the raw conic and r^4
             // against a shifted curvature would measure it from a sphere the surface does not
             // have, which shows up in B - primary spherical - and nowhere else.
             var vf = surf.VertexForm();
-            bool hasR2 = Math.Abs(Coef(surf, 0)) > 0.0;
+            bool hasR2 = SMath.Abs(Coef(surf, 0)) > 0.0;
 
             // The polynomial figuring the scheme consumes: r^4, r^6, r^8. It is read whenever
             // it is PRESENT, not only when the surface carries the label for it. Every reader
@@ -287,11 +287,11 @@ public static class BuchdahlCoefficients
             // hundred per cent, in a coefficient that is in fact computed correctly. The
             // conic already behaves this way, through the branch above, and the asymmetry
             // between the two was what made it look like a real finding.
-            bool hasPolynomial = Math.Abs(Coef(surf, 1)) > 0.0
-                              || Math.Abs(Coef(surf, 2)) > 0.0
-                              || Math.Abs(Coef(surf, 3)) > 0.0;
+            bool hasPolynomial = SMath.Abs(Coef(surf, 1)) > 0.0
+                              || SMath.Abs(Coef(surf, 2)) > 0.0
+                              || SMath.Abs(Coef(surf, 3)) > 0.0;
 
-            if (Math.Abs(surf.Conic) > Eps)
+            if (SMath.Abs(surf.Conic) > Eps)
             {
                 conic = vf.Conic;
                 isAspheric = true;
@@ -305,118 +305,118 @@ public static class BuchdahlCoefficients
                 isAspheric = true;
             }
 
-            double aS1p1 = 0.0;             // needed by the B7 aspheric term below
+            Scalar aS1p1 = 0.0;             // needed by the B7 aspheric term below
             if (isAspheric)
             {
-                double cv2 = cv * cv, cv3 = cv2 * cv;
-                double c1 = 8 * aterm + conic * cv3;
-                double c2 = 12 * bterm + 0.75 * cv2 * (cv3 * conic * (conic + 2) - 2 * c1);
-                double temp = cv3 * conic * (conic * conic + 3 * conic + 3) - 3 * c1;
+                Scalar cv2 = cv * cv, cv3 = cv2 * cv;
+                Scalar c1 = 8 * aterm + conic * cv3;
+                Scalar c2 = 12 * bterm + 0.75 * cv2 * (cv3 * conic * (conic + 2) - 2 * c1);
+                Scalar temp = cv3 * conic * (conic * conic + 3 * conic + 3) - 3 * c1;
                 temp = cv2 * (5 * cv2 * temp - 12 * c2);
                 temp = (-6 * cv * c1 * c1 + temp) / 8.0;
-                double c3 = 16 * cterm + temp;
+                Scalar c3 = 16 * cterm + temp;
 
-                double c1b = deln * c1, c2b = deln * c2, c3b = deln * c3;
-                double pysq = py * py, pycsq = pyc * pyc;
+                Scalar c1b = deln * c1, c2b = deln * c2, c3b = deln * c3;
+                Scalar pysq = py * py, pycsq = pyc * pyc;
 
-                double aBa = c1b * pysq * pysq;
-                double aFa = c1b * pysq * py * pyc;
-                double aEb = aFa;
-                double aCa = c1b * pysq * pycsq;
-                double aCb = aCa;
-                double aEa = c1b * py * pycsq * pyc;
-                double aFb = aEa;
-                double aBb = c1b * pycsq * pycsq;
+                Scalar aBa = c1b * pysq * pysq;
+                Scalar aFa = c1b * pysq * py * pyc;
+                Scalar aEb = aFa;
+                Scalar aCa = c1b * pysq * pycsq;
+                Scalar aCb = aCa;
+                Scalar aEa = c1b * py * pycsq * pyc;
+                Scalar aFb = aEa;
+                Scalar aBb = c1b * pycsq * pycsq;
 
                 Ba += aBa; Fa += aFa; Ca += aCa; Ea += aEa;
                 Bb += aBb; Fb += aFb; Cb += aCb; Eb += aEb;
 
-                double mm = k * lagrange / indexp;
-                double la = (3 * paip - 2 * (1 - 2 * k) * pup) / 4.0;
-                double lb = (3 * paicp - 2 * (1 - 2 * k) * pucp) / 4.0;
+                Scalar mm = k * lagrange / indexp;
+                Scalar la = (3 * paip - 2 * (1 - 2 * k) * pup) / 4.0;
+                Scalar lb = (3 * paicp - 2 * (1 - 2 * k) * pucp) / 4.0;
 
                 aS1p1 = aBa * la;
-                double aS2p1 = 2 * aFa * la + 0.5 * c1b * pysq * py * mm;
-                double aS3p1 = 2 * aCa * la + c1b * pysq * pyc * mm;
-                double aS4p1 = 2 * aS3p1;
-                double aS5p1 = 2 * aEa * la + 1.5 * c1b * py * pycsq * mm;
-                double aS6p1 = aBb * la + c1b * pycsq * pyc * mm;
-                double aS1q1 = aBa * lb - c1b * pysq * py * mm;
+                Scalar aS2p1 = 2 * aFa * la + 0.5 * c1b * pysq * py * mm;
+                Scalar aS3p1 = 2 * aCa * la + c1b * pysq * pyc * mm;
+                Scalar aS4p1 = 2 * aS3p1;
+                Scalar aS5p1 = 2 * aEa * la + 1.5 * c1b * py * pycsq * mm;
+                Scalar aS6p1 = aBb * la + c1b * pycsq * pyc * mm;
+                Scalar aS1q1 = aBa * lb - c1b * pysq * py * mm;
 
-                double j0a = c2b * py - 0.25 * cv * c1b * (3 * paip - 5 * pup);
-                double j0b = c2b * pyc - 0.25 * cv * c1b * (3 * paicp - 5 * pucp);
+                Scalar j0a = c2b * py - 0.25 * cv * c1b * (3 * paip - 5 * pup);
+                Scalar j0b = c2b * pyc - 0.25 * cv * c1b * (3 * paicp - 5 * pucp);
 
-                double alpha = 0.5 * (pup * (pup - pai) + pai * (3 * paip - pup));
-                double beta = pup * (pucp - paic) + pai * (3 * paicp - pucp);
-                double gamma = 0.5 * (pucp * (pucp - paic) + paic * (3 * paicp - pucp));
+                Scalar alpha = 0.5 * (pup * (pup - pai) + pai * (3 * paip - pup));
+                Scalar beta = pup * (pucp - paic) + pai * (3 * paicp - pucp);
+                Scalar gamma = 0.5 * (pucp * (pucp - paic) + paic * (3 * paicp - pucp));
 
-                double lambda = alpha * c1b + j0a * py;
-                double mu = beta * c1b + 2 * j0a * pyc;
-                double nu = py * gamma * c1b + j0a * pycsq;
+                Scalar lambda = alpha * c1b + j0a * py;
+                Scalar mu = beta * c1b + 2 * j0a * pyc;
+                Scalar nu = py * gamma * c1b + j0a * pycsq;
 
-                double aS1p2 = pysq * py * lambda;
-                double aS2p2 = pysq * pyc * lambda + 0.5 * pysq * py * mu;
-                double aS3p2 = py * pycsq * lambda + pysq * nu;
-                double aS4p2 = 2 * pysq * pyc * mu;
-                double aS5p2 = 0.5 * py * pycsq * mu + py * pyc * nu;
-                double aS6p2 = pycsq * nu;
-                double aS1q2 = pysq * (alpha * c1b * pyc + j0b * pysq);
+                Scalar aS1p2 = pysq * py * lambda;
+                Scalar aS2p2 = pysq * pyc * lambda + 0.5 * pysq * py * mu;
+                Scalar aS3p2 = py * pycsq * lambda + pysq * nu;
+                Scalar aS4p2 = 2 * pysq * pyc * mu;
+                Scalar aS5p2 = 0.5 * py * pycsq * mu + py * pyc * nu;
+                Scalar aS6p2 = pycsq * nu;
+                Scalar aS1q2 = pysq * (alpha * c1b * pyc + j0b * pysq);
 
-                double aS1pa = pai * aS1p1 + py * aS1p2;
-                double aS2pa = pai * aS2p1 + py * aS2p2;
-                double aS3pa = pai * aS3p1 + py * aS3p2;
-                double aS4pa = pai * aS4p1 + py * aS4p2;
-                double aS5pa = pai * aS5p1 + py * aS5p2;
-                double aS6pa = pai * aS6p1 + py * aS6p2;
+                Scalar aS1pa = pai * aS1p1 + py * aS1p2;
+                Scalar aS2pa = pai * aS2p1 + py * aS2p2;
+                Scalar aS3pa = pai * aS3p1 + py * aS3p2;
+                Scalar aS4pa = pai * aS4p1 + py * aS4p2;
+                Scalar aS5pa = pai * aS5p1 + py * aS5p2;
+                Scalar aS6pa = pai * aS6p1 + py * aS6p2;
 
-                double aS1pb = paic * aS1p1 + pyc * aS1p2;
-                double aS2pb = paic * aS2p1 + pyc * aS2p2;
-                double aS3pb = paic * aS3p1 + pyc * aS3p2;
-                double aS4pb = paic * aS4p1 + pyc * aS4p2;
-                double aS5pb = paic * aS5p1 + pyc * aS5p2;
-                double aS6pb = paic * aS6p1 + pyc * aS6p2;
+                Scalar aS1pb = paic * aS1p1 + pyc * aS1p2;
+                Scalar aS2pb = paic * aS2p1 + pyc * aS2p2;
+                Scalar aS3pb = paic * aS3p1 + pyc * aS3p2;
+                Scalar aS4pb = paic * aS4p1 + pyc * aS4p2;
+                Scalar aS5pb = paic * aS5p1 + pyc * aS5p2;
+                Scalar aS6pb = paic * aS6p1 + pyc * aS6p2;
 
-                double aS1qa = pai * aS1q1 + py * aS1q2;
+                Scalar aS1qa = pai * aS1q1 + py * aS1q2;
 
-                double aB5 = aS1pa;
-                double aF1 = aS1pb + aS2pa;
-                double aF2 = aS2pa;
-                double aM1 = 2 * aS2pb;
-                double aM2 = aS3pa;
-                double aM3 = aS4pa;
-                double aN1 = aS3pb;
-                double aN2 = aS4pb + 2 * aS5pa;
-                double aN3 = aS5pa;
-                double aC5 = 0.5 * aS5pb;
-                double aP5 = aS6pa - 0.5 * aS5pb;
-                double aE5 = aS6pb;
-                double aE5b = aS1qa;
+                Scalar aB5 = aS1pa;
+                Scalar aF1 = aS1pb + aS2pa;
+                Scalar aF2 = aS2pa;
+                Scalar aM1 = 2 * aS2pb;
+                Scalar aM2 = aS3pa;
+                Scalar aM3 = aS4pa;
+                Scalar aN1 = aS3pb;
+                Scalar aN2 = aS4pb + 2 * aS5pa;
+                Scalar aN3 = aS5pa;
+                Scalar aC5 = 0.5 * aS5pb;
+                Scalar aP5 = aS6pa - 0.5 * aS5pb;
+                Scalar aE5 = aS6pb;
+                Scalar aE5b = aS1qa;
 
                 B5 += aB5; F1 += aF1; F2 += aF2; M1 += aM1; M2 += aM2; M3 += aM3;
                 N1 += aN1; N2 += aN2; N3 += aN3; C5 += aC5; P5 += aP5; E5 += aE5;
                 E5b += aE5b;
 
-                double gamma1 = c1 * pysq;
-                double gamma2 = py * pysq * (c2 * py + 0.25 * cv * c1 * (pai + 3 * pu));
-                double t = cv2 * c1 * (pai * (pai + 5 * pu) - pu * (pai - 5 * pu)) / 8.0;
+                Scalar gamma1 = c1 * pysq;
+                Scalar gamma2 = py * pysq * (c2 * py + 0.25 * cv * c1 * (pai + 3 * pu));
+                Scalar t = cv2 * c1 * (pai * (pai + 5 * pu) - pu * (pai - 5 * pu)) / 8.0;
                 // HALF what (77.2) prints for both c1^2 terms, and deliberately so. A
                 // parabola images infinity perfectly, so its spherical aberration must
                 // vanish at every order; it does with these values and does not with the
                 // printed ones. See ParabolicMirrorTests.
                 t += c1 * c1 * py * pai / 4.0;
-                double gamma3 = pysq * pysq * (t + c3 * pysq
+                Scalar gamma3 = pysq * pysq * (t + c3 * pysq
                                  + (1.0 / 3.0) * cv * c2 * py * (pai + 5 * pu));
 
-                double d3 = cv * py * (4 * cv * py * (pai + pu)
+                Scalar d3 = cv * py * (4 * cv * py * (pai + pu)
                             + paip * (5 * (2 * pup + pai) + paip));
-                double t2 = k * pup * (3 * pai * pai - 10 * pu * pu
+                Scalar t2 = k * pup * (3 * pai * pai - 10 * pu * pu
                             + paip * (4 * (2 * pup + paip + pai) + pai));
                 d3 = c1 * (gamma1 * py * (1 + 2 * k * km1) + d3 + t2) / 8.0;
                 d3 = deln * pysq * pysq * ((1.0 / 6.0) * c2 * pysq
                             * (4 * paip + 3 * pup * (2 * k - 1)) + d3);
 
-                double L3 = py * gamma3 * deln + 0.5 * (gamma1 * (S1p + aS1p1) + gamma2 * Sa * pai);
-                double aB7 = pai * d3 + py * L3;
+                Scalar L3 = py * gamma3 * deln + 0.5 * (gamma1 * (S1p + aS1p1) + gamma2 * Sa * pai);
+                Scalar aB7 = pai * d3 + py * L3;
                 B7 += aB7;
 
                 aspheric[i] = new BuchdahlTerms
@@ -431,11 +431,11 @@ public static class BuchdahlCoefficients
             // ── Induced corrections from everything ahead of this surface ────────────
             // Snapshot first, so the induced part can be reported separately from what the
             // surface would have produced on its own.
-            double p0B5 = B5, p0F1 = F1, p0F2 = F2, p0M1 = M1, p0M2 = M2, p0M3 = M3;
-            double p0N1 = N1, p0N2 = N2, p0N3 = N3, p0C5 = C5, p0P5 = P5, p0E5 = E5, p0B7 = B7;
+            Scalar p0B5 = B5, p0F1 = F1, p0F2 = F2, p0M1 = M1, p0M2 = M2, p0M3 = M3;
+            Scalar p0N1 = N1, p0N2 = N2, p0N3 = N3, p0C5 = C5, p0P5 = P5, p0E5 = E5, p0B7 = B7;
 
-            double L = lagrange;
-            double tmp;
+            Scalar L = lagrange;
+            Scalar tmp;
 
             tmp = 0.5 * acc.B * acc.B * (P + 3 * Ca) / L;
             tmp += 3 * (acc.B5 - acc.B * acc.Eb / L) * Fa;
@@ -542,6 +542,6 @@ public static class BuchdahlCoefficients
         };
     }
 
-    private static double Coef(Surface s, int index) =>
+    private static Scalar Coef(Surface s, int index) =>
         index >= 0 && index < s.AsphericCoefficients.Length ? s.AsphericCoefficients[index] : 0.0;
 }

@@ -100,7 +100,7 @@ public class GlassCodeTests
 
     /// <summary>
     /// The decimal point separates the two halves of the code, so what follows it can be any
-    /// length. OpTaliX writes "580.56"; its own ZEMAX export pads the same glass to
+    /// length. One file writes "580.56"; another pads the same glass to
     /// "580.5600"; the classic six-digit form appears as "564.610". A parser that strips the
     /// point and demands six digits accepts only the middle one, and rejects a whole
     /// prescription over a trailing zero - which is how a three-element mobile lens came to
@@ -134,12 +134,12 @@ public class GlassCodeTests
         => Assert.False(GlassCode.TryParse(text, out _, out _), text);
 
     /// <summary>
-    /// The indices the model produces for these codes, against OpticStudio's own model-glass
+    /// The indices the model produces for these codes, against an independent model-glass
     /// values for the same design (MOBILE_KYOCERA_3P_USP8558939), at the five wavelengths it
     /// defines.
     ///
     /// <para>nd is reproduced to eight decimals, which is what confirms the code is being READ
-    /// correctly. The dispersion away from d is a model, and ours is not OpticStudio's: the
+    /// correctly. The dispersion away from d is a model, and ours is not that one: the
     /// two agree to about 5e-5 on ordinary glasses and part company by 2.5e-3 at 0.436 um on
     /// the 1.804/24 one, the tolerance below being set to admit that. It does not matter for
     /// the work these codes were needed for, which is monochromatic at 0.5876 um where the
@@ -153,12 +153,12 @@ public class GlassCodeTests
     [InlineData("804.2400", 0.5500, 1.8110733615)]
     [InlineData("516.6400", 0.5876, 1.5160000116)]
     [InlineData("469.6100", 0.5876, 1.4690000109)]
-    public void TheModelAgreesWithOpticStudio(string code, double lambda, double expected)
+    public void TheModelAgreesWithAnIndependentImplementation(string code, double lambda, double expected)
     {
         Assert.True(GlassCode.TryParse(code, out double nd, out double vd), code);
         double model = IndexResolver.ModelIndex(nd, vd, 0.0, lambda);
         Assert.True(Math.Abs(model - expected) < 6e-4,
-            $"{code} at {lambda} um: {model:0.########} against OpticStudio's {expected:0.########}");
+            $"{code} at {lambda} um: {model:0.########} against the reference {expected:0.########}");
     }
 
     /// <summary>At d itself there is no model left to disagree about - the code IS nd.</summary>
@@ -171,6 +171,6 @@ public class GlassCodeTests
     {
         Assert.True(GlassCode.TryParse(code, out double nd, out _), code);
         Assert.True(Math.Abs(nd - expected) < 1e-7,
-            $"{code}: nd {nd:0.########} against OpticStudio's {expected:0.########}");
+            $"{code}: nd {nd:0.########} against the reference {expected:0.########}");
     }
 }

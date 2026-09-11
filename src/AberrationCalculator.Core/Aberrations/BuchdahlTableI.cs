@@ -13,83 +13,83 @@ namespace AberrationCalculator.Core.Aberrations;
 public sealed class BuchdahlTableIRow
 {
     /// <summary>The scheme's numbered entries, indexed as Buchdahl numbers them, t1..t155.</summary>
-    public readonly double[] T = new double[Count];
+    public readonly Scalar[] T = new Scalar[Count];
 
     /// <summary>
     /// The primed ray angles at this surface - Buchdahl's trailing asterisk. Kept because
     /// later entries reference them (t99 uses t9*, t100 uses t81*) and recomputing would
     /// mean carrying the index around a second time.
     /// </summary>
-    public double VpPrime, VqPrime;
+    public Scalar VpPrime, VqPrime;
 
     /// <summary>
     /// The primary coefficient WITHOUT any aspheric figuring. The scheme's own quantities -
     /// w1, w2 and the intrinsic secondary - are built from this rather than from t10, so
     /// that the figuring enters once, as its own increment, and not twice.
     /// </summary>
-    public double ApSpherical;
+    public Scalar ApSpherical;
 
     /// <summary>The figuring's share of the primary, and the height ratio it travels on.</summary>
-    public double ApFigured, Rho;
+    public Scalar ApFigured, Rho;
 
     /// <summary>
     /// The figuring's share of the barred primary entry t14, and of the sums t19 and t24
     /// built from it. t24 is a RECURSION, carrying the previous surface's ratio, so its two
     /// halves have to be accumulated separately or the figuring travels on q.
     /// </summary>
-    public double C14Figured, T19Figured, T24Figured;
+    public Scalar C14Figured, T19Figured, T24Figured;
 
     /// <summary>The figured half of this surface's six BARRED secondary coefficients - t42,
     /// t47, t53, t57, t63 and t68 - as <see cref="BuchdahlTableI"/> formed them, already
     /// carried on this surface's height ratio. The dagger recursions of the surface AFTER
     /// this one need it; see the note there.</summary>
-    public readonly double[] SecBarFig = new double[6];
+    public readonly Scalar[] SecBarFig = new Scalar[6];
 
     /// <summary>The LIFT half of <see cref="SecBarFig"/>: the part of the figured barred
     /// secondary that is this surface height ratio applied once to its own unbarred figured
     /// secondary. The remainder is the induced bracket in d6..d8, every term of which carries
     /// the figured primary and so vanishes with c1.</summary>
-    public readonly double[] SecBarFigLift = new double[6];
+    public readonly Scalar[] SecBarFigLift = new Scalar[6];
 
     /// <summary>
     /// The surface's OWN quantities split into the two halves of M (65.7), which the Sec. 85
     /// two-pass needs: the hat half rides i_p, the check half y_p. Spherical content is
     /// entirely hat, a sphere having no check half at all.
     /// </summary>
-    public double C13Spherical, C13Figured;
+    public Scalar C13Spherical, C13Figured;
 
     /// <summary>
     /// q times the spherical a_p, formed as <c>g i i_q</c> rather than as a product with q, so
     /// that it survives a surface where the marginal incidence vanishes and q does not exist.
     /// </summary>
-    public double QApSpherical;
+    public Scalar QApSpherical;
 
     /// <summary>
     /// <c>c/i</c> and the q-ray incidence, kept so the secondary block can rebuild the reduced
     /// forms of Sec. 84(e) without recomputing the ray data.
     /// </summary>
-    public double COverI, Iq, Q2ApSpherical, QC13Spherical, QOmega, Lagrange, KRatio;
+    public Scalar COverI, Iq, Q2ApSpherical, QC13Spherical, QOmega, Lagrange, KRatio;
 
     /// <summary>
     /// <c>q</c> times the increment in t23 across this surface, and the index before it. The
     /// tertiary dagger recursion needs both, and the first is not recoverable from q where q
     /// does not exist.
     /// </summary>
-    public double QDelta23, NBefore;
+    public Scalar QDelta23, NBefore;
 
     /// <summary>
     /// <c>q t152</c>, carried on the incidences. The barred tenth tertiary is
     /// <c>q t155 + induced</c>, and on a flat surface facing collimated space that q is
     /// infinite while t155 vanishes with the incidence. Set only where that happens.
     /// </summary>
-    public double QT152;
+    public Scalar QT152;
 
     /// <summary>True where the marginal ray meets this surface at zero incidence with zero
     /// angle - a flat face turned toward collimated space, where q is infinite.</summary>
     public bool FlatInCollimatedSpace;
-    public readonly double[] SecSph = new double[7], SecFig = new double[7];
-    public readonly double[] MSph = new double[6], MFig = new double[6];
-    public readonly double[] ZHat = new double[11], ZCheck = new double[11];
+    public readonly Scalar[] SecSph = new Scalar[7], SecFig = new Scalar[7];
+    public readonly Scalar[] MSph = new Scalar[6], MFig = new Scalar[6];
+    public readonly Scalar[] ZHat = new Scalar[11], ZCheck = new Scalar[11];
 
     /// <summary>
     /// The (Y) family of M (85.1): the SAME p and q quantities as <see cref="T"/>, combined on
@@ -97,7 +97,7 @@ public sealed class BuchdahlTableIRow
     /// are computed alongside each other and never substituted - only which ratio joins them
     /// changes. Indices match T: 25..33 at secondary order, 101..120 at tertiary.
     /// </summary>
-    public readonly double[] Y = new double[156];
+    public readonly Scalar[] Y = new Scalar[156];
 
     /// <summary>
     /// The TOTAL tertiary coefficients for this surface, index 1..10 - intrinsic plus what
@@ -107,7 +107,7 @@ public sealed class BuchdahlTableIRow
     /// Kept separately from <see cref="T"/> because Buchdahl numbers the unbarred ones but
     /// not the barred ones, so there is no entry number to index the latter by.
     /// </summary>
-    public readonly double[] TertiaryTotal = new double[11];
+    public readonly Scalar[] TertiaryTotal = new Scalar[11];
 
     /// <summary>
     /// The INTRINSIC half of this surface's tertiary - what it generates on its own, before the
@@ -124,54 +124,54 @@ public sealed class BuchdahlTableIRow
     /// times itself and each intermediate by its barred form. The second of those is induced by
     /// construction, so the first is the whole of the barred intrinsic.</para>
     /// </summary>
-    public readonly double[] TertiaryIntrinsicTotal = new double[11];
+    public readonly Scalar[] TertiaryIntrinsicTotal = new Scalar[11];
 
     /// <summary>The barred partner of <see cref="TertiaryIntrinsicTotal"/>. Unlike the
     /// <c>TertiaryIntrinsic(i)</c> accessor above, which reads the entries left by the final
     /// single pass and so is right only where the check half is empty, these two are summed over
     /// both passes and hold for a figured surface as well.</summary>
-    public readonly double[] TertiaryIntrinsicTotalBar = new double[11];
+    public readonly Scalar[] TertiaryIntrinsicTotalBar = new Scalar[11];
 
     /// <summary>The barred totals, index 1..10. Their sums are Buchdahl's T1bar..T10bar.</summary>
-    public readonly double[] TertiaryTotalBar = new double[11];
+    public readonly Scalar[] TertiaryTotalBar = new Scalar[11];
 
     /// <summary>Highest entry number, plus one. Table I runs to t155.</summary>
     public const int Count = 156;
 
-    public double this[int j] => T[j];
+    public Scalar this[int j] => T[j];
 
     // Convenience accessors, so downstream code need not carry entry numbers around.
-    public double Yp => T[1];
-    public double Vp => T[2];
-    public double Ip => T[3];
-    public double Yq => T[4];
-    public double Vq => T[5];
-    public double Q => T[6];
-    public double J => T[7];
-    public double Omega => T[8];
+    public Scalar Yp => T[1];
+    public Scalar Vp => T[2];
+    public Scalar Ip => T[3];
+    public Scalar Yq => T[4];
+    public Scalar Vq => T[5];
+    public Scalar Q => T[6];
+    public Scalar J => T[7];
+    public Scalar Omega => T[8];
 
     /// <summary>Buchdahl's w - the quantity his tertiary intrinsic coefficients are built on.</summary>
-    public double W => T[34];
+    public Scalar W => T[34];
 
-    public double Phi1 => T[35];
-    public double Phi2 => T[36];
-    public double Phi3 => T[37];
+    public Scalar Phi1 => T[35];
+    public Scalar Phi2 => T[36];
+    public Scalar Phi3 => T[37];
 
     /// <summary>w1..w5 of paper II Eq. (8.3), which feed z1..z10.</summary>
-    public double W1 => T[43];
-    public double W2 => T[48];
-    public double W3 => T[49];
-    public double W4 => T[58];
-    public double W5 => T[64];
+    public Scalar W1 => T[43];
+    public Scalar W2 => T[48];
+    public Scalar W3 => T[49];
+    public Scalar W4 => T[58];
+    public Scalar W5 => T[64];
 
     /// <summary>z1..z10 of paper II Eq. (8.3). Index 1..10; index 0 unused.</summary>
-    public double Z(int i) => T[120 + i];
+    public Scalar Z(int i) => T[120 + i];
 
     /// <summary>
     /// The ten INTRINSIC tertiary coefficients, t1p..t10p - what this surface generates on
     /// its own, before anything inherited from upstream. Index 1..10.
     /// </summary>
-    public double TertiaryIntrinsic(int i) => i switch
+    public Scalar TertiaryIntrinsic(int i) => i switch
     {
         1 => T[121], 2 => T[134], 3 => T[136], 4 => T[138], 5 => T[140],
         6 => T[143], 7 => T[145], 8 => T[147], 9 => T[149], 10 => T[152],
@@ -234,9 +234,9 @@ public static class BuchdahlTableI
     /// <see cref="BuchdahlScheme"/> computes it from the stop surface.
     /// </param>
     public static BuchdahlTableIRow[] Compute(
-        IReadOnlyList<Models.Surface> surfaces, double[] indices, double efl,
-        double stopParameter, IReadOnlyList<double[]>? aspheric = null,
-        bool tertiaryHatOnly = false, double iota = 0.0)
+        IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl,
+        Scalar stopParameter, IReadOnlyList<Scalar[]>? aspheric = null,
+        bool tertiaryHatOnly = false, Scalar iota = default)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -246,7 +246,7 @@ public static class BuchdahlTableI
         for (int i = 0; i < count; i++) rows[i] = new BuchdahlTableIRow();
         if (count < 3) return rows;
 
-        double scale = Math.Abs(efl) > 1e-300 ? efl : 1.0;
+        Scalar scale = SMath.Abs(efl) > 1e-300 ? efl : 1.0;
 
         // The same system with no figuring at all, which is what the barred tertiary entries
         // below need in order to separate the two halves of what they propagate. Taking the
@@ -271,21 +271,21 @@ public static class BuchdahlTableI
 
         // Carried between surfaces: the primed angles, which are what the ray transfer
         // actually propagates.
-        double vpPrimePrev = 0.0, vqPrimePrev = 0.0;
+        Scalar vpPrimePrev = 0.0, vqPrimePrev = 0.0;
 
         for (int i = 1; i < count - 1; i++)
         {
             var t = rows[i].T;
             var prev = rows[i - 1].T;
 
-            double nPrev = i - 1 < indices.Length ? indices[i - 1] : 1.0;
-            double nCurr = i < indices.Length ? indices[i] : 1.0;
-            if (Math.Abs(nCurr) < 1e-12) nCurr = 1.0;
+            Scalar nPrev = i - 1 < indices.Length ? indices[i - 1] : 1.0;
+            Scalar nCurr = i < indices.Length ? indices[i] : 1.0;
+            if (SMath.Abs(nCurr) < 1e-12) nCurr = 1.0;
 
-            double k = nPrev / nCurr;
-            double c = surfaces[i].VertexCurvature * scale;
-            double d = surfaces[i - 1].Thickness / scale;   // Buchdahl's d is the gap BEFORE
-            double n = nPrev;
+            Scalar k = nPrev / nCurr;
+            Scalar c = surfaces[i].VertexCurvature * scale;
+            Scalar d = surfaces[i - 1].Thickness / scale;   // Buchdahl's d is the gap BEFORE
+            Scalar n = nPrev;
 
             // ── t1..t9: the p and q rays ────────────────────────────────────────────────
             // The angle is transferred first, then the height, then the invariant.
@@ -299,8 +299,8 @@ public static class BuchdahlTableI
                 // the only quantity in the whole scheme that knows where the object is;
                 // at iota = 0 these are the four values that were previously hard-coded,
                 // and the p ray does then enter parallel to the axis.
-                double gOE = 1.0 - stopParameter * iota;
-                if (Math.Abs(gOE) < 1e-12) gOE = 1.0;
+                Scalar gOE = 1.0 - stopParameter * iota;
+                if (SMath.Abs(gOE) < 1e-12) gOE = 1.0;
                 t[1] = 1.0;                       // y_p starts at unit height
                 t[2] = iota;                      // v_p: the object is at 1/iota
                 t[4] = stopParameter / gOE;       // y_q at the entrance pupil, rescaled
@@ -315,21 +315,21 @@ public static class BuchdahlTableI
             }
 
             t[3] = c * t[1] - t[2];
-            t[6] = Math.Abs(t[3]) > 1e-30 ? (c * t[4] - t[5]) / t[3] : 0.0;
+            t[6] = SMath.Abs(t[3]) > 1e-30 ? (c * t[4] - t[5]) / t[3] : 0.0;
             t[7] = -t[2] * t[6] + t[5];
             t[8] = (k - 1.0) * c / n;
             t[9] = t[2] * t[2];
 
             // The primed values - Buchdahl's trailing asterisk.
-            double vpPrime = (1.0 - k) * c * t[1] + k * t[2];
-            double vqPrime = (1.0 - k) * c * t[4] + k * t[5];
+            Scalar vpPrime = (1.0 - k) * c * t[1] + k * t[2];
+            Scalar vqPrime = (1.0 - k) * c * t[4] + k * t[5];
             vpPrimePrev = vpPrime;
             vqPrimePrev = vqPrime;
             rows[i].VpPrime = vpPrime;
             rows[i].VqPrime = vqPrime;
-            double t2Star = vpPrime;
-            double t9Star = vpPrime * vpPrime;
-            double t81Star = vpPrime * vqPrime;
+            Scalar t2Star = vpPrime;
+            Scalar t9Star = vpPrime * vpPrime;
+            Scalar t81Star = vpPrime * vqPrime;
 
             // ── t10..t14: the intrinsic primary coefficients ────────────────────────────
             // a_p carries Omega/j, and BOTH vanish on a plane: Omega = (k-1)c/n has the
@@ -348,8 +348,8 @@ public static class BuchdahlTableI
             //
             // Written through the invariant the expression is non-singular everywhere, and on
             // a curved surface it is algebraically the same quantity as before.
-            double lagrange = t[5] * t[1] - t[2] * t[4];
-            double apSpherical = Math.Abs(lagrange) > 1e-30
+            Scalar lagrange = t[5] * t[1] - t[2] * t[4];
+            Scalar apSpherical = SMath.Abs(lagrange) > 1e-30
                                ? 0.5 * (t2Star - t[3]) * (k - 1.0) * t[1] * t[3] * t[3] / lagrange
                                : 0.0;
 
@@ -362,9 +362,9 @@ public static class BuchdahlTableI
             // it as c1b times y^4, y^3 y_c, y^2 y_c^2, y y_c^3, pure ray heights with no
             // incidence anywhere - so its ratio is the HEIGHT ratio y_q/y_p instead. Running
             // the figuring down the q chain gets even the sign wrong.
-            double apFigured = aspheric != null && i < aspheric.Count && aspheric[i] != null
+            Scalar apFigured = aspheric != null && i < aspheric.Count && aspheric[i] != null
                              ? aspheric[i][0] : 0.0;
-            double rho = Math.Abs(t[1]) > 1e-30 ? t[4] / t[1] : 0.0;
+            Scalar rho = SMath.Abs(t[1]) > 1e-30 ? t[4] / t[1] : 0.0;
 
             rows[i].ApSpherical = apSpherical;
             rows[i].ApFigured = apFigured;
@@ -383,8 +383,8 @@ public static class BuchdahlTableI
             // no division anywhere. On a curved surface these are the same numbers as before;
             // on a flat one in collimated space, where i = 0 and q is infinite, they are the
             // finite values the old form threw away.
-            double iq = c * t[4] - t[5];
-            double g = Math.Abs(lagrange) > 1e-30
+            Scalar iq = c * t[4] - t[5];
+            Scalar g = SMath.Abs(lagrange) > 1e-30
                      ? 0.5 * (t2Star - t[3]) * (k - 1.0) * t[1] / lagrange
                      : 0.0;
 
@@ -394,8 +394,8 @@ public static class BuchdahlTableI
             // t13 mixes the two, so they are split again for t14. The Petzval entry t8 is
             // untouched: figuring does not move it, and the fifth-order code agrees, giving
             // an aspheric Petzval of exactly zero.
-            double c13Spherical = g * iq * iq - 0.5 * t[8];
-            double c13Figured = rho * rho * apFigured;
+            Scalar c13Spherical = g * iq * iq - 0.5 * t[8];
+            Scalar c13Figured = rho * rho * apFigured;
             t[13] = c13Spherical + c13Figured;
             // The barred entry is the one place a division by the incidence survives, and it
             // survives only through c/i. Writing v" - i = c y - (1 + k) i,
@@ -407,10 +407,10 @@ public static class BuchdahlTableI
             // picks out. It diverges only where i vanishes with v NOT zero - a surface
             // concentric about the marginal focus - and there q is unbounded and the condensed
             // scheme has no value to offer, so the old guard is kept for that case alone.
-            double cOverI = Math.Abs(t[3]) > 1e-30 ? c / t[3]
-                          : (Math.Abs(t[2]) < 1e-30 && Math.Abs(t[1]) > 1e-30 ? 1.0 / t[1] : 0.0);
-            double iq3 = iq * iq * iq;
-            double qc13Spherical = Math.Abs(lagrange) > 1e-30
+            Scalar cOverI = SMath.Abs(t[3]) > 1e-30 ? c / t[3]
+                          : (SMath.Abs(t[2]) < 1e-30 && SMath.Abs(t[1]) > 1e-30 ? 1.0 / t[1] : 0.0);
+            Scalar iq3 = iq * iq * iq;
+            Scalar qc13Spherical = SMath.Abs(lagrange) > 1e-30
                 ? 0.5 * (k - 1.0)
                   * (cOverI * (t[1] * t[1] * iq3 / lagrange - iq / n)
                      - (1.0 + k) * t[1] * iq3 / lagrange)
@@ -428,8 +428,8 @@ public static class BuchdahlTableI
             rows[i].KRatio = k;
             rows[i].NBefore = n;
             rows[i].FlatInCollimatedSpace =
-                Math.Abs(t[3]) < 1e-30 && Math.Abs(t[2]) < 1e-30
-                && Math.Abs(lagrange) > 1e-30 && Math.Abs(t[1]) > 1e-30;
+                SMath.Abs(t[3]) < 1e-30 && SMath.Abs(t[2]) < 1e-30
+                && SMath.Abs(lagrange) > 1e-30 && SMath.Abs(t[1]) > 1e-30;
             rows[i].C13Figured = c13Figured;
 
             // ── t34..t37: w and the three phi ───────────────────────────────────────────
@@ -460,7 +460,7 @@ public static class BuchdahlTableI
             // The INTRINSIC z are built from the spherical a_p, for the same reason w1 and w2
             // are: the figuring enters below as its own increment and would otherwise be
             // counted twice. The induced terms further down do take the full t10.
-            double apS = rows[i].ApSpherical;
+            Scalar apS = rows[i].ApSpherical;
             t[121] = (0.25 * (2.0 * t2Star - 5.0 * t[2]) * t[7] * apS
                       + 10.0 * t[34] * t[34]) * apS;
             t[122] = 0.5 * ((t2Star - t[3]) * c * t[1] * t[2] * t[7] * apS
@@ -491,33 +491,33 @@ public static class BuchdahlTableI
             // figures at every radius, so these are identities and not limits.
             if (rows[i].FlatInCollimatedSpace)
             {
-                double cyi = rows[i].COverI * t[1], eq = rows[i].Iq, jj0 = t[7];
-                double uu = cyi - (1.0 + k);
-                double a3 = 0.5 * uu * (k - 1.0) * t[1] / lagrange;      // a_p / i^3
-                double vr = cyi - 1.0;                                    // v_p / i
-                double vpr = cyi - k;                                     // v" / i
-                double tt2 = ((k * k - 1.0) - cyi * cyi + cyi * (3.0 - k)) / 4.0;
-                double f1 = (k - 1.0) * vr;                               // phi1 / i^2
-                double f2 = 0.5 * (-k - vr * vr + 8.0 * tt2 + 3.0 * f1);  // phi2 / i^2
-                double f3 = 2.0 * vr * vr + 8.0 * tt2 + 5.0 * f1 - f2;    // phi3 / i^2
-                double om = (k - 1.0) * cyi / (t[1] * n);                 // omega / i
-                double u1 = (vpr - 3.0 * vr) * jj0 * a3;                  // w1 / i^4
-                double u2 = 0.5 * jj0 * jj0 * a3;                         // w2 / i^3
-                double u4 = 0.5 * om * om;                                // w4 / i^2
-                double u5 = jj0 * jj0 * om / 8.0;                         // w5 / i
+                Scalar cyi = rows[i].COverI * t[1], eq = rows[i].Iq, jj0 = t[7];
+                Scalar uu = cyi - (1.0 + k);
+                Scalar a3 = 0.5 * uu * (k - 1.0) * t[1] / lagrange;      // a_p / i^3
+                Scalar vr = cyi - 1.0;                                    // v_p / i
+                Scalar vpr = cyi - k;                                     // v" / i
+                Scalar tt2 = ((k * k - 1.0) - cyi * cyi + cyi * (3.0 - k)) / 4.0;
+                Scalar f1 = (k - 1.0) * vr;                               // phi1 / i^2
+                Scalar f2 = 0.5 * (-k - vr * vr + 8.0 * tt2 + 3.0 * f1);  // phi2 / i^2
+                Scalar f3 = 2.0 * vr * vr + 8.0 * tt2 + 5.0 * f1 - f2;    // phi3 / i^2
+                Scalar om = (k - 1.0) * cyi / (t[1] * n);                 // omega / i
+                Scalar u1 = (vpr - 3.0 * vr) * jj0 * a3;                  // w1 / i^4
+                Scalar u2 = 0.5 * jj0 * jj0 * a3;                         // w2 / i^3
+                Scalar u4 = 0.5 * om * om;                                // w4 / i^2
+                Scalar u5 = jj0 * jj0 * om / 8.0;                         // w5 / i
 
-                double z1 = a3 * (0.25 * (2.0 * vpr - 5.0 * vr) * jj0 * a3 + 10.0 * tt2 * tt2);
-                double z2 = 0.5 * ((vpr - 1.0) * cyi * vr * jj0 * a3 + 10.0 * tt2 * u1);
-                double z3 = ((2.0 * tt2 + 0.5 * f2 - 0.75 * f1) * f1 - tt2 * f3) * 0.75 * om;
-                double z4 = (5.0 * vr * vr - 10.0 * tt2 + 2.0 * f2) * 0.25 * u2;
-                double z5 = -0.5 * (vr + vpr) * jj0 * om * f2;
-                double z6 = 2.0 * (vr * vr + tt2 - 1.25 * f1) * u5;
-                double z7 = -jj0 * jj0 * u1;
-                double z8 = -2.0 * (4.0 * tt2 + 5.0 * f1 - 2.0 * vr * vr) * u5;
-                double z9 = -0.75 * jj0 * jj0 * u4;
-                double z10 = -0.5 * jj0 * jj0 * u5;
+                Scalar z1 = a3 * (0.25 * (2.0 * vpr - 5.0 * vr) * jj0 * a3 + 10.0 * tt2 * tt2);
+                Scalar z2 = 0.5 * ((vpr - 1.0) * cyi * vr * jj0 * a3 + 10.0 * tt2 * u1);
+                Scalar z3 = ((2.0 * tt2 + 0.5 * f2 - 0.75 * f1) * f1 - tt2 * f3) * 0.75 * om;
+                Scalar z4 = (5.0 * vr * vr - 10.0 * tt2 + 2.0 * f2) * 0.25 * u2;
+                Scalar z5 = -0.5 * (vr + vpr) * jj0 * om * f2;
+                Scalar z6 = 2.0 * (vr * vr + tt2 - 1.25 * f1) * u5;
+                Scalar z7 = -jj0 * jj0 * u1;
+                Scalar z8 = -2.0 * (4.0 * tt2 + 5.0 * f1 - 2.0 * vr * vr) * u5;
+                Scalar z9 = -0.75 * jj0 * jj0 * u4;
+                Scalar z10 = -0.5 * jj0 * jj0 * u5;
 
-                double e2 = eq * eq, e3 = e2 * eq, e4 = e3 * eq, e5 = e4 * eq, e6 = e5 * eq;
+                Scalar e2 = eq * eq, e3 = e2 * eq, e4 = e3 * eq, e5 = e4 * eq, e6 = e5 * eq;
                 rows[i].QT152 = eq * (e6 * z1 + e5 * z2 + e4 * (z3 + 9.0 * z4)
                                     + e3 * (z5 + z7) + e2 * (z6 + z8) + eq * z9 + z10);
             }
@@ -550,11 +550,11 @@ public static class BuchdahlTableI
             //
             // The L side never needed either, which is why Buchdahl's plate of (73.7) came out
             // right through the general route while this one did not.
-            if (fig.Present && Math.Abs(t[3]) > 1e-30)
+            if (fig.Present && SMath.Abs(t[3]) > 1e-30)
             {
-                double yy = t[1], vv = t[2], ii = t[3], jj = t[7];
-                double norm = n * (1.0 - k) / 16.0;
-                double jOverC = lagrange / ii;
+                Scalar yy = t[1], vv = t[2], ii = t[3], jj = t[7];
+                Scalar norm = n * (1.0 - k) / 16.0;
+                Scalar jOverC = lagrange / ii;
 
                 var dDOverC = TertiaryScriptT.ExpandCubicPhysical(
                     TertiaryCubics.DCubicIncrementOverC0(k, fig.C1, fig.C2, c, yy, vv),
@@ -572,11 +572,11 @@ public static class BuchdahlTableI
                 // c1-squared terms by four.
                 // Kept apart, because M (85.3) puts them in different passes: dz is
                 // i_p (dD/c) + y_p dL, so dD/c is the hat half and dL the check half.
-                var dzH = new double[11];
-                var dzC = new double[11];
+                var dzH = new Scalar[11];
+                var dzC = new Scalar[11];
                 for (int m = 1; m <= 10; m++)
                 {
-                    double w = norm * Math.Pow(jOverC, TertiaryScriptT.JPower[m]);
+                    Scalar w = norm * SMath.Pow(jOverC, TertiaryScriptT.JPower[m]);
                     dzH[m] = w * ii * dDOverC[m];
                     dzC[m] = tertiaryHatOnly ? 0.0 : w * yy * dL[m];
                 }
@@ -585,7 +585,7 @@ public static class BuchdahlTableI
                 // packing is linear, so each half may be packed on its own.
                 foreach (var half in new[] { dzH, dzC })
                 {
-                    double q4 = half[4] / 8.0;
+                    Scalar q4 = half[4] / 8.0;
                     half[3] -= q4;
                     half[4] = q4;
                 }
@@ -608,7 +608,7 @@ public static class BuchdahlTableI
         for (int i = 1; i < count - 1; i++)
         {
             var t = rows[i].T;
-            double a = 0, ab = 0, b = 0, cc = 0, cb = 0, cbFigured = 0;
+            Scalar a = 0, ab = 0, b = 0, cc = 0, cb = 0, cbFigured = 0;
             for (int j = 1; j < i; j++)
             {
                 a  += rows[j].T[10];
@@ -637,9 +637,9 @@ public static class BuchdahlTableI
 
         // ── The q-side primary coefficients and the dagger family ───────────────────────
         // t24 carries its own previous-surface value, so this must run in surface order.
-        double first9 = rows[1].T[9];
-        double first81 = rows[1].T[2] * rows[1].T[5];
-        double first82 = rows[1].T[5] * rows[1].T[5];
+        Scalar first9 = rows[1].T[9];
+        Scalar first81 = rows[1].T[2] * rows[1].T[5];
+        Scalar first82 = rows[1].T[5] * rows[1].T[5];
         for (int i = 1; i < count - 1; i++)
         {
             var t = rows[i].T;
@@ -652,10 +652,10 @@ public static class BuchdahlTableI
             // surface's ratio. Its figured half must therefore accumulate on that surface's
             // height ratio, not on its q - which is what s5p and s6p were feeling, they being
             // the only two whose formulae reach t24 rather than the dagger family.
-            double t23Figured = rows[i].T19Figured;
-            double prev23Figured = i > 1 ? rows[i - 1].T19Figured : 0.0;
-            double prev24Figured = i > 1 ? rows[i - 1].T24Figured : 0.0;
-            double prevRho = i > 1 ? rows[i - 1].Rho : 0.0;
+            Scalar t23Figured = rows[i].T19Figured;
+            Scalar prev23Figured = i > 1 ? rows[i - 1].T19Figured : 0.0;
+            Scalar prev24Figured = i > 1 ? rows[i - 1].T24Figured : 0.0;
+            Scalar prevRho = i > 1 ? rows[i - 1].Rho : 0.0;
 
             rows[i].T24Figured = (t23Figured - prev23Figured) * prevRho + prev24Figured;
 
@@ -683,14 +683,14 @@ public static class BuchdahlTableI
             //
             // On any ordinary surface the plain product is used; this is only for the case the
             // plain product cannot express.
-            double incrementSpherical = (t[23] - t23Figured) - (prev[23] - prev23Figured);
-            double carried;
+            Scalar incrementSpherical = (t[23] - t23Figured) - (prev[23] - prev23Figured);
+            Scalar carried;
             if (i > 1 && rows[i - 1].FlatInCollimatedSpace)
             {
-                double kp = rows[i - 1].KRatio;
-                double ciP = rows[i - 1].COverI;
-                double iqP = rows[i - 1].Iq;
-                double up = ciP * prev[1] - (1.0 + kp);
+                Scalar kp = rows[i - 1].KRatio;
+                Scalar ciP = rows[i - 1].COverI;
+                Scalar iqP = rows[i - 1].Iq;
+                Scalar up = ciP * prev[1] - (1.0 + kp);
                 carried = 0.5 * (kp - 1.0) * iqP * iqP * ciP * prev[4]
                         * ((1.0 - kp) + 2.0 * prev[1] * iqP * up / rows[i - 1].Lagrange);
             }
@@ -700,7 +700,7 @@ public static class BuchdahlTableI
             }
 
             rows[i].QDelta23 = carried;
-            double t24Spherical = carried + (prev[24] - prev24Figured);
+            Scalar t24Spherical = carried + (prev[24] - prev24Figured);
             t[24] = t24Spherical + rows[i].T24Figured;
 
             t[25] = t[6] * t[15] - t[20];
@@ -715,7 +715,7 @@ public static class BuchdahlTableI
             t[33] = -t[6] * t[29] + t[30];
 
             // (85.1): the same six, on the height ratio.
-            double y = rows[i].Rho;
+            Scalar y = rows[i].Rho;
             var Y = rows[i].Y;
             Y[25] = y * t[15] - t[20];
             Y[26] = y * t[16] - t[21];
@@ -734,11 +734,11 @@ public static class BuchdahlTableI
         {
             var t = rows[i].T;
 
-            double nBefore = i - 1 < indices.Length ? indices[i - 1] : 1.0;
-            double nAfter = i < indices.Length ? indices[i] : 1.0;
-            if (Math.Abs(nAfter) < 1e-12) nAfter = 1.0;
-            double kk = nBefore / nAfter;
-            double cc = surfaces[i].VertexCurvature * scale;
+            Scalar nBefore = i - 1 < indices.Length ? indices[i - 1] : 1.0;
+            Scalar nAfter = i < indices.Length ? indices[i] : 1.0;
+            if (SMath.Abs(nAfter) < 1e-12) nAfter = 1.0;
+            Scalar kk = nBefore / nAfter;
+            Scalar cc = surfaces[i].VertexCurvature * scale;
             var vf = surfaces[i].VertexForm();
             var figNow = TertiaryCubics.Figuring.From(
                 vf.Conic, vf.A4, vf.A6, vf.A8, vf.Curvature, scale);
@@ -747,12 +747,12 @@ public static class BuchdahlTableI
             // from t38, t50 from t44, and so on - so an aspheric increment cannot be added
             // as each is formed, or it would propagate down the chain as though it were part
             // of the spherical surface. The chain is run first, then the increments applied.
-            double s1 = 3.0 * rows[i].ApSpherical * t[34];
-            double s2 = 4.0 * t[6] * s1 + t[43];
-            double s3 = 0.5 * t[6] * (t[43] + s2) + t[48] + t[49];
-            double s4 = 2.0 * (s3 - 2.0 * t[48] - t[49]);
-            double s5 = (-t[6] * s2 + 2.0 * s3 + s4 - 2.0 * t[48]) * t[6] + t[58];
-            double s6 = 0.5 * (0.25 * (2.0 * t[49] - 2.0 * s3 - s4) * t[6]
+            Scalar s1 = 3.0 * rows[i].ApSpherical * t[34];
+            Scalar s2 = 4.0 * t[6] * s1 + t[43];
+            Scalar s3 = 0.5 * t[6] * (t[43] + s2) + t[48] + t[49];
+            Scalar s4 = 2.0 * (s3 - 2.0 * t[48] - t[49]);
+            Scalar s5 = (-t[6] * s2 + 2.0 * s3 + s4 - 2.0 * t[48]) * t[6] + t[58];
+            Scalar s6 = 0.5 * (0.25 * (2.0 * t[49] - 2.0 * s3 - s4) * t[6]
                                + t[58] + s5) * t[6] + t[64];
 
             var da = aspheric != null && i < aspheric.Count ? aspheric[i] : null;
@@ -787,29 +787,29 @@ public static class BuchdahlTableI
             // one of them. The apparent divergences - q^4 a_p among them - all cancel against
             // one of the factors of i above, which is why a term-by-term lift of the chain
             // fails while this does not.
-            double ci = rows[i].COverI, iqq = rows[i].Iq, ii = t[3];
-            double cyi = ci * t[1];
-            double aoi3 = Math.Abs(rows[i].Lagrange) > 1e-30
+            Scalar ci = rows[i].COverI, iqq = rows[i].Iq, ii = t[3];
+            Scalar cyi = ci * t[1];
+            Scalar aoi3 = SMath.Abs(rows[i].Lagrange) > 1e-30
                         ? 0.5 * (cyi - (1.0 + kk)) * (kk - 1.0) * t[1] / rows[i].Lagrange
                         : 0.0;
-            double omoi = Math.Abs(t[1]) > 1e-30 ? (kk - 1.0) * cyi / (t[1] * nBefore) : 0.0;
-            double poi = (3.0 - kk - 2.0 * cyi) * t[7];
-            double t34r = ((kk * kk - 1.0) - cyi * cyi + cyi * (3.0 - kk)) / 4.0;
-            double t48r = 0.5 * t[7] * t[7] * aoi3;
-            double t49r = 0.25 * (1.0 - kk) * (2.0 * cyi - (1.0 + kk)) * (cyi - kk) * t[7];
-            double t58r = 0.5 * omoi * omoi;
-            double t64r = t[7] * t[7] * omoi / 8.0;
+            Scalar omoi = SMath.Abs(t[1]) > 1e-30 ? (kk - 1.0) * cyi / (t[1] * nBefore) : 0.0;
+            Scalar poi = (3.0 - kk - 2.0 * cyi) * t[7];
+            Scalar t34r = ((kk * kk - 1.0) - cyi * cyi + cyi * (3.0 - kk)) / 4.0;
+            Scalar t48r = 0.5 * t[7] * t[7] * aoi3;
+            Scalar t49r = 0.25 * (1.0 - kk) * (2.0 * cyi - (1.0 + kk)) * (cyi - kk) * t[7];
+            Scalar t58r = 0.5 * omoi * omoi;
+            Scalar t64r = t[7] * t[7] * omoi / 8.0;
 
-            double s2r = aoi3 * (12.0 * t34r * iqq + poi);
-            double s3r = 0.5 * iqq * (poi * aoi3 + s2r) + t48r + t49r;
-            double s4r = 2.0 * (s3r - 2.0 * t48r - t49r);
-            double brr = 12.0 * aoi3 * t34r * iqq * iqq + 3.0 * poi * aoi3 * iqq
+            Scalar s2r = aoi3 * (12.0 * t34r * iqq + poi);
+            Scalar s3r = 0.5 * iqq * (poi * aoi3 + s2r) + t48r + t49r;
+            Scalar s4r = 2.0 * (s3r - 2.0 * t48r - t49r);
+            Scalar brr = 12.0 * aoi3 * t34r * iqq * iqq + 3.0 * poi * aoi3 * iqq
                        - 2.0 * t48r + 2.0 * t49r;
-            double s5r = brr * iqq + t58r;
-            double wr = 0.25 * iqq * (2.0 * t49r - 2.0 * s3r - s4r) + t58r + s5r;
-            double s6r = 0.5 * wr * iqq + t64r;
+            Scalar s5r = brr * iqq + t58r;
+            Scalar wr = 0.25 * iqq * (2.0 * t49r - 2.0 * s3r - s4r) + t58r + s5r;
+            Scalar s6r = 0.5 * wr * iqq + t64r;
 
-            double i2 = ii * ii;
+            Scalar i2 = ii * ii;
             var qSec = new[]
             {
                 3.0 * aoi3 * t34r * iqq * i2 * i2,   // q s1, p = 5
@@ -833,9 +833,9 @@ public static class BuchdahlTableI
 
             // Two passes: the spherical half on the incidence ratio, the figured half on the
             // height ratio. See Secondary below for why they cannot share one.
-            double ap = rows[i].ApSpherical, af = rows[i].ApFigured, rr = rows[i].Rho;
-            double[] tS = new double[6], bS = new double[6], mS = new double[6];
-            double[] tF = new double[6], bF = new double[6], mF = new double[6];
+            Scalar ap = rows[i].ApSpherical, af = rows[i].ApFigured, rr = rows[i].Rho;
+            Scalar[] tS = new Scalar[6], bS = new Scalar[6], mS = new Scalar[6];
+            Scalar[] tF = new Scalar[6], bF = new Scalar[6], mF = new Scalar[6];
 
             // The dagger family, twice. Its formulae apply the CURRENT surface's ratio to
             // the accumulated sums, so the figured pass needs its own set built on the height
@@ -846,12 +846,12 @@ public static class BuchdahlTableI
                 t[25], t[26], t[27], t[28], t[29], t[30], t[31], t[32], t[33],
             };
 
-            double f0 = rr * t[15] - t[20];
-            double f1 = rr * t[16] - t[21];
-            double f2 = 2.0 * rr * t[16] - t[22];
-            double f3 = rr * t[17] - 2.0 * t[23];
-            double f4 = rr * t[18] - t[23];
-            double f5 = rr * t[19] - t[24];
+            Scalar f0 = rr * t[15] - t[20];
+            Scalar f1 = rr * t[16] - t[21];
+            Scalar f2 = 2.0 * rr * t[16] - t[22];
+            Scalar f3 = rr * t[17] - 2.0 * t[23];
+            Scalar f4 = rr * t[18] - t[23];
+            Scalar f5 = rr * t[19] - t[24];
             var dFigured = new[]
             {
                 f0, f1, f2, f3, f4, f5,
@@ -862,7 +862,7 @@ public static class BuchdahlTableI
             // forms of Sec. 84(e), so a flat surface in collimated space carries its real
             // values into the secondary instead of zeros. The RATIO argument is still q, which
             // is genuinely infinite there - that part of the chain is not yet regularised.
-            var qFigured = new double[6];
+            var qFigured = new Scalar[6];
             for (int m = 0; m < 6; m++) qFigured[m] = rr * figuredSix[m];
 
             Secondary(t, ap, rows[i].QApSpherical, rows[i].C13Spherical,
@@ -885,10 +885,10 @@ public static class BuchdahlTableI
             // says so is Buchdahl's own identity: solving (7.1) for the S1bar_p it requires
             // leaves a residual that is constant between figured surfaces and steps at each
             // one, and each step is exactly (q - rho) times that surface's D half.
-            if (aspheric != null && figNow.Present && Math.Abs(cc) > 1e-12)
+            if (aspheric != null && figNow.Present && SMath.Abs(cc) > 1e-12)
             {
                 var dOnly = SecondaryDHalf(t, kk, cc, figNow, s1);
-                double lead = t[6] - rr;
+                Scalar lead = t[6] - rr;
                 for (int m = 0; m < 6; m++) bF[m] += lead * dOnly[m];
             }
 
@@ -940,7 +940,7 @@ public static class BuchdahlTableI
                      { (69, 41), (70, 42), (71, 46), (72, 47), (73, 52), (74, 53),
                        (75, 56), (76, 57), (77, 62), (78, 63), (79, 67), (80, 68) })
             {
-                double a = 0.0;
+                Scalar a = 0.0;
                 for (int j = 1; j < i; j++) a += rows[j].T[source];
                 t[target] = a;
             }
@@ -950,8 +950,8 @@ public static class BuchdahlTableI
         {
             var t = rows[i].T;
             var prev = rows[i - 1].T;
-            double t9Star = rows[i].VpPrime * rows[i].VpPrime;
-            double t81Star = rows[i].VpPrime * rows[i].VqPrime;
+            Scalar t9Star = rows[i].VpPrime * rows[i].VpPrime;
+            Scalar t81Star = rows[i].VpPrime * rows[i].VqPrime;
 
             t[83] = t[16] - t[20];
             t[84] = t[17] - t[22];
@@ -1008,7 +1008,7 @@ public static class BuchdahlTableI
             // figured half to speak of, and taking one - by shadowing the accumulations or by
             // differencing a spherical twin - measures worse on every multi-surface design
             // tried (Triplet24 5.29 against 2.72, SPOTM 5.30 against 4.06).
-            double dPrevRatio = i > 1 ? rows[i - 1].Rho - prev[6] : 0.0;
+            Scalar dPrevRatio = i > 1 ? rows[i - 1].Rho - prev[6] : 0.0;
             var prv = rows[i - 1];
 
             t[101] = t[6] * t[69] - t[86];
@@ -1059,39 +1059,39 @@ public static class BuchdahlTableI
             // only i-dependence anywhere is i_q = (c/i) i y_q - v_q, so
             // X/i = (c/i) y_q X'(i_q) with X = t80 - (3/2) c-bar_p^2. Checked against the
             // R = 1e10 twin, the quartic reproduces t80 exactly and X/i to seven figures.
-            double t114Carried;
+            Scalar t114Carried;
             if (i > 1 && rows[i - 1].FlatInCollimatedSpace)
             {
                 var pr = rows[i - 1];
-                double kp = pr.KRatio, ciP = pr.COverI, iqP = pr.Iq;
-                double yP = prev[1], yqP = prev[4], lP = pr.Lagrange, t7P = prev[7];
-                double nP = Math.Abs(pr.NBefore) > 1e-12 ? pr.NBefore : 1.0;
-                double cyiP = ciP * yP;
+                Scalar kp = pr.KRatio, ciP = pr.COverI, iqP = pr.Iq;
+                Scalar yP = prev[1], yqP = prev[4], lP = pr.Lagrange, t7P = prev[7];
+                Scalar nP = SMath.Abs(pr.NBefore) > 1e-12 ? pr.NBefore : 1.0;
+                Scalar cyiP = ciP * yP;
 
-                double aR = 0.5 * (cyiP - (1.0 + kp)) * (kp - 1.0) * yP / lP;
-                double pR = (3.0 - kp - 2.0 * cyiP) * t7P;
-                double tR = ((kp * kp - 1.0) - cyiP * cyiP + cyiP * (3.0 - kp)) / 4.0;
-                double aa = 0.5 * t7P * t7P * aR;
-                double bb = 0.25 * (1.0 - kp) * (2.0 * cyiP - (1.0 + kp)) * (cyiP - kp) * t7P;
-                double omR = (kp - 1.0) * ciP / nP;
-                double ccR = 0.5 * omR * omR;
-                double ddR = t7P * t7P * omR / 8.0;
+                Scalar aR = 0.5 * (cyiP - (1.0 + kp)) * (kp - 1.0) * yP / lP;
+                Scalar pR = (3.0 - kp - 2.0 * cyiP) * t7P;
+                Scalar tR = ((kp * kp - 1.0) - cyiP * cyiP + cyiP * (3.0 - kp)) / 4.0;
+                Scalar aa = 0.5 * t7P * t7P * aR;
+                Scalar bb = 0.25 * (1.0 - kp) * (2.0 * cyiP - (1.0 + kp)) * (cyiP - kp) * t7P;
+                Scalar omR = (kp - 1.0) * ciP / nP;
+                Scalar ccR = 0.5 * omR * omR;
+                Scalar ddR = t7P * t7P * omR / 8.0;
 
-                double uP = cyiP - (1.0 + kp);
-                double alpha = 0.5 * (kp - 1.0) * yP * uP / lP;
-                double beta = -0.5 * (kp - 1.0) * ciP / nP;
+                Scalar uP = cyiP - (1.0 + kp);
+                Scalar alpha = 0.5 * (kp - 1.0) * yP * uP / lP;
+                Scalar beta = -0.5 * (kp - 1.0) * ciP / nP;
 
-                double e2 = iqP * iqP, e3 = e2 * iqP, e4 = e3 * iqP;
-                double xPrime = 15.0 * aR * tR * e4 + 4.0 * aR * pR * e3
+                Scalar e2 = iqP * iqP, e3 = e2 * iqP, e4 = e3 * iqP;
+                Scalar xPrime = 15.0 * aR * tR * e4 + 4.0 * aR * pR * e3
                               + 3.0 * (bb - aa) * e2 + 2.0 * ccR * iqP + ddR
                               - 3.0 * (alpha * e3 + beta * iqP) * (3.0 * alpha * e2 + beta);
 
-                double xOverI = ciP * yqP * xPrime;
-                double t23OverI = Math.Abs(iqP) > 1e-30 ? rows[i].QDelta23 / iqP : 0.0;
-                double t81OverI = (1.0 - kp) * ciP * yP * t[5];
-                double t18OverI = aR * e2 - 0.5 * omR;
+                Scalar xOverI = ciP * yqP * xPrime;
+                Scalar t23OverI = SMath.Abs(iqP) > 1e-30 ? rows[i].QDelta23 / iqP : 0.0;
+                Scalar t81OverI = (1.0 - kp) * ciP * yP * t[5];
+                Scalar t18OverI = aR * e2 - 0.5 * omR;
 
-                double t98OverI = xOverI + t23OverI * (2.0 * t[19] - t[82])
+                Scalar t98OverI = xOverI + t23OverI * (2.0 * t[19] - t[82])
                                 + t[24] * (t81OverI + t18OverI);
 
                 t114Carried = prev[6] * (-0.5 * prev[33] * prev[100] - prev[80] + prev[98])
@@ -1119,8 +1119,8 @@ public static class BuchdahlTableI
             // carries that surface height ratio - the same distinction t24 already makes.
             var Y = rows[i].Y;
             var prevY = rows[i - 1].Y;
-            double y = rows[i].Rho;
-            double py = i > 1 ? rows[i - 1].Rho : 0.0;
+            Scalar y = rows[i].Rho;
+            Scalar py = i > 1 ? rows[i - 1].Rho : 0.0;
 
             Y[101] = y * t[69] - t[86];
             Y[102] = -py * (prev[70] - prev[86] + t[86]) + y * t[70]
@@ -1156,21 +1156,21 @@ public static class BuchdahlTableI
             var r = rows[i];
 
             // The surface's own quantities, to be swapped for each half and put back after.
-            double o10 = t[10], o13 = t[13], o40 = t[40];
-            double o38 = t[38], o44 = t[44], o50 = t[50], o54 = t[54], o59 = t[59], o65 = t[65];
-            double o45 = t[45], o51 = t[51], o55 = t[55], o61 = t[61], o66 = t[66];
-            var oz = new double[11];
+            Scalar o10 = t[10], o13 = t[13], o40 = t[40];
+            Scalar o38 = t[38], o44 = t[44], o50 = t[50], o54 = t[54], o59 = t[59], o65 = t[65];
+            Scalar o45 = t[45], o51 = t[51], o55 = t[55], o61 = t[61], o66 = t[66];
+            var oz = new Scalar[11];
             for (int m = 1; m <= 10; m++) oz[m] = t[120 + m];
 
-            var hat = new double[11];
-            var check = new double[11];
-            var residue = new double[11];
-            var zero = new double[11];
-            var hatBar = new double[11];
-            var checkBar = new double[11];
-            var residueBarQ = new double[11];
-            var residueBarRho = new double[11];
-            var residueCheck = new double[11];
+            var hat = new Scalar[11];
+            var check = new Scalar[11];
+            var residue = new Scalar[11];
+            var zero = new Scalar[11];
+            var hatBar = new Scalar[11];
+            var checkBar = new Scalar[11];
+            var residueBarQ = new Scalar[11];
+            var residueBarRho = new Scalar[11];
+            var residueCheck = new Scalar[11];
 
             // M (85.1): the hat pass is combined by the (I) family, the check pass by the
             // (Y) family - the same p and q quantities on the height ratio instead of the
@@ -1178,7 +1178,7 @@ public static class BuchdahlTableI
             // above; here each pass is simply given the one that belongs to it, at BOTH
             // orders. Giving it only the secondary six leaves the computation a hybrid, which
             // Sec. 85 does not admit: every coefficient splits or none does.
-            var own = new double[156];
+            var own = new Scalar[156];
             for (int m = 25; m <= 33; m++) own[m] = t[m];
             for (int m = 101; m <= 120; m++) own[m] = t[m];
 
@@ -1189,8 +1189,8 @@ public static class BuchdahlTableI
                 for (int m = 101; m <= 120; m++) t[m] = src[m];
             }
 
-            void Load(double ap, double c13, IReadOnlyList<double> sec, IReadOnlyList<double> mm,
-                      IReadOnlyList<double> z)
+            void Load(Scalar ap, Scalar c13, IReadOnlyList<Scalar> sec, IReadOnlyList<Scalar> mm,
+                      IReadOnlyList<Scalar> z)
             {
                 t[10] = ap;
                 t[13] = c13;
@@ -1217,15 +1217,15 @@ public static class BuchdahlTableI
             TertiaryPass(t, t[6], residue, residueBarQ);
 
             Load(r.ApSpherical, r.C13Spherical, r.SecSph, r.MSph, r.ZHat);
-            var hatIntrinsic = new double[11];
-            var hatIntrinsicBar = new double[11];
+            var hatIntrinsic = new Scalar[11];
+            var hatIntrinsicBar = new Scalar[11];
             TertiaryPass(t, t[6], hat, hatBar, r.FlatInCollimatedSpace, r.QT152,
                          hatIntrinsic, hatIntrinsicBar);
 
             Family(checkHalf: true);
             Load(r.ApFigured, r.C13Figured, r.SecFig, r.MFig, r.ZCheck);
-            var checkIntrinsic = new double[11];
-            var checkIntrinsicBar = new double[11];
+            var checkIntrinsic = new Scalar[11];
+            var checkIntrinsicBar = new Scalar[11];
             TertiaryPass(t, r.Rho, check, checkBar, false, 0.0,
                          checkIntrinsic, checkIntrinsicBar);
             for (int k = 1; k <= 10; k++)
@@ -1244,8 +1244,8 @@ public static class BuchdahlTableI
             // One more pass with the quantities put back, so that t131..t155 are left holding
             // the conventional single-pass values. Nothing above reads them - the totals come
             // from the two passes - but the published-table tests do, and so may a reader.
-            var spare = new double[11];
-            var spareBar = new double[11];
+            var spare = new Scalar[11];
+            var spareBar = new Scalar[11];
             TertiaryPass(t, t[6], spare, spareBar);
 
             // (85.3): the total is the sum of the two halves. The barred entry is the sum of
@@ -1307,28 +1307,28 @@ public static class BuchdahlTableI
     /// </summary>
     private static readonly int[] SecondaryJPower = { 0, 1, 2, 2, 3, 4 };
 
-    private static double[] SecondaryDHalf(double[] t, double k, double c,
-                                           TertiaryCubics.Figuring fig, double sphericalS1)
+    private static Scalar[] SecondaryDHalf(Scalar[] t, Scalar k, Scalar c,
+                                           TertiaryCubics.Figuring fig, Scalar sphericalS1)
     {
         var (dRaw, _) = TertiaryCubics.SecondaryHalves(k, fig.C1, fig.C2, c, t[1], t[2]);
         var dTheta = TertiaryScriptT.ExpandQuadraticPhysical(dRaw, t[1], t[2], c);
         var sTheta = TertiaryScriptT.ExpandQuadraticPhysical(
             TertiaryCubics.SecondaryDSpherical(k, c, t[1], t[2]), t[1], t[2], c);
 
-        double baseline = sTheta[0] * t[3] / c;
-        if (Math.Abs(baseline) < 1e-25) return new double[6];
-        double norm = sphericalS1 / baseline;
-        double jc = t[7] / c;
+        Scalar baseline = sTheta[0] * t[3] / c;
+        if (SMath.Abs(baseline) < 1e-25) return new Scalar[6];
+        Scalar norm = sphericalS1 / baseline;
+        Scalar jc = t[7] / c;
 
-        var g = new double[6];
+        var g = new Scalar[6];
         for (int m = 0; m < 6; m++)
-            g[m] = norm * Math.Pow(jc, SecondaryJPower[m]) * (t[3] / c) * dTheta[m];
+            g[m] = norm * SMath.Pow(jc, SecondaryJPower[m]) * (t[3] / c) * dTheta[m];
 
-        double w2 = -0.5 * g[3];
+        Scalar w2 = -0.5 * g[3];
         var w = new[] { g[0], g[1], w2, g[2] - w2, g[4], g[5] };
 
-        double q1 = t[6], q2 = q1 * q1, q3 = q2 * q1, q4 = q3 * q1;
-        double a1 = w[0];
+        Scalar q1 = t[6], q2 = q1 * q1, q3 = q2 * q1, q4 = q3 * q1;
+        Scalar a1 = w[0];
         return new[]
         {
             a1,
@@ -1340,64 +1340,64 @@ public static class BuchdahlTableI
         };
     }
 
-    private static void Secondary(double[] t, double a, double ab, double cc,
-                                  double q2a, double qcc, double qom, double[] qs,
-                                  double[] d, double[] s, bool standalone,
-                                  double[] total, double[] bar, double[] mid)
+    private static void Secondary(Scalar[] t, Scalar a, Scalar ab, Scalar cc,
+                                  Scalar q2a, Scalar qcc, Scalar qom, Scalar[] qs,
+                                  Scalar[] d, Scalar[] s, bool standalone,
+                                  Scalar[] total, Scalar[] bar, Scalar[] mid)
     {
         // Every barred entry is (84.42), s-bar_mu = q s_mu + the bracket in d6..d8, so the
         // only place q appears is the lift q s_mu. It is never formed as a product with q:
         // the caller supplies q a (as ab), q^2 a, q c13 and q omega already carried on the
         // incidences, and the lifts of the intrinsic six in qs. Each line below is the line
         // above it with every factor advanced one power of q, which is why they pair off.
-        double s1 = s[0] + 3.0 * a * d[0];
-        double q1 = qs[0] + 3.0 * ab * d[0];
+        Scalar s1 = s[0] + 3.0 * a * d[0];
+        Scalar q1 = qs[0] + 3.0 * ab * d[0];
         total[0] = s1;
         bar[0] = a * d[6] + q1;
 
-        double s2mid = 2.0 * (ab * d[0] + (d[1] + d[2]) * a)
+        Scalar s2mid = 2.0 * (ab * d[0] + (d[1] + d[2]) * a)
                      + (standalone ? -t[8] * t[15] : 0.0) + s[1];
-        double q2mid = 2.0 * (q2a * d[0] + (d[1] + d[2]) * ab)
+        Scalar q2mid = 2.0 * (q2a * d[0] + (d[1] + d[2]) * ab)
                      + (standalone ? -qom * t[15] : 0.0) + qs[1];
         mid[1] = s2mid;
-        double s2 = 2.0 * ab * d[0] + a * d[2] + s2mid;
-        double q2 = 2.0 * q2a * d[0] + ab * d[2] + q2mid;
+        Scalar s2 = 2.0 * ab * d[0] + a * d[2] + s2mid;
+        Scalar q2 = 2.0 * q2a * d[0] + ab * d[2] + q2mid;
         total[1] = s2;
         bar[1] = 2.0 * ab * d[6] + a * d[7] + q2;
 
-        double s3mid = 2.0 * (ab * d[1] + d[4] * a)
+        Scalar s3mid = 2.0 * (ab * d[1] + d[4] * a)
                      + (standalone ? -t[8] * t[16] : 0.0) + s[2];
-        double q3mid = 2.0 * (q2a * d[1] + d[4] * ab)
+        Scalar q3mid = 2.0 * (q2a * d[1] + d[4] * ab)
                      + (standalone ? -qom * t[16] : 0.0) + qs[2];
         mid[2] = s3mid;
-        double s3 = cc * d[0] + a * d[4] + s3mid;
-        double q3 = qcc * d[0] + ab * d[4] + q3mid;
+        Scalar s3 = cc * d[0] + a * d[4] + s3mid;
+        Scalar q3 = qcc * d[0] + ab * d[4] + q3mid;
         total[2] = s3;
         bar[2] = a * d[8] + cc * d[6] + q3;
 
-        double s4mid = 2.0 * (s3mid - s[2]) + s[3];
-        double q4mid = 2.0 * (q3mid - qs[2]) + qs[3];
+        Scalar s4mid = 2.0 * (s3mid - s[2]) + s[3];
+        Scalar q4mid = 2.0 * (q3mid - qs[2]) + qs[3];
         mid[3] = s4mid;
-        double s4 = 2.0 * ab * d[2] + s4mid;
-        double q4 = 2.0 * q2a * d[2] + q4mid;
+        Scalar s4 = 2.0 * ab * d[2] + s4mid;
+        Scalar q4 = 2.0 * q2a * d[2] + q4mid;
         total[3] = s4;
         bar[3] = 2.0 * ab * d[7] + q4;
 
-        double s5mid = (standalone ? -(t[17] + t[18]) * t[8] : 0.0) + s[4]
+        Scalar s5mid = (standalone ? -(t[17] + t[18]) * t[8] : 0.0) + s[4]
                      + 2.0 * (ab * (d[3] + d[4]) + d[5] * a);
-        double q5mid = (standalone ? -(t[17] + t[18]) * qom : 0.0) + qs[4]
+        Scalar q5mid = (standalone ? -(t[17] + t[18]) * qom : 0.0) + qs[4]
                      + 2.0 * (q2a * (d[3] + d[4]) + d[5] * ab);
         mid[4] = s5mid;
-        double s5 = 2.0 * ab * d[4] + cc * d[2] + s5mid;
-        double q5 = 2.0 * q2a * d[4] + qcc * d[2] + q5mid;
+        Scalar s5 = 2.0 * ab * d[4] + cc * d[2] + s5mid;
+        Scalar q5 = 2.0 * q2a * d[4] + qcc * d[2] + q5mid;
         total[4] = s5;
         bar[4] = 2.0 * ab * d[8] + cc * d[7] + q5;
 
-        double s6mid = 2.0 * (cc * t[19] - ab * t[24]) + s[5];
-        double q6mid = 2.0 * (qcc * t[19] - q2a * t[24]) + qs[5];
+        Scalar s6mid = 2.0 * (cc * t[19] - ab * t[24]) + s[5];
+        Scalar q6mid = 2.0 * (qcc * t[19] - q2a * t[24]) + qs[5];
         mid[5] = s6mid;
-        double s6 = cc * d[4] + s6mid;
-        double q6 = qcc * d[4] + q6mid;
+        Scalar s6 = cc * d[4] + s6mid;
+        Scalar q6 = qcc * d[4] + q6mid;
         total[5] = s6;
         bar[5] = cc * d[8] + q6;
     }
@@ -1416,10 +1416,10 @@ public static class BuchdahlTableI
     /// the surface's own, a single pass with mixed inputs is not the sum of the two, which is
     /// why no reference-swap on the barred entry alone could ever be right.</para>
     /// </summary>
-    private static void TertiaryPass(double[] t, double carry, double[] outTotals,
-                                     double[] outBarred, bool carryIsInfinite = false,
-                                     double qT152 = 0.0, double[]? outIntrinsic = null,
-                                     double[]? outIntrinsicBar = null)
+    private static void TertiaryPass(Scalar[] t, Scalar carry, Scalar[] outTotals,
+                                     Scalar[] outBarred, bool carryIsInfinite = false,
+                                     Scalar qT152 = default, Scalar[]? outIntrinsic = null,
+                                     Scalar[]? outIntrinsicBar = null)
     {
         // M (26.2) gives b_p = 2 q a_p, and that is how b reaches Table I: as a bare ratio
         // beside an accumulated family member, the pair multiplying this surface own a. In the
@@ -1433,7 +1433,7 @@ public static class BuchdahlTableI
         // t132 holds no bare ratio and t135 onwards each hold one.
         //
         // In the hat pass carry is q, so every spherical result is bit-identical.
-        double bq = carry;
+        Scalar bq = carry;
 
         t[134] = 6.0 * t[6] * t[121] + t[122];
         t[136] = 0.5 * (t[134] + t[122]) * t[6] + t[123] + t[124];
@@ -1573,12 +1573,12 @@ public static class BuchdahlTableI
         // Where the ratio is infinite, q t155 cannot be formed as a product. t155 differs from
         // t152 by 4 t19 t65 + t153 + t154, which a surface with nothing accumulated ahead of it
         // does not have; the remainder keeps the plain product, so nothing else moves.
-        double carriedT155 = carryIsInfinite
+        Scalar carriedT155 = carryIsInfinite
                            ? qT152 + carry * (t[155] - t[152])
                            : carry * t[155];
         outBarred[10] = carriedT155 + t[13] * t[120] + t[33] * t[66];
     }
 
-    private static double Coefficient(Models.Surface s, int index) =>
+    private static Scalar Coefficient(Models.Surface s, int index) =>
         index >= 0 && index < s.AsphericCoefficients.Length ? s.AsphericCoefficients[index] : 0.0;
 }

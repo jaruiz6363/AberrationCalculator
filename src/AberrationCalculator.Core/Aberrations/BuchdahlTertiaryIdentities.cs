@@ -24,65 +24,69 @@ public static class BuchdahlTertiaryIdentities
     /// Residuals of (8.1) .. (8.6) at surface <paramref name="j"/>, and the size of the largest
     /// term entering each, so a residual can be judged against what it is a residual of.
     /// </summary>
-    public static (double[] Residual, double[] Scale) At(BuchdahlTableIRow[] rows, int j,
-                                                         double n1 = 1.0)
+    public static (Scalar[] Residual, Scalar[] Scale) At(BuchdahlTableIRow[] rows, int j)
+        => At(rows, j, 1.0);
+
+    /// <summary>The same, with the object-space index given rather than taken as unity.</summary>
+    public static (Scalar[] Residual, Scalar[] Scale) At(BuchdahlTableIRow[] rows, int j,
+                                                         Scalar n1)
     {
         if (rows == null) throw new ArgumentNullException(nameof(rows));
         if (j < 1 || j >= rows.Length) throw new ArgumentOutOfRangeException(nameof(j));
 
         var r = rows[j];
-        double vp = r[2], vq = r[5];
+        Scalar vp = r[2], vq = r[5];
 
-        double Ap = r[15], Abp = r[16], Bbp = r[17], Cp = r[18], Cbp = r[19];
-        double Aq = r[20], Abq = r[21], Bq = r[22], Cq = r[23], Cbq = r[24];
-        double Bp = 2.0 * Abp, Bbq = 2.0 * Cq;
+        Scalar Ap = r[15], Abp = r[16], Bbp = r[17], Cp = r[18], Cbp = r[19];
+        Scalar Aq = r[20], Abq = r[21], Bq = r[22], Cq = r[23], Cbq = r[24];
+        Scalar Bp = 2.0 * Abp, Bbq = 2.0 * Cq;
 
         // Paper III (4): G_v = v_q G_p - v_p G_q.
-        double Av = vq * Ap - vp * Aq, Abv = vq * Abp - vp * Abq;
-        double Bv = vq * Bp - vp * Bq, Bbv = vq * Bbp - vp * Bbq;
-        double Cv = vq * Cp - vp * Cq, Cbv = vq * Cbp - vp * Cbq;
+        Scalar Av = vq * Ap - vp * Aq, Abv = vq * Abp - vp * Abq;
+        Scalar Bv = vq * Bp - vp * Bq, Bbv = vq * Bbp - vp * Bbq;
+        Scalar Cv = vq * Cp - vp * Cq, Cbv = vq * Cbp - vp * Cbq;
 
         // Paper III (5) and (6).
-        double As = Av - 0.5 * vp * vp * vp;
-        double Bs = Bv - vp * vp * vq;
-        double Cs = Cv - 0.5 * vp * vq * vq;
-        double Abs = Abv - 0.5 * vp * vp * vq;
-        double Bbs = Bbv - vp * vq * vq;
-        double Cbs = Cbv - 0.5 * vq * vq * vq;
+        Scalar As = Av - 0.5 * vp * vp * vp;
+        Scalar Bs = Bv - vp * vp * vq;
+        Scalar Cs = Cv - 0.5 * vp * vq * vq;
+        Scalar Abs = Abv - 0.5 * vp * vp * vq;
+        Scalar Bbs = Bbv - vp * vq * vq;
+        Scalar Cbs = Cbv - 0.5 * vq * vq * vq;
 
-        double[] Sp = { 0, r[69], r[71], r[73], r[75], r[77], r[79] };
-        double[] Sbp = { 0, r[70], r[72], r[74], r[76], r[78], r[80] };
-        double[] Sq = { 0, r[86], r[89], r[92], r[94], r[97], r[98] };
+        Scalar[] Sp = { 0, r[69], r[71], r[73], r[75], r[77], r[79] };
+        Scalar[] Sbp = { 0, r[70], r[72], r[74], r[76], r[78], r[80] };
+        Scalar[] Sq = { 0, r[86], r[89], r[92], r[94], r[97], r[98] };
         var Sbq = BuchdahlSecondaryQ.At(rows, j, n1);
 
-        double Sv(int m) => vq * Sp[m] - vp * Sq[m];
-        double Sbv(int m) => vq * Sbp[m] - vp * Sbq[m];
+        Scalar Sv(int m) => vq * Sp[m] - vp * Sq[m];
+        Scalar Sbv(int m) => vq * Sbp[m] - vp * Sbq[m];
 
-        double S1s = Sv(1) - 1.5 * vp * vp * Av + 0.375 * Math.Pow(vp, 5);
-        double S2s = Sv(2) - 2.0 * vp * vq * Av - vp * vp * (Abv + 1.5 * Bv)
-                   + 1.5 * Math.Pow(vp, 4) * vq;
-        double S3s = Sv(3) - 0.5 * vq * vq * Av - vp * vq * Abv - 1.5 * vp * vp * Cv
-                   + 0.75 * Math.Pow(vp, 3) * vq * vq;
-        double S4s = Sv(4) - 2.0 * vp * vq * Bv - vp * vp * Bbv
-                   + 1.5 * Math.Pow(vp, 3) * vq * vq;
-        double S5s = Sv(5) - 0.5 * vq * vq * Bv - vp * vq * (Bbv + 2.0 * Cv) - vp * vp * Cbv
-                   + 1.5 * vp * vp * Math.Pow(vq, 3);
+        Scalar S1s = Sv(1) - 1.5 * vp * vp * Av + 0.375 * SMath.Pow(vp, 5);
+        Scalar S2s = Sv(2) - 2.0 * vp * vq * Av - vp * vp * (Abv + 1.5 * Bv)
+                   + 1.5 * SMath.Pow(vp, 4) * vq;
+        Scalar S3s = Sv(3) - 0.5 * vq * vq * Av - vp * vq * Abv - 1.5 * vp * vp * Cv
+                   + 0.75 * SMath.Pow(vp, 3) * vq * vq;
+        Scalar S4s = Sv(4) - 2.0 * vp * vq * Bv - vp * vp * Bbv
+                   + 1.5 * SMath.Pow(vp, 3) * vq * vq;
+        Scalar S5s = Sv(5) - 0.5 * vq * vq * Bv - vp * vq * (Bbv + 2.0 * Cv) - vp * vp * Cbv
+                   + 1.5 * vp * vp * SMath.Pow(vq, 3);
 
-        double S1bs = Sbv(1) - vp * vq * Av - 0.5 * vp * vp * Abv
-                    + 0.375 * Math.Pow(vp, 4) * vq;
-        double S2bs = Sbv(2) - vq * vq * Av - vp * vq * (2.0 * Abv + Bv) - 0.5 * vp * vp * Bbv
-                    + 1.5 * Math.Pow(vp, 3) * vq * vq;
-        double S3bs = Sbv(3) - 1.5 * vq * vq * Abv - vp * vq * Cv - 0.5 * vp * vp * Cbv
-                    + 0.75 * vp * vp * Math.Pow(vq, 3);
-        double S4bs = Sbv(4) - vq * vq * Bv - 2.0 * vp * vq * Bbv
-                    + 1.5 * vp * vp * Math.Pow(vq, 3);
-        double S5bs = Sbv(5) - vq * vq * (1.5 * Bbv + Cv) - 2.0 * vp * vq * Cbv
-                    + 1.5 * vp * Math.Pow(vq, 4);
+        Scalar S1bs = Sbv(1) - vp * vq * Av - 0.5 * vp * vp * Abv
+                    + 0.375 * SMath.Pow(vp, 4) * vq;
+        Scalar S2bs = Sbv(2) - vq * vq * Av - vp * vq * (2.0 * Abv + Bv) - 0.5 * vp * vp * Bbv
+                    + 1.5 * SMath.Pow(vp, 3) * vq * vq;
+        Scalar S3bs = Sbv(3) - 1.5 * vq * vq * Abv - vp * vq * Cv - 0.5 * vp * vp * Cbv
+                    + 0.75 * vp * vp * SMath.Pow(vq, 3);
+        Scalar S4bs = Sbv(4) - vq * vq * Bv - 2.0 * vp * vq * Bbv
+                    + 1.5 * vp * vp * SMath.Pow(vq, 3);
+        Scalar S5bs = Sbv(5) - vq * vq * (1.5 * Bbv + Cv) - 2.0 * vp * vq * Cbv
+                    + 1.5 * vp * SMath.Pow(vq, 4);
 
         // Tertiary running sums, accumulated over the surfaces already passed, exactly as the
         // secondary ones the identities pair them with.
-        var T = new double[11];
-        var Tb = new double[11];
+        var T = new Scalar[11];
+        var Tb = new Scalar[11];
         for (int i = 1; i < j; i++)
             for (int m = 1; m <= 10; m++)
             {
@@ -90,7 +94,7 @@ public static class BuchdahlTertiaryIdentities
                 Tb[m] += rows[i].TertiaryTotalBar[m];
             }
 
-        double[] residual =
+        Scalar[] residual =
         {
             (T[2] - 6.0 * Tb[1]) * vp + As * (Sp[2] - 4.0 * Sbp[1]) - (Bs - 2.0 * Abs) * Sp[1]
                 - (S2s - 4.0 * S1bs) * Ap
@@ -129,14 +133,14 @@ public static class BuchdahlTertiaryIdentities
                 + 2.0 * (Abs * Sbp[5] - S5bs * Abp + S3bs * Bbp - Bbs * Sbp[3]),       // (8.6)
         };
 
-        double M(params double[] terms)
+        Scalar M(params Scalar[] terms)
         {
-            double m = 0.0;
-            foreach (double t in terms) if (Math.Abs(t) > m) m = Math.Abs(t);
+            Scalar m = 0.0;
+            foreach (Scalar t in terms) if (SMath.Abs(t) > m) m = SMath.Abs(t);
             return m > 0.0 ? m : 1.0;
         }
 
-        double[] scale =
+        Scalar[] scale =
         {
             M((T[2] - 6.0 * Tb[1]) * vp, As * Sp[2], S2s * Ap, S1s * Bp, Bs * Sp[1]),
             M((T[4] - 2.0 * Tb[2]) * vp, As * Sp[4], S4s * Ap, S2s * Bp, Bs * Sp[2]),

@@ -8,8 +8,8 @@ namespace AberrationCalculator.Core.Glass;
 ///
 /// The code packs the two numbers a first-order design actually needs: the first three
 /// digits are the decimals of nd, the last three are Vd times ten. 517642 is nd 1.517,
-/// Vd 64.2. Older files write it with a decimal point, as 564.610, and OSLO writes whole
-/// prescriptions this way, so a program that only accepts catalog names cannot open them
+/// Vd 64.2. Older files write it with a decimal point, as 564.610, and some formats carry
+/// whole prescriptions this way, so a program that only accepts catalog names cannot open them
 /// at all - it sees an unknown material and quietly treats the glass as air, which turns
 /// the whole lens into a flat plate.
 ///
@@ -48,8 +48,8 @@ public static class GlassCode
         }
 
         // The decimal point SEPARATES the two halves, so the number of digits after it is
-        // free: OpTaliX writes "580.56", its ZEMAX export pads the same glass to "580.5600",
-        // and the classic six-digit form appears as "564.610". Three digits of nd decimals
+        // free: the same glass appears as "580.56" in one file and padded to "580.5600" in
+        // another, and the classic six-digit form appears as "564.610". Three digits of nd decimals
         // before the point; whatever follows is Vd carried as a fraction of a hundred, which
         // gives 56, 56.00 and 61.0 respectively. Splitting on the point handles all three;
         // stripping it and demanding six digits handles only the middle length, and rejects

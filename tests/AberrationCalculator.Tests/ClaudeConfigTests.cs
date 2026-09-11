@@ -31,8 +31,8 @@ public class ClaudeConfigTests : IDisposable
     /// <summary>The shape of a real config: other servers, and other top-level keys.</summary>
     private const string Existing = @"{
   ""mcpServers"": {
-    ""zemax-mcp"": { ""command"": ""C:\\one.exe"", ""args"": [] },
-    ""lenshh-lt"": { ""command"": ""C:\\two.exe"", ""args"": [""--flag""] }
+    ""server-one"": { ""command"": ""C:\\one.exe"", ""args"": [] },
+    ""server-two"": { ""command"": ""C:\\two.exe"", ""args"": [""--flag""] }
   },
   ""coworkUserFilesPath"": ""C:\\files"",
   ""preferences"": { ""theme"": ""dark"" }
@@ -45,15 +45,15 @@ public class ClaudeConfigTests : IDisposable
         ClaudeConfig.Register(root, "abcalc", @"C:\abcalc-mcp.exe");
 
         var names = ClaudeConfig.ServerNames(root);
-        Assert.Contains("zemax-mcp", names);
-        Assert.Contains("lenshh-lt", names);
+        Assert.Contains("server-one", names);
+        Assert.Contains("server-two", names);
         Assert.Contains("abcalc", names);
         Assert.Equal(3, names.Count);
 
         // And their settings, not merely their names.
         var others = (JsonObject)root["mcpServers"]!;
-        Assert.Equal(@"C:\two.exe", others["lenshh-lt"]!["command"]!.GetValue<string>());
-        Assert.Single(others["lenshh-lt"]!["args"]!.AsArray());
+        Assert.Equal(@"C:\two.exe", others["server-two"]!["command"]!.GetValue<string>());
+        Assert.Single(others["server-two"]!["args"]!.AsArray());
     }
 
     [Fact]
@@ -83,11 +83,11 @@ public class ClaudeConfigTests : IDisposable
     public void RemovingTakesOnlyTheOneNamed()
     {
         var root = ClaudeConfig.Load(Write(Existing));
-        Assert.True(ClaudeConfig.Remove(root, "zemax-mcp"));
+        Assert.True(ClaudeConfig.Remove(root, "server-one"));
 
         var names = ClaudeConfig.ServerNames(root);
-        Assert.DoesNotContain("zemax-mcp", names);
-        Assert.Contains("lenshh-lt", names);
+        Assert.DoesNotContain("server-one", names);
+        Assert.Contains("server-two", names);
         Assert.Equal("dark", root["preferences"]!["theme"]!.GetValue<string>());
     }
 

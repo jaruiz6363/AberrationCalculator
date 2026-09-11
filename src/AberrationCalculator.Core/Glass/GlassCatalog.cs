@@ -130,6 +130,27 @@ public class GlassCatalog
         return null;
     }
 
+    /// <summary>
+    /// Every loaded catalog that has a glass of this name.
+    ///
+    /// <para><b>A glass name does not say whose glass it is.</b> Three catalogs ship an F4 and
+    /// they are not the same glass - 1.620047, 1.616592 and 1.616590 at the d line. A file that
+    /// names a catalog resolves unambiguously; several formats do not carry one at all, and then
+    /// <see cref="Find"/> returns whichever catalog happens to have loaded first. That is a
+    /// defensible answer and an undetectable wrong one, so this lets a caller say when the
+    /// question had more than one.</para>
+    /// </summary>
+    public IReadOnlyList<string> CatalogsContaining(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return Array.Empty<string>();
+
+        var found = new List<string>();
+        foreach (var cat in _catalogs)
+            if (_byQualifiedName.ContainsKey(cat + ":" + name)) found.Add(cat);
+
+        return found;
+    }
+
     /// <summary>Every glass in one catalog.</summary>
     public IEnumerable<GlassData> InCatalog(string catalog)
     {

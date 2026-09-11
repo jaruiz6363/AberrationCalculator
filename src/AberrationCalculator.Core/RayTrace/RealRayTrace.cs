@@ -13,14 +13,30 @@ namespace AberrationCalculator.Core.RayTrace;
 /// collapsed into an RMS spot where errors cancel. Hopkins (JOSA 66, 405) did exactly that
 /// against ACCOS V and found agreement to roundoff. See <see cref="CoefficientInversion"/>.</para>
 ///
-/// <para>Object at infinity only. A finite conjugate throws rather than quietly tracing the
-/// wrong thing - see the note in the calculator's docs about ArbitraryRay being a placeholder.
-/// </para>
+/// <para>Either conjugate. The trace itself never asks where the object is - it is handed a ray
+/// at surface one's vertex plane and propagates it - so only the aiming has to know, and
+/// <see cref="Launch"/> is where that knowledge lives.</para>
 /// </summary>
 public static class RealRayTrace
 {
     /// <summary>Where a traced ray landed, and whether it got there.</summary>
-    public readonly record struct Landing(double Y, double Z, bool Ok);
+    public readonly record struct Landing(Scalar Y, Scalar Z, bool Ok);
+
+    /// <summary>
+    /// Where a ray met one surface, and which way it left.
+    ///
+    /// <para>The position is in THAT surface's own vertex frame - x sagittal, y meridional,
+    /// z along the axis, so z is the sag at the point of incidence and is zero on a plane. The
+    /// direction cosines are the ones the ray carries AFTER refracting there, which is what a
+    /// merit function asking for an angle of emergence wants. At the image plane there is no
+    /// refraction and they are simply the direction of arrival.</para>
+    ///
+    /// <para>Note that <see cref="Landing"/> names the sagittal coordinate Z, for historical
+    /// reasons; here x is sagittal and z is axial, which is the convention the operand names
+    /// RX, RY, RZ follow.</para>
+    /// </summary>
+    public readonly record struct SurfaceHit(Scalar X, Scalar Y, Scalar Z,
+                                             Scalar L, Scalar M, Scalar N, bool Ok);
 
     /// <summary>
     /// Traces one ray to the image plane and returns its intercept.
@@ -39,34 +55,97 @@ public static class RealRayTrace
     /// differ by a real defocus on any design optimised to best focus, and confusing them
     /// shows up as an error strictly linear in the pupil.
     /// </param>
-    public static Landing Trace(OpticalSystem system, double[] indices, ParaxialResult paraxial,
-                                double fieldDeg, double py, double pz,
+    public static Landing Trace(OpticalSystem system, Scalar[] indices, ParaxialResult paraxial,
+                                Scalar fieldDeg, Scalar py, Scalar pz,
                                 bool atParaxialFocus = true)
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
         if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
-        if (!double.IsInfinity(system.Surfaces[0].Thickness))
-            throw new NotSupportedException(
-                "RealRayTrace handles an object at infinity only; this system has a finite " +
-                "conjugate, and tracing it as though collimated would be silently wrong.");
-
-        int last = system.LastOpticalSurface();
-        double epr = 0.5 * paraxial.Epd;
-        double alpha = fieldDeg * Math.PI / 180.0;
-
-        // Direction cosines. The field is in the y-z meridian, so the ray tilts in y only.
-        double dx = 0.0, dy = Math.Sin(alpha), dz = Math.Cos(alpha);
-
-        // Launch on the entrance pupil plane, which sits EntrancePupilPosition to the right of
-        // surface 1, then walk BACK to surface 1's vertex plane so the first transfer below is
-        // the ordinary one.
-        double ep = paraxial.EntrancePupilPosition;
-        double x = pz * epr, y = py * epr, z = ep;
-        double back = -z / dz;
-        x += back * dx; y += back * dy; z = 0.0;
-
+        var (x, y, dx, dy, dz) = Launch(system, paraxial, fieldDeg, py, pz);
         return TraceFrom(system, indices, paraxial, x, y, dx, dy, dz, atParaxialFocus);
+    }
+
+    /// <summary>
+    /// <see cref="Trace"/>, keeping every surface the ray met. See
+    /// <see cref="TraceRecordFrom"/> for how the result is indexed.
+    /// </summary>
+    public static SurfaceHit[] TraceRecord(OpticalSystem system, Scalar[] indices,
+                                           ParaxialResult paraxial,
+                                           Scalar fieldDeg, Scalar py, Scalar pz,
+                                           bool atParaxialFocus = true)
+    {
+        if (system == null) throw new ArgumentNullException(nameof(system));
+        if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
+        var (x, y, dx, dy, dz) = Launch(system, paraxial, fieldDeg, py, pz);
+        return TraceRecordFrom(system, indices, paraxial, x, y, dx, dy, dz, atParaxialFocus);
+    }
+
+    /// <summary>
+    /// A ray of the given field and pupil coordinates, expressed at surface 1's vertex plane.
+    ///
+    /// <para>The ray crosses the entrance pupil at the fractional coordinates asked for. No ray
+    /// aiming: it is the PARAXIAL pupil that is aimed at, which is the convention the traced fans
+    /// in this repository were measured under.</para>
+    ///
+    /// <para><b>This is the only part of the trace that cares where the object is</b>, and it is
+    /// why the field-and-pupil form once refused a finite conjugate. A collimated beam has its
+    /// direction fixed by the field angle alone; light from a finite object does not, because the
+    /// direction from the object point to the pupil depends on which pupil point. Given the
+    /// object distance both are the same construction - a line through two known points - and
+    /// everything downstream of here is conjugate-agnostic already.</para>
+    /// </summary>
+    private static (Scalar X, Scalar Y, Scalar Dx, Scalar Dy, Scalar Dz) Launch(
+        OpticalSystem system, ParaxialResult paraxial, Scalar fieldDeg, Scalar py, Scalar pz)
+    {
+        Scalar epr = 0.5 * paraxial.Epd;
+        Scalar ep = paraxial.EntrancePupilPosition;
+        Scalar objectThickness = system.Surfaces[0].Thickness;
+
+        if (Scalar.IsInfinity(objectThickness) || SMath.Abs(objectThickness) >= 1e12)
+        {
+            // Collimated. The field is in the y-z meridian, so the ray tilts in y only, and the
+            // direction follows from the field angle with nothing else to know. Launch on the
+            // pupil plane and walk BACK to surface one, so the first transfer of the trace proper
+            // is the ordinary one.
+            Scalar alpha = fieldDeg * SMath.PI / 180.0;
+            Scalar idx = 0.0, idy = SMath.Sin(alpha), idz = SMath.Cos(alpha);
+            Scalar back = -ep / idz;
+            return (pz * epr + back * idx, py * epr + back * idy, idx, idy, idz);
+        }
+
+        // Finite. The ray is the line from the object point to the pupil point: the object sits
+        // one object distance to the LEFT of surface one, at the height the field asks for, and
+        // the pupil point is where the fractional coordinates put it on the entrance pupil.
+        Scalar distance = SMath.Abs(objectThickness);
+        Scalar height = ObjectHeight(system, fieldDeg, ep, distance);
+        Scalar span = ep + distance;                 // object to pupil, along the axis
+
+        Scalar dx = pz * epr;
+        Scalar dy = py * epr - height;
+        Scalar dz = span;
+
+        // Slide along that line from the object to surface one's vertex plane. The fraction is
+        // the same in every coordinate, the line being straight.
+        Scalar fraction = SMath.Abs(span) > 1e-14 ? distance / span : 0.0;
+        return (fraction * dx, height + fraction * dy, dx, dy, dz);
+    }
+
+    /// <summary>
+    /// Where the object point of this field sits, as a height above the axis.
+    ///
+    /// <para>An object HEIGHT field states it outright. An object ANGLE field states it only
+    /// implicitly, and the height it implies is the one the paraxial chief ray of that angle
+    /// comes from: that ray crosses the axis at the entrance pupil, so at the object it stands
+    /// <c>-tan(theta)</c> times the object-to-pupil distance off it. Taking it the same way the
+    /// paraxial trace does is what keeps the real chief ray and the paraxial one describing the
+    /// same field point.</para>
+    /// </summary>
+    private static Scalar ObjectHeight(OpticalSystem system, Scalar fieldDeg,
+                                       Scalar entrancePupil, Scalar distance)
+    {
+        if (system.FieldType == Enums.FieldType.ObjectHeight) return fieldDeg;
+        return -SMath.Tan(fieldDeg * SMath.PI / 180.0) * (entrancePupil + distance);
     }
 
     /// <summary>
@@ -84,36 +163,71 @@ public static class RealRayTrace
     /// <param name="x">Sagittal height at surface 1's vertex plane.</param>
     /// <param name="y">Meridional height at surface 1's vertex plane.</param>
     /// <param name="dx">Direction cosines, which need not be normalised.</param>
-    public static Landing TraceFrom(OpticalSystem system, double[] indices,
+    public static Landing TraceFrom(OpticalSystem system, Scalar[] indices,
                                     ParaxialResult paraxial,
-                                    double x, double y, double dx, double dy, double dz,
+                                    Scalar x, Scalar y, Scalar dx, Scalar dy, Scalar dz,
                                     bool atParaxialFocus = true)
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
         if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
 
-        double len = Math.Sqrt(dx * dx + dy * dy + dz * dz);
-        if (len < 1e-300) return new Landing(0, 0, false);
+        var hits = TraceRecordFrom(system, indices, paraxial, x, y, dx, dy, dz, atParaxialFocus);
+        var end = hits[hits.Length - 1];
+        // Landing names the sagittal coordinate Z; SurfaceHit names it X.
+        return new Landing(end.Y, end.X, end.Ok);
+    }
+
+    /// <summary>
+    /// The same trace, keeping every surface the ray met on the way.
+    ///
+    /// <para>Indexed like <see cref="OpticalSystem.Surfaces"/>: entry 0 is the object and is
+    /// never filled, entries 1 through <see cref="OpticalSystem.LastOpticalSurface"/> are the
+    /// refracting surfaces, and the final entry is the image plane. A ray that fails - misses a
+    /// surface, or is totally internally reflected - leaves that entry and every later one with
+    /// <c>Ok</c> false, so a caller can see HOW FAR it got rather than only that it did not
+    /// arrive.</para>
+    ///
+    /// <para>This is what the optimiser's real-ray operands read: RX, RY and RZ are the
+    /// position of one entry, RL, RM and RN its direction cosines. <see cref="TraceFrom"/> is
+    /// this method keeping only the last entry, so the two cannot disagree.</para>
+    /// </summary>
+    public static SurfaceHit[] TraceRecordFrom(OpticalSystem system, Scalar[] indices,
+                                               ParaxialResult paraxial,
+                                               Scalar x, Scalar y,
+                                               Scalar dx, Scalar dy, Scalar dz,
+                                               bool atParaxialFocus = true)
+    {
+        if (system == null) throw new ArgumentNullException(nameof(system));
+        if (indices == null) throw new ArgumentNullException(nameof(indices));
+        if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
+
+        int count = system.Surfaces.Count;
+        var hits = new SurfaceHit[count];
+
+        Scalar len = SMath.Sqrt(dx * dx + dy * dy + dz * dz);
+        if (len < 1e-300) return hits;
         dx /= len; dy /= len; dz /= len;
 
         int last = system.LastOpticalSurface();
-        double z = 0.0;
-        double nBefore = indices.Length > 0 ? indices[0] : 1.0;
+        Scalar z = 0.0;
+        Scalar nBefore = indices.Length > 0 ? indices[0] : 1.0;
 
         for (int i = 1; i <= last; i++)
         {
             var s = system.Surfaces[i];
-            if (!Intersect(s, ref x, ref y, ref z, dx, dy, dz)) return new Landing(0, 0, false);
+            if (!Intersect(s, ref x, ref y, ref z, dx, dy, dz)) return hits;
 
-            double nAfter = i < indices.Length ? indices[i] : 1.0;
+            Scalar nAfter = i < indices.Length ? indices[i] : 1.0;
             if (!Refract(s, x, y, nBefore, nAfter, ref dx, ref dy, ref dz))
-                return new Landing(0, 0, false);
+                return hits;
             nBefore = nAfter;
 
+            hits[i] = new SurfaceHit(x, y, z, dx, dy, dz, true);
+
             // Into the next surface's vertex frame.
-            double t = s.Thickness;
-            if (double.IsInfinity(t) || double.IsNaN(t)) return new Landing(0, 0, false);
+            Scalar t = s.Thickness;
+            if (Scalar.IsInfinity(t) || Scalar.IsNaN(t)) return hits;
             z -= t;
         }
 
@@ -126,11 +240,12 @@ public static class RealRayTrace
         // defocused spot. They are equal to the bit at infinite conjugate, so this changes
         // nothing that was previously reachable - Trace refuses a finite conjugate outright,
         // and only TraceFrom can get here with one.
-        double target = atParaxialFocus
+        Scalar target = atParaxialFocus
             ? paraxial.ParaxialFocusDistance - system.Surfaces[last].Thickness
             : 0.0;
-        double tImage = (target - z) / dz;
-        return new Landing(y + tImage * dy, x + tImage * dx, true);
+        Scalar tImage = (target - z) / dz;
+        hits[count - 1] = new SurfaceHit(x + tImage * dx, y + tImage * dy, 0.0, dx, dy, dz, true);
+        return hits;
     }
 
     /// <summary>
@@ -138,50 +253,67 @@ public static class RealRayTrace
     /// The starting guess is the flat-surface crossing, which is exact for a plane and close
     /// for anything this program handles.
     /// </summary>
-    private static bool Intersect(Surface s, ref double x, ref double y, ref double z,
-                                  double dx, double dy, double dz)
+    private static bool Intersect(Surface s, ref Scalar x, ref Scalar y, ref Scalar z,
+                                  Scalar dx, Scalar dy, Scalar dz)
     {
-        if (Math.Abs(dz) < 1e-14) return false;
+        if (SMath.Abs(dz) < 1e-14) return false;
 
-        double t = -z / dz;
+        Scalar t = -z / dz;
         for (int k = 0; k < 64; k++)
         {
-            double xi = x + t * dx, yi = y + t * dy, zi = z + t * dz;
-            double r = Math.Sqrt(xi * xi + yi * yi);
-            double sag = s.Sag(r);
-            if (double.IsNaN(sag)) return false;
+            Scalar xi = x + t * dx, yi = y + t * dy, zi = z + t * dz;
+            Scalar r = SMath.Sqrt(xi * xi + yi * yi);
+            Scalar sag = s.Sag(r);
+            if (Scalar.IsNaN(sag)) return false;
 
-            double f = zi - sag;
-            if (Math.Abs(f) < 1e-13)
-            {
-                x = xi; y = yi; z = zi;
-                return true;
-            }
+            Scalar f = zi - sag;
 
             // d/dt of (z - sag(r)) = dz - S'(r) * (x dx + y dy) / r
-            double sp = SagSlope(s, r);
-            double drdt = r > 1e-14 ? (xi * dx + yi * dy) / r : 0.0;
-            double d = dz - sp * drdt;
-            if (Math.Abs(d) < 1e-14) return false;
+            Scalar sp = SagSlope(s, r);
+            Scalar drdt = r > 1e-14 ? (xi * dx + yi * dy) / r : 0.0;
+            Scalar d = dz - sp * drdt;
+            if (SMath.Abs(d) < 1e-14) return false;
+
+            // Whether the RESIDUAL has converged. The correction below is applied anyway, and
+            // that ordering is load-bearing.
+            //
+            // Newton converges on the value quadratically, so the last correction moves it by
+            // nothing and looks like waste - which is why it is tempting to return before taking
+            // it. It is not waste. At a point where f is zero, that correction is what sets
+            // dt/dp: it evaluates to -(df/dp)/(df/dt), which is the implicit function theorem
+            // applied to f(t, p) = 0 and is EXACT whatever dt/dp was before it. Return one step
+            // early and the intersection carries a derivative one Newton step stale.
+            //
+            // On a curved surface the staleness is small and merely inexact. On a PLANE it is
+            // total: the flat-surface starting guess is already exact, the loop would return on
+            // its first pass, and a plano surface whose curvature is being optimised would report
+            // that bending it does not move the ray at all.
+            bool converged = SMath.Abs(f) < 1e-13;
             t -= f / d;
+
+            if (converged)
+            {
+                x += t * dx; y += t * dy; z += t * dz;
+                return true;
+            }
         }
         return false;
     }
 
     /// <summary>dz/dr of the sag: the conic part in closed form, then the polynomial.</summary>
-    private static double SagSlope(Surface s, double r)
+    private static Scalar SagSlope(Surface s, Scalar r)
     {
-        double slope = 0.0;
-        double c = s.Curvature;
-        if (Math.Abs(c) > 1e-15)
+        Scalar slope = 0.0;
+        Scalar c = s.Curvature;
+        if (!SMath.Vanishes(c, 1e-15))
         {
-            double disc = 1.0 - (1.0 + s.Conic) * c * c * r * r;
-            if (disc <= 0.0) return double.NaN;
-            slope = c * r / Math.Sqrt(disc);
+            Scalar disc = 1.0 - (1.0 + s.Conic) * c * c * r * r;
+            if (disc <= 0.0) return Scalar.NaN;
+            slope = c * r / SMath.Sqrt(disc);
         }
 
         var a = s.AsphericCoefficients;
-        double rp = r;                                   // r, then r^3, r^5 ...
+        Scalar rp = r;                                   // r, then r^3, r^5 ...
         for (int k = 0; k < a.Length; k++)
         {
             slope += 2.0 * (k + 1) * a[k] * rp;
@@ -194,34 +326,34 @@ public static class RealRayTrace
     /// Snell's law in vector form. The surface normal comes from the implicit form
     /// F = z - S(r), whose gradient is (-S'(r) x/r, -S'(r) y/r, 1).
     /// </summary>
-    private static bool Refract(Surface s, double x, double y, double nBefore, double nAfter,
-                                ref double dx, ref double dy, ref double dz)
+    private static bool Refract(Surface s, Scalar x, Scalar y, Scalar nBefore, Scalar nAfter,
+                                ref Scalar dx, ref Scalar dy, ref Scalar dz)
     {
-        if (Math.Abs(nAfter) < 1e-15) return false;
+        if (SMath.Abs(nAfter) < 1e-15) return false;
 
-        double r = Math.Sqrt(x * x + y * y);
-        double sp = SagSlope(s, r);
-        if (double.IsNaN(sp)) return false;
+        Scalar r = SMath.Sqrt(x * x + y * y);
+        Scalar sp = SagSlope(s, r);
+        if (Scalar.IsNaN(sp)) return false;
 
-        double nx = 0.0, ny = 0.0, nz = 1.0;
+        Scalar nx = 0.0, ny = 0.0, nz = 1.0;
         if (r > 1e-14) { nx = -sp * x / r; ny = -sp * y / r; }
-        double len = Math.Sqrt(nx * nx + ny * ny + nz * nz);
+        Scalar len = SMath.Sqrt(nx * nx + ny * ny + nz * nz);
         nx /= len; ny /= len; nz /= len;
 
-        double mu = nBefore / nAfter;
-        double cosI = -(dx * nx + dy * ny + dz * nz);
+        Scalar mu = nBefore / nAfter;
+        Scalar cosI = -(dx * nx + dy * ny + dz * nz);
         // Normal must oppose the ray, or the geometry below picks the wrong root.
         if (cosI < 0.0) { nx = -nx; ny = -ny; nz = -nz; cosI = -cosI; }
 
-        double k = 1.0 - mu * mu * (1.0 - cosI * cosI);
+        Scalar k = 1.0 - mu * mu * (1.0 - cosI * cosI);
         if (k < 0.0) return false;                        // total internal reflection
-        double cosT = Math.Sqrt(k);
+        Scalar cosT = SMath.Sqrt(k);
 
         dx = mu * dx + (mu * cosI - cosT) * nx;
         dy = mu * dy + (mu * cosI - cosT) * ny;
         dz = mu * dz + (mu * cosI - cosT) * nz;
 
-        double d = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+        Scalar d = SMath.Sqrt(dx * dx + dy * dy + dz * dz);
         dx /= d; dy /= d; dz /= d;
         return true;
     }

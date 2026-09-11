@@ -9,7 +9,7 @@ using Xunit;
 namespace AberrationCalculator.Tests;
 
 /// <summary>
-/// The report the command line, the MCP server and the ZOS-API program all print.
+/// The report the command line, the MCP server and the automation program all print.
 ///
 /// <para>It is one formatter for the three of them, so these tests stand for all three. What
 /// they check is not the layout but the two claims the report makes about itself: that the

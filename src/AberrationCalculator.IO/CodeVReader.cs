@@ -243,7 +243,16 @@ namespace AberrationCalculator.Core.IO
                     system.GlassCatalogs.Add(catalog);
             }
 
-            // Convert from file units to mm
+            // DEDUCED, NOT DECLARED. The file named no catalog; these were worked out from the
+            // glass names, and the working can be wrong - a bare F4 binds here to one catalog's
+            // and the design may have meant another's, which is a per-cent of focal length. The
+            // flag keeps the guess distinguishable from a declaration so the report can say so.
+            if (system.GlassCatalogs.Count > 0) system.GlassCatalogsAreInferred = true;
+
+            // Convert from file units to mm. The scale is REMEMBERED as well as applied: an
+            // optimised design has to be able to go back to the file it came from, in the units
+            // that file is written in.
+            system.FileUnitScale = unitScale;
             if (unitScale != 1.0)
                 LensUnitConverter.ConvertToMm(system, unitScale);
 

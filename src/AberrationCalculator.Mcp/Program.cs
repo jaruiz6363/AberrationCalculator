@@ -130,6 +130,35 @@ internal static class Program
                 },
             });
         }
+
+        // The tools that change a design rather than report on one carry their own arguments,
+        // so they bring their own schema too.
+        foreach (var t in ActionTools.All)
+        {
+            var properties = new JsonObject();
+            var required = new JsonArray();
+            foreach (var arg in t.Arguments)
+            {
+                properties[arg.Name] = new JsonObject
+                {
+                    ["type"] = arg.Type,
+                    ["description"] = arg.Description,
+                };
+                if (arg.Required) required.Add(arg.Name);
+            }
+
+            tools.Add(new JsonObject
+            {
+                ["name"] = t.Name,
+                ["description"] = t.Description,
+                ["inputSchema"] = new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = properties,
+                    ["required"] = required,
+                },
+            });
+        }
         return new JsonObject { ["tools"] = tools };
     }
 
@@ -138,6 +167,16 @@ internal static class Program
         string name = args?["name"]?.GetValue<string>()
                       ?? throw new ArgumentException("tools/call needs a tool name");
         JsonNode? a = args?["arguments"];
+
+        foreach (var action in ActionTools.All)
+            if (string.Equals(action.Name, name, StringComparison.Ordinal))
+                return new JsonObject
+                {
+                    ["content"] = new JsonArray
+                    {
+                        new JsonObject { ["type"] = "text", ["text"] = action.Run(a) },
+                    },
+                };
 
         Tool? tool = null;
         foreach (var t in Tools.All)

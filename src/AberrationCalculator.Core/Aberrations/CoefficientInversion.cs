@@ -96,6 +96,23 @@ public static class CoefficientInversion
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
 
+        // OBJECT AT INFINITY ONLY, and the assumption is THIS method's rather than the ray
+        // trace's. Two things below are written for a collimated object: the field is taken as
+        // tan(theta), and the paraxial part subtracted off before the fit is efl*tan(theta).
+        // Neither means anything when the object is at a finite distance, and both would fail
+        // quietly - the fit would still converge, on the wrong quantity.
+        //
+        // RealRayTrace used to refuse a finite conjugate itself, which happened to protect this
+        // method. It no longer does: the trace is conjugate-agnostic and its aiming now handles
+        // both, so the guard has to live where the assumption actually is.
+        if (!double.IsInfinity(system.Surfaces[0].Thickness)
+            && Math.Abs(system.Surfaces[0].Thickness) < 1e12)
+            throw new NotSupportedException(
+                "CoefficientInversion recovers the coefficients from rays at an object at "
+              + "infinity only. It measures the field as tan(theta) and subtracts a paraxial "
+              + "height of efl*tan(theta), neither of which holds at a finite conjugate. Use "
+              + "ForbesCoefficients.Invert, whose series trace handles either.");
+
         shapes ??= DefaultShapes();
         double hmax = Math.Tan(maxFieldDeg * Math.PI / 180.0);
         if (Math.Abs(hmax) < 1e-12) return null;

@@ -19,7 +19,8 @@ namespace AberrationCalculator.Tests;
 /// with a traced fan. A fan says more than an RMS radius, because the SHAPE of the residual
 /// shows which order is missing where a single number only says how much is.</para>
 ///
-/// <para>The reference is OpticStudio on the aspheric Cooke triplet at 0.55 um with the image
+/// <para>The reference is an independent implementation on the aspheric Cooke triplet at
+/// 0.55 um with the image
 /// plane moved to paraxial focus, chief-ray referenced, in micrometres. The numbers are
 /// inlined so the test travels; the design itself is not in this repository, so the test
 /// skips when it is absent.</para>

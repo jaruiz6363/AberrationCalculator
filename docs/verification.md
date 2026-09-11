@@ -34,10 +34,10 @@ It does not implement aspherics.
 **5. Forbes' series trace**, from a separate published paper with no shared code. It agrees
 with Buchdahl's scheme on all twenty tertiary coefficients to 2E-13 at both conjugates.
 
-**And a cross-check anyone can repeat.** OpticStudio's Seidel analysis and its FIFTHORD macro
-agree with this program — 586 coefficient values across seven designs, worst residual 1.1E-12,
+**And a cross-check anyone can repeat.** An independent commercial implementation's Seidel
+analysis and the FIFTHORD macro agree with this program — 586 coefficient values across seven designs, worst residual 1.1E-12,
 and 30 of 30 third-order values at a finite conjugate. That is recorded because a reader with
-OpticStudio can confirm it without trusting anything here. It is not the authority: neither
+such a program can confirm it without trusting anything here. It is not the authority: neither
 computes the seventh-order set this program exists for, so neither could be.
 
 ## Standing results
@@ -47,7 +47,7 @@ computes the seventh-order set this program exists for, so neither could be.
 | Table I, t1–t155, per surface | matches the reference implementation to 7E-16 |
 | the twenty tau, Buchdahl against Forbes | 20 of 20 to 2E-13, both conjugates |
 | seventh-order spherical aberration, two routes | identical to every printed digit |
-| third order against OpticStudio's Seidel, finite conjugate | 30 of 30 |
+| third order against an independent Seidel analysis, finite conjugate | 30 of 30 |
 | fifth order against FIFTHORD, finite conjugate | 18 of 18 totals |
 | the per-surface split | intrinsic + figuring + induced = total, to 1.8E-14 |
 | E, E5 and tau20 against traced chief rays | each to under one per cent wherever the two routes agree, at both conjugates |

@@ -21,15 +21,15 @@ public static class TertiaryCoefficients
     /// Computes tau1..tau20 for a system. The returned array is indexed 1..20; index 0 is
     /// unused, so the numbering matches the literature rather than being off by one.
     /// </summary>
-    public static double[] Compute(
-        IReadOnlyList<Models.Surface> surfaces, double[] indices, double efl, double stopParameter,
-        IReadOnlyList<double[]>? aspheric = null, double iota = 0.0)
+    public static Scalar[] Compute(
+        IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl, Scalar stopParameter,
+        IReadOnlyList<Scalar[]>? aspheric = null, Scalar iota = default)
     {
         var rows = BuchdahlTableI.Compute(surfaces, indices, efl, stopParameter, aspheric,
                                           iota: iota);
 
-        var T = new double[11];
-        var Tb = new double[11];
+        var T = new Scalar[11];
+        var Tb = new Scalar[11];
         for (int i = 1; i < surfaces.Count - 1; i++)
             for (int m = 1; m <= 10; m++)
             {
@@ -37,7 +37,7 @@ public static class TertiaryCoefficients
                 Tb[m] += rows[i].TertiaryTotalBar[m];
             }
 
-        var tau = new double[21];
+        var tau = new Scalar[21];
         tau[1] = T[1];
         tau[2] = Tb[1] + T[2] / 2.0;
         tau[3] = T[2] / 2.0;
@@ -62,10 +62,10 @@ public static class TertiaryCoefficients
     }
 
     /// <summary>M (13.4)'s iota, 1/l_01 in focal lengths; zero for an object at infinity.</summary>
-    private static double IotaOf(Models.OpticalSystem system, RayTrace.ParaxialResult paraxial)
+    private static Scalar IotaOf(Models.OpticalSystem system, RayTrace.ParaxialResult paraxial)
     {
-        double t0 = system.Surfaces[0].Thickness;
-        return double.IsInfinity(t0) ? 0.0 : -paraxial.Efl / t0;
+        Scalar t0 = system.Surfaces[0].Thickness;
+        return Scalar.IsInfinity(t0) ? 0.0 : -paraxial.Efl / t0;
     }
 
     /// <summary>
@@ -162,19 +162,19 @@ public static class TertiaryCoefficients
     /// aspheric parts inherit the same faulty cubics - tau2 most directly, since it draws on
     /// the barred partner of the same coefficient.</para>
     /// </param>
-    public static double[] ToTransverse(double[] tau, double efl, double marginalAngle,
-                                        double fieldTangent, double? sphericalSeventh = null)
+    public static Scalar[] ToTransverse(Scalar[] tau, Scalar efl, Scalar marginalAngle,
+                                        Scalar fieldTangent, Scalar? sphericalSeventh = null)
     {
         if (tau == null) throw new ArgumentNullException(nameof(tau));
 
-        var scaled = new double[21];
+        var scaled = new Scalar[21];
         for (int n = 1; n <= 20; n++)
         {
             int a = AperturePower[n];
             int b = 7 - a;
             scaled[n] = tau[n] * efl
-                      * Math.Pow(marginalAngle, a)
-                      * (b == 0 ? 1.0 : Math.Pow(fieldTangent, b));
+                      * SMath.Pow(marginalAngle, a)
+                      * (b == 0 ? 1.0 : SMath.Pow(fieldTangent, b));
         }
         if (sphericalSeventh.HasValue) scaled[1] = sphericalSeventh.Value;
         return scaled;
@@ -196,9 +196,9 @@ public static class TertiaryCoefficients
     /// coefficient set of zeros is at least honestly third-and-fifth order, where a partial
     /// one would be neither.</para>
     /// </summary>
-    public static void Attach(Models.OpticalSystem system, double[] indices,
+    public static void Attach(Models.OpticalSystem system, Scalar[] indices,
                               RayTrace.ParaxialResult paraxial, BuchdahlResult coefficients,
-                              double maxField)
+                              Scalar maxField)
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -207,7 +207,7 @@ public static class TertiaryCoefficients
 
         int stop = system.StopSurfaceIndex;
         if (stop < 0 || stop >= system.Surfaces.Count) return;
-        if (Math.Abs(coefficients.FNumber) < 1e-12) return;
+        if (SMath.Abs(coefficients.FNumber) < 1e-12) return;
 
         var scheme = BuchdahlScheme.Compute(system.Surfaces, indices, paraxial.Efl,
                                             system.Surfaces[stop].SemiDiameter,
@@ -226,9 +226,9 @@ public static class TertiaryCoefficients
         // only in the starting values of y_p, v_p, y_q, v_q (cf. M Secs. 12-13)" - and then
         // sends the reader to the monograph for what they are. M (13.4), reduced OT: the p
         // ray leaves at unit height with reduced angle iota = 1/l_01, in focal lengths.
-        double objectDistance = system.Surfaces[0].Thickness;
-        bool infinite = double.IsInfinity(objectDistance);
-        double iota = infinite ? 0.0 : -paraxial.Efl / objectDistance;
+        Scalar objectDistance = system.Surfaces[0].Thickness;
+        bool infinite = Scalar.IsInfinity(objectDistance);
+        Scalar iota = infinite ? 0.0 : -paraxial.Efl / objectDistance;
 
         // p is the entrance pupil position in focal lengths at ANY conjugate: by (13.4) the
         // chief ray has S = 0, so its height over its angle at surface one is exactly p. The
@@ -236,7 +236,7 @@ public static class TertiaryCoefficients
         // while the two conventions for the q ray differ by p times the p ray - an identity
         // that fails once iota is non-zero. The derived value is kept at infinity so the
         // results validated there stay bit-identical.
-        double stopParameter = infinite
+        Scalar stopParameter = infinite
             ? scheme.P
             : paraxial.EntrancePupilPosition / paraxial.Efl;
 
@@ -244,12 +244,12 @@ public static class TertiaryCoefficients
         // collapses to the one used before when iota is zero, which is the regression guard:
         // v'_pk becomes one, g becomes one, and the object height over the object distance
         // becomes the tangent of the field angle.
-        double g = 1.0 - stopParameter * iota;
-        double lengthFactor = paraxial.Efl
+        Scalar g = 1.0 - stopParameter * iota;
+        Scalar lengthFactor = paraxial.Efl
                             / (paraxial.N[system.LastOpticalSurface()] * scheme.PRayFinalAngle);
-        double u = -(0.5 * paraxial.Epd / paraxial.Efl) / g;
-        double hmax = infinite
-            ? Math.Tan(maxField * Math.PI / 180.0)
+        Scalar u = -(0.5 * paraxial.Epd / paraxial.Efl) / g;
+        Scalar hmax = infinite
+            ? SMath.Tan(maxField * SMath.PI / 180.0)
             : -(paraxial.ParaxialImageHeight / paraxial.Magnification) / objectDistance;
 
         var tau = ToTransverse(

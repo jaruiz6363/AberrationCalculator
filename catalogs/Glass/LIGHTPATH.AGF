@@ -3,8 +3,7 @@ CC LightPath / Geltech molded aspheric lens glass catalog
 CC ============================================================================
 CC Source: github.com/nzhagen/zemaxglass/AGF_files/lightpath.agf
 CC Original header: "Reproduced here by permission of RadiantZemax (www.radiantzemax.com)."
-CC This is the official Zemax-supplied LightPath catalog (RadiantZemax was
-CC the Zemax/OpticStudio distributor before the Ansys acquisition).
+CC This is the vendor-supplied LightPath catalog.
 CC
 CC Used for vendor .zmx files whose GCAT line specifies LIGHTPATH (Edmund's
 CC LightPath Geltech aspheric lens family is one consumer).

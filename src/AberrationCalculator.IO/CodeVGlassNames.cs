@@ -6,7 +6,7 @@ using AberrationCalculator.Core.Glass;
 namespace AberrationCalculator.Core.IO
 {
     /// <summary>
-    /// Glass-name translation between the LensHH/ZEMAX catalogs and Code V.
+    /// Glass-name translation between the .agf catalogs and Code V.
     ///
     /// Two things travel with a glass in a .seq file: the name, and the catalog
     /// it came from. Code V writes them as <c>NAME_CATALOG</c>.
@@ -58,8 +58,8 @@ namespace AberrationCalculator.Core.IO
         /// The vendor catalogs Code V ships in its own GLASS folder, and so the
         /// only ones a <c>GLASS_CATALOG</c> qualifier may name. Naming a catalog
         /// Code V does not have would make the material unresolvable there,
-        /// which is worse than the ambiguity the qualifier removes -- so ZEMAX
-        /// side catalogs such as MISC, PATENTMODEL and LIGHTPATH, and any custom
+        /// which is worse than the ambiguity the qualifier removes -- so side
+        /// catalogs such as MISC, PATENTMODEL and LIGHTPATH, and any custom
         /// catalog of the user's, are written bare.
         /// </summary>
         public static readonly string[] CodeVCatalogs =
@@ -200,7 +200,7 @@ namespace AberrationCalculator.Core.IO
             if (string.IsNullOrEmpty(material)) return material;
 
             // Split only when what follows the underscore actually names a
-            // catalog. ZEMAX's MoldStress extension writes glasses called
+            // catalog. A mould-stress extension writes glasses called
             // MS_PMMA and MS_POLYSTYR; splitting those on the first underscore
             // would invent a glass MS in a catalog PMMA.
             string name = material;

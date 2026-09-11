@@ -11,6 +11,7 @@ namespace AberrationCalculator.Tests;
 /// index reads 1.0, and a full set of confident wrong numbers comes out - which is why
 /// this is tested rather than assumed.
 /// </summary>
+[Collection(ProcessWideState.Name)]
 public class CatalogLocatorTests
 {
     [Fact]

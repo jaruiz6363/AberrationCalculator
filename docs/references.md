@@ -225,7 +225,7 @@ form: a total says a design is wrong, and a breakdown says where to go and look.
 methods and techniques* (IOP Publishing, Bristol, 2018; second edition 2020).
 That a program should be an active participant in the design rather than a calculator the
 designer drives - that it should be capable of saying what to change and not only what is
-wrong. This repository does not optimise, so it acts on the smaller half of that: the
+wrong. Both halves of that are here now: the optimiser is his PSD, and the
 intrinsic-and-induced split exists because "which surface, and is it that surface's own
 fault" is the question a designer needs answered before deciding what to do.
 
@@ -247,14 +247,19 @@ He credits the success of SYNOPSYS to two things and neither is aberration theor
 PSD III optimiser, and a binary search over the SIGNS of element powers - a five-element
 lens is 32 cases rather than a mesh of 200,000 nodes, and each is optimised numerically.
 
-The answer this repository would give is not a rebuttal, because on his ground he is right:
-it does not optimise, does not search, and would be a poor way to arrive at a starting
-point. What it does is explain a design that already exists. "Surface 5 contributes almost
-nothing of its own and nearly all of what it carries was induced upstream" is not a
-statement a merit function makes, at any speed, and it is what tells a designer where to
-go and look. Dilworth's own case is that the computer should say what to change; the
-disagreement is over whether a number the designer can reason about is worth having on the
-way there.
+The answer this repository would give is not a rebuttal, and what it has since become makes
+the agreement larger rather than smaller. It now optimises and it now searches - with his
+PSD as the local step and a basin hopping above it - so the disagreement has narrowed to one
+thing: what the merit function is MADE OF. Here it is made of aberration coefficients rather
+than of traced rays, and the claim made for that is a modest one, which is that it gets close
+enough for real ray tracing to finish the job. It is not offered as a way to arrive at a
+starting point, which is the ground he is arguing on and where he is right.
+
+The other half stands unchanged. "Surface 5 contributes almost nothing of its own and nearly
+all of what it carries was induced upstream" is not a statement a merit function makes, at
+any speed, and it is what tells a designer where to go and look. Dilworth's own case is that
+the computer should say what to change; the remaining disagreement is over whether a number
+the designer can reason about is worth having on the way there.
 
 *A note on how this entry came to be written.* It was first recorded here, on a
 recollection, as saying the opposite - that SYNOPSYS uses aberration theory early because it
@@ -293,13 +298,13 @@ shared code. See `forbes.md`.
 
 ### On FIFTHORD
 
-The ZEMAX macro FIFTHORD by M. MacFarlane (1998) - with the mirror index-sign correction of
+The FIFTHORD macro by M. MacFarlane (1998) - with the mirror index-sign correction of
 T. A. Mitchell (2003) and the Lagrange-invariant correction of J. Sasian (2019) - realises
 the same published method, and its results agree with this program's: 586 coefficient values
 across seven designs, to a worst-case residual of 1.1e-12.
 
-That agreement is recorded because it is worth recording, and because a reader with
-OpticStudio can repeat it without trusting anything here. **It is not what determined that
+That agreement is recorded because it is worth recording, and because a reader with that
+macro can repeat it without trusting anything here. **It is not what determined that
 these results are correct.** The checks above did, and they were available first; the
 agreement was an outcome, not a guide. FIFTHORD computes neither the aspheric coefficients
 nor the twenty tertiary coefficients, so it could not have settled either.

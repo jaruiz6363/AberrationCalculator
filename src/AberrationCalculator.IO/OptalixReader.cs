@@ -19,7 +19,7 @@ namespace AberrationCalculator.Core.IO
         /// Read an OpTaliX .OTX file. When <paramref name="glassMgr"/> is
         /// provided, files with no explicit aperture (no EPD/FNO keyword)
         /// have their EPD computed via a paraxial axial back-trace through
-        /// the front group — matching OpTaliX's "float by stop" default.
+        /// the front group — matching the format's "float by stop" default.
         /// Without a glass manager we fall back to <c>2 × stop_SD</c>, which
         /// is fine for normal designs but wrong by 5–10× on retrofocus /
         /// fisheye lenses where the front group strongly demagnifies the stop.
@@ -37,7 +37,7 @@ namespace AberrationCalculator.Core.IO
             bool currentIsMirror = false;
             double unitScale = 1.0; // default mm
 
-            // Newer OpTaliX exports use FLDY/FLDX/FWGT arrays instead of
+            // Newer exports of this format use FLDY/FLDX/FWGT arrays instead of
             // per-field FLD lines. Collect during parse and build Fields[]
             // at the end, only if no FLD lines populated system.Fields.
             var fldYArr = new List<double>();
@@ -76,7 +76,7 @@ namespace AberrationCalculator.Core.IO
 
                     case "FNO":
                         // Working F-number (image-side). Stored directly as
-                        // ApertureType.FNumber so LensHH derives EPD from
+                        // ApertureType.FNumber so this program derives EPD from
                         // the focal length at trace time.
                         if (parts.Length > 1 && TryParseDouble(parts[1], out double fno) && fno > 0)
                             system.Aperture = new Aperture(ApertureType.FNumber, fno);
@@ -123,8 +123,8 @@ namespace AberrationCalculator.Core.IO
                         break;
 
                     case "FLDX":
-                        // Newer OpTaliX format: FLDX = list of X field positions.
-                        // LensHH stores only Y (rotationally-symmetric), so we
+                        // Newer form of the format: FLDX = list of X field positions.
+                        // This program stores only Y (rotationally-symmetric), so we
                         // ignore the values themselves but log presence so the
                         // FLDY-only path doesn't drop a 2D field set silently.
                         // (No-op for the all-zeros case which is by far the most
@@ -259,9 +259,11 @@ namespace AberrationCalculator.Core.IO
                         break;
 
                     case "VAR":
-                        // VAR marks surface parameters as optimization variables.
-                        // This program does not optimize, so the directive carries no
-                        // information for it and is skipped.
+                        // VAR marks surface parameters as optimization variables - for the
+                        // program that wrote the file. This one keeps its own statement of what
+                        // may move, in the sidecar, and adopting somebody else's would decide
+                        // that question silently on the strength of a run nobody here saw. The
+                        // directive is read past and written back untouched.
                         break;
 
                     case "ASP":
@@ -309,7 +311,7 @@ namespace AberrationCalculator.Core.IO
                 system.Wavelengths.Add(new Wavelength(wavelengths[i], wt, isPrimary));
             }
 
-            // If the file used FLDY arrays (newer OpTaliX format) and no
+            // If the file used FLDY arrays (the newer form) and no
             // FLD lines populated system.Fields, materialize from the
             // collected arrays now. Pad missing FWGT entries with 1.0.
             if (system.Fields.Count == 0 && fldYArr.Count > 0)
@@ -326,7 +328,7 @@ namespace AberrationCalculator.Core.IO
 
             FieldValidation.FilterImportedFields(system);
 
-            // No explicit EPD/F# in the file → use OpTaliX's "float by stop"
+            // No explicit EPD/F# in the file → use the format's "float by stop"
             // default. With a glass manager we can do the proper paraxial
             // axial back-trace through the front group; without one, fall
             // back to 2 × stop_SD (correct only when the front group is
@@ -362,7 +364,10 @@ namespace AberrationCalculator.Core.IO
                 }
             }
 
-            // Convert from file units to mm
+            // Convert from file units to mm. The scale is REMEMBERED as well as applied: an
+            // optimised design has to be able to go back to the file it came from, in the units
+            // that file is written in.
+            system.FileUnitScale = unitScale;
             if (unitScale != 1.0)
                 LensUnitConverter.ConvertToMm(system, unitScale);
 
@@ -387,7 +392,7 @@ namespace AberrationCalculator.Core.IO
         /// Paraxial axial ray (y=1, u=0) traced from S1 forward to the stop's
         /// plane (before the stop's own refraction). Returns y at the stop.
         /// Used to back-compute EPD when the file has no aperture keyword:
-        /// EPD = 2 · stop_SD / yAtStop. This mirrors what OpTaliX does
+        /// EPD = 2 · stop_SD / yAtStop. This mirrors what the format does
         /// internally for its "float by stop" default.
         /// indices[i] = refractive index in the gap AFTER surface i.
         /// </summary>

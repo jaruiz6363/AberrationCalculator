@@ -88,8 +88,8 @@ referred to the paraxial image plane and Robb's polynomial has no defocus term, 
 comparison has to be made there. A design saved at best focus puts its image surface somewhere
 else, and distortion read at that surface is a different number — on the Cooke triplet fixture,
 0.0620 per cent at the corner against 0.0486, a difference of a quarter from the plane alone.
-The report gives both and says which is which; the second is the one that matches LensHH-LT,
-which reports 0.062021 per cent for that lens, and OpticStudio.
+The report gives both and says which is which; the second is the one that matches what other
+implementations report for that lens, 0.062021 per cent.
 
 **The field variable is a tangent, not an angle.** The coefficients are converted with
 H = tan(theta_max), so fractional field *h* means tan(theta) = *h* tan(theta_max), and the ray

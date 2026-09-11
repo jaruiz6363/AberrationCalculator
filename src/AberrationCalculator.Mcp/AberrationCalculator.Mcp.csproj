@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AberrationCalculator.Core\AberrationCalculator.Core.csproj" />
     <ProjectReference Include="..\AberrationCalculator.IO\AberrationCalculator.IO.csproj" />
+    <ProjectReference Include="..\AberrationCalculator.Optimize\AberrationCalculator.Optimize.csproj" />
   </ItemGroup>
 
 </Project>

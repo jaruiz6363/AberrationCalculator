@@ -64,25 +64,25 @@ public static class TertiaryScriptT
     /// </summary>
     public static readonly int[] JPower = { 0, 0, 1, 2, 2, 3, 4, 3, 4, 5, 6 };
 
-    private static double Horner(int[,] table, int row, int columns, double k)
+    private static Scalar Horner(int[,] table, int row, int columns, Scalar k)
     {
-        double s = 0.0;
+        Scalar s = 0.0;
         for (int c = 0; c < columns; c++) s = s * k + table[row, c];
         return s;
     }
 
     /// <summary>Table III evaluated at k. Index 0..9.</summary>
-    public static double[] Nu(double k)
+    public static Scalar[] Nu(Scalar k)
     {
-        var v = new double[10];
+        var v = new Scalar[10];
         for (int m = 0; m < 10; m++) v[m] = Horner(TableIII, m, 6, k);
         return v;
     }
 
     /// <summary>Table II evaluated at k. Index 0..5.</summary>
-    public static double[] NuPrime(double k)
+    public static Scalar[] NuPrime(Scalar k)
     {
-        var v = new double[6];
+        var v = new Scalar[6];
         for (int m = 0; m < 6; m++) v[m] = Horner(TableII, m, 5, k);
         return v;
     }
@@ -90,7 +90,7 @@ public static class TertiaryScriptT
     /// <summary>A polynomial in theta1, theta2, theta3 of total degree at most three.</summary>
     private sealed class Cubic
     {
-        public readonly double[,,] C = new double[4, 4, 4];
+        public readonly Scalar[,,] C = new Scalar[4, 4, 4];
 
         public static Cubic One()
         {
@@ -99,7 +99,7 @@ public static class TertiaryScriptT
             return p;
         }
 
-        public static Cubic Linear(double a, double b, double c)
+        public static Cubic Linear(Scalar a, Scalar b, Scalar c)
         {
             var p = new Cubic();
             p.C[1, 0, 0] = a; p.C[0, 1, 0] = b; p.C[0, 0, 1] = c;
@@ -113,13 +113,13 @@ public static class TertiaryScriptT
             for (int b = 0; a + b < 4; b++)
             for (int c = 0; a + b + c < 4; c++)
             {
-                double xv = x.C[a, b, c];
+                Scalar xv = x.C[a, b, c];
                 if (xv == 0.0) continue;
                 for (int d = 0; a + d < 4; d++)
                 for (int e = 0; a + b + d + e < 4; e++)
                 for (int f = 0; a + b + c + d + e + f < 4; f++)
                 {
-                    double yv = y.C[d, e, f];
+                    Scalar yv = y.C[d, e, f];
                     if (yv == 0.0) continue;
                     r.C[a + d, b + e, c + f] += xv * yv;
                 }
@@ -127,7 +127,7 @@ public static class TertiaryScriptT
             return r;
         }
 
-        public void AddScaled(Cubic other, double s)
+        public void AddScaled(Cubic other, Scalar s)
         {
             for (int a = 0; a < 4; a++)
             for (int b = 0; b < 4; b++)
@@ -156,12 +156,12 @@ public static class TertiaryScriptT
     /// Paper II works at c0 = 1 (its footnote 5), so its y is c0 times ours - and since
     /// i = c0 y - v, that is exactly i + v.
     /// </param>
-    public static double[] Expand(double[] nu, double[] nuPrime, double Y, double v)
+    public static Scalar[] Expand(Scalar[] nu, Scalar[] nuPrime, Scalar Y, Scalar v)
     {
         if (nu == null) throw new ArgumentNullException(nameof(nu));
         if (nuPrime == null) throw new ArgumentNullException(nameof(nuPrime));
 
-        var coefficients = new double[10];
+        var coefficients = new Scalar[10];
         for (int m = 0; m < 10; m++)
             coefficients[m] = Y * nu[m] - (m < 6 ? v * nuPrime[m] : 0.0);
         return ExpandCubic(coefficients, Y, v);
@@ -175,7 +175,7 @@ public static class TertiaryScriptT
     /// form that <see cref="Expand"/> takes, because that is how paper II (5.3) writes it.
     /// The L side does not - it is a cubic like any other - so it needs this.</para>
     /// </summary>
-    public static double[] ExpandCubic(double[] coefficients, double Y, double v)
+    public static Scalar[] ExpandCubic(Scalar[] coefficients, Scalar Y, Scalar v)
         => Accumulate(coefficients,
                       Cubic.Linear(Y * Y, 2 * Y, 1),
                       Cubic.Linear(Y * v, Y + v, 1),
@@ -203,7 +203,7 @@ public static class TertiaryScriptT
     /// which is to say Buchdahl's j carries a factor of c0, and Table IV's powers are those
     /// weights.</para>
     /// </summary>
-    public static double[] ExpandCubicPhysical(double[] coefficients, double y, double v, double c0)
+    public static Scalar[] ExpandCubicPhysical(Scalar[] coefficients, Scalar y, Scalar v, Scalar c0)
         => Accumulate(coefficients,
                       Cubic.Linear(y * y, 2 * y, 1),
                       Cubic.Linear(y * v, c0 * y + v, c0),
@@ -227,8 +227,8 @@ public static class TertiaryScriptT
     /// a reweighting of the xi-eta-zeta monomials, which is why comparing them in that basis
     /// gives ratios that are neither constant nor any power law.</para>
     /// </summary>
-    public static double[] ExpandQuadraticPhysical(double[] coefficients, double y, double v,
-                                                   double c0)
+    public static Scalar[] ExpandQuadraticPhysical(Scalar[] coefficients, Scalar y, Scalar v,
+                                                   Scalar c0)
     {
         if (coefficients == null) throw new ArgumentNullException(nameof(coefficients));
 
@@ -248,7 +248,7 @@ public static class TertiaryScriptT
             total.AddScaled(product, coefficients[m]);
         }
 
-        var result = new double[6];
+        var result = new Scalar[6];
         for (int m = 0; m < 6; m++)
         {
             var (a, b, c) = QuadMonomials[m];
@@ -257,7 +257,7 @@ public static class TertiaryScriptT
         return result;
     }
 
-    private static double[] Accumulate(double[] coefficients, Cubic xi, Cubic eta, Cubic zeta)
+    private static Scalar[] Accumulate(Scalar[] coefficients, Cubic xi, Cubic eta, Cubic zeta)
     {
         if (coefficients == null) throw new ArgumentNullException(nameof(coefficients));
 
@@ -273,7 +273,7 @@ public static class TertiaryScriptT
             total.AddScaled(product, coefficients[m]);
         }
 
-        var result = new double[11];
+        var result = new Scalar[11];
         for (int m = 0; m < 10; m++)
         {
             var (a, b, c) = Monomials[m];
@@ -291,13 +291,13 @@ public static class TertiaryScriptT
     /// computing scheme's z is wrong, and wrong by exactly k. Both the expansion here and
     /// the scheme agree on the k, so the printed form is a misreading or a slip.</para>
     /// </summary>
-    public static double[] Published(double Y, double v, double i, double k)
+    public static Scalar[] Published(Scalar Y, Scalar v, Scalar i, Scalar k)
     {
-        double i2 = i * i, i3 = i2 * i, i4 = i3 * i, i5 = i4 * i;
-        double v2 = v * v, v3 = v2 * v, v4 = v3 * v, v5 = v4 * v;
-        double k2 = k * k, k3 = k2 * k, k4 = k3 * k, k5 = k4 * k;
+        Scalar i2 = i * i, i3 = i2 * i, i4 = i3 * i, i5 = i4 * i;
+        Scalar v2 = v * v, v3 = v2 * v, v4 = v3 * v, v5 = v4 * v;
+        Scalar k2 = k * k, k3 = k2 * k, k4 = k3 * k, k5 = k4 * k;
 
-        var T = new double[11];
+        var T = new Scalar[11];
         T[1] = Y * i * ((5 * k5 - 8 * k4 + 11 * k3 - 8 * k2 + 5 * k) * i5
                       + (-13 * k4 + 25 * k3 - 28 * k2 + 16 * k - 5) * i4 * v
                       + (4 * k3 - 19 * k2 + 13 * k - 8) * i3 * v2
@@ -335,9 +335,9 @@ public static class TertiaryScriptT
     /// number then works for all ten, which is the check
     /// <c>TertiaryScriptTTests</c> makes.</para>
     /// </summary>
-    public static double Bridge(double z10, double i, double j)
+    public static Scalar Bridge(Scalar z10, Scalar i, Scalar j)
     {
-        double den = i * i * Math.Pow(j, JPower[10]);
-        return Math.Abs(den) > 1e-300 ? z10 / den : 0.0;
+        Scalar den = i * i * SMath.Pow(j, JPower[10]);
+        return SMath.Abs(den) > 1e-300 ? z10 / den : 0.0;
     }
 }

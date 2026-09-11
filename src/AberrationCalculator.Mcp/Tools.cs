@@ -38,6 +38,13 @@ internal static class Tools
     {
         if (string.IsNullOrWhiteSpace(lensPath))
             throw new ArgumentException("a lens file path is required");
+
+        // Bare names are taken against the base folder. This matters more here than on the
+        // command line: an MCP server's working directory is whatever the client started it in,
+        // not anything the user chose, so without a base every path has to be absolute.
+        lensPath = BasePath.Resolve(lensPath);
+        glassDir = BasePath.ResolveIfGiven(glassDir);
+
         if (!File.Exists(lensPath))
             throw new FileNotFoundException($"no such file: {lensPath}", lensPath);
 

@@ -10,7 +10,7 @@ namespace AberrationCalculator.Tests;
 /// <summary>
 /// The reader must hand back the surface list exactly as the file wrote it.
 ///
-/// LensHH-LT does two tidying passes on import - it inserts a zero-thickness stop ahead of
+/// Some programs do two tidying passes on import - inserting a zero-thickness stop ahead of
 /// a catalog element, and sums away air-only surfaces before the image - and both are right
 /// for a program that composes stock parts into new designs. Both renumber the surfaces.
 ///

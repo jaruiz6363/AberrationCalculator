@@ -44,6 +44,7 @@ namespace AberrationCalculator.Tests;
 /// as the field shrinks - h^2 for third order, h^4 for fifth, h^6 for seventh - which is what
 /// the coefficient being right MEANS. A wrong coefficient still fits at one field.</para>
 /// </summary>
+[Collection(ProcessWideState.Name)]
 public class DistortionPredictionTests
 {
     private sealed record Setup(OpticalSystem System, double[] Indices, ParaxialResult Paraxial,
@@ -578,7 +579,7 @@ public class DistortionPredictionTests
     /// distortion reads there as well, because that is the figure a design program quotes and
     /// a reader comparing the two would otherwise think one of them was wrong. On the Cooke
     /// triplet the file sits 0.2073 inside paraxial focus and the corner reads 0.0620 per cent
-    /// there against 0.0486 - LensHH-LT reports 0.062021 for this lens.
+    /// there against 0.0486, which is the figure an independent implementation reports for it.
     ///
     /// <para>The table itself cannot move there: the coefficients are referred to the paraxial
     /// plane and the polynomial has no defocus term.</para>
@@ -591,8 +592,8 @@ public class DistortionPredictionTests
                                                   s.Field, new[] { 1.0 }, atParaxialFocus: false);
 
         Assert.Equal(0.062031, atFile[0].TracedPercent, 5);
-        Assert.Equal(18.136026, atFile[0].Traced, 5);       // LensHH-LT: 18.136026
-        Assert.Equal(18.124783, atFile[0].Gaussian, 5);     // LensHH-LT: 18.124785
+        Assert.Equal(18.136026, atFile[0].Traced, 5);       // independent check: 18.136026
+        Assert.Equal(18.124783, atFile[0].Gaussian, 5);     // independent check: 18.124785
 
         string text = Mcp.Tools.Open(Fixtures.Lens("CookeTriplet"), null).BuildDistortionText();
         Assert.Contains("The file's image surface is", text);

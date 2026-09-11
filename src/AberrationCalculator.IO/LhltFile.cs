@@ -5,7 +5,7 @@ using AberrationCalculator.Core.Models;
 namespace AberrationCalculator.Core.IO
 {
     /// <summary>
-    /// Data transfer object representing the complete state of a LensHH-LT session.
+    /// Data transfer object representing the complete state a .lhlt file carries.
     /// Serialized as JSON with the .lhlt extension.
     /// </summary>
     public class LhltFile
@@ -92,13 +92,40 @@ namespace AberrationCalculator.Core.IO
         // Aspheric coefficients (only serialized if non-zero)
         public double[]? AsphericCoefficients { get; set; }
 
-        // Variable flags
-        // Aperture solve flags: SemiDiameter (Fixed surfaces) / ClearAperturePercent (Auto surfaces).
+        // ── Variable flags ───────────────────────────────────────────────────────────
+        //
+        // Which construction parameters an optimiser is allowed to move. These are the format's
+        // own, and they were read past for as long as this program only reported on a design.
+        // Now that it can change one, they are the design's own statement of what may change and
+        // are honoured rather than re-invented: a lens opened here arrives with its variables
+        // already declared, exactly as its author left them.
+        //
+        // The kinds this optimiser cannot use are still deserialized, so that a file carrying
+        // them keeps them when it is written back.
+
+        public bool CurvatureVariable { get; set; }
+        public bool ThicknessVariable { get; set; }
+        public bool ConicVariable { get; set; }
+        public bool[]? AsphericVariable { get; set; }
+        public bool SemiDiameterVariable { get; set; }
+        public bool ClearAperturePercentVariable { get; set; }
+        public bool FocalLengthVariable { get; set; }
+        public bool ModelNdVariable { get; set; }
+        public bool ModelVdVariable { get; set; }
+        public bool ModelDPgFVariable { get; set; }
 
         /// <summary>OSLO CALLBACK 1 marginal-ray-height solve marker.</summary>
         public bool HasMarginalRaySolve { get; set; }
 
-        // Variable bounds
+        // ── Variable bounds ──────────────────────────────────────────────────────────
+        // Absent from a file means unbounded, which is why these are nullable rather than
+        // defaulted to an infinity that would then be written back into a file that never
+        // asked for one.
+
+        public double? CurvatureMin { get; set; }
+        public double? CurvatureMax { get; set; }
+        public double? ThicknessMin { get; set; }
+        public double? ThicknessMax { get; set; }
 
         // Model glass (Nd/Vd/dPgF) — when enabled the refractive index is computed
         // from these three parameters instead of a catalog Material. Each can be a
@@ -116,7 +143,7 @@ namespace AberrationCalculator.Core.IO
 
         // Generic indexed parameters for PRO surface types (Coordinate Break, …).
         // Null when unused (standard surfaces) to keep files clean. 0-based arrays;
-        // the UI/ZEMAX are 1-based. See Surface.Parameters/Settings.
+        // the file format numbers them from one. See Surface.Parameters/Settings.
         public double[]? Parameters { get; set; }
         public int[]? Settings { get; set; }
     }

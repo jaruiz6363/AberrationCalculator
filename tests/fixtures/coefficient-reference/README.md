@@ -21,13 +21,13 @@ nothing to check.
 
 ## Where the numbers came from
 
-The reference values were produced by running the ZEMAX macro FIFTHORD (Rimmer 1962, via
+The reference values were produced by running the FIFTHORD macro (Rimmer 1962, via
 M. MacFarlane 1998, with the mirror index-sign correction of T. A. Mitchell 2003 and the
 Lagrange-invariant correction of J. Sasian 2019) on these seven designs, and recording what
 it reported.
 
 **Neither that macro nor anything derived from it is in this repository, and neither will
-be.** It ships with OpticStudio and is not ours to redistribute. What is here is the
+be.** It ships with a commercial program and is not ours to redistribute. What is here is the
 numerical output for designs that are ours - the same status as any measurement.
 
 `PARM 1`, the r^2 deformation term, is zero in every fixture on purpose: the macro ignores
@@ -37,7 +37,7 @@ different surfaces and the comparison would mean nothing.
 ## What this reference is, and is not
 
 It is a cross-check. Two implementations of the same published method agreeing across 586
-values is worth having, and a reader with OpticStudio can reproduce it without trusting
+values is worth having, and a reader with that program can reproduce it without trusting
 anything here.
 
 It is **not** the authority for these coefficients, and the test that reads it is not named

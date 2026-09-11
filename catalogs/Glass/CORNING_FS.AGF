@@ -57,9 +57,9 @@ CC   Status       = 0 standard, 1 preferred, 2 obsolete, 3 special, 4 melt,
 CC                  5 inquire, 6 experimental.
 CC   MeltFreq     = melt frequency, 0..n (informational).
 CC
-CC IMPORTANT — ED-line last field MUST be 0 (not 1) in current OpticStudio.
-CC Setting it to 1 ("Preferred") on a Sellmeier/Conrady glass causes
-CC OpticStudio to silently mishandle the dispersion formula: the
+CC IMPORTANT -- the ED-line last field MUST be 0, not 1.
+CC Setting it to 1 ("Preferred") on a Sellmeier or Conrady glass is
+CC mishandled by some readers: the
 CC prescription report shows the correct |n| but cardinal-point /
 CC ray-trace evaluation uses a model-glass approximation that gives a
 CC very different index and wrong EFL. Empirically verified 2026-05-14.

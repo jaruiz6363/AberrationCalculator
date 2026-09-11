@@ -59,9 +59,13 @@ or, in a client that takes JSON:
 
 ## The tools
 
-Every tool takes `lens_file` and an optional `glass_dir`. Most return tab-separated tables, so
-a caller can parse a number rather than scrape prose; the four marked *text* are verdicts and
-breakdowns that read far better ruled than flattened into one row per cell.
+Every REPORTING tool takes `lens_file` and an optional `glass_dir`. Most return tab-separated
+tables, so a caller can parse a number rather than scrape prose; the four marked *text* are
+verdicts and breakdowns that read far better ruled than flattened into one row per cell.
+
+Two tools do not report on a lens and so carry their own arguments, listed separately below:
+`optimize`, which CHANGES a design, and `base_path`, which says what folder bare file names are
+taken against.
 
 | tool | what it gives |
 |---|---|
@@ -80,8 +84,52 @@ breakdowns that read far better ruled than flattened into one row per cell.
 | `aspheric_screen` | whether a design would exercise the aspheric seventh-order path hard enough to test it (*text*) |
 | `distortion_from_coefficients` | how far the coefficients can be trusted for distortion, against rays - NOT the way to get a distortion figure, for which the traced column beside them is the answer (*text*) |
 
+### `optimize`
+
+Optimises a lens against a merit function given inline as text, and reports what changed.
+Every derivative it uses is analytic - see `docs/optimizer.md` - including through PRMSA, the
+predicted spot. **Spherical surfaces only:** the coefficients come from Buchdahl's closed-form
+scheme, whose aspheric seventh order is a reconstruction real rays reject, so a figured design -
+or a conic asked to be a variable - is refused before the run rather than optimised against a
+number known to be wrong. The reporting tools above are unaffected and handle figuring
+throughout.
+
+| argument | |
+|---|---|
+| `lens_file` | the lens to optimise. It is read, never written |
+| `merit` | the merit function as text, or `merit_file` for a path |
+| `variables` | variables and pickups as text, in the `.var` format. A `.lhlt` carries its own |
+| `method` | `lm`, `psd2`, `psd3` (default) or `hj` |
+| `iterations` | local iterations, or iterations per hop |
+| `hops`, `chains`, `seed` | basin hopping, off by default |
+| `glass_substitution` | name of a substitution catalogue the hopping may take glasses from, e.g. `CoreSet28` |
+| `save_to` | where to write the result. Under hopping this is a **folder**, and one design per chain goes into it. **Nothing is written without it** |
+
+**The lens on disk is never modified.** A run that made the design worse costs nothing, and
+the report says so rather than handing back something nobody asked for.
+
 Formats are taken from the extension: `.zmx`, `.seq`, `.otx`, `.opt`, `.len`, `.osl`, `.json`
 (Optiland) and `.lhlt`.
+
+
+### `base_path`
+
+Sets the folder that bare file names are taken to mean, so `lens_file` can be `L.zmx` rather
+than a full path.
+
+| argument | |
+|---|---|
+| `path` | the folder. Omit to report the base in force without changing it |
+| `clear` | forget the stored base |
+
+**This matters more here than on the command line.** A terminal has a working directory the user
+chose; this server has whatever the client started it in, which the user cannot see and cannot
+change - so without a base, every path has to be absolute. Set it once at the start of a session
+and every tool above resolves against it.
+
+It is the same setting as the command line's `BASE`, kept between runs, and it reports where the
+base came from as well as what it is - `--dir`, `ABCALC_DIR`, `BASE`, or the working directory,
+in that order of precedence. An absolute path is never re-rooted.
 
 ## Two things worth knowing
 

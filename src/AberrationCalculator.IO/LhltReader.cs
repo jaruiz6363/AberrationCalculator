@@ -88,6 +88,19 @@ namespace AberrationCalculator.Core.IO
                     ModelIndexEnabled = ls.ModelIndexEnabled,
                     ModelNd = ls.ModelNd, ModelVd = ls.ModelVd, ModelDPgF = ls.ModelDPgF,
                     FocalLength = ls.FocalLength,
+
+                    // What the design's author said may be optimised, and how far. A .lhlt
+                    // states this itself, so it is honoured rather than re-invented - the lens
+                    // arrives with its variables already declared. The MERIT FUNCTION in the
+                    // file is deliberately NOT read: this program optimises a different one,
+                    // and quietly adopting someone else's targets would be the wrong kind of
+                    // helpful. It is left untouched in the file when the design is written back.
+                    CurvatureVariable = ls.CurvatureVariable,
+                    ThicknessVariable = ls.ThicknessVariable,
+                    CurvatureMin = ls.CurvatureMin ?? double.NegativeInfinity,
+                    CurvatureMax = ls.CurvatureMax ?? double.PositiveInfinity,
+                    ThicknessMin = ls.ThicknessMin ?? double.NegativeInfinity,
+                    ThicknessMax = ls.ThicknessMax ?? double.PositiveInfinity,
                 };
 
                 if (ls.AsphericCoefficients != null)

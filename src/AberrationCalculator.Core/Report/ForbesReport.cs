@@ -14,8 +14,8 @@ namespace AberrationCalculator.Core.Report;
 /// reaches it.
 ///
 /// <para>Written once and here so the three programs that report it cannot drift apart: the
-/// command line, the MCP server, and the ZOS-API program that drives OpticStudio. They differ
-/// only in where the lens comes from.</para>
+/// command line, the MCP server, and the automation program that drives a host application.
+/// They differ only in where the lens comes from.</para>
 ///
 /// <para>The seventh order comes from the Forbes series trace, which handles spheres, conics
 /// and even aspheres alike; the third and fifth from Buchdahl's scheme, which carries figuring

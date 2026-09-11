@@ -182,7 +182,7 @@ namespace AberrationCalculator.Core.IO
                             double zNext = zCoords[i + 1];
 
                             // Catch any sentinel ≥ 1e10. We write 1e30 for
-                            // infinity now; OpTaliX-derived files use 1e20;
+                            // infinity now; some converted files use 1e20;
                             // older tools use 1e10 / 1e11. All bigger than
                             // any real track distance.
                             if (Math.Abs(zCurrent) >= 1e10) // object at infinity

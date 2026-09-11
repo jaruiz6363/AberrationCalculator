@@ -6,25 +6,25 @@ namespace AberrationCalculator.Core.Aberrations;
 /// <summary>Per-surface quantities of the Buchdahl computing scheme.</summary>
 public sealed class BuchdahlSurface
 {
-    public double Yp, Yq, Ip, Iq, Vp, Vq;
-    public double VpPrime, VqPrime, YpPrime, YqPrime, IpPrime, IqPrime;
-    public double C, D, N, K;
+    public Scalar Yp, Yq, Ip, Iq, Vp, Vq;
+    public Scalar VpPrime, VqPrime, YpPrime, YqPrime, IpPrime, IqPrime;
+    public Scalar C, D, N, K;
 
     /// <summary>Secondary coefficients S1..S6, unbarred and barred, for this surface.</summary>
-    public double S1p, S1pBar, S2p, S2pBar, S3p, S3pBar;
-    public double S4p, S4pBar, S5p, S5pBar, S6p, S6pBar;
+    public Scalar S1p, S1pBar, S2p, S2pBar, S3p, S3pBar;
+    public Scalar S4p, S4pBar, S5p, S5pBar, S6p, S6pBar;
 }
 
 /// <summary>System totals of the Buchdahl computing scheme.</summary>
 public sealed class BuchdahlSchemeResult
 {
     /// <summary>Primary coefficients: Buchdahl's a, b, c for the p and q rays.</summary>
-    public double Ap, Bp, Cp, Aq, Bq, Cq;
-    public double ApBar, BpBar, CpBar, AqBar, BqBar, CqBar;
+    public Scalar Ap, Bp, Cp, Aq, Bq, Cq;
+    public Scalar ApBar, BpBar, CpBar, AqBar, BqBar, CqBar;
 
     /// <summary>Secondary coefficients S1..S6, unbarred and barred.</summary>
-    public double S1p, S1pBar, S2p, S2pBar, S3p, S3pBar;
-    public double S4p, S4pBar, S5p, S5pBar, S6p, S6pBar;
+    public Scalar S1p, S1pBar, S2p, S2pBar, S3p, S3pBar;
+    public Scalar S4p, S4pBar, S5p, S5pBar, S6p, S6pBar;
 
     /// <summary>
     /// Stop-shift parameter. Buchdahl calls this p; his triplet has p = 0.113227.
@@ -36,7 +36,7 @@ public sealed class BuchdahlSchemeResult
     /// shift, and it equals the paraxial entrance pupil position in units of the focal
     /// length.</para>
     /// </summary>
-    public double P;
+    public Scalar P;
 
     /// <summary>
     /// The p ray's reduced angle after the last optical surface, in focal lengths - M
@@ -46,10 +46,10 @@ public sealed class BuchdahlSchemeResult
     /// object is at infinity, which is why efl stood in its place for as long as only that
     /// case was computed.
     /// </summary>
-    public double PRayFinalAngle = 1.0;
+    public Scalar PRayFinalAngle = 1.0;
 
     /// <summary>Entrance pupil position and radius, from the p and q rays.</summary>
-    public double EntrancePupilPosition, EntrancePupilRadius, StopRadius;
+    public Scalar EntrancePupilPosition, EntrancePupilRadius, StopRadius;
 
     /// <summary>False when no stop was found, in which case the pupil values are meaningless.</summary>
     public bool Evaluated;
@@ -71,7 +71,7 @@ public sealed class BuchdahlSchemeResult
     /// triplet he prints in that table, column by column - which is how the errors in
     /// t100..t108 were found.</para>
     /// </summary>
-    public double[][] T = Array.Empty<double[]>();
+    public Scalar[][] T = Array.Empty<Scalar[]>();
 }
 
 /// <summary>
@@ -107,10 +107,10 @@ public static class BuchdahlScheme
 {
     private const int MaxTerms = 141;
 
-    private static double SafeInverse(double v) => Math.Abs(v) < 1e-300 ? 0.0 : 1.0 / v;
+    private static Scalar SafeInverse(Scalar v) => SMath.Abs(v) < 1e-300 ? 0.0 : 1.0 / v;
 
-    private static double SafeDivide(double num, double den) =>
-        Math.Abs(den) < 1e-300 ? 0.0 : num / den;
+    private static Scalar SafeDivide(Scalar num, Scalar den) =>
+        SMath.Abs(den) < 1e-300 ? 0.0 : num / den;
 
     /// <summary>
     /// Runs the scheme over a centred system. <paramref name="indices"/> holds the
@@ -122,8 +122,8 @@ public static class BuchdahlScheme
     /// triplet has c1 = 4.82439, which is that surface's curvature times its focal length.
     /// </param>
     public static BuchdahlSchemeResult Compute(
-        IReadOnlyList<Models.Surface> surfaces, double[] indices, double efl, double stopRadius = 0.0,
-        double iota = 0.0)
+        IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl, Scalar stopRadius = default,
+        Scalar iota = default)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -132,10 +132,10 @@ public static class BuchdahlScheme
         var result = new BuchdahlSchemeResult();
         if (count < 3) return result;
 
-        double scale = Math.Abs(efl) > 1e-300 ? 1.0 / efl : 1.0;
+        Scalar scale = SMath.Abs(efl) > 1e-300 ? 1.0 / efl : 1.0;
 
-        var t = new double[count][];
-        for (int i = 0; i < count; i++) t[i] = new double[MaxTerms];
+        var t = new Scalar[count][];
+        for (int i = 0; i < count; i++) t[i] = new Scalar[MaxTerms];
         var parax = new BuchdahlSurface[count];
         for (int i = 0; i < count; i++) parax[i] = new BuchdahlSurface();
 
@@ -151,10 +151,10 @@ public static class BuchdahlScheme
         //
         // Lengths here are in focal lengths (see scale above), so iota is efl/l_01 and
         // not 1/l_01.
-        double pY = 1.0, pV = iota, qY = 0.0, qV = 1.0;
-        double pYPrime = 0.0, pVPrime = 0.0, qYPrime = 0.0, qVPrime = 0.0;
+        Scalar pY = 1.0, pV = iota, qY = 0.0, qV = 1.0;
+        Scalar pYPrime = 0.0, pVPrime = 0.0, qYPrime = 0.0, qVPrime = 0.0;
 
-        double stopPosition = 0.0, denominator = 0.0;
+        Scalar stopPosition = 0.0, denominator = 0.0;
         bool stopFound = false;
 
         for (int i = 1; i < count - 1; i++)
@@ -162,19 +162,19 @@ public static class BuchdahlScheme
             var ti = t[i];
             var pi = parax[i];
 
-            double nPrev = i - 1 < indices.Length ? indices[i - 1] : 1.0;
-            double nCurr = i < indices.Length ? indices[i] : 1.0;
-            if (Math.Abs(nCurr) < 1e-12) nCurr = 1.0;
+            Scalar nPrev = i - 1 < indices.Length ? indices[i - 1] : 1.0;
+            Scalar nCurr = i < indices.Length ? indices[i] : 1.0;
+            if (SMath.Abs(nCurr) < 1e-12) nCurr = 1.0;
 
-            double k = SafeDivide(nPrev, nCurr);
-            double k1 = 1.0 - k;
-            double c = surfaces[i].VertexCurvature * SafeInverse(scale);
-            double d = surfaces[i].Thickness * scale;
-            double i1p = c * pY - pV;
-            double i1q = c * qY - qV;
-            double i1pPrime = k * i1p;
-            double i1qPrime = k * i1q;
-            double n = nPrev;
+            Scalar k = SafeDivide(nPrev, nCurr);
+            Scalar k1 = 1.0 - k;
+            Scalar c = surfaces[i].VertexCurvature * SafeInverse(scale);
+            Scalar d = surfaces[i].Thickness * scale;
+            Scalar i1p = c * pY - pV;
+            Scalar i1q = c * qY - qV;
+            Scalar i1pPrime = k * i1p;
+            Scalar i1qPrime = k * i1q;
+            Scalar n = nPrev;
 
             pi.C = c; pi.D = d; pi.N = n; pi.K = k;
 
@@ -188,9 +188,9 @@ public static class BuchdahlScheme
             pi.Iq = i1q; pi.Ip = i1p; pi.IqPrime = i1qPrime; pi.IpPrime = i1pPrime;
 
             ti[1] = pV;  ti[2] = pVPrime;  ti[3] = qV;  ti[4] = qVPrime;
-            if (Math.Abs(c) > 1e-12) ti[5] = n * SafeInverse(c) * i1p;
+            if (SMath.Abs(c) > 1e-12) ti[5] = n * SafeInverse(c) * i1p;
             ti[6] = i1p - i1pPrime;
-            if (Math.Abs(c) > 1e-12) ti[7] = n * SafeInverse(c) * i1q;
+            if (SMath.Abs(c) > 1e-12) ti[7] = n * SafeInverse(c) * i1q;
             ti[8] = i1q - i1qPrime;
             ti[9] = i1p * i1pPrime;
             ti[10] = i1p * i1qPrime;
@@ -204,7 +204,7 @@ public static class BuchdahlScheme
             ti[18] = pV * qVPrime + qV * pVPrime;
             ti[19] = pV * qV;
             ti[20] = pVPrime * qVPrime;
-            if (Math.Abs(k1) > 1e-12) ti[21] = k / (k1 * k1);
+            if (SMath.Abs(k1) > 1e-12) ti[21] = k / (k1 * k1);
             ti[22] = ti[9] + ti[14];
             ti[23] = ti[10] + ti[20];
             ti[24] = ti[11] + ti[17];
@@ -259,7 +259,7 @@ public static class BuchdahlScheme
                 // exactly at the true stop, which lies between two refracting surfaces.
                 // Two errors cancelling: the stop flagged one surface early, and the
                 // formula reaching one surface late.
-                if (Math.Abs(pY) > 1e-12)
+                if (SMath.Abs(pY) > 1e-12)
                 {
                     stopPosition = -qY / pY;
                     denominator = pY;
@@ -278,7 +278,7 @@ public static class BuchdahlScheme
             for (int offset = 0; offset < 6; offset++)
                 for (int i = 1; i < count - 1; i++)
                 {
-                    double sum = 0.0;
+                    Scalar sum = 0.0;
                     for (int j = 0; j < i; j++) sum += t[j][46 + k + offset];
                     t[i][58 + k + offset] = sum;
                 }
@@ -344,9 +344,9 @@ public static class BuchdahlScheme
             pi.S6pBar = -ti[69] * ti[53] - ti[69] * ti[48] + 3.0 * ti[66] * ti[54] + ti[7] * ti[88];
         }
 
-        double Sum(int index)
+        Scalar Sum(int index)
         {
-            double s = 0.0;
+            Scalar s = 0.0;
             for (int i = 1; i < count - 1; i++) s += t[i][index];
             return s;
         }
@@ -367,15 +367,15 @@ public static class BuchdahlScheme
             result.S6p += pi.S6p; result.S6pBar += pi.S6pBar;
         }
 
-        if (stopFound && Math.Abs(denominator) > 1e-12)
+        if (stopFound && SMath.Abs(denominator) > 1e-12)
         {
             result.EntrancePupilPosition = stopPosition;
-            double radius = stopRadius;
+            Scalar radius = stopRadius;
             if (radius <= 0.0)
                 for (int i = 0; i < count; i++)
                     if (surfaces[i].IsStop) { radius = surfaces[i].SemiDiameter; break; }
             result.StopRadius = radius;
-            result.EntrancePupilRadius = Math.Abs(radius) > 1e-12 ? radius / denominator : 0.0;
+            result.EntrancePupilRadius = SMath.Abs(radius) > 1e-12 ? radius / denominator : 0.0;
             result.Evaluated = true;
         }
 

@@ -5,6 +5,10 @@ using AberrationCalculator.Core.Enums;
 
 namespace AberrationCalculator.Core.Models;
 
+// Wavelength and Field stay in plain `double` under both arithmetics. They describe the
+// EVALUATION SET rather than the design, and nothing is ever differentiated with respect to a
+// wavelength or a field weight - so giving them a derivative would be carrying a zero around.
+
 /// <summary>A wavelength in the evaluation set.</summary>
 public class Wavelength
 {
@@ -47,11 +51,11 @@ public class Field
 public class Aperture
 {
     public ApertureType Type { get; set; } = ApertureType.EPD;
-    public double Value { get; set; }
+    public Scalar Value { get; set; }
 
     public Aperture() { }
 
-    public Aperture(ApertureType type, double value)
+    public Aperture(ApertureType type, Scalar value)
     {
         Type = type;
         Value = value;
@@ -68,8 +72,8 @@ public class Pickup
     public int TargetSurfaceIndex { get; set; }
     public int SourceSurfaceIndex { get; set; }
     public PickupParameter Parameter { get; set; } = PickupParameter.Thickness;
-    public double ScaleFactor { get; set; } = 1.0;
-    public double Offset { get; set; }
+    public Scalar ScaleFactor { get; set; } = 1.0;
+    public Scalar Offset { get; set; }
 
     /// <summary>Which numbered parameter, when <see cref="Parameter"/> addresses one.</summary>
     public int ParameterIndex { get; set; }
@@ -101,6 +105,21 @@ public class OpticalSystem
     /// <summary>Catalogs named by the file, in preference order.</summary>
     public List<string> GlassCatalogs { get; set; } = new();
 
+    /// <summary>
+    /// Whether <see cref="GlassCatalogs"/> was WORKED OUT rather than read.
+    ///
+    /// <para>Some formats carry no catalog at all, and a reader for one of those may deduce the
+    /// likely catalog from the glass names and record what it deduced. That is a reasonable thing
+    /// to do - a bare name does not always identify a glass - but the result is a GUESS stored in
+    /// the same field a declaration would occupy, and once stored the two are indistinguishable.
+    /// A guess that happens to be wrong then looks exactly like a fact: an F4 read as SCHOTT's
+    /// rather than CDGM's moves the focal length by more than a per cent with nothing to say a
+    /// choice was ever made.</para>
+    ///
+    /// <para>So the deduction is flagged, and the report says the catalog was inferred.</para>
+    /// </summary>
+    public bool GlassCatalogsAreInferred { get; set; }
+
     public List<Pickup> Pickups { get; set; } = new();
 
     /// <summary>Afocal systems are measured in angle rather than length at the image.</summary>
@@ -117,6 +136,21 @@ public class OpticalSystem
 
     /// <summary>How the file said its Auto semi-diameters were derived.</summary>
     public SemiDiameterSolve SemiDiameterSolve { get; set; } = SemiDiameterSolve.RealRay;
+
+    /// <summary>
+    /// What every distance in the file was multiplied by to reach millimetres: 25.4 for a file
+    /// written in inches, 10 for centimetres, 1 for millimetres.
+    ///
+    /// <para>Everything inside this program works in millimetres, which is why the conversion
+    /// happens on the way in. It is REMEMBERED rather than applied and forgotten because a design
+    /// has to be able to go back to the file it came from, and a lens returned in millimetres to
+    /// a file written in inches would be silently wrong by a factor of twenty-five. Dividing by
+    /// this on the way out is the whole of the round trip.</para>
+    ///
+    /// <para>Plain <c>double</c>: a unit conversion is not a quantity anything is differentiated
+    /// with respect to.</para>
+    /// </summary>
+    public double FileUnitScale { get; set; } = 1.0;
 
     /// <summary>Index of the reference wavelength, or −1 when none is marked.</summary>
     public int PrimaryWavelengthIndex
@@ -141,10 +175,10 @@ public class OpticalSystem
     }
 
     /// <summary>Largest field magnitude, used to normalise fractional field heights.</summary>
-    public double MaxFieldY()
+    public Scalar MaxFieldY()
     {
-        double m = 0.0;
-        foreach (var f in Fields) m = Math.Max(m, Math.Abs(f.Y));
+        Scalar m = 0.0;
+        foreach (var f in Fields) m = SMath.Max(m, SMath.Abs(f.Y));
         return m;
     }
 
@@ -160,5 +194,5 @@ public class OpticalSystem
     /// exit pupil - comes out wrong. Trailing dummy surfaces have no power, so counting
     /// back from the image is both simpler and right.
     /// </summary>
-    public int LastOpticalSurface() => Math.Max(0, Surfaces.Count - 2);
+    public int LastOpticalSurface() => SMath.Max(0, Surfaces.Count - 2);
 }

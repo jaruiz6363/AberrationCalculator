@@ -22,34 +22,34 @@ public sealed class IdentityResiduals
     /// Residual of each identity, in the order (20.41), (20.42), (20.43), (20.44), (20.45),
     /// (20.46), (20.47). Each should be zero.
     /// </summary>
-    public double[] Primary { get; init; } = Array.Empty<double>();
+    public Scalar[] Primary { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>Residual of paper III (7.1), (7.2), (7.3). Each should be zero.</summary>
-    public double[] Secondary { get; init; } = Array.Empty<double>();
+    public Scalar[] Secondary { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>
     /// The size of the largest single term that went into each identity, so a residual can be
     /// judged against what it is a residual OF. An absolute residual of 1e-6 means nothing
     /// until it is known whether the terms were of order one or of order a million.
     /// </summary>
-    public double[] PrimaryScale { get; init; } = Array.Empty<double>();
+    public Scalar[] PrimaryScale { get; init; } = Array.Empty<Scalar>();
 
     /// <inheritdoc cref="PrimaryScale"/>
-    public double[] SecondaryScale { get; init; } = Array.Empty<double>();
+    public Scalar[] SecondaryScale { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>Largest relative residual among the primary identities.</summary>
-    public double WorstPrimary => Worst(Primary, PrimaryScale);
+    public Scalar WorstPrimary => Worst(Primary, PrimaryScale);
 
     /// <summary>Largest relative residual among the secondary identities.</summary>
-    public double WorstSecondary => Worst(Secondary, SecondaryScale);
+    public Scalar WorstSecondary => Worst(Secondary, SecondaryScale);
 
-    private static double Worst(double[] r, double[] scale)
+    private static Scalar Worst(Scalar[] r, Scalar[] scale)
     {
-        double worst = 0.0;
+        Scalar worst = 0.0;
         for (int i = 0; i < r.Length; i++)
         {
-            double s = i < scale.Length ? scale[i] : 1.0;
-            double rel = s > 1e-300 ? Math.Abs(r[i]) / s : Math.Abs(r[i]);
+            Scalar s = i < scale.Length ? scale[i] : 1.0;
+            Scalar rel = s > 1e-300 ? SMath.Abs(r[i]) / s : SMath.Abs(r[i]);
             if (rel > worst) worst = rel;
         }
         return worst;
@@ -74,24 +74,27 @@ public static class BuchdahlIdentities
     /// Object-space refractive index, Buchdahl's N1. The identities carry it explicitly; on a
     /// system in air it is one.
     /// </param>
-    public static IdentityResiduals At(BuchdahlTableIRow[] rows, int j, double n1 = 1.0)
+    public static IdentityResiduals At(BuchdahlTableIRow[] rows, int j) => At(rows, j, 1.0);
+
+    /// <summary>The same, with the object-space index given rather than taken as unity.</summary>
+    public static IdentityResiduals At(BuchdahlTableIRow[] rows, int j, Scalar n1)
     {
         if (rows == null) throw new ArgumentNullException(nameof(rows));
         if (j < 1 || j >= rows.Length) throw new ArgumentOutOfRangeException(nameof(j));
 
         var r = rows[j];
-        double vp = r[2], vq = r[5];
-        double vp1 = rows[1][2], vq1 = rows[1][5];
+        Scalar vp = r[2], vq = r[5];
+        Scalar vp1 = rows[1][2], vq1 = rows[1][5];
 
-        double Ap = r[15], Abp = r[16], Bbp = r[17], Cp = r[18], Cbp = r[19];
-        double Aq = r[20], Abq = r[21], Bq = r[22], Cq = r[23], Cbq = r[24];
+        Scalar Ap = r[15], Abp = r[16], Bbp = r[17], Cp = r[18], Cbp = r[19];
+        Scalar Aq = r[20], Abq = r[21], Bq = r[22], Cq = r[23], Cbq = r[24];
 
         // Not in the table; supplied by the identities that are being tested, so these two
         // enter (20.41) as predictions rather than as inputs.
-        double Bp = 2.0 * Abp;      // (20.42)
-        double Bbq = 2.0 * Cq;      // (20.43)
+        Scalar Bp = 2.0 * Abp;      // (20.42)
+        Scalar Bbq = 2.0 * Cq;      // (20.43)
 
-        double[] primary =
+        Scalar[] primary =
         {
             2.0 * Abq - Bq + Bbp - 2.0 * Cp,                                    // (20.41)
             2.0 * Abp - Bp,                                                     // (20.42)
@@ -101,7 +104,7 @@ public static class BuchdahlIdentities
             Cbp - Cq - 0.5 * n1 * (vq * vq - vq1 * vq1),                        // (20.46)
             Cp - Abq - 0.5 * n1 * (vp * vq - vp1 * vq1),                        // (20.47)
         };
-        double[] primaryScale =
+        Scalar[] primaryScale =
         {
             Max(2.0 * Abq, Bq, Bbp, 2.0 * Cp),
             Max(2.0 * Abp, Bp),
@@ -113,25 +116,25 @@ public static class BuchdahlIdentities
         };
 
         // The v-operator of paper III (4), and the starred quantities of its (5) and (6).
-        double Av = vq * Ap - vp * Aq;
-        double Abv = vq * Abp - vp * Abq;
-        double Bv = vq * Bp - vp * Bq;
-        double Bbv = vq * Bbp - vp * Bbq;
-        double Cv = vq * Cp - vp * Cq;
-        double Cbv = vq * Cbp - vp * Cbq;
+        Scalar Av = vq * Ap - vp * Aq;
+        Scalar Abv = vq * Abp - vp * Abq;
+        Scalar Bv = vq * Bp - vp * Bq;
+        Scalar Bbv = vq * Bbp - vp * Bbq;
+        Scalar Cv = vq * Cp - vp * Cq;
+        Scalar Cbv = vq * Cbp - vp * Cbq;
 
-        double As = Av - 0.5 * vp * vp * vp;
-        double Bs = Bv - vp * vp * vq;
-        double Cs = Cv - 0.5 * vp * vq * vq;
-        double Abs = Abv - 0.5 * vp * vp * vq;
-        double Bbs = Bbv - vp * vq * vq;
-        double Cbs = Cbv - 0.5 * vq * vq * vq;
+        Scalar As = Av - 0.5 * vp * vp * vp;
+        Scalar Bs = Bv - vp * vp * vq;
+        Scalar Cs = Cv - 0.5 * vp * vq * vq;
+        Scalar Abs = Abv - 0.5 * vp * vp * vq;
+        Scalar Bbs = Bbv - vp * vq * vq;
+        Scalar Cbs = Cbv - 0.5 * vq * vq * vq;
 
-        double S1p = r[69], S1bp = r[70], S2p = r[71], S2bp = r[72];
-        double S3p = r[73], S3bp = r[74], S4p = r[75], S4bp = r[76];
-        double S5p = r[77], S5bp = r[78];
+        Scalar S1p = r[69], S1bp = r[70], S2p = r[71], S2bp = r[72];
+        Scalar S3p = r[73], S3bp = r[74], S4p = r[75], S4bp = r[76];
+        Scalar S5p = r[77], S5bp = r[78];
 
-        double[] secondary =
+        Scalar[] secondary =
         {
             (S2p - 4.0 * S1bp) * vp - (Bs - 2.0 * Abs) * Ap
                 + 2.0 * (As * Bp - Bs * Ap),                                    // (7.1)
@@ -142,7 +145,7 @@ public static class BuchdahlIdentities
             (S5p - 2.0 * S3bp) * vp - (Bs - 2.0 * Abs) * Cp
                 + 2.0 * (Abs * Bbp - Bbs * Abp),                                // (7.3)
         };
-        double[] secondaryScale =
+        Scalar[] secondaryScale =
         {
             Max((S2p - 4.0 * S1bp) * vp, (Bs - 2.0 * Abs) * Ap, 2.0 * As * Bp, 2.0 * Bs * Ap),
             Max((S4p - S2bp) * vp, (Bs - 2.0 * Abs) * Abp, Abs * Bp, Bbs * Ap, As * Bbp, Bs * Abp),
@@ -163,10 +166,10 @@ public static class BuchdahlIdentities
         };
     }
 
-    private static double Max(params double[] terms)
+    private static Scalar Max(params Scalar[] terms)
     {
-        double m = 0.0;
-        foreach (double t in terms) if (Math.Abs(t) > m) m = Math.Abs(t);
+        Scalar m = 0.0;
+        foreach (Scalar t in terms) if (SMath.Abs(t) > m) m = SMath.Abs(t);
         return m > 0.0 ? m : 1.0;
     }
 }

@@ -41,7 +41,7 @@ public static class Prms
     /// <summary>One term of the intersection polynomial.</summary>
     private sealed class Term
     {
-        public Dictionary<string, double> C = new();   // coefficient name -> multiplier
+        public Dictionary<string, Scalar> C = new();   // coefficient name -> multiplier
         public int A;                                  // power of rho
         public int B;                                  // power of H
         public string F = "one";                       // theta function
@@ -111,17 +111,17 @@ public static class Prms
         new() { C = new() { ["Tau19"] = 1 },             A = 1, B = 6, F = "sin"   },
     };
 
-    private static double Theta(string name, double t) => name switch
+    private static Scalar Theta(string name, Scalar t) => name switch
     {
         "one" => 1.0,
-        "cos" => Math.Cos(t),
-        "cos2" => Math.Cos(2 * t),
-        "cos3p" => Math.Cos(t) * Math.Cos(t) * Math.Cos(t),
-        "sin" => Math.Sin(t),
-        "sin2" => Math.Sin(2 * t),
-        "sin3p" => Math.Cos(t) * Math.Cos(t) * Math.Sin(t),
-        "cos4" => Math.Cos(4 * t),
-        "sin4" => Math.Sin(4 * t),
+        "cos" => SMath.Cos(t),
+        "cos2" => SMath.Cos(2 * t),
+        "cos3p" => SMath.Cos(t) * SMath.Cos(t) * SMath.Cos(t),
+        "sin" => SMath.Sin(t),
+        "sin2" => SMath.Sin(2 * t),
+        "sin3p" => SMath.Cos(t) * SMath.Cos(t) * SMath.Sin(t),
+        "cos4" => SMath.Cos(4 * t),
+        "sin4" => SMath.Sin(4 * t),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown theta function"),
     };
 
@@ -130,18 +130,18 @@ public static class Prms
     /// trigonometric polynomial of degree at most six and the sample count is far above it.
     /// The result is snapped to a nearby simple rational to clear floating-point dust.
     /// </summary>
-    private static double ThetaAverage(string f1, string f2)
+    private static Scalar ThetaAverage(string f1, string f2)
     {
         const int n = 4096;
-        double s = 0.0;
+        Scalar s = 0.0;
         for (int k = 0; k < n; k++)
         {
-            double t = 2 * Math.PI * k / n;
+            Scalar t = 2 * SMath.PI * k / n;
             s += Theta(f1, t) * Theta(f2, t);
         }
-        double v = s / n;
-        double snapped = Math.Round(v * 65536.0) / 65536.0;
-        return Math.Abs(v - snapped) < 1e-9 ? snapped : v;
+        Scalar v = s / n;
+        Scalar snapped = SMath.Round(v * 65536.0) / 65536.0;
+        return SMath.Abs(v - snapped) < 1e-9 ? snapped : v;
     }
 
     /// <summary>One entry of the assembled quadratic form.</summary>
@@ -149,17 +149,17 @@ public static class Prms
     {
         public readonly string A, B;
         public readonly int HPower;
-        public readonly double Factor;
-        public Pair(string a, string b, int h, double f) { A = a; B = b; HPower = h; Factor = f; }
+        public readonly Scalar Factor;
+        public Pair(string a, string b, int h, Scalar f) { A = a; B = b; HPower = h; Factor = f; }
     }
 
     private static readonly Pair[] Form = Build();
 
     private static Pair[] Build()
     {
-        var acc = new Dictionary<(string, string, int), double>();
+        var acc = new Dictionary<(string, string, int), Scalar>();
 
-        void Add(string a, string b, int h, double v)
+        void Add(string a, string b, int h, Scalar v)
         {
             // Order the names so a*b and b*a land in the same bucket.
             var key = string.CompareOrdinal(a, b) <= 0 ? (a, b, h) : (b, a, h);
@@ -171,9 +171,9 @@ public static class Prms
             foreach (var x in list)
                 foreach (var y in list)
                 {
-                    double th = ThetaAverage(x.F, y.F);
+                    Scalar th = ThetaAverage(x.F, y.F);
                     if (th == 0.0) continue;
-                    double rad = 2.0 / (x.A + y.A + 2);
+                    Scalar rad = 2.0 / (x.A + y.A + 2);
                     foreach (var (ca, va) in x.C)
                         foreach (var (cb, vb) in y.C)
                             Add(ca, cb, x.B + y.B, va * vb * th * rad);
@@ -185,11 +185,11 @@ public static class Prms
 
         // Centroid reference: subtract the square of the mean of eps_y. Only terms whose
         // theta average is non-zero survive, and <eps_z> is zero by symmetry.
-        var mean = new List<(string C, double V, int H)>();
+        var mean = new List<(string C, Scalar V, int H)>();
         foreach (var t in Ey)
         {
-            double m = ThetaAverage(t.F, "one");
-            if (Math.Abs(m) < 1e-12) continue;
+            Scalar m = ThetaAverage(t.F, "one");
+            if (SMath.Abs(m) < 1e-12) continue;
             foreach (var (c, v) in t.C)
                 mean.Add((c, v * m * 2.0 / (t.A + 2), t.B));
         }
@@ -197,7 +197,7 @@ public static class Prms
             foreach (var mj in mean)
                 Add(mi.C, mj.C, mi.H + mj.H, -mi.V * mj.V);
 
-        return acc.Where(kv => Math.Abs(kv.Value) > 1e-12)
+        return acc.Where(kv => SMath.Abs(kv.Value) > 1e-12)
                   .Select(kv => new Pair(kv.Key.Item1, kv.Key.Item2, kv.Key.Item3, kv.Value))
                   .OrderBy(p => p.HPower).ThenBy(p => p.A).ThenBy(p => p.B)
                   .ToArray();
@@ -207,7 +207,7 @@ public static class Prms
     public static int TermCount => Form.Length;
 
     /// <summary>The assembled form, as (coefficient, coefficient, H power, factor).</summary>
-    public static IEnumerable<(string A, string B, int HPower, double Factor)> Terms =>
+    public static IEnumerable<(string A, string B, int HPower, Scalar Factor)> Terms =>
         Form.Select(p => (p.A, p.B, p.HPower, p.Factor));
 
     /// <summary>
@@ -225,20 +225,20 @@ public static class Prms
     /// <para><paramref name="order"/> truncates the series - 3, 5 or 7 - so that the orders
     /// can be compared against each other. Terms are selected by total degree a+b.</para>
     /// </summary>
-    public static (double Y, double Z) Transverse(BuchdahlTerms totals, double rho,
-                                                  double theta, double h, int order = 7)
+    public static (Scalar Y, Scalar Z) Transverse(BuchdahlTerms totals, Scalar rho,
+                                                  Scalar theta, Scalar h, int order = 7)
     {
         if (totals == null) throw new ArgumentNullException(nameof(totals));
 
-        double Sum(Term[] list)
+        Scalar Sum(Term[] list)
         {
-            double s = 0.0;
+            Scalar s = 0.0;
             foreach (var t in list)
             {
                 if (t.A + t.B > order) continue;
-                double v = 0.0;
+                Scalar v = 0.0;
                 foreach (var (name, mult) in t.C) v += mult * totals[name];
-                s += v * Math.Pow(rho, t.A) * (t.B == 0 ? 1.0 : Math.Pow(h, t.B))
+                s += v * SMath.Pow(rho, t.A) * (t.B == 0 ? 1.0 : SMath.Pow(h, t.B))
                    * Theta(t.F, theta);
             }
             return s;
@@ -251,14 +251,14 @@ public static class Prms
     /// system's transverse coefficients. Zero on axis for a design with no spherical
     /// aberration; never negative.
     /// </summary>
-    public static double MeanSquare(BuchdahlTerms totals, double h)
+    public static Scalar MeanSquare(BuchdahlTerms totals, Scalar h)
     {
         if (totals == null) throw new ArgumentNullException(nameof(totals));
 
-        double sum = 0.0;
+        Scalar sum = 0.0;
         foreach (var p in Form)
         {
-            double hp = p.HPower == 0 ? 1.0 : Math.Pow(h, p.HPower);
+            Scalar hp = p.HPower == 0 ? 1.0 : SMath.Pow(h, p.HPower);
             sum += p.Factor * totals[p.A] * totals[p.B] * hp;
         }
         return sum;
@@ -271,10 +271,10 @@ public static class Prms
     /// surviving terms can cancel to a very small negative number that is numerical dust
     /// rather than a real quantity.
     /// </summary>
-    public static double Value(BuchdahlTerms totals, double h)
+    public static Scalar Value(BuchdahlTerms totals, Scalar h)
     {
-        double ms = MeanSquare(totals, h);
-        return ms > 0.0 ? Math.Sqrt(ms) : 0.0;
+        Scalar ms = MeanSquare(totals, h);
+        return ms > 0.0 ? SMath.Sqrt(ms) : 0.0;
     }
 
     /// <summary>
@@ -288,18 +288,18 @@ public static class Prms
     /// One entry per (wavelength, field) combination: the coefficients at that wavelength,
     /// the fractional field height, and the product of the field and wavelength weights.
     /// </param>
-    public static double Composite(IEnumerable<(BuchdahlTerms Totals, double H, double Weight)> cases)
+    public static Scalar Composite(IEnumerable<(BuchdahlTerms Totals, Scalar H, Scalar Weight)> cases)
     {
-        double num = 0.0, den = 0.0;
+        Scalar num = 0.0, den = 0.0;
         foreach (var (totals, h, w) in cases)
         {
             if (w <= 0.0) continue;
-            double ms = MeanSquare(totals, h);
+            Scalar ms = MeanSquare(totals, h);
             num += w * (ms > 0.0 ? ms : 0.0);
             den += w;
         }
         if (den <= 0.0) return 0.0;
-        double mean = num / den;
-        return mean > 0.0 ? Math.Sqrt(mean) : 0.0;
+        Scalar mean = num / den;
+        return mean > 0.0 ? SMath.Sqrt(mean) : 0.0;
     }
 }

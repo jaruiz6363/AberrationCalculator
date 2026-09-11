@@ -32,7 +32,7 @@ namespace AberrationCalculator.Core.Aberrations;
 public static class AsphericSchemeIncrements
 {
     /// <summary>The seven quantities carried across, in the order the scheme wants them.</summary>
-    private static double[] MacroSeven(BuchdahlTerms t) =>
+    private static Scalar[] MacroSeven(BuchdahlTerms t) =>
         new[] { t.B, t.B5, t.F2, t.M2, t.M3, t.N3, t.Pi5 + t.C5 };
 
     /// <summary>
@@ -55,7 +55,7 @@ public static class AsphericSchemeIncrements
     private const int Carried = 7;
 
     /// <summary>The scheme's counterparts: a_p, then the six intrinsic secondary entries.</summary>
-    private static double[] SchemeSeven(BuchdahlTableIRow r) =>
+    private static Scalar[] SchemeSeven(BuchdahlTableIRow r) =>
         new[] { r[10], r[38], r[44], r[50], r[54], r[59], r[65] };
 
     /// <summary>
@@ -66,7 +66,7 @@ public static class AsphericSchemeIncrements
     /// <param name="spherical">
     /// The scheme run WITHOUT figuring, which is what the conversion is measured on.
     /// </param>
-    public static double[][]? Build(BuchdahlResult macro, BuchdahlTableIRow[] spherical,
+    public static Scalar[][]? Build(BuchdahlResult macro, BuchdahlTableIRow[] spherical,
                                     int lastSurface)
     {
         if (macro == null) throw new ArgumentNullException(nameof(macro));
@@ -80,29 +80,29 @@ public static class AsphericSchemeIncrements
         // The conversion, taken from whichever surface states each quantity most strongly.
         // It is the same on every surface, so this is only a guard against dividing by a
         // coefficient that happens to vanish.
-        var bridge = new double[7];
-        var best = new double[7];
+        var bridge = new Scalar[7];
+        var best = new Scalar[7];
         for (int i = 1; i <= lastSurface && i < spherical.Length; i++)
         {
             if (i >= macro.Intrinsic.Length) break;
             var m = MacroSeven(macro.Intrinsic[i]);
             var s = SchemeSeven(spherical[i]);
             for (int q = 0; q < 7; q++)
-                if (Math.Abs(m[q]) > best[q])
+                if (SMath.Abs(m[q]) > best[q])
                 {
-                    best[q] = Math.Abs(m[q]);
+                    best[q] = SMath.Abs(m[q]);
                     bridge[q] = s[q] / m[q];
                 }
         }
 
-        var result = new double[spherical.Length][];
+        var result = new Scalar[spherical.Length][];
         for (int i = 1; i <= lastSurface && i < spherical.Length; i++)
         {
             var a = i < macro.Aspheric.Length ? macro.Aspheric[i] : null;
             if (a == null) continue;
 
             var m = MacroSeven(a);
-            var increment = new double[7];
+            var increment = new Scalar[7];
             for (int q = 0; q < Carried; q++) increment[q] = bridge[q] * m[q];
             result[i] = increment;
         }

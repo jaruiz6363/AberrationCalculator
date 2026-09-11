@@ -45,9 +45,29 @@ public sealed class ReportWriter
 
         _primary = system.PrimaryWavelengthIndex < 0 ? 0 : system.PrimaryWavelengthIndex;
         foreach (var w in system.Wavelengths)
-            _indices.Add(IndexResolver.Build(system, catalog, w.Value, _unresolved));
+            _indices.Add(IndexResolver.Build(system, catalog, w.Value, _unresolved, _ambiguous));
         if (_indices.Count == 0)
-            _indices.Add(IndexResolver.Build(system, catalog, 0.5875618, _unresolved));
+            _indices.Add(IndexResolver.Build(system, catalog, 0.5875618, _unresolved, _ambiguous));
+    }
+
+    private readonly List<string> _ambiguous = new();
+
+    /// <summary>
+    /// Materials whose name several loaded catalogs answer to, where the file named none.
+    ///
+    /// <para>Not an error - the index resolved and the numbers are self-consistent. It is a
+    /// warning that a CHOICE was made silently, and that another program opening the same file
+    /// may choose differently.</para>
+    /// </summary>
+    public IReadOnlyList<string> Ambiguous
+    {
+        get
+        {
+            var distinct = new List<string>();
+            foreach (var a in _ambiguous)
+                if (!distinct.Contains(a, StringComparer.OrdinalIgnoreCase)) distinct.Add(a);
+            return distinct;
+        }
     }
 
     /// <summary>Materials that no catalog could resolve. Non-empty means the numbers are wrong.</summary>
@@ -903,6 +923,15 @@ public sealed class ReportWriter
         if (Unresolved.Count > 0)
             notes.Add($"No index for {string.Join(", ", Unresolved)} - treated as air, so every "
                     + "number above is wrong for those surfaces.");
+        if (Ambiguous.Count > 0)
+            notes.Add($"This file names no glass catalog, and {string.Join("; ", Ambiguous)} "
+                    + "exists in more than one of the loaded ones. They are not the same glass, "
+                    + "and another program opening this file may pick a different one. To settle "
+                    + "it, point --glass at a folder holding only the catalog you mean."
+                    + (_sys.GlassCatalogsAreInferred
+                        ? " The catalog shown against each was worked out from the glass names "
+                        + "rather than read from the file, so it is this program's guess."
+                        : " The first loaded was used."));
         foreach (var s in _sys.Surfaces)
             if (s.Type == SurfaceType.CoordinateBreak)
             {

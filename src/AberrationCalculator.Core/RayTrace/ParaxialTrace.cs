@@ -17,56 +17,62 @@ namespace AberrationCalculator.Core.RayTrace;
 public sealed class ParaxialResult
 {
     /// <summary>Marginal-ray height at each surface, indexed like <see cref="OpticalSystem.Surfaces"/>.</summary>
-    public double[] Y { get; init; } = Array.Empty<double>();
+    public Scalar[] Y { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>Marginal-ray slope in the medium AFTER each surface.</summary>
-    public double[] U { get; init; } = Array.Empty<double>();
+    public Scalar[] U { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>Chief-ray height at each surface.</summary>
-    public double[] Ybar { get; init; } = Array.Empty<double>();
+    public Scalar[] Ybar { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>Chief-ray slope in the medium after each surface.</summary>
-    public double[] Ubar { get; init; } = Array.Empty<double>();
+    public Scalar[] Ubar { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>
     /// Refractive index of the medium after each surface, signed: the sign flips at every
     /// mirror so that a folded system traces with the same recurrence as a straight one.
     /// </summary>
-    public double[] N { get; init; } = Array.Empty<double>();
+    public Scalar[] N { get; init; } = Array.Empty<Scalar>();
 
     /// <summary>Effective focal length.</summary>
-    public double Efl { get; init; }
+    public Scalar Efl { get; init; }
+
+    /// <summary>
+    /// System power, n_object / EFL, formed without a branch so it stays finite and
+    /// differentiable at zero - which is where a design of parallel plates begins.
+    /// </summary>
+    public Scalar Power { get; init; }
 
     /// <summary>Back focal length: last surface to the paraxial focus of a collimated beam.</summary>
-    public double Bfl { get; init; }
+    public Scalar Bfl { get; init; }
 
     /// <summary>Entrance pupil diameter, whichever way the file stated its aperture.</summary>
-    public double Epd { get; init; }
+    public Scalar Epd { get; init; }
 
     /// <summary>Entrance pupil position, measured from the first surface, positive to the right.</summary>
-    public double EntrancePupilPosition { get; init; }
+    public Scalar EntrancePupilPosition { get; init; }
 
     /// <summary>
     /// Exit pupil position, measured from the IMAGE plane and positive to the right - the
     /// convention every program this one reads files from uses when it reports the number,
     /// so the two can be compared directly.
     /// </summary>
-    public double ExitPupilPosition { get; init; }
+    public Scalar ExitPupilPosition { get; init; }
 
     /// <summary>
     /// Exit pupil position measured from the last surface instead. Same pupil; this is the
     /// reference the aberration sums work in, and it avoids re-deriving it there.
     /// </summary>
-    public double ExitPupilFromLastSurface { get; init; }
+    public Scalar ExitPupilFromLastSurface { get; init; }
 
     /// <summary>Exit pupil diameter.</summary>
-    public double ExitPupilDiameter { get; init; }
+    public Scalar ExitPupilDiameter { get; init; }
 
     /// <summary>Image-space F/number, EFL/EPD for an object at infinity.</summary>
-    public double FNumber { get; init; }
+    public Scalar FNumber { get; init; }
 
     /// <summary>Chief-ray height at the image surface: the paraxial image height of this field.</summary>
-    public double ImageHeight { get; init; }
+    public Scalar ImageHeight { get; init; }
 
     /// <summary>
     /// Distance from the last surface to where the paraxial marginal ray crosses the axis.
@@ -74,14 +80,14 @@ public sealed class ParaxialResult
     /// surface - a design saved at best focus for one conjugate and then used at another
     /// will differ, and the gap between this and the image surface is that defocus.
     /// </summary>
-    public double ParaxialFocusDistance { get; init; }
+    public Scalar ParaxialFocusDistance { get; init; }
 
     /// <summary>
     /// Chief-ray height at the paraxial focus. Programs that report a "paraxial image
     /// height" for a finite conjugate mean this one; <see cref="ImageHeight"/> is the same
     /// ray measured at the image surface the file defines.
     /// </summary>
-    public double ParaxialImageHeight { get; init; }
+    public Scalar ParaxialImageHeight { get; init; }
 
     /// <summary>
     /// Transverse magnification, from the marginal ray as n*u / (n'*u'). A property of
@@ -89,19 +95,19 @@ public sealed class ParaxialResult
     /// has an off-axis field and however its fields are stated. Zero for an object at
     /// infinity, where magnification does not apply.
     /// </summary>
-    public double Magnification { get; init; }
+    public Scalar Magnification { get; init; }
 
     /// <summary>
     /// Lagrange invariant, n(ubar*y - u*ybar). Conserved by the paraxial equations, so a
     /// varying value would mean the trace is wrong - see <see cref="InvariantDrift"/>.
     /// </summary>
-    public double LagrangeInvariant { get; init; }
+    public Scalar LagrangeInvariant { get; init; }
 
     /// <summary>
     /// Largest relative departure of the Lagrange invariant from its object-space value
     /// across the system. A self-check on the trace: it should sit at rounding level.
     /// </summary>
-    public double InvariantDrift { get; init; }
+    public Scalar InvariantDrift { get; init; }
 
     /// <summary>True when the object is at infinity.</summary>
     public bool InfiniteConjugate { get; init; }
@@ -111,7 +117,7 @@ public sealed class ParaxialResult
 public static class ParaxialTrace
 {
     /// <summary>Object distances at or beyond this are treated as infinite.</summary>
-    private const double InfiniteObject = 1e12;
+    private static readonly Scalar InfiniteObject = 1e12;
 
     /// <summary>
     /// Traces the marginal and chief rays for one field point.
@@ -122,7 +128,7 @@ public static class ParaxialTrace
     /// The field point, in the units <see cref="OpticalSystem.FieldType"/> names: degrees of
     /// object angle, or object height in lens units.
     /// </param>
-    public static ParaxialResult Trace(OpticalSystem system, double[] n, double field)
+    public static ParaxialResult Trace(OpticalSystem system, Scalar[] n, Scalar field)
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (n == null) throw new ArgumentNullException(nameof(n));
@@ -135,21 +141,21 @@ public static class ParaxialTrace
         // around: after an odd number of mirrors the ray runs the other way, and negating n
         // (against the already-negative thicknesses such a file stores) reproduces that
         // exactly while leaving one recurrence to trace forwards.
-        var ns = new double[count];
-        double sign = 1.0;
+        var ns = new Scalar[count];
+        Scalar sign = 1.0;
         for (int i = 0; i < count; i++)
         {
             if (system.Surfaces[i].IsMirror) sign = -sign;
-            ns[i] = sign * Math.Abs(n[i]);
+            ns[i] = sign * SMath.Abs(n[i]);
         }
 
         int last = system.LastOpticalSurface();
         int stop = system.StopSurfaceIndex;
         if (stop < 1 || stop > last) stop = last;      // no stop marked: the last surface bounds the beam
 
-        double objectThickness = system.Surfaces[0].Thickness;
-        bool infinite = double.IsInfinity(objectThickness) || Math.Abs(objectThickness) >= InfiniteObject;
-        double t0 = infinite ? 0.0 : Math.Abs(objectThickness);
+        Scalar objectThickness = system.Surfaces[0].Thickness;
+        bool infinite = Scalar.IsInfinity(objectThickness) || SMath.Abs(objectThickness) >= InfiniteObject;
+        Scalar t0 = infinite ? 0.0 : SMath.Abs(objectThickness);
 
         // Two basis rays span every paraxial ray, so each ray this method needs is found by
         // solving a linear combination rather than by aiming and iterating.
@@ -158,23 +164,33 @@ public static class ParaxialTrace
 
         // The chief ray crosses the axis at the stop; where a ray must have come from in
         // object space to do that is the entrance pupil.
-        double aStop = basisA.Y[stop], bStop = basisB.Y[stop];
-        double entrancePupil = Math.Abs(aStop) > 1e-15 ? bStop / aStop : 0.0;
+        Scalar aStop = basisA.Y[stop], bStop = basisB.Y[stop];
+        Scalar entrancePupil = SMath.Abs(aStop) > 1e-15 ? bStop / aStop : 0.0;
 
         // Focal length from the system's POWER: EFL = n_object / phi, with
         // phi = -n' u' / y. Written with the reduced angle n'u' rather than u' alone, this
         // is the number every design program prints, and the two agree exactly whenever
         // image space is air. They part company on a design whose last medium is glass -
         // -y/u' would then report the rear focal length in that glass, a factor n' larger.
-        double omegaLast = ns[last] * basisA.U[last];
-        double efl = Math.Abs(omegaLast) > 1e-15 ? -ns[0] / omegaLast : double.PositiveInfinity;
-        double bfl = Math.Abs(basisA.U[last]) > 1e-15 ? -basisA.Y[last] / basisA.U[last] : double.PositiveInfinity;
+        Scalar omegaLast = ns[last] * basisA.U[last];
+        Scalar efl = SMath.Abs(omegaLast) > 1e-15 ? -ns[0] / omegaLast : Scalar.PositiveInfinity;
 
-        double epd = EntrancePupilDiameter(system, efl, t0, entrancePupil, infinite, ns[0]);
+        // THE POWER, unbranched, because it is the quantity that survives a flat design.
+        //
+        // A system of parallel plates has no power, so its focal length is infinite - and an
+        // infinite focal length is useless to an optimiser twice over: the residual is not a
+        // number, and the derivative of 1/x at infinity is zero, so even a finite residual would
+        // report that curvature cannot change the focal length. The power says the same thing
+        // about the lens and stays finite and differentiable through zero, which is exactly the
+        // state a design started from flats has to be pulled out of.
+        Scalar power = -omegaLast / ns[0];
+        Scalar bfl = SMath.Abs(basisA.U[last]) > 1e-15 ? -basisA.Y[last] / basisA.U[last] : Scalar.PositiveInfinity;
+
+        Scalar epd = EntrancePupilDiameter(system, efl, t0, entrancePupil, infinite, ns[0]);
 
         // Marginal ray: from the axial object point to the edge of the entrance pupil. With
         // the object at infinity that is simply a parallel ray at the pupil edge.
-        double yMarg, uMarg;
+        Scalar yMarg, uMarg;
         if (infinite)
         {
             yMarg = 0.5 * epd;
@@ -182,22 +198,22 @@ public static class ParaxialTrace
         }
         else
         {
-            double objectToPupil = t0 + entrancePupil;
-            uMarg = Math.Abs(objectToPupil) > 1e-15 ? 0.5 * epd / objectToPupil : 0.0;
+            Scalar objectToPupil = t0 + entrancePupil;
+            uMarg = SMath.Abs(objectToPupil) > 1e-15 ? 0.5 * epd / objectToPupil : 0.0;
             yMarg = uMarg * t0;
         }
 
         // Chief ray: from the edge of the field through the centre of the entrance pupil.
-        double yChief, uChief;
+        Scalar yChief, uChief;
         if (!infinite && system.FieldType == FieldType.ObjectHeight)
         {
-            double objectToPupil = t0 + entrancePupil;
-            uChief = Math.Abs(objectToPupil) > 1e-15 ? -field / objectToPupil : 0.0;
+            Scalar objectToPupil = t0 + entrancePupil;
+            uChief = SMath.Abs(objectToPupil) > 1e-15 ? -field / objectToPupil : 0.0;
             yChief = field + uChief * t0;
         }
         else
         {
-            uChief = Math.Tan(field * Math.PI / 180.0);
+            uChief = SMath.Tan(field * SMath.PI / 180.0);
             yChief = -uChief * entrancePupil;
         }
 
@@ -206,43 +222,43 @@ public static class ParaxialTrace
 
         // The invariant is conserved by the paraxial equations, so tracking it costs nothing
         // and catches a bad index array or a mis-signed mirror.
-        double h0 = ns[0] * (chief.U[0] * marginal.Y[1] - marginal.U[0] * chief.Y[1]);
-        double drift = 0.0;
-        if (Math.Abs(h0) > 1e-15)
+        Scalar h0 = ns[0] * (chief.U[0] * marginal.Y[1] - marginal.U[0] * chief.Y[1]);
+        Scalar drift = 0.0;
+        if (SMath.Abs(h0) > 1e-15)
         {
             for (int i = 1; i <= last; i++)
             {
-                double hi = ns[i] * (chief.U[i] * marginal.Y[i] - marginal.U[i] * chief.Y[i]);
-                drift = Math.Max(drift, Math.Abs((hi - h0) / h0));
+                Scalar hi = ns[i] * (chief.U[i] * marginal.Y[i] - marginal.U[i] * chief.Y[i]);
+                drift = SMath.Max(drift, SMath.Abs((hi - h0) / h0));
             }
         }
 
         // The pupil is found relative to the last surface, then reported relative to the
         // image plane, which is where every program that prints this number measures from.
-        double lastToImage = 0.0;
+        Scalar lastToImage = 0.0;
         for (int i = last; i < count - 1; i++)
         {
-            double t = system.Surfaces[i].Thickness;
-            if (!double.IsInfinity(t) && !double.IsNaN(t)) lastToImage += t;
+            Scalar t = system.Surfaces[i].Thickness;
+            if (!Scalar.IsInfinity(t) && !Scalar.IsNaN(t)) lastToImage += t;
         }
         // The exit pupil is the image of the stop: a property of the lens, not of the field.
         // Deriving it from the traced chief ray would lose it on a design whose only field
         // is on axis, where that ray is identically zero - so it comes from a pupil ray of
         // unit slope aimed through the stop, which exists whatever the fields are.
         var pupilRay = Propagate(system, ns, -entrancePupil, 1.0, last);
-        double exitPupil = Math.Abs(pupilRay.U[last]) > 1e-15
+        Scalar exitPupil = SMath.Abs(pupilRay.U[last]) > 1e-15
             ? -pupilRay.Y[last] / pupilRay.U[last]
-            : double.PositiveInfinity;
+            : Scalar.PositiveInfinity;
 
         // Its diameter is the marginal ray's own height where that pupil sits.
-        double exitPupilDia = double.IsInfinity(exitPupil)
-            ? double.PositiveInfinity
-            : 2.0 * Math.Abs(marginal.Y[last] + marginal.U[last] * exitPupil);
+        Scalar exitPupilDia = Scalar.IsInfinity(exitPupil)
+            ? Scalar.PositiveInfinity
+            : 2.0 * SMath.Abs(marginal.Y[last] + marginal.U[last] * exitPupil);
         // Where the image actually forms, and the chief-ray height there.
-        double focusDistance = Math.Abs(marginal.U[last]) > 1e-15
+        Scalar focusDistance = SMath.Abs(marginal.U[last]) > 1e-15
             ? -marginal.Y[last] / marginal.U[last]
-            : double.PositiveInfinity;
-        double paraxialImageHeight = double.IsInfinity(focusDistance)
+            : Scalar.PositiveInfinity;
+        Scalar paraxialImageHeight = Scalar.IsInfinity(focusDistance)
             ? chief.Y[count - 1]
             : chief.Y[last] + chief.U[last] * focusDistance;
         // Transverse magnification from the MARGINAL ray: m = n*u / (n'*u').
@@ -254,12 +270,12 @@ public static class ParaxialTrace
         // conjugates with a perfectly well-defined magnification. The marginal-ray form
         // has no such dependency and agrees with the chief-ray ratio wherever that ratio
         // is computable.
-        double magnification = 0.0;
+        Scalar magnification = 0.0;
         if (!infinite)
         {
-            double omegaObject = ns[0] * marginal.U[0];
-            double omegaImage  = ns[last] * marginal.U[last];
-            if (Math.Abs(omegaImage) > 1e-15) magnification = omegaObject / omegaImage;
+            Scalar omegaObject = ns[0] * marginal.U[0];
+            Scalar omegaImage  = ns[last] * marginal.U[last];
+            if (SMath.Abs(omegaImage) > 1e-15) magnification = omegaObject / omegaImage;
         }
 
         return new ParaxialResult
@@ -270,13 +286,14 @@ public static class ParaxialTrace
             Ubar = chief.U,
             N = ns,
             Efl = efl,
+            Power = power,
             Bfl = bfl,
             Epd = epd,
             EntrancePupilPosition = entrancePupil,
-            ExitPupilPosition = double.IsInfinity(exitPupil) ? exitPupil : exitPupil - lastToImage,
+            ExitPupilPosition = Scalar.IsInfinity(exitPupil) ? exitPupil : exitPupil - lastToImage,
             ExitPupilFromLastSurface = exitPupil,
             ExitPupilDiameter = exitPupilDia,
-            FNumber = Math.Abs(epd) > 1e-15 ? efl / epd : double.PositiveInfinity,
+            FNumber = SMath.Abs(epd) > 1e-15 ? efl / epd : Scalar.PositiveInfinity,
             ImageHeight = chief.Y[count - 1],
             ParaxialFocusDistance = focusDistance,
             ParaxialImageHeight = paraxialImageHeight,
@@ -292,20 +309,20 @@ public static class ParaxialTrace
     /// F/number and object-space NA are both converted here so that everything downstream
     /// sees one quantity.
     /// </summary>
-    private static double EntrancePupilDiameter(OpticalSystem system, double efl, double t0,
-                                                double entrancePupil, bool infinite, double n0)
+    private static Scalar EntrancePupilDiameter(OpticalSystem system, Scalar efl, Scalar t0,
+                                                Scalar entrancePupil, bool infinite, Scalar n0)
     {
         switch (system.Aperture.Type)
         {
             case ApertureType.FNumber:
-                double fno = system.Aperture.Value;
-                return fno > 1e-12 ? Math.Abs(efl) / fno : 0.0;
+                Scalar fno = system.Aperture.Value;
+                return fno > 1e-12 ? SMath.Abs(efl) / fno : 0.0;
 
             case ApertureType.ObjectSpaceNA:
                 // NA = n sin(theta); paraxially the marginal slope is NA/n, and the pupil it
                 // fills is that slope carried from the object to the entrance pupil.
                 if (infinite) return 0.0;            // an object-space NA means nothing from infinity
-                double u = system.Aperture.Value / Math.Abs(n0 == 0.0 ? 1.0 : n0);
+                Scalar u = system.Aperture.Value / SMath.Abs(n0 == 0.0 ? 1.0 : n0);
                 return 2.0 * u * (t0 + entrancePupil);
 
             case ApertureType.EPD:
@@ -323,35 +340,35 @@ public static class ParaxialTrace
     /// subtraction and transfer a multiplication, with no division by an index a mirror may
     /// have made negative. The slopes returned are ordinary u = omega/n.
     /// </summary>
-    private static (double[] Y, double[] U) Propagate(OpticalSystem system, double[] ns,
-                                                      double y1, double u0, int through)
+    private static (Scalar[] Y, Scalar[] U) Propagate(OpticalSystem system, Scalar[] ns,
+                                                      Scalar y1, Scalar u0, int through)
     {
         int count = system.Surfaces.Count;
-        var y = new double[count];
-        var u = new double[count];
+        var y = new Scalar[count];
+        var u = new Scalar[count];
 
         // The surface-0 entries describe the ray in object space, which is what the
         // aberration sums and the invariant check expect to find there.
         u[0] = u0;
-        y[0] = double.IsInfinity(system.Surfaces[0].Thickness)
+        y[0] = Scalar.IsInfinity(system.Surfaces[0].Thickness)
             ? 0.0
-            : y1 - u0 * Math.Abs(system.Surfaces[0].Thickness);
+            : y1 - u0 * SMath.Abs(system.Surfaces[0].Thickness);
 
-        double omega = ns[0] * u0;
+        Scalar omega = ns[0] * u0;
         if (count > 1) y[1] = y1;
 
-        int limit = Math.Min(through, count - 1);
+        int limit = SMath.Min(through, count - 1);
         for (int i = 1; i <= limit; i++)
         {
-            double power = SurfacePower(system.Surfaces[i], ns[i - 1], ns[i]);
+            Scalar power = SurfacePower(system.Surfaces[i], ns[i - 1], ns[i]);
 
             omega -= y[i] * power;
             u[i] = omega / ns[i];
 
             if (i + 1 < count)
             {
-                double t = system.Surfaces[i].Thickness;
-                if (double.IsInfinity(t) || double.IsNaN(t)) t = 0.0;
+                Scalar t = system.Surfaces[i].Thickness;
+                if (Scalar.IsInfinity(t) || Scalar.IsNaN(t)) t = 0.0;
                 y[i + 1] = y[i] + t * u[i];
             }
         }
@@ -368,12 +385,12 @@ public static class ParaxialTrace
     /// index step; an ideal paraxial surface states it directly as a focal length; the
     /// index-transparent surface types have none.
     /// </summary>
-    private static double SurfacePower(Surface s, double nBefore, double nAfter)
+    private static Scalar SurfacePower(Surface s, Scalar nBefore, Scalar nAfter)
     {
         switch (s.Type)
         {
             case SurfaceType.Paraxial:
-                return Math.Abs(s.FocalLength) > 1e-15 ? nBefore / s.FocalLength : 0.0;
+                return SMath.Abs(s.FocalLength) > 1e-15 ? nBefore / s.FocalLength : 0.0;
 
             case SurfaceType.CoordinateBreak:
             case SurfaceType.Abcd:

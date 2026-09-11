@@ -69,19 +69,20 @@ namespace AberrationCalculator.Core.IO
 
             // NOT DONE HERE: the stock-lens stop dummy, and the trailing-dummy collapse.
             //
-            // LensHH-LT inserts a zero-thickness stop surface ahead of a catalog element,
-            // and sums away air-only surfaces before the image. Both are sensible for a
-            // program that composes stock parts into new designs. Both RENUMBER the
-            // surfaces relative to the file that was read.
+            // A program that composes stock parts into new designs has reason to insert a
+            // zero-thickness stop surface ahead of a catalog element, and to sum away air-only
+            // surfaces before the image. Both are sensible there. Both RENUMBER the surfaces
+            // relative to the file that was read.
             //
             // This program exists to report a prescription and to say which surface an
             // aberration comes from, and both of those answers are useless if its surface
             // numbers disagree with the program the user is looking at. "Surface 3 is your
-            // problem" has to mean surface 3 in their ZEMAX file. So the surface list is
+            // problem" has to mean surface 3 in their own file. So the surface list is
             // kept exactly as written.
 
             // Convert all distances from file lens unit to mm
             double scale = ReadLensUnitScale(lines);
+            system.FileUnitScale = scale;
             if (scale != 1.0)
                 LensUnitConverter.ConvertToMm(system, scale);
 
@@ -357,7 +358,7 @@ namespace AberrationCalculator.Core.IO
                 else if (line.StartsWith("OBNA"))
                 {
                     // OBNA <object-space NA> <0>. The trailing field is NOT the telecentric flag —
-                    // ZEMAX carries object-space telecentric in the FTYP line's 2nd field
+                    // The format carries object-space telecentric in the FTYP line's 2nd field
                     // (see ReadTelecentricObjectSpace). Aperture carries only type+value.
                     var parts = SplitLine(line);
                     if (parts.Length > 1 && TryParseDouble(parts[1], out double val))
@@ -634,7 +635,7 @@ namespace AberrationCalculator.Core.IO
                                 surface.Thickness = double.PositiveInfinity;
                             else if (TryParseDouble(parts[1], out double disz))
                             {
-                                // OpTaliX-exported ZMX files use 1e20 as the
+                                // Some converted .zmx files use 1e20 as the
                                 // object-at-infinity sentinel instead of the
                                 // "INFINITY" keyword. Normalize on read.
                                 if (Math.Abs(disz) > 1e18)
@@ -651,7 +652,7 @@ namespace AberrationCalculator.Core.IO
                             // Standard Zemax GLAS layout:
                             //   GLAS <name> <pickupFrom> <solveType> <nd> <Vd> <PartialDispersion> ...
                             // Most files have a real catalog name in parts[1]
-                            // (e.g. "N-BK7"). OpTaliX exports use a fictitious
+                            // (e.g. "N-BK7"). Some converted files use a fictitious
                             // numeric label there (e.g. "6200.6030") with the
                             // real nd/V at parts[4]/parts[5] — the engine can't
                             // resolve the label, so the surface ends up
@@ -661,7 +662,7 @@ namespace AberrationCalculator.Core.IO
                             // index resolver can match against the loaded
                             // catalogs instead of reporting it unresolved./
                             string mat = parts[1];
-                            // ZEMAX model glass: name "___BLANK" with the model index
+                            // Model glass: name "___BLANK" with the model index
                             // parameters in parts[4..6] = Nd, Vd (Abbe), dPgF (relative
                             // partial-dispersion deviation). Import as an LT model-index
                             // surface — the index is computed from (Nd, Vd, dPgF), not a
@@ -704,7 +705,7 @@ namespace AberrationCalculator.Core.IO
                         break;
 
                     case "DIAM":
-                        // DIAM format in OpticStudio: DIAM <value> <user_defined_flag> <x_dec> <y_dec> <display_flag> <comment>
+                        // DIAM format: DIAM <value> <user_defined_flag> <x_dec> <y_dec> <display_flag> <comment>
                         // field 2 (user_defined_flag): 0 = auto (value is last-computed semi-diameter from ray trace),
                         //                              1 = user-fixed (value is user input, locked).
                         // Empirically verified against Edmund Optics vendor .zmx 2026-05-17: fixed surfaces write
@@ -754,7 +755,7 @@ namespace AberrationCalculator.Core.IO
                         // For stock-lens imports we prefer MEMA (mechanical extent) over CLAP
                         // for ClapOuterRadius (the drawn extent). Apply CLAP only if MEMA
                         // hasn't already populated it — keeps the answer order-independent
-                        // regardless of which keyword OpticStudio writes first.
+                        // regardless of which keyword the file happens to carry first.
                         // The CLAP outer is RE-EXTRACTED at end of Read() to override the
                         // system EPD aperture (see ExtractStopClapOuter).
                         if (parts.Length >= 2 && TryParseDouble(parts[1], out double clapInner))
@@ -812,7 +813,7 @@ namespace AberrationCalculator.Core.IO
                     // + Settings[0]. (PRO trace; the format handling is public.)
                     return SurfaceType.CoordinateBreak;
                 case "ABCDSURF":
-                    // ABCD ray-transfer-matrix surface. ZEMAX PARM 1-8 = Ax,Bx,Cx,Dx,
+                    // ABCD ray-transfer-matrix surface. PARM 1-8 = Ax,Bx,Cx,Dx,
                     // Ay,By,Cy,Dy; this implementation enforces x==y, so only PARM 1-4
                     // (A,B,C,D) are read → Surface.Parameters[0-3]. Fixed values only.
                     return SurfaceType.Abcd;

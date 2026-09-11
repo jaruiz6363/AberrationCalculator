@@ -20,29 +20,29 @@ public class Surface
     public SurfaceType Type { get; set; } = SurfaceType.Standard;
 
     /// <summary>1/radius, in reciprocal lens units. Zero is a plane.</summary>
-    public double Curvature { get; set; }
+    public Scalar Curvature { get; set; }
 
     /// <summary>
     /// Radius of curvature. Infinite for a plane, in both directions: reading infinity back
     /// gives c = 0, so a plane round-trips instead of producing a division by zero.
     /// </summary>
-    public double Radius
+    public Scalar Radius
     {
-        get => Math.Abs(Curvature) < 1e-15 ? double.PositiveInfinity : 1.0 / Curvature;
-        set => Curvature = double.IsInfinity(value) || value == 0.0 ? 0.0 : 1.0 / value;
+        get => SMath.Abs(Curvature) < 1e-15 ? Scalar.PositiveInfinity : 1.0 / Curvature;
+        set => Curvature = Scalar.IsInfinity(value) || value == 0.0 ? 0.0 : 1.0 / value;
     }
 
     /// <summary>Axial distance to the next surface.</summary>
-    public double Thickness { get; set; }
+    public Scalar Thickness { get; set; }
 
     /// <summary>Conic constant. 0 = sphere, −1 = paraboloid, &lt; −1 = hyperboloid.</summary>
-    public double Conic { get; set; }
+    public Scalar Conic { get; set; }
 
     /// <summary>
     /// Even-asphere coefficients. Index k multiplies r^(2k+2), so [0] is the r² term, [1] is
     /// r⁴, and so on. The r² term is separate from curvature and some formats do not write it.
     /// </summary>
-    public double[] AsphericCoefficients { get; set; } = new double[8];
+    public Scalar[] AsphericCoefficients { get; set; } = new Scalar[8];
 
     /// <summary>Catalog glass name, or null/empty for air. "MIRROR" reflects.</summary>
     public string? Material { get; set; }
@@ -57,15 +57,15 @@ public class Surface
                             && Material!.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Clear semi-diameter.</summary>
-    public double SemiDiameter { get; set; }
+    public Scalar SemiDiameter { get; set; }
 
     public SemiDiameterMode SemiDiameterMode { get; set; } = SemiDiameterMode.Auto;
 
     /// <summary>Clear aperture as a percentage of the solved semi-diameter; 100 = full.</summary>
-    public double ClearAperturePercent { get; set; } = 100.0;
+    public Scalar ClearAperturePercent { get; set; } = 100.0;
 
     /// <summary>Central obstruction radius, 0 for none.</summary>
-    public double ObscurationRadius { get; set; }
+    public Scalar ObscurationRadius { get; set; }
 
     /// <summary>Free-text note carried through from the file.</summary>
     public string? Comment { get; set; }
@@ -74,27 +74,27 @@ public class Surface
     // Some files give dispersion directly instead of naming a catalog glass.
 
     public bool ModelIndexEnabled { get; set; }
-    public double ModelNd { get; set; }
-    public double ModelVd { get; set; }
-    public double ModelDPgF { get; set; }
+    public Scalar ModelNd { get; set; }
+    public Scalar ModelVd { get; set; }
+    public Scalar ModelDPgF { get; set; }
 
     /// <summary>Focal length of an ideal thin lens, for <see cref="SurfaceType.Paraxial"/>.</summary>
-    public double FocalLength { get; set; }
+    public Scalar FocalLength { get; set; }
 
     // ── Format-specific extras ───────────────────────────────────────────────────
     // Readers set these; the analysis does not use them, but dropping them would lose
     // information when a file is opened and its prescription printed.
 
-    public double FloatingApertureRadius { get; set; }
-    public double ClapOuterRadius { get; set; }
-    public double InnerRadius { get; set; }
+    public Scalar FloatingApertureRadius { get; set; }
+    public Scalar ClapOuterRadius { get; set; }
+    public Scalar InnerRadius { get; set; }
 
     /// <summary>
     /// Numbered surface parameters as a format wrote them (coordinate-break tilts, ABCD
     /// terms, and so on). Kept so an opened file prints back what it said, even for a
     /// surface type this program does not analyse.
     /// </summary>
-    public double[] Parameters { get; } = new double[8];
+    public Scalar[] Parameters { get; } = new Scalar[8];
 
     /// <summary>Integer surface settings, same purpose as <see cref="Parameters"/>.</summary>
     public int[] Settings { get; } = new int[8];
@@ -105,7 +105,35 @@ public class Surface
     /// </summary>
     public bool HasMarginalRaySolve { get; set; }
 
-    public void SetParameter(int index, double value)
+    // ── What the optimiser may change here, and how far ──────────────────────────
+    //
+    // These live on the surface because that is where a designer thinks of them and where
+    // the .lhlt format keeps them, so a design opened from one arrives with its
+    // variables already declared and goes back with them intact.
+    //
+    // Plain `double`, deliberately: a bound is a limit on a variable, never a quantity
+    // anything is differentiated with respect to, so it does not want to be a dual number
+    // in the differentiating build. Wavelength and Field are `double` for the same reason.
+
+    /// <summary>Whether the optimiser may change this surface's curvature.</summary>
+    public bool CurvatureVariable { get; set; }
+
+    /// <summary>Whether the optimiser may change the thickness after this surface.</summary>
+    public bool ThicknessVariable { get; set; }
+
+    /// <summary>Lower limit on the curvature, or negative infinity for none.</summary>
+    public double CurvatureMin { get; set; } = double.NegativeInfinity;
+
+    /// <summary>Upper limit on the curvature, or positive infinity for none.</summary>
+    public double CurvatureMax { get; set; } = double.PositiveInfinity;
+
+    /// <summary>Lower limit on the thickness, or negative infinity for none.</summary>
+    public double ThicknessMin { get; set; } = double.NegativeInfinity;
+
+    /// <summary>Upper limit on the thickness, or positive infinity for none.</summary>
+    public double ThicknessMax { get; set; } = double.PositiveInfinity;
+
+    public void SetParameter(int index, Scalar value)
     {
         if (index >= 0 && index < Parameters.Length) Parameters[index] = value;
     }
@@ -128,7 +156,7 @@ public class Surface
     /// <para>Identical to <see cref="Curvature"/> whenever the r-squared coefficient is zero,
     /// which it is in every design shipped with this program.</para>
     /// </summary>
-    public double VertexCurvature =>
+    public Scalar VertexCurvature =>
         Curvature + 2.0 * (AsphericCoefficients.Length > 0 ? AsphericCoefficients[0] : 0.0);
 
     /// <summary>
@@ -144,8 +172,8 @@ public class Surface
     {
         get
         {
-            if (Math.Abs(Conic) > 1e-12) return true;
-            foreach (double a in AsphericCoefficients) if (Math.Abs(a) > 1e-30) return true;
+            if (SMath.Abs(Conic) > 1e-12) return true;
+            foreach (Scalar a in AsphericCoefficients) if (SMath.Abs(a) > 1e-30) return true;
             return false;
         }
     }
@@ -171,43 +199,43 @@ public class Surface
     /// <para>With no r-squared term the surface is returned untouched, so the ordinary path is
     /// bit-for-bit what it was.</para>
     /// </summary>
-    public (double Curvature, double Conic, double A4, double A6, double A8) VertexForm()
+    public (Scalar Curvature, Scalar Conic, Scalar A4, Scalar A6, Scalar A8) VertexForm()
     {
         var a = AsphericCoefficients;
-        double a2 = a.Length > 0 ? a[0] : 0.0;
-        double a4 = a.Length > 1 ? a[1] : 0.0;
-        double a6 = a.Length > 2 ? a[2] : 0.0;
-        double a8 = a.Length > 3 ? a[3] : 0.0;
+        Scalar a2 = a.Length > 0 ? a[0] : 0.0;
+        Scalar a4 = a.Length > 1 ? a[1] : 0.0;
+        Scalar a6 = a.Length > 2 ? a[2] : 0.0;
+        Scalar a8 = a.Length > 3 ? a[3] : 0.0;
         if (a2 == 0.0) return (Curvature, Conic, a4, a6, a8);
 
-        double c = Curvature, c2 = c * c, c3 = c2 * c, c5 = c3 * c2, c7 = c5 * c2;
-        double k1 = 1.0 + Conic;
-        double th2 = k1 * c3 / 8.0 + a4;
-        double th3 = k1 * k1 * c5 / 16.0 + a6;
-        double th4 = 5.0 * k1 * k1 * k1 * c7 / 128.0 + a8;
+        Scalar c = Curvature, c2 = c * c, c3 = c2 * c, c5 = c3 * c2, c7 = c5 * c2;
+        Scalar k1 = 1.0 + Conic;
+        Scalar th2 = k1 * c3 / 8.0 + a4;
+        Scalar th3 = k1 * k1 * c5 / 16.0 + a6;
+        Scalar th4 = 5.0 * k1 * k1 * k1 * c7 / 128.0 + a8;
 
-        double v = c + 2.0 * a2;
-        double v2 = v * v, v3 = v2 * v, v5 = v3 * v2, v7 = v5 * v2;
+        Scalar v = c + 2.0 * a2;
+        Scalar v2 = v * v, v3 = v2 * v, v5 = v3 * v2, v7 = v5 * v2;
         return (v, 0.0, th2 - v3 / 8.0, th3 - v5 / 16.0, th4 - 5.0 * v7 / 128.0);
     }
 
     /// <summary>Sag z(r) along the axis, positive toward the image.</summary>
-    public double Sag(double r)
+    public Scalar Sag(Scalar r)
     {
-        double r2 = r * r;
-        double sag = 0.0;
+        Scalar r2 = r * r;
+        Scalar sag = 0.0;
 
-        if (Math.Abs(Curvature) > 1e-15)
+        if (!SMath.Vanishes(Curvature, 1e-15))
         {
             // Standard conic sag. The radicand goes negative outside the surface, which is a
             // real question about the geometry rather than a rounding artefact, so it is
             // reported as NaN instead of being clamped to something plausible.
-            double disc = 1.0 - (1.0 + Conic) * Curvature * Curvature * r2;
-            if (disc < 0.0) return double.NaN;
-            sag = Curvature * r2 / (1.0 + Math.Sqrt(disc));
+            Scalar disc = 1.0 - (1.0 + Conic) * Curvature * Curvature * r2;
+            if (disc < 0.0) return Scalar.NaN;
+            sag = Curvature * r2 / (1.0 + SMath.Sqrt(disc));
         }
 
-        double rp = r2;                                   // r², then r⁴, r⁶ …
+        Scalar rp = r2;                                   // r², then r⁴, r⁶ …
         for (int k = 0; k < AsphericCoefficients.Length; k++)
         {
             sag += AsphericCoefficients[k] * rp;

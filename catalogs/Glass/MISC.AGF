@@ -5,7 +5,7 @@ CC Built from public sources only. Each entry cites its origin in CC comments.
 CC Constraints this file is built to:
 CC   no OpticStudio catalog content is redistributed here
 CC   VACUUM is relative to air, so its index is < 1 and not = 1
-CC   the ED line's last field must be 0, or Zemax silently drops the formula
+CC   the ED line's last field must be 0, or some readers drop the formula
 CC   every entry cites a published source; none is inferred from a glass code
 CC
 CC Catalog version: 1.4  (2026-05-17 — added BACD9 for Ross Optical catalog)

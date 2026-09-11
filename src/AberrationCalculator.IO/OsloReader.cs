@@ -318,11 +318,24 @@ namespace AberrationCalculator.Core.IO
 
             system.Surfaces = surfaces;
 
-            // Wavelengths — first is primary in OSLO
+            // THE REFERENCE COLOUR IS THE MIDDLE ONE, not the first.
+            //
+            // A WV line lists the wavelengths and says nothing about which is the reference, and
+            // taking the first made the whole first-order layout come out in the F line: on the
+            // Kingslake double Gauss that reported EFL 101.5511 where every other format of the
+            // same design reports 101.308. Nothing announced it - the lens simply WAS a different
+            // lens, computed a colour away from where the designer meant.
+            //
+            // A prescription is conventionally written short-to-long about a middle reference,
+            // so the middle entry is the reference when the file does not say otherwise. One
+            // wavelength is its own reference; an even count takes the lower of the two middles,
+            // which is the d line of the usual F, d, C triple read as four.
+            int primary = wavelengths.Count > 0 ? (wavelengths.Count - 1) / 2 : 0;
+
             for (int i = 0; i < wavelengths.Count; i++)
             {
                 double wt = i < wavelengthWeights.Count ? wavelengthWeights[i] : 1.0;
-                system.Wavelengths.Add(new Wavelength(wavelengths[i], wt, i == 0));
+                system.Wavelengths.Add(new Wavelength(wavelengths[i], wt, i == primary));
             }
 
             if (system.Fields.Count == 0)
@@ -330,7 +343,10 @@ namespace AberrationCalculator.Core.IO
 
             FieldValidation.FilterImportedFields(system);
 
-            // Convert from file units to mm
+            // Convert from file units to mm. The scale is REMEMBERED as well as applied: an
+            // optimised design has to be able to go back to the file it came from, in the units
+            // that file is written in.
+            system.FileUnitScale = unitScale;
             if (unitScale != 1.0)
                 LensUnitConverter.ConvertToMm(system, unitScale);
 

@@ -15,7 +15,7 @@ namespace AberrationCalculator.Tests;
 /// <summary>
 /// Buchdahl/Rimmer coefficients, checked two ways.
 ///
-/// Against the ZEMAX oracle, which is the authority: the same lenses run through ZEMAX's
+/// Against an independent oracle: the same lenses run through another implementation's
 /// own FIFTHORD macro, per surface and in total. And against physics that must hold for
 /// any correct implementation, so the tests still mean something in a clone without the
 /// private reference data.
