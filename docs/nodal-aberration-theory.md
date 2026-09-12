@@ -753,6 +753,98 @@ surfaces**, which the transverse aberration coefficients are not - that is what 
 exist to repair. Per-surface `W_klm`, which is exactly what NAT displaces by each surface's
 `sigma_j`, is therefore the better-conditioned quantity of the two.
 
+## Stage 5, step three: the conversions, and the chain closes on two published tables
+
+`Nat/Deformation.cs` now carries VII Eq. (2.8), Eqs. (6.5-6) and Eq. (3.4). What follows is what
+each one turned out to be, and what is still missing.
+
+### Eq. (2.8) fixes the identification with no freedom left
+
+    D = (pi1 L^2 + pi2 L M + pi3 L N + pi4 M^2 + pi5 M N)
+      + (s1 L^3 + s2 L^2 M + s3 L^2 N + s4 L M^2 + s5 L M N + s6 L N^2
+         + s7 M^3 + s8 M^2 N + s9 M N^2) + (fourteen tertiary terms) + O(10)
+
+with `L, M, N` the invariants `lambda, mu, nu` of Eq. (2.3): `rho^2`, `rho H cos(th)`, `H^2`.
+One monomial is one Hopkins term, `L^a M^b N^c -> W[k=b+2c, l=2a+b, m=b]`, so
+
+    s1 s2 s3 s4 s5 s6 s7 s8 s9  =  W060 W151 W240 W242 W331 W420 W333 W422 W511
+
+Note the order: `s6` is `W420` and `s7` is `W333`, which is **not** the order Thompson's
+Appendix A lists them in. Reading the two lists off against each other in sequence would swap
+field curvature with trefoil.
+
+### Eq. (3.4), deformation to retardation
+
+Thompson's `W` is a wave aberration, so it is the retardation `R`, not the deformation `D`.
+Four of the nine secondary coefficients are unchanged; five pick up `-1/2 e^-2` times a primary
+one:
+
+    's3 = s3 - k pi1     's5 = s5 - k pi2     's6 = s6 - k pi3
+    's8 = s8 - k pi4     's9 = s9 - k pi5          k = 1/(2 e^2)
+
+    's1 = s1   's2 = s2   's4 = s4   's7 = s7     and every primary is unchanged.
+
+The `e^-2` is the factor Eq. (3.3) carries on its `nu D` term. Eq. (3.4) itself is printed under
+the Eq. (4.1) convention that `e` is the unit of length, so the code writes the factor out rather
+than assuming unity - which matters, because Buchdahl's own Table I was computed with `e` not
+equal to one.
+
+**Table I checks this exactly where it is exact.** The four coefficients Eq. (3.4) leaves alone
+are printed identically in the `D` and `R` columns - `s1 = -18.34`, `s2 = -26.905`,
+`s4 = -5.9997`, `s7 = 0.1806` - and the five it corrects are not. Attaching the corrections to
+the wrong coefficients fails that immediately. The five corrections themselves each imply the
+same `e^-2`, between 1.0605 and 1.0655, which is the rounding spread of a four-figure table.
+
+### Eqs. (6.5-6), aberration coefficients to deformation coefficients
+
+    4 pi1 = A        pi2 = Ab      2 pi3 = C      2 pi4 = Bb        pi5 = Cb
+
+    12 s1 = 2 S1 + 3A          2 s2 = 2 S1b + A + 2Ab
+     8 s3 = 2 S3 + 2Ab + C
+     2 s4 = S4 + 2A + 4Ab      2 s5 = S5 + 2Ab + C      2 s6 = S6
+     3 s7 = S4b + 4Ab + Bb     2 s8 = S5b + Bb + C        s9 = S6b
+
+### The chain closes against two tables in two papers
+
+VI **Table II** gives Sigma1's aberration coefficients in *both* coordinate systems; VII
+**Table I** gives the same system's deformation coefficients. So VI Table II (the W column), fed
+through Eqs. (6.5-6) and the `e` scaling of Sec. 7(a), must reproduce VII Table I. It does.
+
+`e` is not published. Solving for it from `pi1` alone leaves the other thirteen coefficients as
+free checks on one fitted parameter, and all thirteen land within the printed precision - worst
+relative error `1.2e-3`, on `s8`, which Table I prints as `0.1471`. The solved `e = 0.9688`
+also agrees with the `e^-2 = 1.0636` implied independently by Eq. (3.4) against the `R` column.
+
+That is the verification route this stage needed: no ray trace, no fit, no second program.
+`DeformationTests.cs` holds it.
+
+### What is still missing, precisely
+
+VI Sec. 6 transforms paracanonical (`OT*`) coefficients into W coordinates, and that matters
+because **this program computes paracanonical coefficients** - VI Sec. 6(a) says so of paper III
+Table I directly, which is the table this program reproduces.
+
+- **VI (6.6), primary: the transformation is the identity.** `Aa = Ap`, `Aba = Abp`, and so on
+  through `Cba = Cbp`. VI Table II confirms it - every primary coefficient is printed with the
+  same value in both columns. **So all third-order NAT work is unaffected by any of this.**
+- **VI (6.7), secondary: only three of the twelve relations are printed.**
+
+      S1a  = S1p + 3 Ap Aq
+      S1ba = S1bp + Ap Abq + 2 Abp Aq
+      S2a  = S2p + (2 Abq + 3 Bq) Ap + 4 Abp Aq
+
+  and then "and so on". The remaining nine must be read off from M(11.3) using the transcription
+  rules of VI Eq. (6.5). **M is Buchdahl's 1954 monograph, which is not in the archive** - this
+  is the one outstanding item, and it is a single page.
+- **VI (6.8-10) are tertiary** and are not needed for fifth order.
+
+Two things worth recording about the missing piece. First, the `q`-subscripted quantities driving
+it are the **pupil** aberration coefficients, so the paracanonical-to-W transformation is exactly
+a pupil-aberration correction - which is the Sands 1970 Sec. VI point, arriving with a precise
+role rather than as a hand-wave. Second, VI Table II bounds how much it matters: the secondary
+coefficients differ between the two coordinate systems by up to about 6 percent, which is far too
+large to neglect and far too small to notice as an error.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
