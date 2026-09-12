@@ -236,8 +236,18 @@ public class NatTests
         Assert.Equal(seidel.TotalS4 / 4.0, w.W220P, 15);
         Assert.Equal(seidel.TotalS5 / 2.0, w.W311, 15);
 
-        Assert.Equal(w.W220P + 0.5 * w.W222, w.W220M, 15);
+        // The four field-curvature surfaces, a half-astigmatism apart in a chain. They are
+        // asserted against the SEIDEL SUMS rather than against each other, because asserting
+        // W220M against W220P + W222/2 is what let the medial read the sagittal for as long as
+        // it did: the test restated the formula instead of checking it.
+        Assert.Equal((seidel.TotalS3 + seidel.TotalS4) / 4.0, w.W220S, 15);       // sagittal
+        Assert.Equal((2 * seidel.TotalS3 + seidel.TotalS4) / 4.0, w.W220M, 15);   // medial
+        Assert.Equal((3 * seidel.TotalS3 + seidel.TotalS4) / 4.0, w.W220T, 15);   // tangential
+
+        // and the medial really is the average of the other two
+        Assert.Equal(0.5 * (w.W220S + w.W220T), w.W220M, 15);
         Assert.NotEqual(w.W220P, w.W220M, 6);
+        Assert.NotEqual(w.W220S, w.W220M, 6);
     }
 
     /// <summary>Per-surface coefficients sum to the system's, because third order is additive.</summary>

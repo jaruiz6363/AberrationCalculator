@@ -1126,7 +1126,8 @@ public sealed class ReportWriter
         sb.AppendLine(string.Format(Inv, "    W131  {0,13}   coma", SciZ(nat.Totals.W131)));
         sb.AppendLine(string.Format(Inv, "    W222  {0,13}   astigmatism", SciZ(nat.Totals.W222)));
         sb.AppendLine(string.Format(Inv, "    W220P {0,13}   Petzval", SciZ(nat.Totals.W220P)));
-        sb.AppendLine(string.Format(Inv, "    W220M {0,13}   medial  = W220P + W222/2", SciZ(nat.Totals.W220M)));
+        sb.AppendLine(string.Format(Inv, "    W220S {0,13}   sagittal = W220P + W222/2", SciZ(nat.Totals.W220S)));
+        sb.AppendLine(string.Format(Inv, "    W220M {0,13}   medial   = W220P + W222", SciZ(nat.Totals.W220M)));
         sb.AppendLine(string.Format(Inv, "    W311  {0,13}   distortion", SciZ(nat.Totals.W311)));
         sb.AppendLine();
 
@@ -1339,26 +1340,21 @@ public sealed class ReportWriter
         sb.AppendLine(string.Format(Inv, "          centre ({0}, {1})  ->  ({2}, {3})",
                                     SciZ(fifth.M222.a.X), SciZ(fifth.M222.a.Y),
                                     SciZ(fifth.A222E.X), SciZ(fifth.A222E.Y)));
-        sb.AppendLine(string.Format(Inv, "    W220m {0,13}  ->  W220mE {1,12}   (2011 Sec. 2)",
+        sb.AppendLine(string.Format(Inv, "    W220M {0,13}  ->  W220ME {1,12}   (2011 Sec. 2)",
                                     SciZ(S(2, 2, fifth.M220M.W)), SciZ(S(2, 2, fifth.W220ME))));
         sb.AppendLine(string.Format(Inv, "          vertex ({0}, {1})  ->  ({2}, {3})",
                                     SciZ(fifth.M220M.a.X), SciZ(fifth.M220M.a.Y),
                                     SciZ(fifth.A220ME.X), SciZ(fifth.A220ME.Y)));
         sb.AppendLine();
-        sb.AppendLine("    The left-hand W131 and W222 are the third-order block's own numbers, reached");
-        sb.AppendLine("    by the other route and converted back. That they agree to every digit is the");
-        sb.AppendLine("    round trip through the scale above, and it is what licenses reading the");
-        sb.AppendLine("    arrows.");
+        sb.AppendLine("    The three left-hand numbers are the third-order block's own, reached by the");
+        sb.AppendLine("    FIFTH-order route and converted back. That they agree to every digit is the");
+        sb.AppendLine("    round trip closing - the scale, the W-coordinate scheme, Buchdahl VII");
+        sb.AppendLine("    Eqs. (6.5-6) and (3.4) - and it is what licenses reading the arrows.");
         sb.AppendLine();
-        sb.AppendLine("    W220m is deliberately spelled differently, because the two blocks use the");
-        sb.AppendLine("    name W220M for DIFFERENT quantities and the numbers do not match:");
-        sb.AppendLine();
-        sb.AppendLine("      third-order block   W220M = W220P + W222/2   the rho^2 H^2 coefficient");
-        sb.AppendLine("      here                W220m = W220M + W222/2   Thompson's MEDIAL surface");
-        sb.AppendLine();
-        sb.AppendLine("    Thompson's medial coefficient is the average of the tangential and sagittal");
-        sb.AppendLine("    surfaces and is the one his Eqs. of 2011 Sec. 2 are written in, so it is the");
-        sb.AppendLine("    one used here. Subtracting half the astigmatism above returns the other.");
+        sb.AppendLine("    W220M is the MEDIAL surface, W220P + W222, the average of the tangential and");
+        sb.AppendLine("    sagittal ones. It is the one with a single node and the one Thompson's");
+        sb.AppendLine("    relations are written in. The sagittal surface, half an astigmatism away, is");
+        sb.AppendLine("    printed as W220S in the third-order block above.");
     }
 
     /// <summary>

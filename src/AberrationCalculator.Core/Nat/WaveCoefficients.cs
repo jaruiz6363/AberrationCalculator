@@ -28,10 +28,22 @@ namespace AberrationCalculator.Core.Nat;
 /// over surfaces, there is no induced part and no aspheric reconstruction at this order, so the
 /// per-surface conversion is as sound as the Seidel sums are - which is to say validated.</para>
 ///
-/// <para><b>Medial versus Petzval.</b> NAT's field curvature term is the MEDIAL one, the average
-/// of the tangential and sagittal focal surfaces, because that is what has a single node. The
-/// Seidel S4 is the Petzval sum. They differ by half the astigmatism and confusing them is a
-/// common way to get the field-curvature node in the wrong place.</para>
+/// <para><b>Medial versus Petzval versus sagittal.</b> NAT's field curvature term is the MEDIAL
+/// one, the average of the tangential and sagittal focal surfaces, because that is what has a
+/// single node. The Seidel S4 is the Petzval sum. There are FOUR quantities here, not two, and
+/// they are a half-astigmatism apart in a chain:</para>
+/// <code>
+///     Petzval    W220P = S4/4
+///     sagittal   W220S = W220P + W222/2   = (S3 + S4)/4        the plain rho^2 H^2 coefficient
+///     medial     W220M = W220P + W222     = (2 S3 + S4)/4      the one NAT uses
+///     tangential W220T = W220P + 3W222/2  = (3 S3 + S4)/4
+/// </code>
+/// <para>Confusing any neighbouring pair is a common way to get the field-curvature node in the
+/// wrong place, and this file did confuse two of them: <c>W220M</c> read <c>W220P + W222/2</c>,
+/// which is the sagittal surface, under a comment saying medial. It went unnoticed until the
+/// fifth-order route - whose medial comes from Thompson's Eq. (B1) - was printed beside it in
+/// the same units and the two did not agree. Half the astigmatism is a plausible discrepancy,
+/// not an obvious one.</para>
 /// </summary>
 public static class WaveCoefficients
 {
@@ -59,9 +71,36 @@ public static class WaveCoefficients
         }
 
         /// <summary>
-        /// Medial field curvature, <c>W220P + W222/2</c>. This is the one NAT uses.
+        /// The plain <c>rho^2 H^2</c> coefficient, which is the SAGITTAL focal surface:
+        /// <c>W220P + W222/2 = (S3 + S4)/4</c>. At <c>theta = 90</c> the <c>cos^2</c> term
+        /// vanishes and this is what is left.
         /// </summary>
-        public Scalar W220M => W220P + 0.5 * W222;
+        public Scalar W220S => W220P + 0.5 * W222;
+
+        /// <summary>
+        /// The TANGENTIAL focal surface, <c>W220P + 3 W222/2 = (3 S3 + S4)/4</c>. At
+        /// <c>theta = 0</c> the <c>cos^2</c> term contributes in full.
+        /// </summary>
+        public Scalar W220T => W220P + 1.5 * W222;
+
+        /// <summary>
+        /// The MEDIAL focal surface, the average of <see cref="W220S"/> and <see cref="W220T"/>:
+        /// <c>W220P + W222 = (2 S3 + S4)/4</c>. This is the one NAT uses, because it is the one
+        /// with a single node.
+        ///
+        /// <para><b>This was wrong until it was caught by a round trip.</b> It read
+        /// <c>W220P + W222/2</c>, which is the SAGITTAL surface - the comment above it said
+        /// "medial" and the formula computed the other one. The error is half the astigmatism,
+        /// and it showed only when the fifth-order route, which takes its medial from Thompson's
+        /// Eq. (B1), was printed beside it in the same units and the two did not match.</para>
+        ///
+        /// <para>Deriving it from Eq. (B1) rather than from convention: for an aligned system he
+        /// writes <c>W220M(H.H)(rho.rho) + (1/2)W222(H^2 . rho^2)</c>, and since
+        /// <c>cos 2t = 2 cos^2 t - 1</c> that regroups into
+        /// <c>(W220M - W222/2) rho^2 H^2 + W222 rho^2 H^2 cos^2 t</c>. Matching the first term
+        /// against the plain <c>rho^2 H^2</c> coefficient gives <c>W220M = W220S + W222/2</c>.</para>
+        /// </summary>
+        public Scalar W220M => W220P + W222;
     }
 
     /// <summary>The wave coefficients of surface <paramref name="j"/>.</summary>

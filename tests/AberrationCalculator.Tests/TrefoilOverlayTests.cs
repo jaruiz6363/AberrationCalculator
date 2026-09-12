@@ -197,7 +197,7 @@ public class TrefoilOverlayTests
     }
 
     /// <summary>
-    /// <b>The two routes use the name W220M for different quantities, and this pins which.</b>
+    /// <b>The two routes agree on the medial surface, and pi3 is the sagittal one.</b>
     ///
     /// <para>Buchdahl's <c>pi3</c> - the plain <c>rho^2 H^2</c> coefficient of Eq. (2.8) -
     /// converts into exactly what <c>WaveCoefficients.Third</c> calls <c>W220M</c>, namely
@@ -211,7 +211,7 @@ public class TrefoilOverlayTests
     [InlineData("KingslakeDG")]
     [InlineData("TertiaryTestbed_Triplet24")]
     [InlineData("Ladder2_Sphere")]
-    public void BuchdahlsPi3IsTheRepositorysW220M(string lens)
+    public void BuchdahlsPi3IsTheSagittalSurfaceAndTheMedialsAgree(string lens)
     {
         var catalog = CatalogLocator.LoadBundled();
         var sys = LensFile.Read(Fixtures.Lens(lens), catalog);
@@ -229,13 +229,13 @@ public class TrefoilOverlayTests
         Assert.True(bridge.IsUsable);
 
         double conv = bridge.WToSeidel(2, 2);
-        double repoW220M = s.TotalS4 / 4 + 0.5 * (s.TotalS3 / 2);
+        var w = WaveCoefficients.OfSystem(s);
 
-        // pi3 alone is the repository's W220M ...
-        Assert.Equal(repoW220M, (double)(wf.System.Pi3 * conv), 8);
+        // pi3 alone is the SAGITTAL surface ...
+        Assert.Equal(w.W220S, (double)(wf.System.Pi3 * conv), 8);
 
-        // ... and Thompson's medial is half the astigmatism away from it.
-        Assert.Equal(repoW220M + 0.5 * (s.TotalS3 / 2),
-                     (double)(wf.System.W220M * conv), 8);
+        // ... and both routes now agree on the MEDIAL one, which is what the round trip in
+        // the report checks. Before the fix these differed by half the astigmatism.
+        Assert.Equal(w.W220M, (double)(wf.System.W220M * conv), 8);
     }
 }

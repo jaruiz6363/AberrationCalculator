@@ -1469,6 +1469,69 @@ astigmatism is a plausible discrepancy, not an obvious one - and it surfaced onl
 the two blocks in one unit system made them comparable. Retiring the caveat was worth it for that
 alone.
 
+## The medial surface was the sagittal one
+
+`WaveCoefficients.Third.W220M` read `W220P + W222/2`. That is the **sagittal** focal surface. The
+comment above it said medial.
+
+### Four surfaces, not two
+
+    Petzval     W220P = S4/4
+    sagittal    W220S = W220P + W222/2   = (S3 + S4)/4     the plain rho^2 H^2 coefficient
+    medial      W220M = W220P + W222     = (2 S3 + S4)/4   the one NAT uses
+    tangential  W220T = W220P + 3W222/2  = (3 S3 + S4)/4
+
+They are a half-astigmatism apart in a chain, and the old definition took one step where it
+needed two.
+
+Deriving the medial from Thompson's Eq. (B1) rather than from convention: for an aligned system
+he writes `W220M(H.H)(rho.rho) + (1/2)W222(H^2 . rho^2)`, and since `cos 2t = 2cos^2 t - 1` that
+regroups into `(W220M - W222/2) rho^2 H^2 + W222 rho^2 H^2 cos^2 t`. Matching the first term
+against the plain `rho^2 H^2` coefficient gives `W220M = W220S + W222/2`.
+
+### What it cost
+
+`NatField` uses `W220M` as the per-surface weight for the medial vertex, so `--nat` was reporting
+the SAGITTAL surface's vertex under the name medial. Weighting the same sigmas both ways on a
+tilted design:
+
+    CookeTriplet                 0.4654  against   4.4281
+    KingslakeDG                 -1.7971  against   3.9595
+    TertiaryTestbed_Triplet24    0.5318  against  17.6449
+
+A factor of ten, and a sign change on the double Gauss. Not cosmetic. The gap is wide because the
+medial coefficient is the smaller of the two on these designs, so the weighted mean divides by
+less - a nearly flat medial surface genuinely has a distant vertex.
+
+### How it surfaced, and why it had not before
+
+Only by putting both orders in one unit system. The fifth-order route takes its medial from
+Thompson's Eq. (B1) and had it right; the third-order route had it wrong; and until the
+normalisation bridge made the two comparable they could not be set side by side. The round trip
+now closes on all three coefficients - `W131`, `W222` and `W220M` reached by the fifth-order route
+and converted back all match the third-order block to every digit.
+
+**The test had been restating the formula rather than checking it**:
+
+    Assert.Equal(w.W220P + 0.5 * w.W222, w.W220M, 15);
+
+which passes for any definition of `W220M` you care to write, including the wrong one. It now
+asserts all three surfaces against the Seidel sums directly, and that the medial is the average of
+the other two.
+
+### Two adjacent things noticed and NOT changed
+
+Both are pre-existing and neither was in scope; they are recorded so they are not lost.
+
+1. **`SigmaSuppressedAt` fires on unfigured surfaces.** The flag is raised when the chief ray
+   HEIGHT vanishes, which only makes the ASPHERIC sigma unavailable, but the test is
+   `reduced[j]` - the spherical one - so a plain surface at the stop is flagged too. On the Cooke
+   triplet, surface 4 is labelled "diverges" in the report while its sigma is a perfectly good
+   5.38e-03 and its chief-ray incidence is 0.295, nowhere near zero.
+2. **And `NatField` then refuses the medial vertex** for that surface, contradicting this type's
+   own documentation that "the reduced form is still exact at those surfaces, so the aberration
+   field is unaffected; only the printed vector is missing".
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
