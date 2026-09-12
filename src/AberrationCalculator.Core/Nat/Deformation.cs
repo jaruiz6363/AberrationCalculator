@@ -87,7 +87,18 @@ public readonly struct Deformation
     /// <summary>Distortion, <c>pi5</c>.</summary>
     public Scalar W311 => Pi5;
 
-    /// <summary>Medial field curvature, <c>W220 + W222/2</c>. The one with a single node.</summary>
+    /// <summary>
+    /// Thompson's MEDIAL field curvature, <c>W220 + W222/2</c> - the average of the tangential
+    /// and sagittal surfaces, and the one his 2011 Sec. 2 relations are written in.
+    ///
+    /// <para><b>This is not the quantity <see cref="WaveCoefficients.Third"/> calls
+    /// <c>W220M</c>,</b> and the clash is worth stating once rather than being rediscovered. That
+    /// one is <c>W220P + W222/2 = (S3 + S4)/4</c>, which is the plain <c>rho^2 H^2</c>
+    /// coefficient - <see cref="W220"/> here, and equal to <c>Pi3</c> alone. Measured across five
+    /// fixtures, <c>Pi3</c> converted into the design's units reproduces it to every printed
+    /// digit. The two differ by <c>W222/2</c>, so a reader who assumes one name means one thing
+    /// is out by half the astigmatism - a plausible amount, not an obvious one.</para>
+    /// </summary>
     public Scalar W220M => Pi3 + 0.5 * Pi4;
 
     /// <summary>Fifth-order spherical aberration, <c>sigma1</c>.</summary>

@@ -1231,27 +1231,60 @@ public sealed class ReportWriter
         sb.AppendLine("front, which is what a wave aberration is.");
         sb.AppendLine();
 
-        sb.AppendLine("  Fifth-order wave coefficients of the system");
-        sb.AppendLine(string.Format(Inv, "    W060  {0,13}   spherical", SciZ(wf.System.W060)));
-        sb.AppendLine(string.Format(Inv, "    W151  {0,13}   field-linear coma", SciZ(wf.System.W151)));
-        sb.AppendLine(string.Format(Inv, "    W240  {0,13}   oblique spherical, field-constant", SciZ(wf.System.W240)));
-        sb.AppendLine(string.Format(Inv, "    W242  {0,13}   oblique spherical, astigmatic", SciZ(wf.System.W242)));
-        sb.AppendLine(string.Format(Inv, "    W331  {0,13}   elliptical coma", SciZ(wf.System.W331)));
-        sb.AppendLine(string.Format(Inv, "    W333  {0,13}   elliptical coma, trefoil", SciZ(wf.System.W333)));
-        sb.AppendLine(string.Format(Inv, "    W420  {0,13}   field curvature", SciZ(wf.System.W420)));
-        sb.AppendLine(string.Format(Inv, "    W422  {0,13}   astigmatism", SciZ(wf.System.W422)));
-        sb.AppendLine(string.Format(Inv, "    W511  {0,13}   distortion", SciZ(wf.System.W511)));
+        // One unit system. The fifth order is computed through Buchdahl's W coordinates, whose
+        // normalised aperture and field differ from the design's by a factor A^l F^k. That scale
+        // is fitted from the third order, where both routes are available, and it CHECKS ITSELF:
+        // four coefficients give four ratios against two unknowns, so two of them are free. They
+        // agree to machine precision, so the conversion below is exact rather than indicative.
+        Scalar S(int k, int l, Scalar w) => bridge.IsUsable ? bridge.WToSeidel(k, l) * w : w;
+
+        sb.AppendLine(bridge.IsUsable
+            ? "  Fifth-order wave coefficients of the system, in the design's own units"
+            : "  Fifth-order wave coefficients of the system, in Buchdahl's normalised units");
+        sb.AppendLine(string.Format(Inv, "    W060  {0,13}   spherical", SciZ(S(0, 6, wf.System.W060))));
+        sb.AppendLine(string.Format(Inv, "    W151  {0,13}   field-linear coma", SciZ(S(1, 5, wf.System.W151))));
+        sb.AppendLine(string.Format(Inv, "    W240  {0,13}   oblique spherical, field-constant", SciZ(S(2, 4, wf.System.W240))));
+        sb.AppendLine(string.Format(Inv, "    W242  {0,13}   oblique spherical, astigmatic", SciZ(S(2, 4, wf.System.W242))));
+        sb.AppendLine(string.Format(Inv, "    W331  {0,13}   elliptical coma", SciZ(S(3, 3, wf.System.W331))));
+        sb.AppendLine(string.Format(Inv, "    W333  {0,13}   elliptical coma, trefoil", SciZ(S(3, 3, wf.System.W333))));
+        sb.AppendLine(string.Format(Inv, "    W420  {0,13}   field curvature", SciZ(S(4, 2, wf.System.W420))));
+        sb.AppendLine(string.Format(Inv, "    W422  {0,13}   astigmatism", SciZ(S(4, 2, wf.System.W422))));
+        sb.AppendLine(string.Format(Inv, "    W511  {0,13}   distortion", SciZ(S(5, 1, wf.System.W511))));
         sb.AppendLine();
-        sb.AppendLine("    These are in Buchdahl's NORMALISED aperture and field, which is NOT the");
-        sb.AppendLine("    normalisation of the third-order block above: the two differ by a factor");
-        sb.AppendLine("    A^l F^k, one power of the aperture scale per power of rho and one of the");
-        sb.AppendLine("    field scale per power of H. Compare them with each other, not across.");
+
+        if (bridge.IsUsable)
+        {
+            sb.AppendLine(string.Format(Inv,
+                "    These are in the SAME units as the third-order block above, so the two may be"));
+            sb.AppendLine("    compared directly. The fifth order is computed through Buchdahl's W");
+            sb.AppendLine("    coordinates, whose normalised aperture and field differ from the design's");
+            sb.AppendLine(string.Format(Inv,
+                "    by A^l F^k with A = {0} and F = {1} - one power of the aperture",
+                SciZ(bridge.A), SciZ(bridge.F)));
+            sb.AppendLine("    scale per power of rho, one of the field scale per power of H.");
+            sb.AppendLine();
+            sb.AppendLine("    That scale is not assumed. It is fitted from the third order, where both");
+            sb.AppendLine("    routes are available, and it checks itself: four coefficients give four");
+            sb.AppendLine("    ratios against two unknowns, so W040 fixes A, W131 fixes F, and W222 and");
+            sb.AppendLine(string.Format(Inv,
+                "    W311 are free checks. They agree here to {0}, so the conversion is exact",
+                SciZ(bridge.Residual)));
+            sb.AppendLine("    rather than indicative.");
+        }
+        else
+        {
+            sb.AppendLine("    The scale between the two routes could NOT be fitted for this design");
+            sb.AppendLine(string.Format(Inv, "    (residual {0}), so these are left in Buchdahl's",
+                                        SciZ(bridge.Residual)));
+            sb.AppendLine("    normalised aperture and field. They differ from the third-order block");
+            sb.AppendLine("    above by a factor A^l F^k: compare them with each other, not across.");
+        }
         sb.AppendLine();
-        sb.AppendLine("    The NODES below do not suffer from that. Each is a ratio of quantities");
-        sb.AppendLine("    carrying the same powers, so the scales cancel and the positions are in the");
-        sb.AppendLine("    design's own field units - the same ones the third-order nodes use. The");
-        sb.AppendLine("    coma node and the astigmatic midpoint computed by this route agree with the");
-        sb.AppendLine("    Seidel route above to thirteen figures, which is what says so.");
+        sb.AppendLine("    The NODES are unaffected either way. Each is a ratio of quantities carrying");
+        sb.AppendLine("    the same powers, so the scales cancel and the positions are in the design's");
+        sb.AppendLine("    own field units regardless. The coma node and the astigmatic midpoint");
+        sb.AppendLine("    computed by this route agree with the Seidel route above to thirteen");
+        sb.AppendLine("    figures, which is what says so.");
         sb.AppendLine();
 
         if (nat.IsAligned)
@@ -1297,20 +1330,35 @@ public sealed class ReportWriter
         sb.AppendLine("    not the last word on it.");
         sb.AppendLine();
         sb.AppendLine(string.Format(Inv, "    W131  {0,13}  ->  W131E {1,13}   (2010 Eq. B13)",
-                                    SciZ(fifth.M131.W), SciZ(fifth.W131E)));
+                                    SciZ(S(1, 3, fifth.M131.W)), SciZ(S(1, 3, fifth.W131E))));
         sb.AppendLine(string.Format(Inv, "          node ({0}, {1})  ->  ({2}, {3})",
                                     SciZ(fifth.M131.a.X), SciZ(fifth.M131.a.Y),
                                     SciZ(fifth.Node131E.X), SciZ(fifth.Node131E.Y)));
         sb.AppendLine(string.Format(Inv, "    W222  {0,13}  ->  W222E {1,13}   (2011 Eq. C19)",
-                                    SciZ(fifth.M222.W), SciZ(fifth.W222E)));
+                                    SciZ(S(2, 2, fifth.M222.W)), SciZ(S(2, 2, fifth.W222E))));
         sb.AppendLine(string.Format(Inv, "          centre ({0}, {1})  ->  ({2}, {3})",
                                     SciZ(fifth.M222.a.X), SciZ(fifth.M222.a.Y),
                                     SciZ(fifth.A222E.X), SciZ(fifth.A222E.Y)));
-        sb.AppendLine(string.Format(Inv, "    W220M {0,13}  ->  W220ME {1,12}   (2011 Sec. 2)",
-                                    SciZ(fifth.M220M.W), SciZ(fifth.W220ME)));
+        sb.AppendLine(string.Format(Inv, "    W220m {0,13}  ->  W220mE {1,12}   (2011 Sec. 2)",
+                                    SciZ(S(2, 2, fifth.M220M.W)), SciZ(S(2, 2, fifth.W220ME))));
         sb.AppendLine(string.Format(Inv, "          vertex ({0}, {1})  ->  ({2}, {3})",
                                     SciZ(fifth.M220M.a.X), SciZ(fifth.M220M.a.Y),
                                     SciZ(fifth.A220ME.X), SciZ(fifth.A220ME.Y)));
+        sb.AppendLine();
+        sb.AppendLine("    The left-hand W131 and W222 are the third-order block's own numbers, reached");
+        sb.AppendLine("    by the other route and converted back. That they agree to every digit is the");
+        sb.AppendLine("    round trip through the scale above, and it is what licenses reading the");
+        sb.AppendLine("    arrows.");
+        sb.AppendLine();
+        sb.AppendLine("    W220m is deliberately spelled differently, because the two blocks use the");
+        sb.AppendLine("    name W220M for DIFFERENT quantities and the numbers do not match:");
+        sb.AppendLine();
+        sb.AppendLine("      third-order block   W220M = W220P + W222/2   the rho^2 H^2 coefficient");
+        sb.AppendLine("      here                W220m = W220M + W222/2   Thompson's MEDIAL surface");
+        sb.AppendLine();
+        sb.AppendLine("    Thompson's medial coefficient is the average of the tangential and sagittal");
+        sb.AppendLine("    surfaces and is the one his Eqs. of 2011 Sec. 2 are written in, so it is the");
+        sb.AppendLine("    one used here. Subtracting half the astigmatism above returns the other.");
     }
 
     /// <summary>

@@ -55,6 +55,16 @@ public readonly struct NormalisationBridge
         SMath.Pow(A, aperturePower) * SMath.Pow(F, fieldPower);
 
     /// <summary>
+    /// The factor taking a W-coordinate coefficient back into the design's own aperture and
+    /// field - the units the third-order block and the Seidel sums are already in.
+    /// </summary>
+    public Scalar WToSeidel(int fieldPower, int aperturePower)
+    {
+        Scalar f = SeidelToW(fieldPower, aperturePower);
+        return SMath.Abs(f) < 1e-300 ? 0.0 : 1.0 / f;
+    }
+
+    /// <summary>
     /// Fit the scale from the two routes' third-order coefficients. Pass them in the same order
     /// from both: W040, W131, W222, W311.
     /// </summary>

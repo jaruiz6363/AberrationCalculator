@@ -195,4 +195,47 @@ public class TrefoilOverlayTests
                                                    new double[] { 16.0, 8.0, 4.0, 99.0 });
         Assert.False(inconsistent.IsUsable);
     }
+
+    /// <summary>
+    /// <b>The two routes use the name W220M for different quantities, and this pins which.</b>
+    ///
+    /// <para>Buchdahl's <c>pi3</c> - the plain <c>rho^2 H^2</c> coefficient of Eq. (2.8) -
+    /// converts into exactly what <c>WaveCoefficients.Third</c> calls <c>W220M</c>, namely
+    /// <c>W220P + W222/2</c>. Thompson's MEDIAL coefficient, the one his 2011 Sec. 2 relations
+    /// are written in, is that plus another <c>W222/2</c>. The difference is half the
+    /// astigmatism: a plausible error, not an obvious one, and it was caught only because the
+    /// report printed both side by side under one name.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("CookeTriplet")]
+    [InlineData("KingslakeDG")]
+    [InlineData("TertiaryTestbed_Triplet24")]
+    [InlineData("Ladder2_Sphere")]
+    public void BuchdahlsPi3IsTheRepositorysW220M(string lens)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(lens), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double f = 0;
+        foreach (var fl in sys.Fields) if (Math.Abs(fl.Y) > Math.Abs(f)) f = fl.Y;
+        var p = ParaxialTrace.Trace(sys, n, f);
+        var s = SeidelCoefficients.Compute(sys, n, n, n, p);
+        var wf = WaveFront.FromSystem(sys, n, p);
+        Assert.NotNull(wf);
+
+        var bridge = NormalisationBridge.Fit(
+            new double[] { s.TotalS1 / 8, s.TotalS2 / 2, s.TotalS3 / 2, s.TotalS5 / 2 },
+            new double[] { wf!.System.W040, wf.System.W131, wf.System.W222, wf.System.W311 });
+        Assert.True(bridge.IsUsable);
+
+        double conv = bridge.WToSeidel(2, 2);
+        double repoW220M = s.TotalS4 / 4 + 0.5 * (s.TotalS3 / 2);
+
+        // pi3 alone is the repository's W220M ...
+        Assert.Equal(repoW220M, (double)(wf.System.Pi3 * conv), 8);
+
+        // ... and Thompson's medial is half the astigmatism away from it.
+        Assert.Equal(repoW220M + 0.5 * (s.TotalS3 / 2),
+                     (double)(wf.System.W220M * conv), 8);
+    }
 }

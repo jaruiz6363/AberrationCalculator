@@ -1422,6 +1422,53 @@ scale had only been measured. It is now fitted and verified exactly, so that not
 retired and the whole report put in one set of units. Left as it stands for now rather than
 changed in passing.
 
+## One unit system, and a name clash it exposed
+
+The caveat is retired. `--nat` now prints both orders in the design's own aperture and field.
+
+### The conversion
+
+`NormalisationBridge` fits `A^l F^k` from the third order, where both routes are available, and
+the report divides every fifth-order coefficient by it. On the tilted Cooke triplet:
+
+    third order   W040 8.7001E-04   W131 -6.1744E-04   W222 -4.4534E-03
+    fifth order   W060 -9.0233E-04  W151 -2.1850E-03   W242 -8.0085E-03   W511 -2.9032E-04
+
+Comparable at last: the fifth order is of the same size as the third on this design, which is
+the thing a reader wants to know and could not previously ask.
+
+The report prints `A`, `F` and the fit residual, so the conversion can be audited rather than
+taken on trust. When the fit fails, it falls back to Buchdahl's units and says so.
+
+### The round trip is the check
+
+The "what the fifth order does to the third" block prints `W131` and `W222` reached by the
+FIFTH-order route and converted back. They match the third-order block's own numbers **to every
+digit**, which is the round trip closing - the scale, the W-coordinate scheme, VII Eqs. (6.5-6)
+and (3.4), all of it - and is what licenses reading the arrows beside them.
+
+### The name clash it exposed
+
+`W220M` did NOT match, and printing the two side by side is what caught it. The two blocks use
+the name for different quantities:
+
+    third-order block   W220M = W220P + W222/2 = (S3 + S4)/4    the plain rho^2 H^2 coefficient
+    fifth-order block   W220m = W220M + W222/2                  Thompson's MEDIAL surface
+
+Buchdahl's `pi3` - the coefficient of `lambda nu` in Eq. (2.8), which IS the `rho^2 H^2` term -
+converts into the third-order block's `W220M` exactly, on all five fixtures to every printed
+digit. Thompson's medial, the average of the tangential and sagittal surfaces and the one his
+2011 Sec. 2 relations are written in, is half an astigmatism further on.
+
+Neither is wrong; they are different coefficients wearing one name. The fifth-order block spells
+its one `W220m` and prints the relation, and there is a test pinning `pi3` to the repository's
+`W220M` across fixtures so the correspondence cannot drift.
+
+**This is exactly the class of error this work has been guarding against all along** - half the
+astigmatism is a plausible discrepancy, not an obvious one - and it surfaced only because putting
+the two blocks in one unit system made them comparable. Retiring the caveat was worth it for that
+alone.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
