@@ -537,16 +537,104 @@ In the order the checks are worth anything, which is this repository's usual ord
 
 ## What this would not do
 
-**No fifth-order NAT, for now.** Thompson's multinodal fifth order wants `W060, W151, W240M,
-W242, W331M, W333, W422, W511`. This program computes the fifth order in Rimmer's notation -
-`B5, F1, F2, M1..M3, N1..N3, C5, Pi5, E5` - and the map between the two has not been located. The
-2025 paper sidesteps it by taking Sasian's set instead, which is a third notation again. This is
-the same class of problem, and the same kind of cost, as the Buchdahl-to-Rimmer gap recorded in
-`references.md`; it should not be promised until the mapping is in hand.
+**No fifth-order NAT yet.** It is no longer blocked - see the section below for what is
+established and what is left - but nothing fifth order is computed anywhere in the code.
 
 **No real-ray sigma.** The paraxial route is the small-perturbation limit. It is the right tool
 for tolerancing, which is what Stage 2 is, and the wrong one for a system with large deliberate
 tilts, which is what Stage 4's customers are.
+
+## Stage 5: the notation map, and what step one established
+
+### The claim that was wrong
+
+This file previously said fifth-order NAT was "blocked on a notation map" that "has not been
+located". That was wrong on both halves. **Buchdahl paper VII Sec. 6 IS the map**, and its Eq.
+(6.6) gives the nine fifth-order relations outright; the OCR of that page is unreadable, which is
+why it went unnoticed. Its numerical check is in paper VI Table II, on the same triplet whose
+Table I this repository already reproduces entry by entry.
+
+The real blocker was always the physics - Thompson's multinodal trilogy, which says WHICH
+fifth-order aberrations go multinodal and where the nodes land. Those are now in hand:
+
+    I    J. Opt. Soc. Am. A 26(5), 1090 (2009)   spherical aberration
+    II                      27(6), 1490 (2010)   the comatic aberrations
+    III                     28(5),  821 (2011)   the astigmatic aberrations
+
+### Step one: the monomial correspondence, verified
+
+Buchdahl's wave-front deformation is a series in the three rotational invariants
+`lambda = rho.rho`, `mu = rho.H`, `nu = H.H`, and his Eq. (4.6) - which he calls **exact** - is
+
+    eps' = dD/dy
+
+the transverse ray displacement as the gradient of the deformation. His third-order part is
+
+    D3 = pi1 lambda^2 + pi2 lambda mu + pi3 lambda nu + pi4 mu^2 + pi5 mu nu + pi6 nu^2
+
+and each monomial is one Hopkins term and only one:
+
+    lambda^2   = rho^4                 ->  W040
+    lambda mu  = H rho^3 cos(theta)    ->  W131
+    lambda nu  = H^2 rho^2             ->  W220
+    mu^2       = H^2 rho^2 cos^2(theta)->  W222
+    mu nu      = H^3 rho cos(theta)    ->  W311
+    nu^2       = H^4                   ->  piston, which is why pi6 is dropped
+
+**So the deformation coefficients ARE Thompson's `Wklm`, one for one.** That is the whole
+bridge, and it was checked rather than asserted: differentiating a wave front built from this
+program's own third-order coefficients and comparing against the transverse polynomial
+`Prms.Transverse` already computes, one Rimmer coefficient at a time, over a spread of pupil
+radii, azimuths and field heights:
+
+    B  -> W040     ratio 2.0     spread 2.2e-16
+    F  -> W131     ratio 2.0     spread 2.2e-16
+    C  -> W222     ratio 3.0     spread 1.5e-16
+    Pi -> W220     ratio 2.0     spread 1.1e-16
+    E  -> W311     absent
+
+Every term maps **to machine precision**, which is what the spreads say: the shape is exactly
+right in every variable at once.
+
+Two of those rows need reading rather than glancing at.
+
+**The 3.0 is not an error.** `Prms.Ey` writes third-order astigmatism as `{C: 3, Pi: 1}` -
+Rimmer's transverse polynomial carries the TANGENTIAL combination `3C + Pi`, which is Johnson
+(1973) Table I verbatim, where the gradient of `W222 mu^2` alone carries the plain term. The
+factor of three is the tangential weighting, and it turns up exactly where the theory puts it
+and nowhere else.
+
+**The absent distortion is the documented behaviour**, not a gap: `E` and `E5` are not in Robb's
+polynomial at all, because distortion displaces the image without resizing it.
+
+### What step one implies for the fifth order, and what it does not
+
+The same algebra forces the fifth-order assignment. Degree three in `(lambda, mu, nu)` has ten
+monomials; drop the pure-field one as piston and nine remain, which is exactly Thompson's nine
+names with nothing left over:
+
+    sigma1 lambda^3      -> W060        sigma6 lambda nu^2   -> W420
+    sigma2 lambda^2 mu   -> W151        sigma7 mu^3          -> W333
+    sigma3 lambda^2 nu   -> W240        sigma8 mu^2 nu       -> W422
+    sigma4 lambda mu^2   -> W242        sigma9 mu nu^2       -> W511
+    sigma5 lambda mu nu  -> W331
+
+Nine monomials, nine coefficients, no remainder - itself a check that Buchdahl's ordering and
+Thompson's naming describe the same set.
+
+**What is NOT established is the scale constants.** `Prms.Ey`'s fifth-order lines show the same
+combination structure the third order had - `{M1, M2}` against `{M3}` at `cos3p`, `{N1, N2/2}`
+against `{N2/2}` at `cos2`, `{C5: 5, Pi5: 1}` as the analogue of `3C + Pi` - and those groupings
+are what `W240`/`W242`, `W331`/`W333` and `W420`/`W422` split into. Working them out is the next
+step, and it is the part where a factor of three in the wrong place produces a plausible wrong
+number rather than an obvious one. It should be done the way step one was: one coefficient at a
+time, isolated, with the spread reported alongside the ratio, and then checked against paper VI
+Table II.
+
+**A trap to carry into that work.** Paper VII Sec. 7(a) gives scaling exponents - `A: -1, B: 0,
+C: 1, S1: -1, S3,S4: 1, S5: 2, S6: 3`, with barred coefficients taking an extra factor - because
+his `e` is not unity. A coefficient right and its power of `e` wrong looks like a plausible
+number, not an error.
 
 **The optimiser stays spherical-only.** Stage 2 changes nothing about that rule; it adds an
 operand made of third-order quantities, and the refusal in `SphericalOnly.cs` is about Buchdahl's

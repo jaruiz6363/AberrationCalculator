@@ -127,12 +127,56 @@ normally unchanged, so the book alone may not carry the tertiary computation.
 
 ### The rest of Buchdahl's series
 
-The series is **thirteen papers**, not the handful named here, and all of them are reprinted
-at the end of the Dover monograph - see the note under it above. Only I, II, III and V have
-ever been identified in this file; IV and VI to XIII have not, and their titles and pagination
-should be read off the reprint rather than guessed at. Sands cites VI (the W coordinates that
-his aperture coordinates turn out to be a special case of), VII and XII (Secs. 2 and 9, on
-the conventions and the identities), so at least those three are wanted by name.
+The series runs to at least fourteen papers, and I to XIII are reprinted at the end of the Dover
+monograph - see the note under it above. Ten are now in hand. The numbering is exact, from
+footnote 2 of XII and footnote 1 of XIV:
+
+| | citation | subject | |
+|---|---|---|---|
+| I | *J. Opt. Soc. Am.* **46**, 941 (1956) | tertiary spherical aberration - B7's origin | wanted |
+| II | **48**, 563 (1958) | the tertiary intrinsic coefficients | have |
+| III | **48**, 747 (1958) | computing the tertiary - Table I, Table II | have |
+| IV | **48**, 757 (1958) | quaternary (ninth-order) spherical | have |
+| V | **49**, 1113 (1959) | on the quality of predicted displacements | have |
+| VI | **50**, 534 (1960) | coordinates lying partly in the image space - the W coordinates | have |
+| VII | **50**, 540 (1960) | deformation and retardation of the wave front | have |
+| VIII | **50**, 678 (1960) | spherical aberration of order eleven | have |
+| IX | **51**, 608 (1961) | theory of reversible optical systems | have |
+| X, XI, XIII | ? | ? | wanted, citations unpinned |
+| XII | **55**, 641 (1965) | remarks relating to aberrations of any order | have |
+| XIV | **59**, 1422 (1969) | simplified computational form of the iteration equations | have |
+
+Neither XII nor XIV cites X, XI or XIII, so their citations need a JOSA index; nothing yet
+suggests they bear on this work.
+
+**[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. VII. The Primary, Secondary, and
+Tertiary Deformation and Retardation of the Wave Front," *J. Opt. Soc. Am.* **50**, 540 (1960).
+**The bridge between this program's transverse coefficients and the WAVE-FRONT coefficients
+nodal aberration theory is written in.** Its Sec. 6 is titled "The Relations Between
+W-Coefficients and Deformation Coefficients" and gives them explicitly at all three orders:
+Eq. (6.5) the five primary, Eq. (6.6) the nine secondary, Eq. (6.7) fourteen tertiary.
+
+This page is why the note at the top of this file matters. Its OCR is noise, and the paper sat
+here looking like a curiosity until it was rendered as a page image - see
+`reading-scanned-pdfs.md` in the working notes. `nodal-aberration-theory.md` records what it
+established and what it did not.
+
+Three things it supplies beyond the relations themselves:
+
+- **Eq. (4.6), `eps' = dD/dy`, which he calls exact**: the transverse ray displacement is the
+  gradient of the wave-front deformation. That is the mechanism, and it is what makes the
+  correspondence checkable against coefficients this program already computes.
+- **Redundancy.** The derivation yields two expressions for several coefficients, and he notes
+  that "the 10 identities between the W coefficients of the first three orders so implied are
+  exactly those given by the equations of VI (4.16-18)". Self-checking, as his tertiary
+  identities are.
+- **A published numerical answer.** Sec. 7(b): Table I gives the deformation and retardation
+  coefficients of the first three orders for the triplet of III Sec. 3 - the same lens whose
+  Table I this repository already reproduces - with the W coefficients themselves in VI Table II.
+
+And one trap, Sec. 7(a): his `e` is not unity, so the coefficients carry powers of it -
+`A: -1, B: 0, C: 1, S1: -1, S3,S4: 1, S5: 2, S6: 3`, barred coefficients taking an extra factor.
+A coefficient right and its power of `e` wrong reads as a plausible number rather than an error.
 
 **[wanted] Buchdahl, H. A.**, *J. Opt. Soc. Am.* **46**, 941 (1956). Paper I of the series.
 
