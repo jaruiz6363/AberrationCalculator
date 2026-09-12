@@ -818,32 +818,56 @@ also agrees with the `e^-2 = 1.0636` implied independently by Eq. (3.4) against 
 That is the verification route this stage needed: no ray trace, no fit, no second program.
 `DeformationTests.cs` holds it.
 
-### What is still missing, precisely
+### What remains: 39 rows, and no monograph page after all
 
-VI Sec. 6 transforms paracanonical (`OT*`) coefficients into W coordinates, and that matters
+VI Sec. 6 transforms paracanonical (`OT*`) coefficients into W coordinates, and it matters
 because **this program computes paracanonical coefficients** - VI Sec. 6(a) says so of paper III
 Table I directly, which is the table this program reproduces.
 
-- **VI (6.6), primary: the transformation is the identity.** `Aa = Ap`, `Aba = Abp`, and so on
-  through `Cba = Cbp`. VI Table II confirms it - every primary coefficient is printed with the
-  same value in both columns. **So all third-order NAT work is unaffected by any of this.**
-- **VI (6.7), secondary: only three of the twelve relations are printed.**
-
-      S1a  = S1p + 3 Ap Aq
-      S1ba = S1bp + Ap Abq + 2 Abp Aq
-      S2a  = S2p + (2 Abq + 3 Bq) Ap + 4 Abp Aq
-
-  and then "and so on". The remaining nine must be read off from M(11.3) using the transcription
-  rules of VI Eq. (6.5). **M is Buchdahl's 1954 monograph, which is not in the archive** - this
-  is the one outstanding item, and it is a single page.
+- **VI (6.6), primary: the transformation is the identity.** `Aa = Ap`, `Aba = Abp`, through
+  `Cba = Cbp`. VI Table II confirms it: every primary coefficient is printed with the same value
+  in both columns. **All third-order NAT work is therefore untouched by any of this.**
+- **VI (6.7), secondary: only three of the twelve relations are printed**, then "and so on". The
+  rest are to be read off from M(11.3) with the transcription rules of VI (6.5).
 - **VI (6.8-10) are tertiary** and are not needed for fifth order.
 
-Two things worth recording about the missing piece. First, the `q`-subscripted quantities driving
-it are the **pupil** aberration coefficients, so the paracanonical-to-W transformation is exactly
-a pupil-aberration correction - which is the Sands 1970 Sec. VI point, arriving with a precise
-role rather than as a hand-wave. Second, VI Table II bounds how much it matters: the secondary
-coefficients differ between the two coordinate systems by up to about 6 percent, which is far too
-large to neglect and far too small to notice as an error.
+**But the transformation is the long way round, and was a false lead.** VII Sec. 7(a) states that
+the W coefficients may be computed "either directly, using W coordinates, or by transformation
+from paracanonical coordinates". VI Sec. 5 gives the direct scheme:
+
+> the changes in the identities which were treated in the previous section lead to the
+> modification of **39 of the 192 rows of Table I of III**
+
+and **VI Table I, p.536, prints all thirty-nine**: `t20-t24` (the primaries `Ab, Abb, Bb, Cb,
+Cbb`), `t55`, `t83-t85`, `t86-t98` (which yield `S1b..S6b`), `t102-t114` (which yield
+`S1dag..S6dag`), and `t134-t149`.
+
+So there is nothing to obtain. M(11.3) was never needed for two separate reasons:
+
+1. **This program already contains M(11.3).** The induced-correction block of
+   `BuchdahlCoefficients.cs` IS that iteration formula - all twelve secondary coefficients
+   gaining a bilinear correction in the accumulated third order. The monograph page would add
+   only Buchdahl's symbolic `g`/`G` form, which is what the transcription rules operate on.
+2. **The direct route skips Sec. 6 entirely**, and its 39 rows are on a page already held.
+
+The fit to this codebase is about as good as it could be. `BuchdahlTableI.cs` stores the scheme
+in **Buchdahl's own row numbering, `t1..t155`**, in a flat array indexed exactly as he numbers
+them, so the W-coordinate scheme is a patch to thirty-nine named rows rather than a derivation.
+
+Two things come free on the same page. VI **(4.17)** gives the secondary identities in W
+coordinates,
+
+    S2 - 4 S1b = 2(Ab - A)      S4 - S2b = -A + Bb/2      S5 - 2 S3b = -2Ab + Bb
+
+which are residuals of exactly the kind `BuchdahlIdentities.cs` already reports, and they are
+three of the ten that VII Sec. 6(b) refers to. VI (4.14-16) give the starred primaries,
+`A* = A - 1/2`, `B* = B - 1`, `C* = C - 1/2`, and `B* - 2 Ab* = 0`.
+
+**One caution for whoever builds it.** The `q`-subscripted quantities that drive Sec. 6 are the
+**pupil** aberration coefficients, so the paracanonical-to-W difference is a pupil-aberration
+effect - the Sands 1970 Sec. VI point, arriving with a precise role rather than as a hand-wave.
+VI Table II bounds what is at stake: the secondary coefficients differ between the two coordinate
+systems by up to about 6 percent. Too large to neglect, and too small to notice as an error.
 
 ## Papers
 
