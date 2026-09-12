@@ -952,6 +952,78 @@ does not simply ride along on its surface's `sigma`. Nothing here decides that q
 supplies the unperturbed per-surface coefficients, which are the input either way. Deciding it is
 the next piece of work, and it is a question about NAT rather than about Buchdahl.
 
+## The intrinsic/induced separation is not needed, and the field vectors are
+
+The previous section called an intrinsic/induced separation of the per-surface coefficients "the
+next piece of work". **That was wrong**, and Thompson's own Appendix A says so.
+
+### What Appendix A actually defines
+
+Thompson 2010, Appendix A, p.1498, in full:
+
+    W_klm   = sum_j W_klmj                  H_klm   = H - a_klm
+    A_klm   = sum_j W_klmj sigma_j          a_klm   = A_klm / W_klm
+    B_klm   = sum_j W_klmj (sigma_j . sigma_j)
+                                            b_klm   = B_klm/W_klm - (a_klm . a_klm)
+    B^2_klm = sum_j W_klmj sigma_j^2        b^2_klm = B^2_klm/W_klm - a_klm^2
+    C_klm   = sum_j W_klmj (sigma_j . sigma_j) sigma_j
+                                            c_klm   = C_klm/W_klm - (a_klm . a_klm) a_klm
+    C^3_klm = sum_j W_klmj sigma_j^3        c^3_klm = C^3_klm/W_klm - a_klm^3
+
+followed by "Here, the subscripts ... are *j*, surface number". **`W_klmj` is the plain
+contribution of surface j** - intrinsic and induced together, exactly as a rotationally symmetric
+computation produces it. His Eq. (25) sums the fifth-order terms the same way, each surface's
+contribution displaced by that surface's own sigma and nothing else. There is no intrinsic/induced
+distinction anywhere in the construction.
+
+**Thompson does use the word "induced", for a different thing.** The appendices of both the 2010
+and 2011 papers have a section headed "Derivation of the Induced Third-Order Terms from the
+Fifth-Order Contribution": expanding a fifth-order term about its displaced field centre throws
+off terms of third-order FORM, which are then folded into the third-order expressions. That is an
+artefact of the expansion, not a surface-interaction effect, and it is a consequence of the nodal
+algebra rather than an input to it. Reading it as Buchdahl's induced aberration is what produced
+the wrong statement above.
+
+So `WaveFront.PerSurface` already supplies exactly what NAT consumes.
+
+### What fifth order does need: two more moments
+
+Third order needs `A`, `B` and `B^2`. Fifth order adds `C` and `C^3`, and the distinction between
+the two kinds at each order is the thing to get right: `B` takes the DOT product of sigma with
+itself and is a scalar, `B^2` takes the VECTOR square and is a vector, and the same split repeats
+in `C` and `C^3`. `Nat/FieldMoments.cs` accumulates all six for any coefficient.
+
+A coefficient with no field dependence has no field vectors at all: the displacement acts on `H`,
+so `W040` and `W060` are not displaced. Beyond that, a coefficient of field power `k` brings in
+moments up to the `k`-th.
+
+### How it is checked
+
+Exact algebra rather than published numbers, because the definitions are exact algebra. The
+sharpest of them:
+
+**A uniformly displaced system has no nodal splitting.** If every surface carries the same sigma,
+the system is the same system about a shifted axis: the whole field moves and nothing splits. So
+`a` must come out equal to that sigma and `b`, `b^2`, `c` and `c^3` must vanish identically. Each
+of those four subtracts a different power of the field centre, so a dot product where a vector
+square belongs, or a wrong power, leaves a residue here while leaving the unnormalised moments
+untouched.
+
+The others: an aligned system has no field vectors at all, which is Thompson's statement that the
+symmetric theory is the special case of his; two surfaces displaced oppositely put the centre back
+on axis while both SECOND moments survive and both third cancel, which is the case that separates
+`B` from `B^2`; one surface carrying all the weight puts the centre at its own sigma; and a
+vanishing coefficient has no field centre, so the division is refused rather than returning an
+infinity.
+
+### What is left
+
+The moments are the inputs to the nodal solutions, which differ per aberration type and are given
+in the appendices of the 2010 paper (the comatic types, `W131 W151 W331M W333`) and the 2011 paper
+(the astigmatic types, and fifth-order field curvature and distortion). Those solutions are the
+remaining work, and they are algebra against the moments this now supplies rather than anything
+that needs new physics.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
