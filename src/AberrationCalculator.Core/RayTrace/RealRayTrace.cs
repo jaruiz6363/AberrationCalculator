@@ -82,6 +82,24 @@ public static class RealRayTrace
     }
 
     /// <summary>
+    /// <see cref="TraceRecord(OpticalSystem, Scalar[], ParaxialResult, Scalar, Scalar, Scalar,
+    /// bool)"/> reporting the per-surface INCIDENCE as well - see the overload of
+    /// <see cref="TraceRecordFrom"/> that fills the same arrays.
+    /// </summary>
+    public static SurfaceHit[] TraceRecord(OpticalSystem system, Scalar[] indices,
+                                           ParaxialResult paraxial,
+                                           Scalar fieldDeg, Scalar py, Scalar pz,
+                                           bool atParaxialFocus,
+                                           Scalar[]? incidenceX, Scalar[]? incidenceY)
+    {
+        if (system == null) throw new ArgumentNullException(nameof(system));
+        if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
+        var (x, y, dx, dy, dz) = Launch(system, paraxial, fieldDeg, py, pz);
+        return TraceRecordFrom(system, indices, paraxial, x, y, dx, dy, dz, atParaxialFocus,
+                               incidenceX, incidenceY);
+    }
+
+    /// <summary>
     /// A ray of the given field and pupil coordinates, expressed at surface 1's vertex plane.
     ///
     /// <para>The ray crosses the entrance pupil at the fractional coordinates asked for. No ray
@@ -197,6 +215,31 @@ public static class RealRayTrace
                                                Scalar x, Scalar y,
                                                Scalar dx, Scalar dy, Scalar dz,
                                                bool atParaxialFocus = true)
+        => TraceRecordFrom(system, indices, paraxial, x, y, dx, dy, dz, atParaxialFocus,
+                           null, null);
+
+    /// <summary>
+    /// <see cref="TraceRecordFrom(OpticalSystem, Scalar[], ParaxialResult, Scalar, Scalar,
+    /// Scalar, Scalar, Scalar, bool)"/>, additionally reporting the ray's INCIDENCE at each
+    /// surface, in that surface's own frame.
+    ///
+    /// <para>The incidence is <c>c (x, y) + (u_x, u_y)</c> - the vector form of the paraxial
+    /// <c>i = y c + u</c>, evaluated on the real ray before it refracts. It vanishes exactly
+    /// when the ray points at the surface's centre of curvature, which is the geometric content
+    /// of a nodal aberration theory sigma; on a plane it reduces to the ray slope, which
+    /// vanishes when the ray is parallel to the axis, and that is the same statement with the
+    /// centre of curvature at infinity.</para>
+    ///
+    /// <para>Reported separately rather than added to <see cref="SurfaceHit"/> because that type
+    /// documents the direction AFTER refraction, which is what a merit-function operand asking
+    /// for an angle of emergence wants. These are the directions before.</para>
+    /// </summary>
+    public static SurfaceHit[] TraceRecordFrom(OpticalSystem system, Scalar[] indices,
+                                               ParaxialResult paraxial,
+                                               Scalar x, Scalar y,
+                                               Scalar dx, Scalar dy, Scalar dz,
+                                               bool atParaxialFocus,
+                                               Scalar[]? incidenceX, Scalar[]? incidenceY)
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -216,14 +259,36 @@ public static class RealRayTrace
         for (int i = 1; i <= last; i++)
         {
             var s = system.Surfaces[i];
+
+            // A tilted or decentred surface is traced in its OWN frame: the ray goes in, meets
+            // an ordinary surface there, and comes back out. Nothing below learns that anything
+            // was perturbed, so a sphere, a conic and a figured surface are all handled by the
+            // same two calls. An aligned surface pays one boolean for the privilege.
+            bool perturbed = LocalFrame.IsPerturbed(s);
+            if (perturbed) LocalFrame.Into(s, ref x, ref y, ref z, ref dx, ref dy, ref dz);
+
             if (!Intersect(s, ref x, ref y, ref z, dx, dy, dz)) return hits;
+
+            // The incidence, before refraction and in this surface's own frame. Zero when the
+            // ray points at the centre of curvature.
+            if (incidenceX != null && incidenceY != null && i < incidenceX.Length)
+            {
+                Scalar c = s.VertexCurvature;
+                incidenceX[i] = c * x + dx / dz;
+                incidenceY[i] = c * y + dy / dz;
+            }
 
             Scalar nAfter = i < indices.Length ? indices[i] : 1.0;
             if (!Refract(s, x, y, nBefore, nAfter, ref dx, ref dy, ref dz))
                 return hits;
             nBefore = nAfter;
 
+            // Recorded in the surface's own vertex frame, which is what this type documents and
+            // what an operand asking for an angle of emergence wants - so the hit is taken
+            // BEFORE the ray is moved back out.
             hits[i] = new SurfaceHit(x, y, z, dx, dy, dz, true);
+
+            if (perturbed) LocalFrame.OutOf(s, ref x, ref y, ref z, ref dx, ref dy, ref dz);
 
             // Into the next surface's vertex frame.
             Scalar t = s.Thickness;

@@ -29,6 +29,18 @@ public enum OperandInput
 
     /// <summary>Pupil coordinate, meridional, as a fraction of the pupil radius.</summary>
     Py,
+
+    /// <summary>
+    /// A decentre tolerance, in the design's length units: how far off axis any one surface may
+    /// end up.
+    /// </summary>
+    Decentre,
+
+    /// <summary>
+    /// A tilt tolerance, in DEGREES - the same unit the .align sidecar uses. One angular unit
+    /// throughout, so that a number copied from one place to the other means what it said.
+    /// </summary>
+    Tilt,
 }
 
 /// <summary>
@@ -60,6 +72,9 @@ public static class OperandInputs
         { OperandInput.Surface1, OperandInput.Wave, OperandInput.Hy,
           OperandInput.Px, OperandInput.Py };
 
+    private static readonly OperandInput[] Tolerance =
+        { OperandInput.Decentre, OperandInput.Tilt, OperandInput.Wave };
+
     /// <summary>The inputs this operand takes, in the order a merit-function line gives them.</summary>
     public static IReadOnlyList<OperandInput> For(OperandType type) => type switch
     {
@@ -86,6 +101,10 @@ public static class OperandInputs
         OperandType.EAT => Span,
         OperandType.DTRGT => Span,
 
+        // The two tolerances the design is to be judged against, and the colour to judge in.
+        // It averages over the field itself, so there is no field to give it.
+        OperandType.ASBLT => Tolerance,
+
         _ => Ray,
     };
 
@@ -105,6 +124,8 @@ public static class OperandInputs
                 OperandInput.Hy => "hy",
                 OperandInput.Px => "px",
                 OperandInput.Py => "py",
+                OperandInput.Decentre => "decentre",
+                OperandInput.Tilt => "tilt-deg",
                 _ => "?",
             };
         return string.Join(", ", names);

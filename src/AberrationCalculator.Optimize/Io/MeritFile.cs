@@ -146,6 +146,7 @@ public static class MeritFile
 
         int surface = 0, surface2 = 0, wave = 0;
         double hy = 1.0, px = 0.0, py = 0.0;
+        double decentre = 0.0, tilt = 0.0;
 
         for (int k = 0; k < given; k++)
         {
@@ -173,6 +174,9 @@ public static class MeritFile
                 case OperandInput.Hy: hy = v; break;
                 case OperandInput.Px: px = v; break;
                 case OperandInput.Py: py = v; break;
+
+                case OperandInput.Decentre: decentre = v; break;
+                case OperandInput.Tilt: tilt = v; break;
             }
         }
 
@@ -188,6 +192,8 @@ public static class MeritFile
             Hy = hy,
             Px = px,
             Py = py,
+            Decentre = decentre,
+            Tilt = tilt,
             Target = target,
             Weight = weight,
             Min = min,
@@ -289,6 +295,8 @@ public static class MeritFile
                 OperandInput.Wave => N(op.Wave < 1 ? 1 : op.Wave),
                 OperandInput.Hy => N(op.Hy),
                 OperandInput.Px => N(op.Px),
+                OperandInput.Decentre => N(op.Decentre),
+                OperandInput.Tilt => N(op.Tilt),
                 _ => N(op.Py),
             });
         }
@@ -320,6 +328,9 @@ public static class MeritFile
         OperandInput.Wave => op.Wave >= 1,
         OperandInput.Hy => op.Hy != 1.0,
         OperandInput.Px => op.Px != 0.0,
+        // Both tolerances are what the operand is FOR, so both are always written.
+        OperandInput.Decentre => true,
+        OperandInput.Tilt => true,
         _ => op.Py != 0.0,
     };
 

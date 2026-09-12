@@ -85,6 +85,19 @@ public static class DualMath
     public static Dual Atan(Dual x) =>
         new(Math.Atan(x.Value), x.Deriv / (1.0 + x.Value * x.Value));
 
+    /// <summary>
+    /// The two-argument arctangent. <c>d/dt atan2(a, b) = (b a' - a b') / (a^2 + b^2)</c>, which
+    /// is the ordinary quotient rule through <c>atan</c> and is continuous across the branch cut
+    /// the VALUE jumps at - the derivative of an angle does not care which turn it is on.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Dual Atan2(Dual a, Dual b)
+    {
+        double d = a.Value * a.Value + b.Value * b.Value;
+        return new(Math.Atan2(a.Value, b.Value),
+                   d == 0.0 ? 0.0 : (b.Value * a.Deriv - a.Value * b.Deriv) / d);
+    }
+
     /// <summary>Rounding is piecewise constant, so its derivative is nought everywhere it has one.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Dual Round(Dual x) => new(Math.Round(x.Value), 0.0);

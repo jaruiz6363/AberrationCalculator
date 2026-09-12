@@ -41,6 +41,32 @@ public sealed class SeidelResult
     /// refraction invariant A was zero there. See the note in the calculator.
     /// </summary>
     public int[] DistortionSuppressedAt { get; init; } = Array.Empty<int>();
+
+    // ── The aspheric share of each sum ──────────────────────────────────────────────────
+    //
+    // The figuring's contribution ALONE, already included in S1..S5 above and repeated here
+    // so that it can be separated again. Zero on an unfigured surface.
+    //
+    // Nodal aberration theory is what wants this. An aspheric surface has TWO aberration field
+    // centres - one for the spherical base curve and one for the aspheric cap, which behaves as
+    // a zero-power plate and so is centred by where the optical axis ray CROSSES it rather than
+    // by an angle of incidence. Summing them needs the two contributions apart, which no other
+    // consumer of this type has ever had a reason to ask for.
+
+    /// <summary>Aspheric share of the spherical aberration sum, per surface.</summary>
+    public double[] S1Aspheric { get; init; } = Array.Empty<double>();
+
+    /// <summary>Aspheric share of coma.</summary>
+    public double[] S2Aspheric { get; init; } = Array.Empty<double>();
+
+    /// <summary>Aspheric share of astigmatism.</summary>
+    public double[] S3Aspheric { get; init; } = Array.Empty<double>();
+
+    /// <summary>
+    /// Aspheric share of distortion. There is no aspheric share of PETZVAL: that term depends
+    /// only on the surface's curvature and index step, and figuring changes neither.
+    /// </summary>
+    public double[] S5Aspheric { get; init; } = Array.Empty<double>();
 }
 
 /// <summary>
@@ -86,6 +112,8 @@ public static class SeidelCoefficients
         int last = system.LastOpticalSurface();
 
         var s1 = new double[count]; var s2 = new double[count]; var s3 = new double[count];
+        var a1 = new double[count]; var a2 = new double[count]; var a3 = new double[count];
+        var a5 = new double[count];
         var s4 = new double[count]; var s5 = new double[count];
         var cl = new double[count]; var ct = new double[count];
         var suppressed = new System.Collections.Generic.List<int>();
@@ -145,10 +173,17 @@ public static class SeidelCoefficients
             {
                 double sAsph = 8.0 * (nAfter - nBefore) * a4 * y * y * y * y;
                 double ratio = Math.Abs(y) > 1e-15 ? ybar / y : 0.0;
-                s1[j] += sAsph;
-                s2[j] += sAsph * ratio;
-                s3[j] += sAsph * ratio * ratio;
-                s5[j] += sAsph * ratio * ratio * ratio;
+
+                // Kept separately as well as added in - see the note on SeidelResult.
+                a1[j] = sAsph;
+                a2[j] = sAsph * ratio;
+                a3[j] = sAsph * ratio * ratio;
+                a5[j] = sAsph * ratio * ratio * ratio;
+
+                s1[j] += a1[j];
+                s2[j] += a2[j];
+                s3[j] += a3[j];
+                s5[j] += a5[j];
             }
 
             // Chromatic terms use the dispersion of the medium after each surface.
@@ -166,6 +201,7 @@ public static class SeidelCoefficients
             TotalS1 = Sum(s1), TotalS2 = Sum(s2), TotalS3 = Sum(s3), TotalS4 = Sum(s4),
             TotalS5 = Sum(s5), TotalCL = Sum(cl), TotalCT = Sum(ct),
             DistortionSuppressedAt = suppressed.ToArray(),
+            S1Aspheric = a1, S2Aspheric = a2, S3Aspheric = a3, S5Aspheric = a5,
         };
     }
 

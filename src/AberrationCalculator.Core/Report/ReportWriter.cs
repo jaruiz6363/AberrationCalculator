@@ -8,6 +8,7 @@ using AberrationCalculator.Core.Aberrations;
 using AberrationCalculator.Core.Enums;
 using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.Models;
+using AberrationCalculator.Core.Nat;
 using AberrationCalculator.Core.RayTrace;
 
 namespace AberrationCalculator.Core.Report;
@@ -917,6 +918,13 @@ public sealed class ReportWriter
 
     private static string Sci(double v) => v.ToString("0.0000E+00", Inv);
 
+    /// <summary>
+    /// <see cref="Sci"/> with negative zero folded onto zero. A field vector that is exactly on
+    /// axis in one component prints "-0.0000E+00" otherwise, which reads as a measurement when
+    /// it is the absence of one.
+    /// </summary>
+    private static string SciZ(double v) => Sci(v == 0.0 ? 0.0 : v);
+
     private void Warnings(StringBuilder sb, ParaxialResult p)
     {
         var notes = new List<string>();
@@ -1073,4 +1081,163 @@ public sealed class ReportWriter
     /// <summary>Round-trip form for the TSV, so a reader loses no precision.</summary>
     private static string Raw(double v) =>
         double.IsNaN(v) ? "" : double.IsInfinity(v) ? (v > 0 ? "inf" : "-inf") : v.ToString("R", Inv);
+
+    /// <summary>
+    /// The nodal aberration theory report: where each surface's aberration field has been
+    /// displaced to, and where the nodes of the system's field have ended up.
+    ///
+    /// <para>A total RMS number says a telescope is soft. This says WHICH surface moved, because
+    /// the node geometry is characteristic of the fault: a figure error at the stop contributes
+    /// to the node SPLITTING but not to their midpoint, so its two astigmatic nodes stay
+    /// symmetric about the field centre, while a misaligned surface moves the midpoint and
+    /// carries them off together.</para>
+    ///
+    /// <para>Third order only, which is where nodal aberration theory's node structure is exact
+    /// and where its subject - conic telescopes - lives. An aligned design prints the same
+    /// coefficients it always did and every node at the origin, which is the theory's own
+    /// consistency check rather than a special case.</para>
+    /// </summary>
+    public string BuildNatText()
+    {
+        var sb = new StringBuilder();
+        double field = MaxField();
+
+        sb.AppendLine("NODAL ABERRATION THEORY - THIRD ORDER");
+        sb.AppendLine("--------------------------------------------------------------------------------");
+        sb.AppendLine("Thompson, J. Opt. Soc. Am. A 22, 1389 (2005). Each surface contributes the");
+        sb.AppendLine("rotationally symmetric field it always did, displaced by sigma; the total is the");
+        sb.AppendLine("sum of displaced fields, and its zeros - the NODES - leave the axis.");
+        sb.AppendLine("Field vectors are in the units of the design's field, measured from its centre.");
+        sb.AppendLine();
+
+        if (Math.Abs(field) < 1e-15)
+        {
+            sb.AppendLine("This design has no off-axis field, so it has no aberration field to displace.");
+            return sb.ToString();
+        }
+
+        var p = ParaxialTrace.Trace(_sys, PrimaryIndices, field);
+        var seidel = SeidelCoefficients.Compute(_sys, PrimaryIndices, PrimaryIndices,
+                                                PrimaryIndices, p);
+        var nat = NatField.Compute(_sys, PrimaryIndices, p, seidel);
+
+        sb.AppendLine("  Third-order wave coefficients of the system");
+        sb.AppendLine(string.Format(Inv, "    W040  {0,13}   spherical", SciZ(nat.Totals.W040)));
+        sb.AppendLine(string.Format(Inv, "    W131  {0,13}   coma", SciZ(nat.Totals.W131)));
+        sb.AppendLine(string.Format(Inv, "    W222  {0,13}   astigmatism", SciZ(nat.Totals.W222)));
+        sb.AppendLine(string.Format(Inv, "    W220P {0,13}   Petzval", SciZ(nat.Totals.W220P)));
+        sb.AppendLine(string.Format(Inv, "    W220M {0,13}   medial  = W220P + W222/2", SciZ(nat.Totals.W220M)));
+        sb.AppendLine(string.Format(Inv, "    W311  {0,13}   distortion", SciZ(nat.Totals.W311)));
+        sb.AppendLine();
+
+        if (nat.IsAligned)
+        {
+            sb.AppendLine("  This design is ALIGNED - no surface carries a tilt or a decentre - so every");
+            sb.AppendLine("  sigma is zero, the sums collapse to the ordinary Seidel ones, and every node");
+            sb.AppendLine("  sits at the centre of the field. That is the theory reducing correctly, not a");
+            sb.AppendLine("  case it declines to handle: perturb a surface and the nodes move.");
+            return sb.ToString();
+        }
+
+        sb.AppendLine("  Perturbations, and the aberration field centre each surface acquires");
+        sb.AppendLine("    sigma points to where that surface's own field lands. It DIVERGES where the");
+        sb.AppendLine("    chief ray strikes a surface normally - that surface then contributes no coma");
+        sb.AppendLine("    and no astigmatism either, so the products the theory uses stay finite.");
+        sb.AppendLine();
+        sb.AppendLine("    surf      dec x      dec y     tilt x     tilt y      sigma x      sigma y");
+        sb.AppendLine("    " + new string('-', 74));
+
+        int last = _sys.LastOpticalSurface();
+        for (int j = 1; j <= last; j++)
+        {
+            var s = _sys.Surfaces[j];
+            bool suppressed = Array.IndexOf(nat.Sigmas.SigmaSuppressedAt, j) >= 0;
+            var sig = nat.Sigmas.Sigma[j];
+            if (!s.IsPerturbed && sig.MagnitudeSquared == 0.0 && !suppressed) continue;
+
+            sb.AppendLine(string.Format(Inv,
+                "    {0,4} {1,10} {2,10} {3,10} {4,10} {5,12} {6,12}",
+                j, Num(s.DecenterX), Num(s.DecenterY),
+                Num(s.TiltX), Num(s.TiltY),
+                suppressed ? "diverges" : SciZ(sig.X),
+                suppressed ? "diverges" : SciZ(sig.Y)));
+        }
+        sb.AppendLine();
+
+        sb.AppendLine("  Nodes");
+        if (nat.ComaNodeExists)
+            sb.AppendLine(string.Format(Inv, "    coma          one node at  ({0}, {1})",
+                                        SciZ(nat.ComaNode.X), SciZ(nat.ComaNode.Y)));
+        else
+            sb.AppendLine("    coma          the system has no third-order coma to displace");
+
+        if (nat.AstigmatismNodesExist)
+        {
+            sb.AppendLine(string.Format(Inv, "    astigmatism   two nodes at ({0}, {1})",
+                                        SciZ(nat.AstigmatismNode1.X), SciZ(nat.AstigmatismNode1.Y)));
+            sb.AppendLine(string.Format(Inv, "                           and ({0}, {1})",
+                                        SciZ(nat.AstigmatismNode2.X), SciZ(nat.AstigmatismNode2.Y)));
+            sb.AppendLine(string.Format(Inv, "                  midpoint     ({0}, {1})",
+                                        SciZ(nat.A222Normalised.X), SciZ(nat.A222Normalised.Y)));
+            sb.AppendLine("                  a midpoint at the field centre is the signature of figure");
+            sb.AppendLine("                  error at the stop; a displaced one, of misalignment.");
+        }
+        else
+        {
+            sb.AppendLine("    astigmatism   the system is anastigmatic, so the binodal form degenerates");
+        }
+
+        if (nat.MedialExists)
+            sb.AppendLine(string.Format(Inv, "    medial focus  vertex at    ({0}, {1})",
+                                        SciZ(nat.MedialVertex.X), SciZ(nat.MedialVertex.Y)));
+        else
+            sb.AppendLine("    medial focus  not available - a sigma diverges, or W220M is zero");
+
+        sb.AppendLine();
+        sb.AppendLine("  The medial vertex and the coma node do not generally coincide: the sigma are the");
+        sb.AppendLine("  same for every aberration, but each is weighted by its own surface coefficients.");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// A full-field display as TSV: the magnitude and orientation of third-order coma and
+    /// astigmatism on a grid of field points.
+    ///
+    /// <para>This is what the node geometry looks like when it is drawn, and it is the form an
+    /// alignment engineer reads. Astigmatism is a squared-vector quantity, so HALF its
+    /// orientation is the azimuth of the line image - the column says so rather than leaving the
+    /// factor of two to be discovered.</para>
+    /// </summary>
+    public string BuildNatFullFieldTsv(int steps = 9)
+    {
+        double field = MaxField();
+        var sb = new StringBuilder();
+        sb.AppendLine("hx\thy\tcoma\tcoma_orientation_deg\tastigmatism\tline_image_azimuth_deg");
+
+        if (Math.Abs(field) < 1e-15) return sb.ToString();
+
+        var p = ParaxialTrace.Trace(_sys, PrimaryIndices, field);
+        var seidel = SeidelCoefficients.Compute(_sys, PrimaryIndices, PrimaryIndices,
+                                                PrimaryIndices, p);
+        var nat = NatField.Compute(_sys, PrimaryIndices, p, seidel);
+
+        const double deg = 180.0 / Math.PI;
+        for (int iy = 0; iy < steps; iy++)
+        {
+            double hy = steps == 1 ? 0.0 : -1.0 + 2.0 * iy / (steps - 1);
+            for (int ix = 0; ix < steps; ix++)
+            {
+                double hx = steps == 1 ? 0.0 : -1.0 + 2.0 * ix / (steps - 1);
+                var h = new Vec2(hx, hy);
+                var coma = nat.ComaAt(h);
+                var ast = nat.AstigmatismAt(h);
+
+                sb.AppendLine(string.Join("\t",
+                    Raw(hx), Raw(hy),
+                    Raw(coma.Magnitude), Raw(coma.Orientation * deg),
+                    Raw(ast.Magnitude), Raw(0.5 * ast.Orientation * deg)));
+            }
+        }
+        return sb.ToString();
+    }
 }

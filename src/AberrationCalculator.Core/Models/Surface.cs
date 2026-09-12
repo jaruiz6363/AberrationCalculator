@@ -53,6 +53,71 @@ public class Surface
     /// <summary>True when this surface is the aperture stop.</summary>
     public bool IsStop { get; set; }
 
+    // ── Perturbation ─────────────────────────────────────────────────────────────────
+    // How this surface sits relative to the mechanical axis. Zero for every surface of an
+    // aligned design, which is what a lens file normally describes, so nothing downstream
+    // changes unless something sets these. Nodal aberration theory is the only consumer:
+    // the paraxial trace is a rotationally symmetric construction and does not read them.
+
+    /// <summary>Decentre along x, in lens units.</summary>
+    public Scalar DecenterX { get; set; }
+
+    /// <summary>Decentre along y, in lens units.</summary>
+    public Scalar DecenterY { get; set; }
+
+    /// <summary>
+    /// Tilt about the x axis, in RADIANS. A tilt about x swings the surface in the y-z
+    /// meridian, so it pairs with <see cref="DecenterY"/> - see the note on
+    /// <see cref="IsPerturbed"/>.
+    /// </summary>
+    public Scalar TiltX { get; set; }
+
+    /// <summary>Tilt about the y axis, in RADIANS.</summary>
+    public Scalar TiltY { get; set; }
+
+    /// <summary>
+    /// Fringe Zernike departure of this surface from its nominal shape, indexed BY FRINGE TERM
+    /// NUMBER - so <c>[5]</c> and <c>[6]</c> are astigmatism, <c>[7]</c> and <c>[8]</c> coma.
+    /// Empty when the surface is the shape the prescription says it is.
+    ///
+    /// <para>This is a SURFACE SAG departure, in lens units, not a wavefront. An interferogram
+    /// measures the wavefront, which is larger by the index step the light crosses - a factor of
+    /// <c>(n' - n)</c>, or 2 for a mirror at normal incidence - and the conversion is the
+    /// reader's to make, because only they know how the interferogram was taken.</para>
+    ///
+    /// <para>Indexed by term number rather than named, because nodal aberration theory extends
+    /// upwards through the same list: Z10/11 trefoil, Z12/13 oblique spherical, Z14/15 secondary
+    /// coma, Z17/18 tetrafoil. Only 5 to 8 are acted on today; the rest are carried and ignored
+    /// rather than refused, so a file that states them survives a round trip.</para>
+    /// </summary>
+    public Scalar[] FringeZernike { get; set; } = Array.Empty<Scalar>();
+
+    /// <summary>The Fringe Zernike coefficient of that term, or zero if none is stated.</summary>
+    public Scalar Zernike(int term) =>
+        FringeZernike != null && term >= 0 && term < FringeZernike.Length ? FringeZernike[term] : 0.0;
+
+    /// <summary>True when any Zernike departure has been stated for this surface.</summary>
+    public bool HasZernike
+    {
+        get
+        {
+            if (FringeZernike == null) return false;
+            foreach (var z in FringeZernike) if (z != 0.0) return true;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Whether this surface departs from the mechanical axis at all.
+    ///
+    /// <para>For a SPHERICAL surface a decentre is a tilt about the centre of curvature, so the
+    /// two enter nodal aberration theory only through the combination <c>T + c D</c> - the
+    /// "equivalent tilt". They are kept apart here anyway, because a conic or a figured surface
+    /// breaks that equivalence and because a tolerance budget quotes them separately.</para>
+    /// </summary>
+    public bool IsPerturbed =>
+        DecenterX != 0.0 || DecenterY != 0.0 || TiltX != 0.0 || TiltY != 0.0;
+
     public bool IsMirror => !string.IsNullOrEmpty(Material)
                             && Material!.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
 
