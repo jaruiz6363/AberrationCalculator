@@ -179,17 +179,33 @@ public sealed class NatField
             // curvature and index step, and figuring changes neither - so the split here is
             // S4/4 plus the spherical half of S3/4, with the aspheric half taken at the
             // aspheric centre.
+            // The SPHERICAL half needs sigma itself, so it is unavailable exactly where the
+            // chief-ray incidence vanishes - and nowhere else. Testing the aspheric condition
+            // here instead, as this once did, refused the medial vertex on any ordinary surface
+            // that happened to sit at the stop, where sigma is perfectly well defined.
             if (System.Array.IndexOf(sig.SigmaSuppressedAt, j) >= 0) { medialOk = false; continue; }
 
+            // The MEDIAL weight is W220P + W222 = S4/4 + S3/2, not S4/4 + S3/4. The second is the
+            // sagittal surface, and this line carried it - an inline copy of the same error
+            // WaveCoefficients.Third.W220M had, which survived the fix there because it does not
+            // go through that property.
             var s = sig.Sigma[j];
-            Scalar w220mSph = seidel.S4[j] / 4.0 + (seidel.S3[j] - s3a) / 4.0;
+            Scalar w220mSph = seidel.S4[j] / 4.0 + (seidel.S3[j] - s3a) / 2.0;
             a220m += w220mSph * s;
             b220m += w220mSph * Vec2.Dot(s, s);
 
             if (figured)
             {
+                // And the ASPHERIC half needs the aspheric sigma, which fails at a pupil. Only a
+                // figured surface can be caught by it, which is why the test sits inside here.
+                if (System.Array.IndexOf(sig.SigmaAsphericSuppressedAt, j) >= 0)
+                {
+                    medialOk = false;
+                    continue;
+                }
+
                 var sA = sig.SigmaAspheric[j];
-                Scalar w220mAsph = s3a / 4.0;
+                Scalar w220mAsph = s3a / 2.0;
                 a220m += w220mAsph * sA;
                 b220m += w220mAsph * Vec2.Dot(sA, sA);
             }

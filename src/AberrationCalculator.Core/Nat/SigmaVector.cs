@@ -94,19 +94,38 @@ public sealed class SigmaVector
     public Scalar[] Kernel { get; }
 
     /// <summary>
-    /// Surfaces where <c>sigma</c> could not be formed because the chief-ray incidence was too
-    /// near zero. The reduced form is still exact at those surfaces, so the aberration field is
-    /// unaffected; only the printed vector is missing.
+    /// Surfaces where <see cref="Sigma"/> could not be formed because the CHIEF-RAY INCIDENCE was
+    /// too near zero - the chief ray striking the surface normally.
+    ///
+    /// <para><see cref="Reduced"/> is still exact there, so coma and astigmatism are unaffected:
+    /// <c>W131</c> carries one factor of <c>ibar</c> and <c>W222</c> two, and the products the
+    /// theory uses cancel the division. <b>Field curvature does not cancel</b> - the Petzval part
+    /// carries no <c>ibar</c> at all - so the medial vertex genuinely cannot be formed at such a
+    /// surface, and <see cref="NatField"/> declines it.</para>
+    ///
+    /// <para><b>This is not the same condition as <see cref="SigmaAsphericSuppressedAt"/></b>, and
+    /// conflating the two was a bug: the flag was raised by the aspheric condition and read as
+    /// though it were this one, so an ordinary surface at the stop was reported as having a
+    /// diverging sigma, and the medial vertex was refused, when its sigma was perfectly good.</para>
     /// </summary>
     public int[] SigmaSuppressedAt { get; }
 
+    /// <summary>
+    /// Surfaces where <see cref="SigmaAspheric"/> could not be formed because the CHIEF-RAY HEIGHT
+    /// was too near zero - a surface at a pupil. Only a figured surface can appear here, having
+    /// nothing else to centre.
+    /// </summary>
+    public int[] SigmaAsphericSuppressedAt { get; }
+
     private SigmaVector(Vec2[] sigma, Vec2[] reduced, Scalar[] i, Scalar[] ibar, Scalar[] g,
-                        int[] suppressed, Vec2[] sigmaAsph, Vec2[] reducedAsph)
+                        int[] suppressed, Vec2[] sigmaAsph, Vec2[] reducedAsph,
+                        int[] asphericSuppressed)
     {
         Sigma = sigma; Reduced = reduced;
         MarginalIncidence = i; ChiefIncidence = ibar; Kernel = g;
         SigmaSuppressedAt = suppressed;
         SigmaAspheric = sigmaAsph; ReducedAspheric = reducedAsph;
+        SigmaAsphericSuppressedAt = asphericSuppressed;
     }
 
     /// <summary>Whether this surface carries figuring - a conic or any aspheric term.</summary>
@@ -143,6 +162,7 @@ public sealed class SigmaVector
         var ibar = new Scalar[count];
         var g = new Scalar[count];
         var suppressed = new System.Collections.Generic.List<int>();
+        var asphericSuppressed = new System.Collections.Generic.List<int>();
 
         Scalar invariant = p.LagrangeInvariant;
 
@@ -163,7 +183,7 @@ public sealed class SigmaVector
 
         if (SMath.Abs(invariant) < 1e-15)
             return new SigmaVector(sigma, reduced, i, ibar, g, Array.Empty<int>(),
-                                   sigmaAsph, reducedAsph);
+                                   sigmaAsph, reducedAsph, Array.Empty<int>());
 
         // Walk the optical axis ray through the system, accumulating its state as it goes.
         //
@@ -258,24 +278,27 @@ public sealed class SigmaVector
 
         for (int j = 1; j <= last; j++)
         {
+            // TWO divisions, TWO ways to fail, and they fail at different surfaces. Keeping one
+            // list for both was a bug: the flag was raised by the aspheric condition and read as
+            // though it were the spherical one, so a plain surface at the stop was reported as
+            // having a diverging sigma when its sigma was perfectly good.
             if (SMath.Abs(ibar[j]) > 1e-12)
-            {
                 sigma[j] = new Vec2(reduced[j].X / ibar[j], reduced[j].Y / ibar[j]);
-            }
+            else if (reduced[j].MagnitudeSquared > 0.0)
+                suppressed.Add(j);
 
             // The aspheric one divides by the CHIEF RAY HEIGHT instead, which vanishes at a
             // stop rather than at normal incidence - a different surface, and a different
-            // reason to be careful.
+            // reason to be careful. It can only be missing where there is figuring to miss,
+            // which is why the test is on the ASPHERIC reduced vector and not the other one.
             Scalar ybarj = p.Ybar[j];
             if (SMath.Abs(ybarj) > 1e-12)
                 sigmaAsph[j] = new Vec2(reducedAsph[j].X / ybarj, reducedAsph[j].Y / ybarj);
-            else if (reduced[j].MagnitudeSquared > 0.0)
-            {
-                suppressed.Add(j);
-            }
+            else if (reducedAsph[j].MagnitudeSquared > 0.0)
+                asphericSuppressed.Add(j);
         }
 
         return new SigmaVector(sigma, reduced, i, ibar, g, suppressed.ToArray(),
-                               sigmaAsph, reducedAsph);
+                               sigmaAsph, reducedAsph, asphericSuppressed.ToArray());
     }
 }

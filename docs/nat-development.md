@@ -1536,6 +1536,54 @@ Both are pre-existing and neither was in scope; they are recorded so they are no
    own documentation that "the reduced form is still exact at those surfaces, so the aberration
    field is unaffected; only the printed vector is missing".
 
+## The sigma suppression fixes
+
+Two defects recorded in the previous section, now fixed. Both were one condition standing in for
+another.
+
+### One list was doing the work of two
+
+`sigma` divides by the chief-ray INCIDENCE and fails where the chief ray strikes a surface
+normally. `sigma_aspheric` divides by the chief-ray HEIGHT and fails at a pupil. Different
+quantities, different surfaces, different reasons — and one list, raised by the aspheric
+condition and read as though it were the spherical one:
+
+    if (|ybar| > eps) sigmaAsph[j] = ...;
+    else if (reduced[j] != 0) suppressed.Add(j);      // tests the SPHERICAL reduced vector
+
+So any surface at a pupil was flagged, figured or not, and the spherical failure was never
+recorded at all. On the Cooke triplet, surface 4 - the stop, unfigured - was printed as
+`diverges` while its sigma was a perfectly good `5.4044E-03` and its chief-ray incidence `0.295`,
+nowhere near zero. `NatField` then refused the medial vertex on its account.
+
+Now there are two lists, `SigmaSuppressedAt` and `SigmaAsphericSuppressedAt`, each raised by its
+own condition, and `NatField` declines the medial for the spherical failure always and for the
+aspheric one only on a figured surface — which is the only kind that can have it.
+
+### And the same half-astigmatism error, a second time
+
+With the flag corrected the medial vertex appeared, at `6.0844E-02` — and the fifth-order route
+said `1.4932E-01`. The medial weight had been fixed in `WaveCoefficients.Third.W220M` but
+`NatField` forms it INLINE:
+
+    Scalar w220mSph = seidel.S4[j] / 4.0 + (seidel.S3[j] - s3a) / 4.0;
+
+`S4/4 + S3/4` is the sagittal surface again. The medial is `S4/4 + S3/2`. The fix to the property
+never reached this line because this line does not use the property.
+
+**Worth noting how it was caught both times**: by two independent routes disagreeing, not by
+inspection. With the weight corrected they agree exactly — `1.4932E-01` from the Seidel sums and
+`1.4932E-01` through Buchdahl's W coordinates, sharing nothing but the sigmas — and there is now
+a test asserting it, so a third copy of the same slip would not survive.
+
+### What the tests assert
+
+That the condition which used to trip is still genuinely present (the stop's `ybar` really is
+zero) while the one that matters is not (its chief-ray incidence is 0.295); that the medial
+vertex is therefore available; that putting a conic on that same surface suppresses the ASPHERIC
+sigma and only that, and declines the medial for the right reason; and that an unfigured design
+has an empty aspheric list whatever its geometry.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed

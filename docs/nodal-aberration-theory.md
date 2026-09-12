@@ -82,6 +82,15 @@ the theory: the same surface then contributes no coma and no astigmatism either,
 the theory actually uses stay finite. The report prints `diverges` rather than a number, and the
 field is computed from the finite form.
 
+**Field curvature is the exception.** The Petzval part carries no factor of the chief-ray
+incidence, so nothing cancels the division, and the medial vertex genuinely cannot be formed at
+such a surface. The report says so rather than printing a number it does not have.
+
+A *figured* surface has a second field centre — the aspheric cap is a zero-power plate, centred by
+where the optical axis ray crosses it rather than by an angle of incidence — and that one divides
+by the chief-ray HEIGHT, so it fails **at a pupil** instead. Two conditions, two surfaces, two
+reasons. An ordinary surface at the stop is not affected by either.
+
 ### The nodes
 
 Third order gives coma one node, astigmatism two, and field curvature a vertex. Fifth order:
@@ -220,6 +229,9 @@ published number, an internal identity, or two independent routes made to agree.
 - An **aligned** system puts every node on the axis and collapses to ordinary Seidel.
 - A **trefoil plate at the stop** moves the trefoil nodes and leaves the astigmatic ones alone; off
   the stop it moves both.
+- The **medial vertex** comes out in the same place by both routes - the third order from the
+  Seidel sums, the fifth-order machinery through Buchdahl's W coordinates - sharing nothing but
+  the sigmas.
 
 ## What it does not do
 
@@ -233,10 +245,6 @@ published number, an internal identity, or two independent routes made to agree.
 - **Seventh order** is not implemented. The tertiary rows of VI Table I are transcribed but unused.
 - **The optimiser stays spherical-only.** NAT here is analysis. The one thing it feeds the
   optimiser is the `ASBLT` operand, which is Gu's as-built tolerance sensitivity.
-- **Two known defects in sigma suppression**, both pre-existing and recorded in the development
-  log: the suppression flag fires on unfigured surfaces because it tests the spherical reduced
-  sigma where only the aspheric one is affected, and the medial vertex is then refused for a
-  surface whose sigma is perfectly good.
 
 ## References
 
