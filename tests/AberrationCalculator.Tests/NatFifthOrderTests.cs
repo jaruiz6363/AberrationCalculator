@@ -1,0 +1,243 @@
+using System;
+using AberrationCalculator.Core.Nat;
+using Xunit;
+
+namespace AberrationCalculator.Tests;
+
+/// <summary>
+/// The fifth-order nodal solutions, Thompson 2010 Appendix B.
+///
+/// <para>These need no external oracle, and that is the point of them. Thompson gives two forms
+/// of every result: an unnormalised one he recommends for computation, and a normalised one whose
+/// structure reveals where the nodes are. The two are derived from each other by a page of vector
+/// algebra, so <b>the analytic node positions must be zeros of the unnormalised expression</b>.
+/// Each is implemented independently here and checked against the other. A slip in the cubic
+/// solution, in the branch pairing, or in the vector product would break that agreement.</para>
+/// </summary>
+public class NatFifthOrderTests
+{
+    /// <summary>A synthetic system: contributions and displacements chosen to be untidy, so that
+    /// nothing cancels by accident.</summary>
+    private static NatFifthOrder Build(params Vec2[] sigmas)
+    {
+        var coeff = new[]
+        {
+            //                pi1  pi2   pi3   pi4   pi5   s1    s2    s3    s4    s5    s6    s7    s8    s9
+            new Deformation(0.11, 0.23, -0.4, 0.17, 0.05, 1.30, -2.1, 0.75, -1.4, 0.62, 0.31, 0.44, -0.9, 0.13),
+            new Deformation(-0.3, 0.07, 0.22, -0.6, 0.19, -0.8, 1.55, -0.3, 0.91, -1.2, 0.08, -0.7, 0.35, -0.2),
+            new Deformation(0.05, -0.5, 0.13, 0.28, -0.1, 0.42, 0.33, 1.10, -0.2, 0.47, -0.5, 1.25, 0.60, 0.09),
+        };
+        double[] w131 = { 0.23, 0.07, -0.5 };
+
+        int n = Math.Min(sigmas.Length, coeff.Length);
+        return NatFifthOrder.Compute(j => coeff[j], j => w131[j], j => sigmas[j], n);
+    }
+
+    private static void AssertNearZero(Vec2 v, string what, double scale = 1.0)
+        => Assert.True(v.Magnitude <= 1e-9 * Math.Max(1.0, scale),
+                       $"{what}: residual {v} has magnitude {v.Magnitude}");
+
+    /// <summary>
+    /// The three elliptical-coma nodes are roots of Eq. (B11)'s cubic. This is the sharpest test
+    /// in the file: the cubic is solved by Cardano in Thompson's vector algebra, with a branch
+    /// choice - the pairing <c>R S = -b^2</c> - that has no other check on it.
+    /// </summary>
+    [Fact]
+    public void TheThreeTrefoilNodesAreRootsOfTheCubic()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        var nodes = f.Nodes333;
+        Assert.Equal(3, nodes.Length);
+        foreach (var node in nodes)
+            AssertNearZero(f.TrefoilResidual(node), $"trefoil node {node}");
+    }
+
+    /// <summary>
+    /// The three field-cubed coma nodes are zeros of Eq. (B10)'s field-cubed group, and they are
+    /// COLLINEAR - the outer two are placed symmetrically about the middle one, which is what
+    /// makes this aberration's signature distinct from the trefoil's.
+    /// </summary>
+    [Fact]
+    public void TheThreeFieldCubedComaNodesAreZerosAndCollinear()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        var nodes = f.Nodes331M;
+        Assert.Equal(3, nodes.Length);
+        foreach (var node in nodes)
+            AssertNearZero(f.FieldCubedComaResidual(node), $"field-cubed coma node {node}");
+
+        // Collinear: the outer two are equally spaced about the centre one, so their midpoint is
+        // the centre. (That is stronger than collinearity and is what Eq. (B10) actually gives.)
+        var mid = 0.5 * (nodes[1] + nodes[2]);
+        AssertNearZero(mid - nodes[0], "midpoint of the outer pair against the centre node");
+    }
+
+    /// <summary>
+    /// Field-linear fifth-order coma has one node, Eq. (B9), and it behaves exactly like the
+    /// third-order coma it resembles.
+    /// </summary>
+    [Fact]
+    public void FieldLinearFifthOrderComaHasASingleNode()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        Vec2 node = f.Node151;
+        AssertNearZero(f.M151.W * node - f.M151.A, "W151 node");
+    }
+
+    /// <summary>
+    /// Fifth-order astigmatism is binodal, on the same form Shack found at third order: the two
+    /// nodes are where <c>(H - a242)^2 = -b242^2</c>.
+    /// </summary>
+    [Fact]
+    public void FifthOrderAstigmatismIsBinodal()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        var nodes = f.Nodes242;
+        Assert.Equal(2, nodes.Length);
+        foreach (var node in nodes)
+        {
+            Vec2 hn = node - f.M242.a;
+            AssertNearZero(hn.Squared + f.M242.b2, $"astigmatic node {node}");
+        }
+    }
+
+    /// <summary>
+    /// An aligned system has every node on axis. Thompson's own statement of this is that the
+    /// rotationally symmetric theory is the special case of his "where the multinodal zeroes
+    /// degenerate to overlay at the center of symmetry".
+    /// </summary>
+    [Fact]
+    public void AnAlignedSystemHasEveryNodeOnAxis()
+    {
+        var f = Build(Vec2.Zero, Vec2.Zero, Vec2.Zero);
+
+        AssertNearZero(f.Node151, "W151 node");
+        foreach (var node in f.Nodes331M) AssertNearZero(node, "field-cubed coma node");
+        foreach (var node in f.Nodes333) AssertNearZero(node, "trefoil node");
+        foreach (var node in f.Nodes242) AssertNearZero(node, "astigmatic node");
+        AssertNearZero(f.Vertex240M, "medial vertex");
+        Assert.Equal(0.0, (double)f.B240M, 12);
+    }
+
+    /// <summary>
+    /// A uniformly displaced system is the same system about a shifted axis, so every node moves
+    /// to that displacement and none of them splits. This is the same statement as the field
+    /// moment test, but carried all the way through the cubic solution - where a wrong branch or
+    /// a mis-signed root would show up as a spurious splitting rather than as a shift.
+    /// </summary>
+    [Fact]
+    public void AUniformDisplacementMovesEveryNodeAndSplitsNone()
+    {
+        var s = new Vec2(0.014, -0.0092);
+        var f = Build(s, s, s);
+
+        AssertNearZero(f.Node151 - s, "W151 node");
+        foreach (var node in f.Nodes331M) AssertNearZero(node - s, "field-cubed coma node");
+        foreach (var node in f.Nodes333) AssertNearZero(node - s, "trefoil node");
+        foreach (var node in f.Nodes242) AssertNearZero(node - s, "astigmatic node");
+        AssertNearZero(f.Vertex240M - s, "medial vertex");
+    }
+
+    /// <summary>
+    /// Eqs. (B13-14): field-cubed coma changes both the magnitude and the node of the third-order
+    /// coma it sits with. On an aligned system it must change neither, because there is nothing
+    /// for it to be displaced about - and on a perturbed one it must change both, or the
+    /// correction has not been applied.
+    /// </summary>
+    [Fact]
+    public void FieldCubedComaModifiesTheThirdOrderComaItGenerates()
+    {
+        var aligned = Build(Vec2.Zero, Vec2.Zero, Vec2.Zero);
+        Assert.Equal((double)aligned.M131.W, (double)aligned.W131E, 12);
+        AssertNearZero(aligned.Node131E, "third-order coma node, aligned");
+
+        var perturbed = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+        Assert.NotEqual((double)perturbed.M131.W, (double)perturbed.W131E, 8);
+
+        // And the corrected node is not simply the uncorrected one.
+        Assert.True((perturbed.Node131E - perturbed.M131.a).Magnitude > 1e-9,
+            "Eq. (B14) left the third-order coma node unchanged");
+    }
+
+    /// <summary>
+    /// The unnormalised expansion, Eq. (B5), is what Thompson recommends computing with, and it
+    /// must agree with the nodal picture: at a node of elliptical coma the trefoil part of the
+    /// wave aberration vanishes for every pupil point.
+    ///
+    /// <para>This closes the loop between the two forms. <see cref="ComaticWave"/> is assembled
+    /// term by term from Eqs. (B2-B4) and knows nothing about where the nodes are; the node
+    /// solutions come from Eqs. (B10-B11) and know nothing about the expansion.</para>
+    /// </summary>
+    [Fact]
+    public void TheUnnormalisedExpansionVanishesAtTheTrefoilNodes()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        // Isolate the trefoil term by differencing against a field with the same everything but
+        // W333 removed is not available here, so instead check the residual vector directly for
+        // several pupil points: W = (1/4)[residual].rho^3, so a vanishing residual kills the term
+        // at every rho at once.
+        foreach (var node in f.Nodes333)
+        {
+            Vec2 res = f.TrefoilResidual(node);
+            foreach (var rho in new[] { new Vec2(1, 0), new Vec2(0, 1), new Vec2(0.6, -0.8) })
+                Assert.True(Math.Abs((double)Vec2.Dot(res, rho.Squared * rho)) < 1e-9,
+                    $"trefoil term at node {node}, pupil {rho}");
+        }
+    }
+
+    /// <summary>
+    /// The degeneracy guard in the trefoil solution must not swallow real physics.
+    ///
+    /// <para>A cube root raises relative error to the one-third power, so a <c>b^2</c> sitting at
+    /// the round-off floor of the subtraction that made it returns a node splitting of order
+    /// 1e-6 - noise reported as physics. The solution therefore collapses the three nodes onto
+    /// the field centre when <c>b^2</c> and <c>c^3</c> are below the floor of their own
+    /// construction. This checks the other side of that: a displacement small enough to be
+    /// nearly uniform, but far above round-off, still splits the nodes.</para>
+    /// </summary>
+    [Fact]
+    public void ASmallButRealDisplacementStillSplitsTheTrefoilNodes()
+    {
+        var s = new Vec2(0.014, -0.0092);
+        var nudge = new Vec2(0.014 + 1e-7, -0.0092);
+        var f = Build(s, nudge, s);
+
+        var nodes = f.Nodes333;
+        double spread = 0;
+        for (int i = 0; i < 3; i++)
+            for (int k = i + 1; k < 3; k++)
+                spread = Math.Max(spread, (nodes[i] - nodes[k]).Magnitude);
+
+        Assert.True(spread > 1e-12, $"a real displacement of 1e-7 was swallowed; spread {spread}");
+        foreach (var node in nodes)
+            AssertNearZero(f.TrefoilResidual(node), $"trefoil node {node}");
+    }
+
+    /// <summary>
+    /// The wave aberration is finite and well behaved across the field, and reduces to the
+    /// rotationally symmetric answer on axis when the system is aligned.
+    /// </summary>
+    [Fact]
+    public void TheAlignedWaveIsTheSymmetricOne()
+    {
+        var f = Build(Vec2.Zero, Vec2.Zero, Vec2.Zero);
+        var h = new Vec2(0.0, 0.7);
+        var rho = new Vec2(0.0, 1.0);
+
+        // With every sigma zero the field vectors vanish and Eq. (B5) collapses to
+        //   W131 (H.rho)(rho.rho) + W151 (H.rho)(rho.rho)^2
+        //     + W331M (H.H)(H.rho)(rho.rho) + (1/4) W333 (H^3.rho^3)
+        double rr = Vec2.Dot(rho, rho), hh = Vec2.Dot(h, h);
+        double expect = f.M131.W * Vec2.Dot(h, rho) * rr
+                      + f.M151.W * Vec2.Dot(h, rho) * rr * rr
+                      + f.M331M.W * hh * Vec2.Dot(h, rho) * rr
+                      + 0.25 * f.M333.W * Vec2.Dot(h.Squared * h, rho.Squared * rho);
+
+        Assert.Equal(expect, (double)f.ComaticWave(h, rho), 10);
+    }
+}

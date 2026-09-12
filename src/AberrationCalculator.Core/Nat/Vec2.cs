@@ -100,6 +100,34 @@ public readonly struct Vec2 : IEquatable<Vec2>
     /// </summary>
     public Vec2 Sqrt() => FromPolar(SMath.Sqrt(Magnitude), 0.5 * Orientation);
 
+    /// <summary>
+    /// The principal cube ROOT, orientation divided by three. The other two roots are this one
+    /// turned by 120 and 240 degrees, which is <see cref="TurnedByThird"/>.
+    /// </summary>
+    public Vec2 CubeRoot() =>
+        FromPolar(SMath.Pow(Magnitude, 1.0 / 3.0), Orientation / 3.0);
+
+    /// <summary>This vector turned through 120 degrees, <c>n</c> times.</summary>
+    public Vec2 TurnedByThird(int n) =>
+        FromPolar(Magnitude, Orientation + n * (2.0 * SMath.PI / 3.0));
+
+    /// <summary>
+    /// Multiplication by <c>i</c>: a quarter turn. Thompson's imaginary unit is the vector of
+    /// unit magnitude at ninety degrees, and the trinodal solutions are written with it.
+    /// </summary>
+    public Vec2 TimesI => new Vec2(Y, -X);
+
+    /// <summary>
+    /// Division, which exists because the multiplication is the complex one: the identity is the
+    /// unit vector along <c>y</c>, and <c>b * b.Conjugate</c> is <c>|b|^2</c> times it.
+    /// </summary>
+    public static Vec2 operator /(Vec2 a, Vec2 b)
+    {
+        Scalar m = b.MagnitudeSquared;
+        if (m < 1e-300) return Zero;
+        return (1.0 / m) * (a * b.Conjugate);
+    }
+
     public bool Equals(Vec2 other) => X == other.X && Y == other.Y;
 
     public override bool Equals(object? obj) => obj is Vec2 v && Equals(v);

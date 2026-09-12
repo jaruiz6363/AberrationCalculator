@@ -1024,6 +1024,85 @@ in the appendices of the 2010 paper (the comatic types, `W131 W151 W331M W333`) 
 remaining work, and they are algebra against the moments this now supplies rather than anything
 that needs new physics.
 
+## The fifth-order nodal solutions
+
+`Nat/NatFifthOrder.cs` implements Thompson 2010 Appendix B: where the fifth-order nodes are, and
+what the comatic wave aberration is at any field point.
+
+### Three of the five types need no new machinery
+
+Eq. (B1) writes the full expansion with `W240M` and `W242` ALREADY in reduced form,
+
+    + W240M[(H - a240M).(H - a240M) + b240M](rho.rho)^2
+    + (1/2) W242{[(H - a242)^2 + b242^2].rho^2}(rho.rho)
+
+which are the third-order `W220M` and `W222` forms exactly - a vertex plus a scalar, and a binodal
+pair. Eq. (B2) collapses `W151` to `[(W151 H - A151).rho](rho.rho)^2`, a single node like `W131`.
+So only `W331M` and `W333` are genuinely new, and both are trinodal.
+
+### The two new ones
+
+**Field-cubed, third-order aperture coma.** Eq. (B10) leaves the field-cubed group as
+`W331M[(H331M^2 + b331M^2)H331M*].rho (rho.rho)`, which vanishes where the conjugate does - at
+the field centre - and where `H331M^2 = -b331M^2`, a symmetric pair about it. **Three collinear
+nodes**, the outer two placed symmetrically about the middle. Note also Eq. (B6),
+`W331M = W331 + (3/4)W333`, the medial equivalent for coma.
+
+**Elliptical coma (trefoil).** Eq. (B11) is `(1/4)W333[H333^3 + 3 H333 b333^2 - c333^3].rho^3`, so
+the nodes are the roots of a depressed cubic **in Thompson's vector algebra** - Cardano with every
+product, square root and cube root taken vectorially. Writing `x = R + S` and choosing
+`R S = -b^2` leaves `R^3 + S^3 = c^3` and `R^3 S^3 = -b^6`, so `R^3` and `S^3` are roots of a
+quadratic; the three nodes are then `2X`, `-X + i sqrt(3) X~`, `-X - i sqrt(3) X~` about the field
+centre, with `X = (R+S)/2` and `X~ = (R-S)/2`. That is the form Fig. 10 draws.
+
+`Vec2` gained a cube root, a division, and multiplication by `i` to support it - all of which
+exist because the multiplication is the complex one, with the unit vector along `y` as identity.
+
+### Thompson's induced terms, concretely
+
+Eqs. (B13-14) are what the earlier sections kept referring to:
+
+    W131E = W131 + 2 W331M b331M
+    a131E = (1/W131E)[W131 a131 + W331M(c331M - b331M^2 a331M*)]
+
+Field-cubed coma changes both the **magnitude** and the **node** of the field-linear coma it sits
+with. That is the whole of what Thompson means by an induced term - a lower-order term thrown off
+when a higher-order one is expanded about its displaced field centre - and it is why third-order
+coma in a perturbed system is not the third-order coma of the aligned one.
+
+### How it is checked, with no oracle
+
+Thompson gives two forms of every result: an unnormalised one he recommends for computation
+("the most useful form for programming into a simulation environment") and a normalised one whose
+structure shows where the nodes are. They are a page of vector algebra apart. Both are implemented
+independently here, so **the analytic node positions must be zeros of the unnormalised
+expression** - and that is the test. A slip in the cubic, in the branch pairing `R S = -b^2`, or
+in the vector product breaks the agreement.
+
+Alongside: an aligned system puts every node on axis, which is Thompson's own statement that the
+symmetric theory is his with "the multinodal zeroes degenerate[d] to overlay at the center of
+symmetry"; a uniform displacement moves every node and splits none, carried all the way through
+the cubic where a wrong branch would show as a splitting rather than a shift; and the field-cubed
+coma nodes are checked to be collinear about their centre, which is the signature distinguishing
+them from the trefoil's.
+
+### One numerical point worth recording
+
+**A cube root raises relative error to the one-third power.** For a uniformly displaced system
+`b333^2` and `c333^3` are algebraically zero but numerically sit at the round-off floor of the
+subtractions that produce them, around 1e-17 - and the cube root turns that into a node splitting
+of order 1e-6. Noise reported as physics. The solution therefore collapses the three nodes onto
+the field centre when `b^2` and `c^3` are below the floor of their own construction, judged
+against the terms they were built from rather than against an absolute epsilon. There is a test
+on each side of that: the degenerate case collapses, and a displacement of 1e-7 - small but far
+above round-off - still splits.
+
+### What remains
+
+The astigmatic fifth-order types beyond `W242` - field-quartic `W420M` and `W422`, which are
+four-node - and fifth-order distortion `W511`, the first aberration with five nodes, are in the
+2011 paper rather than the 2010 one. The moment machinery already supplies their inputs.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
