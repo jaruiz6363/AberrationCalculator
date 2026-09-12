@@ -818,56 +818,78 @@ also agrees with the `e^-2 = 1.0636` implied independently by Eq. (3.4) against 
 That is the verification route this stage needed: no ray trace, no fit, no second program.
 `DeformationTests.cs` holds it.
 
-### What remains: 39 rows, and no monograph page after all
+### The W-coordinate scheme, and the chain closes end to end
 
-VI Sec. 6 transforms paracanonical (`OT*`) coefficients into W coordinates, and it matters
-because **this program computes paracanonical coefficients** - VI Sec. 6(a) says so of paper III
-Table I directly, which is the table this program reproduces.
+`BuchdahlTableI.Compute` now takes a `wCoordinates` flag which applies the modified rows of
+VI Table I, p.536. The transcription of all thirty-nine rows is in
+`C:\Research\Buchdahl\vi-table-i-w-coordinates.md`.
 
-- **VI (6.6), primary: the transformation is the identity.** `Aa = Ap`, `Aba = Abp`, through
-  `Cba = Cbp`. VI Table II confirms it: every primary coefficient is printed with the same value
-  in both columns. **All third-order NAT work is therefore untouched by any of this.**
-- **VI (6.7), secondary: only three of the twelve relations are printed**, then "and so on". The
-  rest are to be read off from M(11.3) with the transcription rules of VI (6.5).
-- **VI (6.8-10) are tertiary** and are not needed for fifth order.
+**The whole of the difference is where the reference point sits.** Paracanonical rows carry their
+running sums back to the FIRST surface; W rows carry them forward to the IMAGE SPACE, which is
+Buchdahl's double prime. The scheme shows it in one line:
 
-**But the transformation is the long way round, and was a false lead.** VII Sec. 7(a) states that
-the W coefficients may be computed "either directly, using W coordinates, or by transformation
-from paracanonical coordinates". VI Sec. 5 gives the direct scheme:
+    paracanonical:  t20 = (1/2)(t9 at surface 1 - t9) + t16
+    W coordinates:  t20 = (t16 - (1/2)t9) + ((1/2)t9 - t16)''
 
-> the changes in the identities which were treated in the previous section lead to the
-> modification of **39 of the 192 rows of Table I of III**
+So `X''` means a running sum taken over all surfaces instead of stopping at `j < i`, an angle
+product built from the final primed angles, and a `[*]` row's recursion run backward from the
+image end seeded at zero.
 
-and **VI Table I, p.536, prints all thirty-nine**: `t20-t24` (the primaries `Ab, Abb, Bb, Cb,
-Cbb`), `t55`, `t83-t85`, `t86-t98` (which yield `S1b..S6b`), `t102-t114` (which yield
-`S1dag..S6dag`), and `t134-t149`.
+**Far fewer than thirty-nine rows were needed.** The fifth-order coefficients are `t41..t68`,
+which are not themselves in the modified list but depend on `t20..t24` through `t25..t33`. So
+patching the five primary rows moves all twelve secondary coefficients - and that alone put
+eleven of the twelve onto VI Table II's W column. The remaining rows `t83..t98` and `t102..t114`
+are a different family that feeds the tertiary order, and are not needed for fifth.
 
-So there is nothing to obtain. M(11.3) was never needed for two separate reasons:
+**One more row was needed, and VI (4.17) found it.** With the primary rows patched, S4 and S4b
+were both wrong by the same ABSOLUTE amount, about -0.0107. An equal absolute shift in both
+members of a pair is the signature of a missing additive row rather than a wrong product, and
+`t55 = s4a dagger` is the fourth-pair row in the modified list. Reading VI Table I against the
+`Secondary` helper,
 
-1. **This program already contains M(11.3).** The induced-correction block of
-   `BuchdahlCoefficients.cs` IS that iteration formula - all twelve secondary coefficients
-   gaining a bilinear correction in the accumulated third order. The monograph page would add
-   only Buchdahl's symbolic `g`/`G` form, which is what the transcription rules operate on.
-2. **The direct route skips Sec. 6 entirely**, and its 39 rows are on a page already held.
+    paracanonical:  t55 = 2(t51 - t50) + t54
+    W coordinates:  t55 = 2(pi'' t11 + t51 - t50) + t54
 
-The fit to this codebase is about as good as it could be. `BuchdahlTableI.cs` stores the scheme
-in **Buchdahl's own row numbering, `t1..t155`**, in a flat array indexed exactly as he numbers
-them, so the W-coordinate scheme is a patch to thirty-nine named rows rather than a derivation.
+so the entire modification is the one extra term `2 pi'' t11`, and `t55` enters `s4` additively
+with coefficient one. That is why both members moved together.
 
-Two things come free on the same page. VI **(4.17)** gives the secondary identities in W
-coordinates,
+The identities localised it before the cause was known. Of VI (4.17),
 
-    S2 - 4 S1b = 2(Ab - A)      S4 - S2b = -A + Bb/2      S5 - 2 S3b = -2Ab + Bb
+    S2 - 4 S1b = 2(Ab - A)     S4 - S2b = -A + Bb/2     S5 - 2 S3b = -2 Ab + Bb
 
-which are residuals of exactly the kind `BuchdahlIdentities.cs` already reports, and they are
-three of the ten that VII Sec. 6(b) refers to. VI (4.14-16) give the starred primaries,
-`A* = A - 1/2`, `B* = B - 1`, `C* = C - 1/2`, and `B* - 2 Ab* = 0`.
+the first and third were already clean at about 1e-4 while the second was out by 9.7e-3, which
+pointed at S4 alone. They hold on Buchdahl's own published W column to 6.9e-5 once the powers of
+`e` from Sec. 7(a) are applied, so that residual is the standard to meet - and applying the
+e-scaling is what made them usable at all.
 
-**One caution for whoever builds it.** The `q`-subscripted quantities that drive Sec. 6 are the
-**pupil** aberration coefficients, so the paracanonical-to-W difference is a pupil-aberration
-effect - the Sands 1970 Sec. VI point, arriving with a precise role rather than as a hand-wave.
-VI Table II bounds what is at stake: the secondary coefficients differ between the two coordinate
-systems by up to about 6 percent. Too large to neglect, and too small to notice as an error.
+**What is verified.** `WCoordinateSchemeTests` checks four things:
+
+1. the unpatched scheme reproduces VI Table II's `OT*` column, all seventeen coefficients - the
+   baseline, checked first so that agreement on the W column cannot be a coincidence of two
+   errors;
+2. the patched scheme reproduces the `W` column, all seventeen;
+3. the primary coefficients are identical in the two systems, asserted separately so a
+   regression there cannot hide inside a looser tolerance on the secondary set;
+4. **the whole chain, from a lens prescription to VII Table I** - through the W scheme, VII
+   Eqs. (6.5-6), and Eq. (3.4) - reproducing both the `D` and the `R` columns:
+
+       s1 -18.34034 / -18.34      s4  -6.00004 / -5.9997     s7   0.18050 / 0.1806
+       s2 -26.90623 / -26.905     s5   0.89852 /  0.8986     s8   0.14699 / 0.1471
+       s3  -2.54778 /  -2.547     s6  -0.20559 / -0.20577    s9  -0.05884 / -0.05877
+
+   worst relative error 1.2e-3, and those nine ARE Thompson's `W060 W151 W240 W242 W331 W420
+   W333 W422 W511`. No ray trace, no fit, no second program.
+
+**One entry does not meet the rest.** `S5b` comes out 0.16014 against a printed 0.161, and misses
+by the same amount in both columns (W: 0.1455 against 0.146). It is therefore a property of the
+baseline scheme rather than of the patch, and the baseline is checked against paper III Table I
+entry by entry elsewhere. Every other coefficient agrees to about 0.01 per cent. Recorded rather
+than absorbed into a tolerance without comment.
+
+**What is left of Sec. 6.** Nothing, for fifth order. VI (6.7) printed only three of its twelve
+secondary relations, and that route is not needed: computing directly in W coordinates was always
+the alternative VII Sec. 7(a) offered, and it turned out to need six rows rather than thirty-nine.
+The tertiary rows remain unimplemented, which matters only if seventh-order NAT is ever wanted.
 
 ## Papers
 
