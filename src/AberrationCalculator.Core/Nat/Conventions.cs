@@ -105,6 +105,26 @@ public static class Conventions
         Vec2.FromPolar(3.0 * (nAfter - nBefore) * Magnitude(z7, z8), NatComa(z7, z8));
 
     /// <summary>
+    /// The field-constant elliptical coma a Zernike TREFOIL overlay contributes at the stop -
+    /// Fuerschbach, Rolland and Thompson, <i>Opt. Express</i> <b>22</b>, 26585 (2014), Eq. (34):
+    /// <c>4(n' - n) z10/11 exp(i 3 phi)</c>. Returned as the cubic vector <c>C^3_333</c>.
+    ///
+    /// <para><b>The coefficient is four, not three.</b> Fringe <c>Z10/11</c> is <c>rho^3 cos3phi</c>
+    /// as a sag, and <c>cos 3t = 4 cos^3 t - 3 cos t</c>, so the part landing on <c>W333</c> -
+    /// whose pupil dependence is <c>cos^3</c> - carries the four. The leftover <c>-3 cos t</c> is
+    /// a pupil tilt, which displaces the image rather than blurring it. Coma's overlay carries
+    /// three for the same reason and astigmatism's carries two; a reader who assumes one rule
+    /// gets two of them wrong.</para>
+    ///
+    /// <para>How it enters the field is Table 2 of that paper, and the sign there is NEGATIVE:
+    /// <c>C^3_333 = ALIGN C^3_333 - sum_j FF C^3_333,j</c>. That is not a misprint - the NAT form
+    /// it is being matched against, Thompson 2010 Eq. (B11), carries <c>- c^3</c>.</para>
+    /// </summary>
+    public static Vec2 TrefoilOverlay(Scalar z10, Scalar z11, Scalar nBefore, Scalar nAfter) =>
+        Vec2.FromPolar(4.0 * (nAfter - nBefore) * Magnitude(z10, z11),
+                       3.0 * NatTrefoil(z10, z11));
+
+    /// <summary>
     /// The beam displacement across a surface away from the stop, <c>ybar / y</c> - Fuerschbach
     /// 2014 Eq. (1). Multiplying it by the field vector gives the decentre the beam sees, and it
     /// is what turns every field-constant overlay contribution into a field-dependent one.

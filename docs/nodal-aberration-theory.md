@@ -1,6 +1,6 @@
 # Nodal aberration theory: what it would take here
 
-Status: **stages 1 to 3 implemented**; stages 4 and 5 are still proposal. This file records what
+Status: **stages 1 to 4b and 5 implemented**; only overlays above trefoil remain. This file records what
 was read, what the theory needs, what this program already supplies, and the order the work is
 worth doing in.
 
@@ -10,8 +10,9 @@ worth doing in.
 | 2 | Gu's as-built tolerance sensitivity, as a merit operand | **done** - `Core/Nat/Sensitivity.cs`, operand `ASBLT` |
 | 3 | perturbation state, sigma, the field, the nodes, `--nat` | **done** - `Core/Nat/SigmaVector.cs`, `NatField.cs`; validated against Thompson (2009) Tables 4 and 5 |
 | 4a | Zernike astigmatism and coma overlays | **done** - `ZERN` in `.align`, wired into `NatField`; Schmid's diagnostic tested |
-| 4b | trefoil and higher overlays | proposal - needs stage 5 |
-| 5 | fifth order | proposal; no longer blocked - the trilogy is in hand |
+| 4b | trefoil overlays | **done** - `Conventions.TrefoilOverlay`, Fuerschbach 2014 Table 2 wired into `W333` and `W422`; the stop-versus-not experiment reproduced |
+| 4c | Zernike overlays above trefoil, Z12 and up | proposal - the same method, more rows |
+| 5 | fifth order | **done** - Buchdahl W coordinates to `Wklm`, the nodal solutions of the trilogy, wired into `--nat` and `nat.tsv` |
 
 **Where a perturbation comes from: the `.align` sidecar**, uniform across all six formats.
 
@@ -1351,6 +1352,75 @@ Both directions are tested: they agree when aligned, and differ when tilted.
 scaled against, so they stay in the normalisation they are computed in. Their magnitudes are
 comparable with each other and not with the first six columns; their orientations, azimuths and
 zero crossings are unaffected, being ratios.
+
+## Stage 4b: trefoil overlays, and why they had to wait
+
+Source: Fuerschbach, Rolland and Thompson, "Theory of aberration fields for general optical
+systems with freeform surfaces," *Opt. Express* **22**, 26585 (2014), Eq. (34) and **Table 2**.
+
+### The overlay vector
+
+    FF C3_333,j = 4(n' - n) z10/11 exp(i 3 phi)
+
+**The coefficient is four**, where coma's overlay carries three and astigmatism's two. Fringe
+`Z10/11` is `rho^3 cos3phi` as a sag, and `cos 3t = 4 cos^3 t - 3 cos t`, so the part landing on
+`W333` - a `cos^3` aberration - takes the four. The leftover `-3 cos t` is a pupil tilt, which
+displaces the image rather than blurring it, which is why Table 2 has only two rows where
+Eq. (35) has four terms.
+
+### Where it lands, and the sign
+
+    C3_333 -= sum_j FF C3_333,j                          field constant
+    C3_422 -= (3/2) sum_j (ybar_j / y_j) FF C3_333,j     field linear
+
+**Both are SUBTRACTED.** The text layer had lost the signs and reading them off the rendered page
+was necessary; a plus would have been perfectly plausible. It is not arbitrary - the NAT form
+being matched, Thompson 2010 Eq. (B11), carries `- c^3`.
+
+**The second row is why 4b needed stage 5.** `C3_422` is the cubic vector of fifth-order
+astigmatism, Eq. (C24). Before `W422` existed there was nowhere for it to go, which is exactly
+what the stage table meant by "needs stage 5".
+
+### The check: Fuerschbach's own experiment
+
+The second row carries the beam displacement `ybar/y`, which is **zero at a pupil** - there the
+beam footprint is the same for every field point, so the contribution cannot acquire a field
+dependence. So a trefoil plate AT the stop should generate field-constant elliptical coma and
+nothing else, and moved AWAY from the stop should also generate field-linear astigmatism. That is
+the behaviour his Schmidt telescope was built to demonstrate, and the one a three-point mount
+error produces.
+
+On the Cooke triplet, whose stop is surface 4:
+
+    plate at surface 4 (ybar/y = 0.000)    W333 nodes move 1.48    W422 nodes move 4.7e-06
+    plate at surface 1 (ybar/y = -0.838)   W333 nodes move 1.48    W422 nodes move 0.643
+
+Field constant either way, field linear only off the stop. This is also what checks that the
+second row was wired to the right place: had it been added to `W333` twice, or to the wrong
+moment, the two placements would be indistinguishable.
+
+### The normalisation bridge, and a better answer than last time
+
+An overlay contributes a physical wave amplitude, `4(n' - n)z`, which is in the SEIDEL route's
+units; the moments it joins are in the W-coordinate route's. `Nat/NormalisationBridge.cs` fits the
+`A^l F^k` scale recorded earlier - and **it checks itself**. Four third-order coefficients give
+four ratios against two unknowns, so `W040` fixes `A`, `W131` fixes `F`, and `W222` and `W311`
+are free checks.
+
+They pass to **machine precision** - residual 1.6e-16 to 5e-14 across five fixtures. So
+`A^l F^k` is not a convenient approximation, it is the transformation, and scaling an overlay
+through it is safe. The `W311` check is the one that would catch a wrong sign for `A`, carrying an
+odd power of it where the others do not.
+
+When the fit is ill-conditioned - a coefficient too small to carry information, or a set that is
+not of that form - the bridge reports `IsUsable = false`, the overlay is **declined**, and the
+report says why. Better than scaling by a factor that cannot be justified.
+
+**This also supersedes a caveat from the previous section.** The fifth-order coefficients were
+printed in Buchdahl's normalisation with a note not to compare them across blocks, because the
+scale had only been measured. It is now fitted and verified exactly, so that note could be
+retired and the whole report put in one set of units. Left as it stands for now rather than
+changed in passing.
 
 ## Papers
 

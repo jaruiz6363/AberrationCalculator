@@ -664,9 +664,32 @@ public sealed class NatFifthOrder
     /// <param name="thirdW131">Surface j's third-order coma coefficient.</param>
     /// <param name="sigma">Surface j's sigma vector.</param>
     /// <param name="count">Number of surfaces addressed by the callbacks.</param>
+    /// <param name="trefoilOverlay">
+    /// Surface j's Zernike trefoil overlay as the vector <c>FF C^3_333,j</c> of
+    /// <see cref="Conventions.TrefoilOverlay"/>, ALREADY IN THE SAME UNITS as the coefficients
+    /// <paramref name="perSurface"/> supplies. Null when no surface is figured.
+    ///
+    /// <para>Table 2 of Fuerschbach 2014 says where it lands, and it lands in two places:</para>
+    /// <code>
+    ///     C^3_333 = ALIGN C^3_333 - sum_j FF C^3_333,j
+    ///     C^3_422 = ALIGN C^3_422 - (3/2) sum_j (ybar_j / y_j) FF C^3_333,j
+    /// </code>
+    /// <para>The first is field constant and is there wherever the surface sits. The second is
+    /// the field-linear astigmatism a trefoil surface generates only when it is AWAY from the
+    /// stop, which is why it carries the beam displacement - at a pupil the beam does not walk
+    /// and the term vanishes. It is the term Fuerschbach's Schmidt-telescope experiment was built
+    /// to show, and the one a three-point mount error produces.</para>
+    ///
+    /// <para><b>This is why trefoil overlays needed the fifth order.</b> <c>C^3_422</c> is the
+    /// cubic vector of fifth-order astigmatism, Eq. (C24); before <c>W422</c> existed there was
+    /// nowhere for the second row to go.</para>
+    /// </param>
+    /// <param name="beamDisplacement">Surface j's <c>ybar_j / y_j</c>; zero at a pupil.</param>
     public static NatFifthOrder Compute(Func<int, Deformation> perSurface,
                                         Func<int, Scalar> thirdW131,
-                                        Func<int, Vec2> sigma, int count)
+                                        Func<int, Vec2> sigma, int count,
+                                        Func<int, Vec2>? trefoilOverlay = null,
+                                        Func<int, Scalar>? beamDisplacement = null)
     {
         if (perSurface == null) throw new ArgumentNullException(nameof(perSurface));
         if (sigma == null) throw new ArgumentNullException(nameof(sigma));
@@ -680,6 +703,24 @@ public sealed class NatFifthOrder
         Scalar W420M(int j) => perSurface(j).W420 + 0.5 * perSurface(j).W422;
         Scalar W220M(int j) => perSurface(j).W220M;
 
+        var m333 = FieldMoments.Accumulate(j => perSurface(j).W333, sigma, count);
+        var m422 = FieldMoments.Accumulate(j => perSurface(j).W422, sigma, count);
+
+        // Table 2 of Fuerschbach 2014, both rows, SUBTRACTED - see the parameter remarks.
+        if (trefoilOverlay != null)
+        {
+            Vec2 sum333 = Vec2.Zero, sum422 = Vec2.Zero;
+            for (int j = 0; j < count; j++)
+            {
+                Vec2 ff = trefoilOverlay(j);
+                if (ff.MagnitudeSquared == 0.0) continue;
+                sum333 += ff;
+                if (beamDisplacement != null) sum422 += beamDisplacement(j) * ff;
+            }
+            m333 = m333.WithC3(m333.C3 - sum333);
+            m422 = m422.WithC3(m422.C3 - 1.5 * sum422);
+        }
+
         return new NatFifthOrder
         {
             M131 = FieldMoments.Accumulate(thirdW131, sigma, count),
@@ -687,11 +728,11 @@ public sealed class NatFifthOrder
             M220M = FieldMoments.Accumulate(W220M, sigma, count),
             M151 = FieldMoments.Accumulate(j => perSurface(j).W151, sigma, count),
             M331M = FieldMoments.Accumulate(W331M, sigma, count),
-            M333 = FieldMoments.Accumulate(j => perSurface(j).W333, sigma, count),
+            M333 = m333,
             M240M = FieldMoments.Accumulate(W240M, sigma, count),
             M242 = FieldMoments.Accumulate(j => perSurface(j).W242, sigma, count),
             M420M = FieldMoments.Accumulate(W420M, sigma, count),
-            M422 = FieldMoments.Accumulate(j => perSurface(j).W422, sigma, count),
+            M422 = m422,
             M511 = FieldMoments.Accumulate(j => perSurface(j).W511, sigma, count),
         };
     }

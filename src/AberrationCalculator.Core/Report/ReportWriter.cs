@@ -1212,8 +1212,14 @@ public sealed class ReportWriter
         if (wf == null) return;
 
         int last = _sys.LastOpticalSurface();
-        var fifth = NatFifthOrder.Compute(j => wf.PerSurface[j], j => wf.PerSurface[j].W131,
-                                          j => nat.Sigmas.Sigma[j], last + 1);
+        var bridge = BridgeFor(p, wf);
+        var overlay = TrefoilOverlays(bridge, last);
+        var fifth = NatFifthOrder.Compute(
+            j => wf.PerSurface[j], j => wf.PerSurface[j].W131,
+            j => nat.Sigmas.Sigma[j], last + 1,
+            overlay == null ? null : j => overlay[j],
+            j => j >= 1 && j <= last
+                 ? Conventions.BeamDisplacement(p.Y[j], p.Ybar[j]) : 0.0);
 
         sb.AppendLine();
         sb.AppendLine();
@@ -1282,6 +1288,8 @@ public sealed class ReportWriter
         sb.AppendLine("    than print five plausible positions a scan contradicts, it prints none.");
         sb.AppendLine();
 
+        AppendTrefoilOverlayNote(sb, bridge, overlay, last);
+
         sb.AppendLine("  What the fifth order does to the third");
         sb.AppendLine("    Expanding a fifth-order term about its displaced field centre throws off");
         sb.AppendLine("    terms of third-order form. They change the magnitude AND the node of the");
@@ -1303,6 +1311,97 @@ public sealed class ReportWriter
         sb.AppendLine(string.Format(Inv, "          vertex ({0}, {1})  ->  ({2}, {3})",
                                     SciZ(fifth.M220M.a.X), SciZ(fifth.M220M.a.Y),
                                     SciZ(fifth.A220ME.X), SciZ(fifth.A220ME.Y)));
+    }
+
+    /// <summary>
+    /// What a Zernike trefoil overlay is doing, when a surface carries one - Fuerschbach 2014
+    /// Table 2.
+    /// </summary>
+    private void AppendTrefoilOverlayNote(StringBuilder sb, NormalisationBridge bridge,
+                                          Vec2[]? overlay, int last)
+    {
+        bool wanted = false;
+        for (int j = 1; j <= last && !wanted; j++)
+            wanted = _sys.Surfaces[j].Zernike(10) != 0.0 || _sys.Surfaces[j].Zernike(11) != 0.0;
+        if (!wanted) return;
+
+        sb.AppendLine("  Zernike trefoil overlays");
+        if (overlay == null)
+        {
+            sb.AppendLine("    A surface carries Zernike trefoil, and it has NOT been applied. Its");
+            sb.AppendLine("    contribution is a physical wave amplitude, in the units the third-order");
+            sb.AppendLine("    block uses, and adding it to the fifth order needs the scale between the");
+            sb.AppendLine(string.Format(Inv,
+                          "    two routes. That scale could not be fitted here (residual {0}), so",
+                          SciZ(bridge.Residual)));
+            sb.AppendLine("    applying it would mean choosing a factor that cannot be justified.");
+            return;
+        }
+
+        sb.AppendLine("    Fuerschbach, Rolland and Thompson, Opt. Express 22, 26585 (2014), Eq. (34)");
+        sb.AppendLine("    and Table 2. A trefoil overlay contributes 4(n' - n) z10/11 at three times");
+        sb.AppendLine("    its orientation, and lands in TWO places - both subtracted:");
+        sb.AppendLine();
+        sb.AppendLine("      C3_333  -=  sum_j  FF C3_333,j                  field constant");
+        sb.AppendLine("      C3_422  -=  (3/2) sum_j (ybar_j/y_j) FF C3_333,j    field linear");
+        sb.AppendLine();
+        sb.AppendLine("    The second exists only AWAY from the stop - at a pupil the beam does not");
+        sb.AppendLine("    walk and it vanishes. It is field-linear astigmatism, the term Fuerschbach's");
+        sb.AppendLine("    Schmidt telescope was built to show and the one a three-point mount error");
+        sb.AppendLine("    produces. It lands on fifth-order astigmatism's cubic vector, which is why");
+        sb.AppendLine("    trefoil overlays had to wait for the fifth order to exist.");
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv,
+                      "    surf    z10          z11          ybar/y       FF C3_333 magnitude"));
+        sb.AppendLine("    " + new string('-', 68));
+        for (int j = 1; j <= last; j++)
+        {
+            Scalar z10 = _sys.Surfaces[j].Zernike(10), z11 = _sys.Surfaces[j].Zernike(11);
+            if (z10 == 0.0 && z11 == 0.0) continue;
+            var pp = ParaxialTrace.Trace(_sys, PrimaryIndices, MaxField());
+            sb.AppendLine(string.Format(Inv, "    {0,4} {1,12} {2,12} {3,12} {4,20}",
+                j, Num(z10), Num(z11),
+                SciZ(Conventions.BeamDisplacement(pp.Y[j], pp.Ybar[j])),
+                SciZ(overlay[j].Magnitude)));
+        }
+        sb.AppendLine();
+    }
+
+    /// <summary>
+    /// The scale between the Seidel route's units and the W-coordinate route's, fitted from the
+    /// third order where both are available. See <see cref="NormalisationBridge"/>.
+    /// </summary>
+    private NormalisationBridge BridgeFor(ParaxialResult p, WaveFront.Result wf)
+    {
+        var s = SeidelCoefficients.Compute(_sys, PrimaryIndices, PrimaryIndices, PrimaryIndices, p);
+        return NormalisationBridge.Fit(
+            new Scalar[] { s.TotalS1 / 8.0, s.TotalS2 / 2.0, s.TotalS3 / 2.0, s.TotalS5 / 2.0 },
+            new Scalar[] { wf.System.W040, wf.System.W131, wf.System.W222, wf.System.W311 });
+    }
+
+    /// <summary>
+    /// Each surface's Zernike trefoil overlay as the vector <c>FF C^3_333,j</c>, converted into
+    /// the units the W-coordinate coefficients use. Null when nothing is figured with trefoil, or
+    /// when the scale could not be fitted - in which case the overlay is DECLINED rather than
+    /// applied at a factor that cannot be justified, and the report says so.
+    /// </summary>
+    private Vec2[]? TrefoilOverlays(NormalisationBridge bridge, int last)
+    {
+        bool any = false;
+        for (int j = 1; j <= last && !any; j++)
+            any = _sys.Surfaces[j].Zernike(10) != 0.0 || _sys.Surfaces[j].Zernike(11) != 0.0;
+        if (!any || !bridge.IsUsable) return null;
+
+        Scalar scale = bridge.SeidelToW(fieldPower: 3, aperturePower: 3);
+        var ff = new Vec2[last + 1];
+        for (int j = 1; j <= last; j++)
+        {
+            Scalar z10 = _sys.Surfaces[j].Zernike(10), z11 = _sys.Surfaces[j].Zernike(11);
+            if (z10 == 0.0 && z11 == 0.0) continue;
+            Scalar nBefore = PrimaryIndices[j - 1], nAfter = PrimaryIndices[j];
+            ff[j] = scale * Conventions.TrefoilOverlay(z10, z11, nBefore, nAfter);
+        }
+        return ff;
     }
 
     /// <summary>One labelled row of node positions, wrapped onto continuation lines.</summary>

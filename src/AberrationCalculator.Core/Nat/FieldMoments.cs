@@ -149,6 +149,13 @@ public readonly struct FieldMoments
         return new FieldMoments(w, a, b, b2, c, c3, d, d2, e);
     }
 
+    /// <summary>
+    /// The same moments with the vector cube replaced. A freeform overlay adds to <c>C^3</c>
+    /// without touching the others - Fuerschbach 2014 Table 2 - so this is the one substitution
+    /// worth having rather than a general-purpose mutable struct.
+    /// </summary>
+    public FieldMoments WithC3(Vec2 c3) => new(W, A, B, B2, C, c3, D, D2, E);
+
     /// <summary>Accumulate from parallel lists.</summary>
     public static FieldMoments Accumulate(IReadOnlyList<Scalar> contributions,
                                           IReadOnlyList<Vec2> sigmas)
