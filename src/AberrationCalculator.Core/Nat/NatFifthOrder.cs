@@ -193,33 +193,71 @@ public sealed class NatFifthOrder
     public Scalar ComaticWave(Vec2 h, Vec2 rho)
     {
         Scalar rr = Vec2.Dot(rho, rho);
+        return Vec2.Dot(ComaVector131(h), rho) * rr
+             + Vec2.Dot(ComaVector151(h), rho) * rr * rr
+             + Vec2.Dot(ComaVector331M(h), rho) * rr
+             + Vec2.Dot(TrefoilVector(h), rho.Squared * rho);
+    }
+
+    /// <summary>
+    /// Third-order coma at a field point: <c>W131 H - A131</c>, the vector Eq. (B5) dots with
+    /// <c>rho</c>. Its magnitude is the size of the coma and its orientation the direction the
+    /// flare points.
+    /// </summary>
+    public Vec2 ComaVector131(Vec2 h) => M131.W * h - M131.A;
+
+    /// <summary>
+    /// Third-order coma WITH the terms field-cubed coma generates, Eqs. (B13-14). This is what a
+    /// perturbed system actually has; <see cref="ComaVector131"/> is what it would have if the
+    /// fifth order were absent.
+    /// </summary>
+    public Vec2 ComaVector131E(Vec2 h) => W131E * (h - Node131E);
+
+    /// <summary>Field-linear fifth-order coma, Eq. (B2).</summary>
+    public Vec2 ComaVector151(Vec2 h) => M151.W * h - M151.A;
+
+    /// <summary>Field-cubed third-order aperture coma, Eq. (B3), unnormalised.</summary>
+    public Vec2 ComaVector331M(Vec2 h)
+    {
         Scalar hh = Vec2.Dot(h, h);
+        return M331M.W * hh * h
+             - 2.0 * Vec2.Dot(h, M331M.A) * h
+             + 2.0 * M331M.B * h
+             - hh * M331M.A
+             + M331M.B2 * h.Conjugate
+             - M331M.C;
+    }
 
-        // Third-order coma: [(W131 H - A131).rho](rho.rho)
-        Vec2 v131 = M131.W * h - M131.A;
-
-        // Field-linear fifth-order coma, Eq. (B2): [(W151 H - A151).rho](rho.rho)^2
-        Vec2 v151 = M151.W * h - M151.A;
-
-        // Field-cubed third-order aperture coma, Eq. (B3).
-        Vec2 v331 = M331M.W * hh * h
-                  - 2.0 * Vec2.Dot(h, M331M.A) * h
-                  + 2.0 * M331M.B * h
-                  - hh * M331M.A
-                  + M331M.B2 * h.Conjugate
-                  - M331M.C;
-
-        // Elliptical coma, Eq. (B4): (1/4)[W333 H^3 - 3 H^2 A333 + 3 H B333^2 - C333^3].rho^3
+    /// <summary>
+    /// Elliptical coma, Eq. (B4), the vector dotted with <c>rho^3</c>. Being a three-theta
+    /// quantity, its azimuth on the sky is a THIRD of its orientation.
+    /// </summary>
+    public Vec2 TrefoilVector(Vec2 h)
+    {
         Vec2 hSq = h.Squared;
-        Vec2 v333 = M333.W * (hSq * h)
-                  - 3.0 * (hSq * M333.A)
-                  + 3.0 * (h * M333.B2)
-                  - M333.C3;
+        return 0.25 * (M333.W * (hSq * h) - 3.0 * (hSq * M333.A)
+                     + 3.0 * (h * M333.B2) - M333.C3);
+    }
 
-        return Vec2.Dot(v131, rho) * rr
-             + Vec2.Dot(v151, rho) * rr * rr
-             + Vec2.Dot(v331, rho) * rr
-             + 0.25 * Vec2.Dot(v333, rho.Squared * rho);
+    /// <summary>
+    /// Fifth-order astigmatism, Eq. (C23)'s fifth-order group, the vector dotted with
+    /// <c>rho^2</c>. A two-theta quantity, so its line-image azimuth is HALF its orientation.
+    /// </summary>
+    public Vec2 AstigmatismVector422(Vec2 h)
+    {
+        Vec2 hn = h - M422.a;
+        Vec2 cubic = hn.Squared * hn + 3.0 * (hn * M422.b2) - C3Prime422;
+        return (0.5 * M422.W) * (cubic * hn.Conjugate);
+    }
+
+    /// <summary>
+    /// Third-order astigmatism WITH the terms fifth-order astigmatism generates, Eqs. (C19-22),
+    /// as Eq. (C23)'s first group.
+    /// </summary>
+    public Vec2 AstigmatismVector222E(Vec2 h)
+    {
+        Vec2 hn = h - A222E;
+        return (0.5 * W222E) * (hn.Squared + B2222ENormalised);
     }
 
     // ── The astigmatic types, Thompson 2011 ─────────────────────────────────────────────────

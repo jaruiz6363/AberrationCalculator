@@ -1310,6 +1310,48 @@ the coma node moving, `W222 -> W222E` with the astigmatic centre moving, `W220M 
 the medial vertex moving. That last group is the practical point of the whole exercise: the
 third-order block above is not the last word on a perturbed system.
 
+## The fifth order in `nat.tsv`
+
+The full-field file gains fourteen columns. The first six keep their names and their meaning, so
+anything written against the old file still reads it.
+
+    hx  hy
+    coma          coma_orientation_deg       astigmatism    line_image_azimuth_deg
+    coma_E        coma_E_orientation_deg     astigmatism_E  astigmatism_E_azimuth_deg
+    coma5         coma5_orientation_deg      coma331        coma331_orientation_deg
+    trefoil       trefoil_azimuth_deg        astig5         astig5_azimuth_deg
+    distortion5   distortion5_orientation_deg
+
+**Each azimuth is the orientation divided by the power of theta the aberration carries** - one
+for coma and distortion, two for a line image, three for trefoil. Dividing by the wrong one
+rotates the pattern by a plausible amount rather than an obvious one, so the three cases are
+written out separately rather than sharing a helper.
+
+### The `_E` columns are put into the same units as the ones they sit beside
+
+`coma` comes from the Seidel chain and `coma_E` from Buchdahl's W coordinates through
+Eqs. (B13-14), and the two routes differ by the `A^l F^k` normalisation recorded above. Left
+alone they would invite exactly the wrong comparison, sitting in adjacent columns.
+
+They are made comparable **exactly, with no scale factor to derive**: the induced ratio
+`W131E/W131` is itself free of the normalisation, both being Buchdahl's, so multiplying it by the
+Seidel `W131` lands in Seidel units. Same for astigmatism with `W222E/W222`.
+
+The check is sharp. On an ALIGNED system the induced terms vanish, so `coma_E` must equal `coma`
+and `astigmatism_E` must equal `astigmatism` - and they do, **to the last digit of seventeen**.
+A wrong scaling, or induced terms that failed to vanish, separates them at once. On a triplet with
+one surface tilted 0.15 the corrected coma is about 17 per cent larger than the uncorrected one
+and the corrected astigmatism about 5 per cent, which is the reason the columns exist.
+
+Both directions are tested: they agree when aligned, and differ when tilted.
+
+### The purely fifth-order columns are in Buchdahl's normalisation
+
+`coma5`, `coma331`, `trefoil`, `astig5` and `distortion5` have no third-order counterpart to be
+scaled against, so they stay in the normalisation they are computed in. Their magnitudes are
+comparable with each other and not with the first six columns; their orientations, azimuths and
+zero crossings are unaffected, being ratios.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed

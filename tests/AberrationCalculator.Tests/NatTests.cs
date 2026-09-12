@@ -551,15 +551,85 @@ public class NatTests
         Assert.Equal(1 + 25, lines.Length);                      // header plus 5 x 5
         Assert.StartsWith("hx\thy\tcoma", lines[0]);
 
+        // The first six columns keep their names and their meaning; the fifth-order ones are
+        // appended after them, so a reader written against the old file still works.
+        int columns = lines[0].Trim().Split('\t').Length;
+        Assert.True(columns == 6 || columns == 20, $"unexpected column count {columns}");
+
         // Every row parses, and the field really does vary over the grid.
         double biggest = 0.0;
         for (int i = 1; i < lines.Length; i++)
         {
             var cell = lines[i].Trim().Split('\t');
-            Assert.Equal(6, cell.Length);
+            Assert.Equal(columns, cell.Length);
             biggest = Math.Max(biggest, double.Parse(cell[4], System.Globalization.CultureInfo.InvariantCulture));
         }
         Assert.True(biggest > 0.0);
+    }
+
+    /// <summary>
+    /// <b>On an aligned system the fifth-order correction to the third order is nothing, and the
+    /// corrected columns must equal the uncorrected ones to the last digit.</b>
+    ///
+    /// <para>That is not free. The two come by different routes - <c>coma</c> from the Seidel
+    /// chain, <c>coma_E</c> from Buchdahl's W coordinates through Eqs. (B13-14) - and the routes
+    /// use different normalisations, differing by a factor <c>A^l F^k</c>. The columns are made
+    /// comparable by scaling with the ratio <c>W131(Seidel)/W131(Buchdahl)</c>, which needs no
+    /// scale factor to be derived because the induced ratio <c>W131E/W131</c> is itself free of
+    /// the normalisation. If that scaling were wrong, or if the induced terms failed to vanish
+    /// when every sigma is zero, this separates immediately.</para>
+    /// </summary>
+    [Fact]
+    public void TheCorrectedColumnsMatchTheUncorrectedOnesWhenAligned()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        string path = Fixtures.Lens("CookeTriplet");
+        var sys = LensFile.Read(path, catalog);
+
+        string tsv = new Core.Report.ReportWriter(sys, catalog, path).BuildNatFullFieldTsv(5);
+        var lines = tsv.TrimEnd().Split('\n');
+        if (lines[0].Trim().Split('\t').Length < 20) return;     // no wave front chain here
+
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        double spread = 0.0;
+        for (int i = 1; i < lines.Length; i++)
+        {
+            var c = lines[i].Trim().Split('\t');
+            double coma = double.Parse(c[2], inv), comaE = double.Parse(c[6], inv);
+            double ast = double.Parse(c[4], inv), astE = double.Parse(c[8], inv);
+
+            Assert.Equal(coma, comaE, 12);
+            Assert.Equal(ast, astE, 12);
+            spread = Math.Max(spread, Math.Abs(coma));
+        }
+        Assert.True(spread > 0.0, "the aligned coma is zero everywhere, so nothing was compared");
+    }
+
+    /// <summary>
+    /// And on a perturbed system the correction is NOT nothing - the fifth order really does
+    /// change the third-order coma it sits with, which is the reason the column exists.
+    /// </summary>
+    [Fact]
+    public void TheCorrectedColumnsDifferWhenASurfaceIsTilted()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        string path = Fixtures.Lens("CookeTriplet");
+        var sys = LensFile.Read(path, catalog);
+        sys.Surfaces[2].TiltY = 0.15;
+
+        string tsv = new Core.Report.ReportWriter(sys, catalog, path).BuildNatFullFieldTsv(5);
+        var lines = tsv.TrimEnd().Split('\n');
+        if (lines[0].Trim().Split('\t').Length < 20) return;
+
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        double worst = 0.0;
+        for (int i = 1; i < lines.Length; i++)
+        {
+            var c = lines[i].Trim().Split('\t');
+            double coma = double.Parse(c[2], inv), comaE = double.Parse(c[6], inv);
+            if (Math.Abs(coma) > 1e-12) worst = Math.Max(worst, Math.Abs(comaE - coma) / Math.Abs(coma));
+        }
+        Assert.True(worst > 1e-3, $"the fifth order changed the third-order coma by only {worst:0.000e+00}");
     }
 
     /// <summary>

@@ -200,7 +200,7 @@ OUTPUT
   <name>.contributions.tsv   Per-aberration isolated RMS and share of the spot.
   <name>.surfaces.tsv        Per surface: intrinsic, aspheric, induced, and their total.
   <name>.surface-share.tsv   Per surface: share of the spot and induced fraction.
-  <name>.nat.tsv             Full-field coma and astigmatism, with --nat.
+  <name>.nat.tsv             Full-field aberrations, third and fifth order, with --nat.
 
   Alignment - how one BUILT instance sits - is read from <name>.align, which is
   never written back into the lens. Delete it to restore the nominal design.

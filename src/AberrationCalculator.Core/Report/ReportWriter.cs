@@ -1329,14 +1329,35 @@ public sealed class ReportWriter
     {
         double field = MaxField();
         var sb = new StringBuilder();
-        sb.AppendLine("hx\thy\tcoma\tcoma_orientation_deg\tastigmatism\tline_image_azimuth_deg");
 
-        if (Math.Abs(field) < 1e-15) return sb.ToString();
+        if (Math.Abs(field) < 1e-15)
+        {
+            sb.AppendLine("hx\thy\tcoma\tcoma_orientation_deg\tastigmatism\tline_image_azimuth_deg");
+            return sb.ToString();
+        }
 
         var p = ParaxialTrace.Trace(_sys, PrimaryIndices, field);
         var seidel = SeidelCoefficients.Compute(_sys, PrimaryIndices, PrimaryIndices,
                                                 PrimaryIndices, p);
         var nat = NatField.Compute(_sys, PrimaryIndices, p, seidel);
+
+        // The fifth order rides along when the wave front chain is available. The third-order
+        // columns keep their names and their meaning, so a reader of the old file still works.
+        var wf = WaveFront.FromSystem(_sys, PrimaryIndices, p);
+        NatFifthOrder? fifth = wf == null ? null
+            : NatFifthOrder.Compute(j => wf.PerSurface[j], j => wf.PerSurface[j].W131,
+                                    j => nat.Sigmas.Sigma[j], _sys.LastOpticalSurface() + 1);
+
+        sb.Append("hx\thy\tcoma\tcoma_orientation_deg\tastigmatism\tline_image_azimuth_deg");
+        if (fifth != null)
+            sb.Append("\tcoma_E\tcoma_E_orientation_deg"
+                    + "\tastigmatism_E\tastigmatism_E_azimuth_deg"
+                    + "\tcoma5\tcoma5_orientation_deg"
+                    + "\tcoma331\tcoma331_orientation_deg"
+                    + "\ttrefoil\ttrefoil_azimuth_deg"
+                    + "\tastig5\tastig5_azimuth_deg"
+                    + "\tdistortion5\tdistortion5_orientation_deg");
+        sb.AppendLine();
 
         const double deg = 180.0 / Math.PI;
         for (int iy = 0; iy < steps; iy++)
@@ -1349,10 +1370,46 @@ public sealed class ReportWriter
                 var coma = nat.ComaAt(h);
                 var ast = nat.AstigmatismAt(h);
 
-                sb.AppendLine(string.Join("\t",
+                sb.Append(string.Join("\t",
                     Raw(hx), Raw(hy),
                     Raw(coma.Magnitude), Raw(coma.Orientation * deg),
                     Raw(ast.Magnitude), Raw(0.5 * ast.Orientation * deg)));
+
+                if (fifth != null)
+                {
+                    // Each aberration's azimuth on the sky is its orientation divided by the
+                    // power of theta it carries: one for coma and distortion, two for a line
+                    // image, three for trefoil. Dividing by the wrong one rotates the pattern
+                    // by a plausible amount rather than an obvious one.
+                    // coma_E and astigmatism_E sit beside coma and astigmatism, so they are put
+                    // into the SAME units. The two routes differ by a normalisation - see the
+                    // note in the text report - but the RATIO W131E/W131 is free of it, both
+                    // being Buchdahl's, so multiplying by the Seidel W131 lands in Seidel units
+                    // exactly, with no scale factor to derive. On an aligned system the pair
+                    // then agrees with the uncorrected column to the last digit.
+                    Scalar comaScale = Math.Abs((double)fifth.M131.W) > 1e-300
+                        ? nat.Totals.W131 / fifth.M131.W : 0.0;
+                    Scalar astScale = Math.Abs((double)fifth.M222.W) > 1e-300
+                        ? nat.Totals.W222 / fifth.M222.W : 0.0;
+
+                    var cE = comaScale * fifth.ComaVector131E(h);
+                    var aE = astScale * fifth.AstigmatismVector222E(h);
+                    var c5 = fifth.ComaVector151(h);
+                    var c331 = fifth.ComaVector331M(h);
+                    var tre = fifth.TrefoilVector(h);
+                    var a5 = fifth.AstigmatismVector422(h);
+                    var d5 = fifth.DistortionField(h);
+
+                    sb.Append("\t" + string.Join("\t",
+                        Raw(cE.Magnitude), Raw(cE.Orientation * deg),
+                        Raw(aE.Magnitude), Raw(0.5 * aE.Orientation * deg),
+                        Raw(c5.Magnitude), Raw(c5.Orientation * deg),
+                        Raw(c331.Magnitude), Raw(c331.Orientation * deg),
+                        Raw(tre.Magnitude), Raw(tre.Orientation * deg / 3.0),
+                        Raw(a5.Magnitude), Raw(0.5 * a5.Orientation * deg),
+                        Raw(d5.Magnitude), Raw(d5.Orientation * deg)));
+                }
+                sb.AppendLine();
             }
         }
         return sb.ToString();
