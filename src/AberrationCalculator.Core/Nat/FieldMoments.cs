@@ -58,9 +58,21 @@ public readonly struct FieldMoments
     /// <summary>Third moment by VECTOR cube: <c>sum_j W_klmj sigma_j^3</c>.</summary>
     public readonly Vec2 C3;
 
-    public FieldMoments(Scalar w, Vec2 a, Scalar b, Vec2 b2, Vec2 c, Vec2 c3)
+    /// <summary>
+    /// Fourth moment by DOT product, a scalar: <c>sum_j W_klmj (sigma_j . sigma_j)^2</c>. Added
+    /// by the 2011 paper's Appendix A, which the field-quartic aberrations need.
+    /// </summary>
+    public readonly Scalar D;
+
+    /// <summary>
+    /// Fourth moment, mixed: <c>sum_j W_klmj (sigma_j . sigma_j) sigma_j^2</c>.
+    /// </summary>
+    public readonly Vec2 D2;
+
+    public FieldMoments(Scalar w, Vec2 a, Scalar b, Vec2 b2, Vec2 c, Vec2 c3,
+                        Scalar d = default, Vec2 d2 = default)
     {
-        W = w; A = a; B = b; B2 = b2; C = c; C3 = c3;
+        W = w; A = a; B = b; B2 = b2; C = c; C3 = c3; D = d; D2 = d2;
     }
 
     /// <summary>
@@ -86,6 +98,12 @@ public readonly struct FieldMoments
     /// <summary>The normalised vector third moment about the field centre.</summary>
     public Vec2 c3 => HasField ? (1.0 / W) * C3 - a.Squared * a : Vec2.Zero;
 
+    /// <summary>The normalised scalar fourth moment about the field centre.</summary>
+    public Scalar d => HasField ? D / W - Vec2.Dot(a, a) * Vec2.Dot(a, a) : 0.0;
+
+    /// <summary>The normalised mixed fourth moment about the field centre.</summary>
+    public Vec2 d2 => HasField ? (1.0 / W) * D2 - Vec2.Dot(a, a) * a.Squared : Vec2.Zero;
+
     /// <summary>
     /// Accumulate the moments over the surfaces.
     /// </summary>
@@ -98,8 +116,8 @@ public readonly struct FieldMoments
         if (contribution == null) throw new ArgumentNullException(nameof(contribution));
         if (sigma == null) throw new ArgumentNullException(nameof(sigma));
 
-        Scalar w = 0.0, b = 0.0;
-        Vec2 a = Vec2.Zero, b2 = Vec2.Zero, c = Vec2.Zero, c3 = Vec2.Zero;
+        Scalar w = 0.0, b = 0.0, d = 0.0;
+        Vec2 a = Vec2.Zero, b2 = Vec2.Zero, c = Vec2.Zero, c3 = Vec2.Zero, d2 = Vec2.Zero;
 
         for (int j = 0; j < count; j++)
         {
@@ -114,9 +132,11 @@ public readonly struct FieldMoments
             b2 += wj * sq;
             c += (wj * dot) * s;
             c3 += wj * (sq * s);
+            d += wj * dot * dot;
+            d2 += (wj * dot) * sq;
         }
 
-        return new FieldMoments(w, a, b, b2, c, c3);
+        return new FieldMoments(w, a, b, b2, c, c3, d, d2);
     }
 
     /// <summary>Accumulate from parallel lists.</summary>

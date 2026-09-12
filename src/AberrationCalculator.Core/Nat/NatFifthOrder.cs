@@ -88,44 +88,51 @@ public sealed class NatFifthOrder
     /// with <c>X = (R + S)/2</c> and <c>X~ = (R - S)/2</c>, which is the form Thompson's Fig. 10
     /// draws.
     /// </summary>
-    public Vec2[] Nodes333
+    public Vec2[] Nodes333 => CubicNodes(M333, M333.c3);
+
+    /// <summary>
+    /// The three roots of <c>x^3 + 3 b^2 x - c^3 = 0</c> in Thompson's vector algebra, offset to
+    /// the field centre. Both elliptical coma, Eq. (B11) of 2010, and the fifth-order astigmatic
+    /// group of Eq. (C23) of 2011 reduce to exactly this cubic - the astigmatic one with
+    /// <c>c^3</c> replaced by <c>(c^3)' = c^3 - 3 b^2 a</c> of Eq. (C24), which is why the
+    /// effective cube is passed in rather than read off the moments.
+    ///
+    /// <para><b>The branch matters.</b> Writing <c>x = R + S</c> and imposing <c>R S = -b^2</c>
+    /// leaves <c>R^3 + S^3 = c^3</c> and <c>R^3 S^3 = -b^6</c>, so the two cubes are roots of a
+    /// quadratic; taking the principal cube root of one and recovering the other by division
+    /// enforces the pairing, where cube-rooting both independently would not.</para>
+    ///
+    /// <para><b>And the degenerate case must be caught.</b> A cube root raises relative error to
+    /// the one-third power, so a <c>b^2</c> or <c>c^3</c> that ought to be zero and instead sits
+    /// at the round-off floor of the subtraction producing it - both are differences of nearly
+    /// equal quantities - returns a node splitting of order 1e-6 rather than 1e-16. That is noise
+    /// reported as physics. Below the floor of their own construction the three nodes coincide.</para>
+    /// </summary>
+    private static Vec2[] CubicNodes(FieldMoments m, Vec2 c3)
     {
-        get
+        Vec2 a = m.a, b2 = m.b2;
+
+        Scalar w = SMath.Abs(m.W) > 1e-300 ? SMath.Abs(m.W) : 1.0;
+        Scalar aMag = a.Magnitude;
+        Scalar floor2 = 1e-13 * (m.B2.Magnitude / w + aMag * aMag);
+        Scalar floor3 = 1e-13 * (m.C3.Magnitude / w + aMag * aMag * aMag);
+        if (b2.Magnitude <= floor2 && c3.Magnitude <= floor3)
+            return new[] { a, a, a };
+
+        Vec2 disc = (c3.Squared + 4.0 * (b2.Squared * b2)).Sqrt();
+        Vec2 r = (0.5 * (c3 + disc)).CubeRoot();
+        Vec2 s;
+        if (r.MagnitudeSquared > 1e-300)
+            s = (-b2) / r;                  // the pairing R S = -b^2 picks the branch
+        else
         {
-            Vec2 b2 = M333.b2, c3 = M333.c3;
-
-            // A cube root amplifies relative error to the one-third power, so a b^2 or c^3 that
-            // ought to be zero and is instead at the round-off floor of the subtraction that
-            // produced it - both are differences of nearly equal quantities - comes back as a
-            // node splitting of order 1e-6 rather than 1e-16. That is noise reported as physics.
-            // Below the floor of their own construction the splitting is not real, and the three
-            // nodes coincide at the field centre.
-            Scalar w = SMath.Abs(M333.W) > 1e-300 ? SMath.Abs(M333.W) : 1.0;
-            Scalar aMag = M333.a.Magnitude;
-            Scalar floor2 = 1e-13 * (M333.B2.Magnitude / w + aMag * aMag);
-            Scalar floor3 = 1e-13 * (M333.C3.Magnitude / w + aMag * aMag * aMag);
-            if (b2.Magnitude <= floor2 && c3.Magnitude <= floor3)
-                return new[] { M333.a, M333.a, M333.a };
-
-            Vec2 disc = (c3.Squared + 4.0 * (b2.Squared * b2)).Sqrt();
-            Vec2 rCubed = 0.5 * (c3 + disc);
-            Vec2 sCubed = 0.5 * (c3 - disc);
-
-            Vec2 r = rCubed.CubeRoot();
-            Vec2 s;
-            if (r.MagnitudeSquared > 1e-300)
-                s = (-b2) / r;              // the pairing R S = -b^2 picks the branch
-            else
-            {
-                r = Vec2.Zero;
-                s = sCubed.CubeRoot();
-            }
-
-            Vec2 xbar = 0.5 * (r + s), xtilde = 0.5 * (r - s);
-            Vec2 turn = SMath.Sqrt(3.0) * xtilde.TimesI;
-            Vec2 a = M333.a;
-            return new[] { a + 2.0 * xbar, a - xbar + turn, a - xbar - turn };
+            r = Vec2.Zero;
+            s = (0.5 * (c3 - disc)).CubeRoot();
         }
+
+        Vec2 xbar = 0.5 * (r + s), xtilde = 0.5 * (r - s);
+        Vec2 turn = SMath.Sqrt(3.0) * xtilde.TimesI;
+        return new[] { a + 2.0 * xbar, a - xbar + turn, a - xbar - turn };
     }
 
     /// <summary>The vertex of fifth-order medial field curvature, and its scalar offset.</summary>
@@ -215,6 +222,180 @@ public sealed class NatFifthOrder
              + 0.25 * Vec2.Dot(v333, rho.Squared * rho);
     }
 
+    // ── The astigmatic types, Thompson 2011 ─────────────────────────────────────────────────
+
+    /// <summary>Field vectors for fifth-order medial field curvature, field-quartic.</summary>
+    public FieldMoments M420M { get; init; }
+
+    /// <summary>Field vectors for fifth-order astigmatism, field-quartic.</summary>
+    public FieldMoments M422 { get; init; }
+
+    /// <summary>Third-order astigmatism, carried because Eqs. (C19-22) modify it.</summary>
+    public FieldMoments M222 { get; init; }
+
+    /// <summary>Third-order medial field curvature, carried because the 2011 Sec. 2 set modifies it.</summary>
+    public FieldMoments M220M { get; init; }
+
+    /// <summary>
+    /// Eq. (C24): the field-quartic astigmatic cube, adjusted so that the nodal group of
+    /// Eq. (C23) is the same depressed cubic as elliptical coma's.
+    /// </summary>
+    public Vec2 C3Prime422 => M422.c3 - 3.0 * (M422.b2 * M422.a);
+
+    /// <summary>
+    /// The FOUR nodes of fifth-order astigmatism - quadranodal, the signature this aberration
+    /// was named for. Eq. (C23) leaves the fifth-order group as
+    /// <code>
+    ///     (1/2) W422 {[H422^3 + 3 H422 b422^2 - (c422^3)'] H422*}.rho^2
+    /// </code>
+    /// which vanishes where the conjugate does - one node at the field centre - and at the three
+    /// roots of the cubic, which is elliptical coma's cubic with Eq. (C24)'s adjusted cube.
+    /// </summary>
+    public Vec2[] Nodes422
+    {
+        get
+        {
+            var cubic = CubicNodes(M422, C3Prime422);
+            return new[] { M422.a, cubic[0], cubic[1], cubic[2] };
+        }
+    }
+
+    /// <summary>Eq. (C19): fifth-order astigmatism changes the magnitude of the third-order.</summary>
+    public Scalar W222E => M222.W + 3.0 * M422.W * M422.b;
+
+    /// <summary>Eq. (C20): and its field centre.</summary>
+    public Vec2 A222E
+    {
+        get
+        {
+            Scalar w = W222E;
+            if (SMath.Abs(w) < 1e-300) return Vec2.Zero;
+            Vec2 inner = M422.c - M422.b2 * M422.a.Conjugate;
+            return (1.0 / w) * (M222.A + 1.5 * M422.W * inner);
+        }
+    }
+
+    /// <summary>Eq. (C21) and (C22): and its binodal separation.</summary>
+    public Vec2 B2222E => M222.B2 + M422.W * (M422.d2 - M422.c3 * M422.a.Conjugate);
+
+    /// <inheritdoc cref="B2222E"/>
+    public Vec2 B2222ENormalised
+    {
+        get
+        {
+            Scalar w = W222E;
+            if (SMath.Abs(w) < 1e-300) return Vec2.Zero;
+            return (1.0 / w) * B2222E - A222E.Squared;
+        }
+    }
+
+    /// <summary>
+    /// The two nodes of third-order astigmatism AS MODIFIED by the fifth order - Eq. (C23)'s
+    /// first group, <c>(1/2) W222E (H222E^2 + b222E^2).rho^2</c>. Shack's binodal astigmatism,
+    /// with the field-quartic term's contribution folded in.
+    /// </summary>
+    public Vec2[] Nodes222E
+    {
+        get
+        {
+            Vec2 a = A222E, half = (-B2222ENormalised).Sqrt();
+            return new[] { a + half, a - half };
+        }
+    }
+
+    /// <summary>
+    /// Thompson 2011 Sec. 2: fifth-order medial field curvature modifies the third-order medial
+    /// surface's magnitude, vertex and scalar offset.
+    /// <code>
+    ///     W220ME = W220M + 4 W420M b420M
+    ///     a220ME = [A220M + W420M(2 c420M - 2 b420M^2 a420M*)] / W220ME
+    ///     B220ME = B220M + W420M(d420M - 2 a420M^2 . b420M^2)
+    ///     b220ME = B220ME/W220ME - a220ME . a220ME
+    /// </code>
+    /// </summary>
+    public Scalar W220ME => M220M.W + 4.0 * M420M.W * M420M.b;
+
+    /// <inheritdoc cref="W220ME"/>
+    public Vec2 A220ME
+    {
+        get
+        {
+            Scalar w = W220ME;
+            if (SMath.Abs(w) < 1e-300) return Vec2.Zero;
+            Vec2 inner = 2.0 * M420M.c - 2.0 * (M420M.b2 * M420M.a.Conjugate);
+            return (1.0 / w) * (M220M.A + M420M.W * inner);
+        }
+    }
+
+    /// <inheritdoc cref="W220ME"/>
+    public Scalar B220ME =>
+        M220M.B + M420M.W * (M420M.d - 2.0 * Vec2.Dot(M420M.a.Squared, M420M.b2));
+
+    /// <inheritdoc cref="W220ME"/>
+    public Scalar B220MENormalised
+    {
+        get
+        {
+            Scalar w = W220ME;
+            if (SMath.Abs(w) < 1e-300) return 0.0;
+            return B220ME / w - Vec2.Dot(A220ME, A220ME);
+        }
+    }
+
+    /// <summary>
+    /// Third- and fifth-order astigmatism from the UNNORMALISED expansion: the third-order term
+    /// of Eq. (C8) plus Eq. (C13), which Thompson calls "the most effective for numerical
+    /// computations". Nothing here knows where a node is.
+    /// </summary>
+    public Scalar AstigmaticWaveUnnormalised(Vec2 h, Vec2 rho)
+    {
+        Scalar hh = Vec2.Dot(h, h);
+        Vec2 hSq = h.Squared, rSq = rho.Squared;
+
+        Vec2 third = M222.W * hSq - 2.0 * (h * M222.A) + M222.B2;
+
+        Vec2 fifth = M422.W * hh * hSq
+                   - 2.0 * hh * (h * M422.A)
+                   + 3.0 * hh * M422.B2
+                   - 2.0 * Vec2.Dot(h, M422.A) * hSq
+                   - M422.C3 * h.Conjugate
+                   + 3.0 * M422.B * hSq
+                   - 3.0 * (h * M422.C)
+                   + M422.D2;
+
+        return 0.5 * Vec2.Dot(third, rSq) + 0.5 * Vec2.Dot(fifth, rSq);
+    }
+
+    /// <summary>
+    /// The same thing from the NORMALISED nodal form, Eq. (C23), which is where the node
+    /// positions come from. Agreement between the two is what verifies Eqs. (C19-24) - the
+    /// modified third-order vectors and the adjusted cube - since nothing else checks them.
+    /// </summary>
+    public Scalar AstigmaticWaveNodal(Vec2 h, Vec2 rho)
+    {
+        Vec2 rSq = rho.Squared;
+
+        Vec2 h222 = h - A222E;
+        Scalar third = 0.5 * W222E * Vec2.Dot(h222.Squared + B2222ENormalised, rSq);
+
+        Vec2 h422 = h - M422.a;
+        Vec2 cubic = h422.Squared * h422 + 3.0 * (h422 * M422.b2) - C3Prime422;
+        Scalar fifth = 0.5 * M422.W * Vec2.Dot(cubic * h422.Conjugate, rSq);
+
+        return third + fifth;
+    }
+
+    /// <summary>
+    /// The vector whose vanishing gives the fifth-order astigmatic nodes, Eq. (C23)'s
+    /// fifth-order group. Exposed so the analytic nodes can be checked against it.
+    /// </summary>
+    public Vec2 FifthAstigmatismResidual(Vec2 h)
+    {
+        Vec2 hn = h - M422.a;
+        Vec2 cubic = hn.Squared * hn + 3.0 * (hn * M422.b2) - C3Prime422;
+        return cubic * hn.Conjugate;
+    }
+
     /// <summary>
     /// The vector whose vanishing defines the elliptical-coma nodes, Eq. (B11)'s bracket. Exposed
     /// so that the analytic nodes can be checked against it rather than against a second program.
@@ -252,15 +433,24 @@ public sealed class NatFifthOrder
         // Eq. (B6): the medial equivalent for coma, as W220M is for field curvature.
         Scalar W331M(int j) => perSurface(j).W331 + 0.75 * perSurface(j).W333;
 
+        // The medial combination comes from cos^2 = (1 + cos 2phi)/2, so it is the same one at
+        // every order: W220M = W220 + W222/2, and likewise for the two fifth-order pairs.
+        Scalar W240M(int j) => perSurface(j).W240 + 0.5 * perSurface(j).W242;
+        Scalar W420M(int j) => perSurface(j).W420 + 0.5 * perSurface(j).W422;
+        Scalar W220M(int j) => perSurface(j).W220M;
+
         return new NatFifthOrder
         {
             M131 = FieldMoments.Accumulate(thirdW131, sigma, count),
+            M222 = FieldMoments.Accumulate(j => perSurface(j).W222, sigma, count),
+            M220M = FieldMoments.Accumulate(W220M, sigma, count),
             M151 = FieldMoments.Accumulate(j => perSurface(j).W151, sigma, count),
             M331M = FieldMoments.Accumulate(W331M, sigma, count),
             M333 = FieldMoments.Accumulate(j => perSurface(j).W333, sigma, count),
-            M240M = FieldMoments.Accumulate(j => perSurface(j).W240 + 0.5 * perSurface(j).W242,
-                                            sigma, count),
+            M240M = FieldMoments.Accumulate(W240M, sigma, count),
             M242 = FieldMoments.Accumulate(j => perSurface(j).W242, sigma, count),
+            M420M = FieldMoments.Accumulate(W420M, sigma, count),
+            M422 = FieldMoments.Accumulate(j => perSurface(j).W422, sigma, count),
         };
     }
 }

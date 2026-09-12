@@ -1103,6 +1103,88 @@ The astigmatic fifth-order types beyond `W242` - field-quartic `W420M` and `W422
 four-node - and fifth-order distortion `W511`, the first aberration with five nodes, are in the
 2011 paper rather than the 2010 one. The moment machinery already supplies their inputs.
 
+## The astigmatic types, Thompson 2011
+
+The 2011 paper completes the fifth order: the field-quartic aberrations `W420M` and `W422`, and
+what they do to the third-order terms they sit with.
+
+### Two more moments
+
+Its Appendix A extends the vector set with two FOURTH moments:
+
+    D_klm   = sum_j W_klmj (sigma_j . sigma_j)^2    d_klm  = D_klm/W_klm - (a.a)^2
+    D^2_klm = sum_j W_klmj (sigma_j . sigma_j) sigma_j^2
+                                                    d^2_klm = D^2_klm/W_klm - (a.a) a^2
+
+`FieldMoments` now carries all eight.
+
+### Fifth-order astigmatism is quadranodal
+
+Eq. (C23) leaves the fifth-order group as
+
+    (1/2) W422 {[H422^3 + 3 H422 b422^2 - (c422^3)'] H422*}.rho^2
+
+with Eq. (C24), `(c422^3)' = c422^3 - 3 b422^2 a422`. It vanishes where the conjugate does - one
+node at the field centre - and at the three roots of the cubic. **Four nodes**, which is the
+property the paper is named for.
+
+The cubic is **exactly elliptical coma's**, `x^3 + 3 b^2 x - c^3 = 0`, with Eq. (C24)'s adjusted
+cube in place of `c^3`. So the Cardano solver written for the trefoil is reused verbatim, branch
+pairing, degeneracy guard and all.
+
+`W420M` is the medial focal surface and is NOT nodal in the same sense: like the third-order
+`W220M`, its zero set is a locus rather than isolated points, and what it supplies is a vertex, a
+scalar offset, and its corrections to the third order.
+
+### The corrections to third order
+
+Thompson 2011 Sec. 2 gives the full set, of which the 2010 `W131E` pair was the first:
+
+    W220ME = W220M + 4 W420M b420M
+    a220ME = [A220M + W420M(2 c420M - 2 b420M^2 a420M*)] / W220ME
+    B220ME = B220M + W420M(d420M - 2 a420M^2 . b420M^2)
+
+    W222E  = W222 + 3 W422 b422
+    a222E  = [A222 + (3/2) W422(c422 - b422^2 a422*)] / W222E
+    B222E^2 = B222^2 + W422(d422^2 - c422^3 a422*)
+
+So the third-order medial surface and Shack's binodal astigmatism are both modified in magnitude,
+centre AND separation by the fifth-order terms above them.
+
+### The check that does the work
+
+**The unnormalised astigmatic expansion and the nodal one must agree at every field and pupil
+point.** One is the third-order term of Eq. (C8) plus Eq. (C13), assembled from the raw moments
+and knowing nothing about nodes; the other is Eq. (C23), assembled from the normalised vectors.
+They are several pages of vector algebra apart and share no code. Agreement verifies Eqs.
+(C19-24) together - the modified third-order vectors and the adjusted cube - and **nothing else
+does**.
+
+It also settled a reading. Eq. (C13) prints as `(1/2) W422[...]` with `W422` outside the bracket,
+which would doubly weight every moment term, since `A422 = sum_j W422j sigma_j` already carries
+the weight. Comparing with Eq. (C14), where the same coefficient sits inside on the first term
+only, said it belongs to the first term - and the agreement between the two forms proves it.
+
+**One test does less than it appears to.** A uniform displacement leaves the quadranodal set
+unsplit, which is a good check of the cubic and the conjugate together - but it does NOT
+discriminate Eq. (C24), because a uniform sigma sends both `b^2` and `c^3` to zero and the
+adjusted and unadjusted cubes then agree. That is recorded in the test rather than left to be
+assumed.
+
+### Where the fifth order now stands
+
+    W060    no field dependence, so not displaced
+    W151    single node, like W131                          (2010 B9)
+    W240M   vertex and scalar, like W220M                   (2010 B1)
+    W242    binodal, like W222                              (2010 B1)
+    W331M   three COLLINEAR nodes                           (2010 B10)
+    W333    three nodes, trefoil, from a vector cubic       (2010 B11)
+    W420M   vertex and scalar, plus its third-order lift    (2011 B5, Sec. 2)
+    W422    FOUR nodes, quadranodal                         (2011 C23)
+
+`W511`, fifth-order distortion and the first aberration with five nodes, is the one type not
+implemented; Thompson leaves it to a later paper that is not in the archive.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed

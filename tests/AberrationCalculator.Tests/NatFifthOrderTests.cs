@@ -218,6 +218,141 @@ public class NatFifthOrderTests
             AssertNearZero(f.TrefoilResidual(node), $"trefoil node {node}");
     }
 
+    // ── The astigmatic types, Thompson 2011 ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fifth-order astigmatism is QUADRANODAL - the property the 2011 paper is named for.
+    /// Eq. (C23) leaves the fifth-order group as a cubic multiplied by a conjugate, so one node
+    /// sits at the field centre where the conjugate vanishes and three more are the cubic's
+    /// roots. All four must be zeros of Eq. (C23)'s group.
+    /// </summary>
+    [Fact]
+    public void FifthOrderAstigmatismHasFourNodes()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        var nodes = f.Nodes422;
+        Assert.Equal(4, nodes.Length);
+        foreach (var node in nodes)
+            AssertNearZero(f.FifthAstigmatismResidual(node), $"fifth astigmatic node {node}");
+
+        // The four are genuinely distinct on a system this asymmetric.
+        for (int i = 0; i < 4; i++)
+            for (int k = i + 1; k < 4; k++)
+                Assert.True((nodes[i] - nodes[k]).Magnitude > 1e-12,
+                    $"nodes {i} and {k} coincide at {nodes[i]}");
+    }
+
+    /// <summary>
+    /// The one node at the field centre is there because the conjugate vanishes, not because the
+    /// cubic happens to have a root there. Checking it separately keeps that structural fact from
+    /// being lost in the loop above.
+    /// </summary>
+    [Fact]
+    public void OneFifthAstigmaticNodeSitsAtTheFieldCentre()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+        AssertNearZero(f.Nodes422[0] - f.M422.a, "the conjugate node against the field centre");
+    }
+
+    /// <summary>
+    /// Eqs. (C19-22): fifth-order astigmatism changes the magnitude, the centre AND the binodal
+    /// separation of the third-order astigmatism it sits with - Shack's binodal astigmatism, with
+    /// the field-quartic term folded in. On an aligned system it changes none of them.
+    /// </summary>
+    [Fact]
+    public void FifthOrderAstigmatismModifiesTheThirdOrderBinodalPair()
+    {
+        var aligned = Build(Vec2.Zero, Vec2.Zero, Vec2.Zero);
+        Assert.Equal((double)aligned.M222.W, (double)aligned.W222E, 12);
+        foreach (var node in aligned.Nodes222E) AssertNearZero(node, "third-order node, aligned");
+
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+        Assert.NotEqual((double)f.M222.W, (double)f.W222E, 8);
+
+        var nodes = f.Nodes222E;
+        Assert.Equal(2, nodes.Length);
+        foreach (var node in nodes)
+        {
+            Vec2 hn = node - f.A222E;
+            AssertNearZero(hn.Squared + f.B2222ENormalised, $"modified third-order node {node}");
+        }
+    }
+
+    /// <summary>
+    /// Thompson 2011 Sec. 2: the fifth-order medial surface modifies the third-order one's
+    /// magnitude, vertex and scalar offset. Aligned, it modifies nothing.
+    /// </summary>
+    [Fact]
+    public void FifthOrderMedialFieldCurvatureModifiesTheThirdOrderSurface()
+    {
+        var aligned = Build(Vec2.Zero, Vec2.Zero, Vec2.Zero);
+        Assert.Equal((double)aligned.M220M.W, (double)aligned.W220ME, 12);
+        AssertNearZero(aligned.A220ME, "medial vertex, aligned");
+
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+        Assert.NotEqual((double)f.M220M.W, (double)f.W220ME, 8);
+        Assert.True(f.A220ME.Magnitude > 1e-12, "the medial vertex did not move");
+    }
+
+    /// <summary>
+    /// A uniform displacement moves the quadranodal set and splits nothing, carried through the
+    /// cubic and the conjugate together.
+    ///
+    /// <para>This does NOT discriminate Eq. (C24): for a uniform sigma both <c>b^2</c> and
+    /// <c>c^3</c> vanish, so the adjusted and unadjusted cubes agree and either would pass. What
+    /// checks (C24) is <see cref="TheTwoAstigmaticFormsAgreeEverywhere"/>.</para>
+    /// </summary>
+    [Fact]
+    public void AUniformDisplacementLeavesTheAstigmaticNodesUnsplit()
+    {
+        var s = new Vec2(0.014, -0.0092);
+        var f = Build(s, s, s);
+
+        foreach (var node in f.Nodes422) AssertNearZero(node - s, "fifth astigmatic node");
+        foreach (var node in f.Nodes222E) AssertNearZero(node - s, "modified third-order node");
+        AssertNearZero(f.A220ME - s, "medial vertex");
+    }
+
+    /// <summary>
+    /// <b>The unnormalised astigmatic expansion and the nodal one must agree at every field and
+    /// pupil point.</b> This is the test that actually verifies Eqs. (C19-24) - the modified
+    /// third-order vectors <c>W222E</c>, <c>a222E</c>, <c>b222E^2</c> and the adjusted cube
+    /// <c>(c422^3)'</c>. Nothing else does.
+    ///
+    /// <para>The two are transcribed from different equations and share no code: one is the
+    /// third-order term of Eq. (C8) plus Eq. (C13), assembled from the raw moments and knowing
+    /// nothing about nodes; the other is Eq. (C23), assembled from the normalised vectors. They
+    /// are several pages of vector algebra apart in the paper. A wrong coefficient in any of
+    /// (C19-24), or a dot product where a vector product belongs, separates them.</para>
+    /// </summary>
+    [Fact]
+    public void TheTwoAstigmaticFormsAgreeEverywhere()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        var fields = new[]
+        {
+            new Vec2(0.0, 0.0), new Vec2(0.0, 1.0), new Vec2(1.0, 0.0),
+            new Vec2(0.6, -0.8), new Vec2(-0.35, 0.22), new Vec2(0.05, 0.05),
+        };
+        var pupils = new[] { new Vec2(0.0, 1.0), new Vec2(1.0, 0.0), new Vec2(0.6, -0.8) };
+
+        double largest = 0;
+        foreach (var h in fields)
+            foreach (var rho in pupils)
+            {
+                double a = f.AstigmaticWaveUnnormalised(h, rho);
+                double b = f.AstigmaticWaveNodal(h, rho);
+                largest = Math.Max(largest, Math.Abs(a));
+                Assert.True(Math.Abs(a - b) <= 1e-9 * Math.Max(1.0, Math.Abs(a)),
+                    $"H = {h}, rho = {rho}: unnormalised {a}, nodal {b}");
+            }
+
+        // Two expressions that are both zero everywhere would agree without meaning anything.
+        Assert.True(largest > 1e-3, $"the aberration is too small to be testing anything: {largest}");
+    }
+
     /// <summary>
     /// The wave aberration is finite and well behaved across the field, and reduces to the
     /// rotationally symmetric answer on axis when the system is aligned.
