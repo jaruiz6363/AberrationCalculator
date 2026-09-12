@@ -69,10 +69,16 @@ public readonly struct FieldMoments
     /// </summary>
     public readonly Vec2 D2;
 
+    /// <summary>
+    /// Fifth moment: <c>sum_j W_klmj (sigma_j . sigma_j)^2 sigma_j</c>. Needed only by
+    /// fifth-order distortion, whose field dependence is the highest in the expansion.
+    /// </summary>
+    public readonly Vec2 E;
+
     public FieldMoments(Scalar w, Vec2 a, Scalar b, Vec2 b2, Vec2 c, Vec2 c3,
-                        Scalar d = default, Vec2 d2 = default)
+                        Scalar d = default, Vec2 d2 = default, Vec2 e = default)
     {
-        W = w; A = a; B = b; B2 = b2; C = c; C3 = c3; D = d; D2 = d2;
+        W = w; A = a; B = b; B2 = b2; C = c; C3 = c3; D = d; D2 = d2; E = e;
     }
 
     /// <summary>
@@ -104,6 +110,9 @@ public readonly struct FieldMoments
     /// <summary>The normalised mixed fourth moment about the field centre.</summary>
     public Vec2 d2 => HasField ? (1.0 / W) * D2 - Vec2.Dot(a, a) * a.Squared : Vec2.Zero;
 
+    /// <summary>The normalised fifth moment about the field centre.</summary>
+    public Vec2 e => HasField ? (1.0 / W) * E - (Vec2.Dot(a, a) * Vec2.Dot(a, a)) * a : Vec2.Zero;
+
     /// <summary>
     /// Accumulate the moments over the surfaces.
     /// </summary>
@@ -117,7 +126,7 @@ public readonly struct FieldMoments
         if (sigma == null) throw new ArgumentNullException(nameof(sigma));
 
         Scalar w = 0.0, b = 0.0, d = 0.0;
-        Vec2 a = Vec2.Zero, b2 = Vec2.Zero, c = Vec2.Zero, c3 = Vec2.Zero, d2 = Vec2.Zero;
+        Vec2 a = Vec2.Zero, b2 = Vec2.Zero, c = Vec2.Zero, c3 = Vec2.Zero, d2 = Vec2.Zero, e = Vec2.Zero;
 
         for (int j = 0; j < count; j++)
         {
@@ -134,9 +143,10 @@ public readonly struct FieldMoments
             c3 += wj * (sq * s);
             d += wj * dot * dot;
             d2 += (wj * dot) * sq;
+            e += (wj * dot * dot) * s;
         }
 
-        return new FieldMoments(w, a, b, b2, c, c3, d, d2);
+        return new FieldMoments(w, a, b, b2, c, c3, d, d2, e);
     }
 
     /// <summary>Accumulate from parallel lists.</summary>

@@ -353,6 +353,114 @@ public class NatFifthOrderTests
         Assert.True(largest > 1e-3, $"the aberration is too small to be testing anything: {largest}");
     }
 
+    // ── Fifth-order distortion ──────────────────────────────────────────────────────────────
+
+    /// <summary>The W511 contributions the synthetic system carries, in surface order.</summary>
+    private static readonly double[] W511 = { 0.13, -0.2, 0.09 };
+
+    /// <summary>
+    /// <b>The derived closed form must equal the defining sum, exactly.</b>
+    ///
+    /// <para>Thompson's nodal solution for fifth-order distortion is in his 1980 dissertation,
+    /// which this archive does not hold, so the expansion in <see cref="NatFifthOrder.DistortionField"/>
+    /// is derived from the published definition rather than transcribed from a result. That makes
+    /// this the test the whole term rests on: the closed form, written in the standard moments,
+    /// against <c>sum_j W511j [(H - sigma_j).(H - sigma_j)]^2 (H - sigma_j)</c> evaluated surface
+    /// by surface. Any error in reducing a mixed product - and there are four of them -
+    /// separates the two immediately.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(0.0, 0.0)]
+    [InlineData(0.0, 1.0)]
+    [InlineData(1.0, 0.0)]
+    [InlineData(-0.6, 0.8)]
+    [InlineData(0.033, -0.014)]
+    [InlineData(12.0, -7.0)]
+    public void TheDerivedDistortionFieldMatchesTheDefiningSum(double hx, double hy)
+    {
+        var sig = new[] { new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004) };
+        var f = Build(sig[0], sig[1], sig[2]);
+        var h = new Vec2(hx, hy);
+
+        Vec2 closed = f.DistortionField(h);
+        Vec2 direct = NatFifthOrder.DistortionFieldDirect(j => W511[j], j => sig[j], 3, h);
+
+        double scale = Math.Max(1.0, direct.Magnitude);
+        Assert.True((closed - direct).Magnitude <= 1e-11 * scale,
+            $"H = {h}: closed {closed}, direct {direct}");
+    }
+
+    /// <summary>
+    /// An aligned system reduces the field to <c>W511 (H.H)^2 H</c>, whose only zero is the
+    /// origin - five coincident nodes, not five separate ones.
+    /// </summary>
+    [Fact]
+    public void AnAlignedSystemPutsAllFiveDistortionNodesTogether()
+    {
+        var f = Build(Vec2.Zero, Vec2.Zero, Vec2.Zero);
+
+        var h = new Vec2(0.3, -0.4);
+        double hh = Vec2.Dot(h, h);
+        Vec2 expect = (f.M511.W * hh * hh) * h;
+        AssertNearZero(f.DistortionField(h) - expect, "aligned distortion field");
+
+        var nodes = f.DistortionNodes();
+        Assert.Equal(5, nodes.Length);
+        foreach (var node in nodes) AssertNearZero(node, "distortion node, aligned");
+    }
+
+    /// <summary>
+    /// A uniform displacement moves the quintuple node and splits nothing, which for this term is
+    /// the statement that the field is exactly <c>W511 (H-s . H-s)^2 (H-s)</c>.
+    /// </summary>
+    [Fact]
+    public void AUniformDisplacementMovesTheDistortionNodeWithoutSplitting()
+    {
+        var s = new Vec2(0.014, -0.0092);
+        var f = Build(s, s, s);
+
+        var h = new Vec2(0.3, -0.4);
+        Vec2 u = h - s;
+        double uu = Vec2.Dot(u, u);
+        AssertNearZero(f.DistortionField(h) - (f.M511.W * uu * uu) * u, "uniform distortion field");
+
+        foreach (var node in f.DistortionNodes()) AssertNearZero(node - s, "distortion node");
+    }
+
+    /// <summary>
+    /// Whatever the search returns must actually be a zero of the field, and the count is never
+    /// assumed.
+    ///
+    /// <para>Five is the most fifth-order distortion can have, not the number it does have. The
+    /// equation carries <c>H*</c> as well as <c>H</c>, so its real root count depends on the
+    /// system; on every case tried there is exactly one node, confirmed by a brute-force scan of
+    /// the whole disc rather than inferred from this search finding no more. An earlier version
+    /// of the search accepted a residual of 8e-9 as a root and reported a second node that the
+    /// scan says is not there, which is why the acceptance test is now measured against the size
+    /// the field has over the search region rather than against an absolute epsilon.</para>
+    /// </summary>
+    [Fact]
+    public void TheDistortionNodesFoundAreZerosOfTheField()
+    {
+        var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
+
+        var nodes = f.DistortionNodes();
+        Assert.NotEmpty(nodes);
+
+        foreach (var node in nodes)
+        {
+            double scale = Math.Max(1e-3, node.Magnitude);
+            Assert.True(f.DistortionField(node).Magnitude <= 1e-9 * Math.Pow(scale, 5) + 1e-16,
+                $"node {node} is not a zero: field {f.DistortionField(node)}");
+        }
+
+        // And they are distinct from one another.
+        for (int i = 0; i < nodes.Length; i++)
+            for (int k = i + 1; k < nodes.Length; k++)
+                Assert.True((nodes[i] - nodes[k]).Magnitude > 1e-9,
+                    $"nodes {i} and {k} coincide at {nodes[i]}");
+    }
+
     /// <summary>
     /// The wave aberration is finite and well behaved across the field, and reduces to the
     /// rotationally symmetric answer on axis when the system is aligned.

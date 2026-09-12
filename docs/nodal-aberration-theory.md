@@ -1185,6 +1185,79 @@ assumed.
 `W511`, fifth-order distortion and the first aberration with five nodes, is the one type not
 implemented; Thompson leaves it to a later paper that is not in the archive.
 
+## Fifth-order distortion, and a correction to the node count
+
+`W511` completes the fifth order, and it is the only term here that is DERIVED rather than
+transcribed. Thompson's closed nodal solution for it is in reference [10] of the 2010 paper -
+his 1980 dissertation, *Aberration fields in tilted and decentered optical systems*, Optical
+Sciences Center, Arizona - which the archive does not hold.
+
+### The field, derived from the published definition
+
+What IS published is Eq. (B1)'s definition,
+
+    W = sum_j W511j [(H - sigma_j).(H - sigma_j)]^2 [(H - sigma_j).rho]
+
+Writing `u = H - sigma_j` and using `(u.u)^2 u = u^3 u*^2`, the aberration vector is
+
+    V = sum_j W511j (H - sigma_j)^3 (H* - sigma_j*)^2
+
+which multiplies out into the standard moments once four mixed products are reduced:
+
+    sigma sigma*^2   = (sigma.sigma) sigma*        ->  C*
+    sigma^2 sigma*^2 = (sigma.sigma)^2             ->  D
+    sigma^3 sigma*   = (sigma.sigma) sigma^2       ->  D^2
+    sigma^3 sigma*^2 = (sigma.sigma)^2 sigma       ->  E, the one new moment
+
+giving twelve terms in `W, A, A*, B, B^2, (B^2)*, C, C*, C^3, D, D^2, E`.
+
+**Being a derivation, it is checked the strongest way available**: against the defining sum
+evaluated surface by surface, at six field points out to `|H| = 14`. They agree to 1e-11
+relative. Any slip in reducing one of those four products separates them immediately.
+
+### The node count is NOT five
+
+Thompson calls this "the first aberration with five nodes due to the 5th-order vector field
+dependence", and five is indeed the most there can be. But **the equation is not a polynomial in
+`H` alone** - it carries `H*` too, being built from `(H - sigma)^3 (H* - sigma*)^2`. That makes
+it a harmonic-type system whose number of real roots depends on the data, with five an upper
+bound rather than a promise.
+
+On every system tried, synthetic and otherwise, there is exactly **one** node. That was
+established by a brute-force scan of the whole disc on a 400x400 grid, not inferred from a search
+failing to find more, and the three cases scanned included one where `W511` nearly cancels
+between surfaces and one where it does not.
+
+`DistortionNodes` therefore returns what is actually there and does not pad the list. A caller
+must not assume a length.
+
+### Two things this exposed
+
+**The search radius cannot come from the sigmas.** The first version bounded the search by the
+spread of the displacements, which found one node out of what it was looking for and missed the
+rest. When `W511` nearly cancels between surfaces - and it does, the contributions being far
+larger than their sum - the field centre and the roots sit far outside the sigmas. The bound now
+comes from the coefficients: each term has a total degree in `H`, and a root needs
+`|W| R^5 <= sum_k coeff_k R^k`.
+
+**And an absolute tolerance reported a node that is not there.** Newton stalling near a shallow
+minimum left a residual of 8e-9, which an absolute epsilon accepted and the brute-force scan
+rejects. The acceptance test is now measured against the size the field itself has over the
+search region, `|W|(R + |z|)^5`. That removed the spurious root and left the search agreeing with
+the scan exactly on all three cases.
+
+### The fifth order, complete
+
+    W060    no field dependence, so not displaced
+    W151    single node                                     2010 (B9)
+    W240M   vertex and scalar, like W220M                    2010 (B1)
+    W242    binodal, like W222                               2010 (B1)
+    W331M   three COLLINEAR nodes                            2010 (B10)
+    W333    three nodes, trefoil, from a vector cubic        2010 (B11)
+    W420M   vertex and scalar, plus its third-order lift     2011 (B5), Sec. 2
+    W422    FOUR nodes, quadranodal                          2011 (C23)
+    W511    one node on everything tried; five is the cap    derived here
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed

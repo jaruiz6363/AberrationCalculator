@@ -396,6 +396,206 @@ public sealed class NatFifthOrder
         return cubic * hn.Conjugate;
     }
 
+    // ── Fifth-order distortion ──────────────────────────────────────────────────────────────
+
+    /// <summary>Field vectors for fifth-order distortion.</summary>
+    public FieldMoments M511 { get; init; }
+
+    /// <summary>
+    /// The vector whose vanishing gives the fifth-order distortion nodes, and whose dot product
+    /// with <c>rho</c> is the aberration itself.
+    ///
+    /// <para><b>Provenance.</b> Thompson's closed nodal form for this term is in his 1980
+    /// dissertation, reference [10] of the 2010 paper, which is not in the archive. What IS
+    /// published is the definition, Eq. (B1):</para>
+    /// <code>
+    ///     W = sum_j W511j [(H - sigma_j).(H - sigma_j)]^2 [(H - sigma_j).rho]
+    /// </code>
+    /// <para>and the expansion below is derived from it here rather than transcribed. Writing
+    /// <c>u = H - sigma_j</c> and using <c>(u.u)^2 u = u^3 u*^2</c>,</para>
+    /// <code>
+    ///     V = sum_j W511j (H - sigma_j)^3 (H* - sigma_j*)^2
+    /// </code>
+    /// <para>which multiplies out into the standard moments once every mixed product is reduced:
+    /// <c>sigma sigma*^2 = (sigma.sigma) sigma*</c>, <c>sigma^2 sigma*^2 = (sigma.sigma)^2</c>,
+    /// <c>sigma^3 sigma* = (sigma.sigma) sigma^2</c> and <c>sigma^3 sigma*^2 =
+    /// (sigma.sigma)^2 sigma</c>. Only the last needs a moment beyond the published set, which is
+    /// <see cref="FieldMoments.E"/>.</para>
+    ///
+    /// <para>Being a derivation rather than a transcription, it is checked the strongest way
+    /// available: against the defining sum evaluated surface by surface, which must agree exactly.</para>
+    /// </summary>
+    public Vec2 DistortionField(Vec2 h)
+    {
+        Scalar hh = Vec2.Dot(h, h);
+        Vec2 hs = h.Conjugate, hSq = h.Squared;
+
+        return M511.W * (hh * hh) * h
+             - 2.0 * hh * (hSq * M511.A.Conjugate)
+             + (hSq * h) * M511.B2.Conjugate
+             - 3.0 * (hh * hh) * M511.A
+             + 6.0 * hh * M511.B * h
+             - 3.0 * (hSq * M511.C.Conjugate)
+             + 3.0 * hh * (hs * M511.B2)
+             - 6.0 * hh * M511.C
+             + 3.0 * M511.D * h
+             - hs.Squared * M511.C3
+             + 2.0 * (hs * M511.D2)
+             - M511.E;
+    }
+
+    /// <summary>
+    /// The same thing straight from the definition, Eq. (B1), summed over the surfaces. Slower,
+    /// and the reference <see cref="DistortionField"/> is checked against.
+    /// </summary>
+    public static Vec2 DistortionFieldDirect(Func<int, Scalar> w511, Func<int, Vec2> sigma,
+                                             int count, Vec2 h)
+    {
+        Vec2 v = Vec2.Zero;
+        for (int j = 0; j < count; j++)
+        {
+            Vec2 u = h - sigma(j);
+            Scalar uu = Vec2.Dot(u, u);
+            v += (w511(j) * uu * uu) * u;
+        }
+        return v;
+    }
+
+    /// <summary>
+    /// The nodes of fifth-order distortion - the zeros of <see cref="DistortionField"/> - found
+    /// NUMERICALLY, because Thompson's closed solution is in the 1980 dissertation this archive
+    /// does not hold.
+    ///
+    /// <para><b>How many there are is not five in general, whatever the literature suggests.</b>
+    /// Thompson calls this "the first aberration with five nodes due to the 5th-order vector field
+    /// dependence", and five is indeed the most there can be. But the equation is not a
+    /// polynomial in <c>H</c> alone - it carries <c>H*</c> too, being built from
+    /// <c>(H - sigma)^3 (H* - sigma*)^2</c> - so it is a harmonic-type system whose real root
+    /// count depends on the data, with five an upper bound rather than a promise. On every system
+    /// tried here, synthetic and otherwise, there is exactly ONE node, and that was confirmed by
+    /// a brute-force scan of the whole disc rather than inferred from this search failing to find
+    /// more.</para>
+    ///
+    /// <para>So this returns what is actually there. It does not pad the list to five, and a
+    /// caller must not assume a length.</para>
+    ///
+    /// <para>The aligned and uniformly displaced cases are exact and short-circuited: there the
+    /// five roots coincide, and Newton on a quintuple root converges only linearly.</para>
+    /// </summary>
+    public Vec2[] DistortionNodes()
+    {
+        Vec2 centre = M511.a;
+
+        // With every sigma equal the quintuple root sits at the centre and there is nothing to
+        // search for.
+        Scalar w = SMath.Abs(M511.W) > 1e-300 ? SMath.Abs(M511.W) : 1.0;
+        Scalar floor = 1e-13 * (SMath.Abs(M511.B) / w + Vec2.Dot(centre, centre));
+        if (SMath.Abs(M511.b) <= floor)
+            return new[] { centre, centre, centre, centre, centre };
+
+        // Every root lies inside a disc set by the coefficients, not by the spread of the sigmas:
+        // when W511 nearly cancels between surfaces - which it does, the contributions being far
+        // larger than their sum - the field centre and the roots move far outside the sigmas.
+        // Writing the field as a sum of terms of total degree k in H, a root needs
+        // |W| R^5 <= sum_k coeff_k R^k, so twice the largest (coeff_k/|W|)^(1/(5-k)) bounds them.
+        Scalar radius = RootBound();
+
+        var found = new System.Collections.Generic.List<Vec2>();
+        const int rings = 6, spokes = 16;
+
+        for (int ring = 0; ring <= rings; ring++)
+            for (int k = 0; k < spokes; k++)
+            {
+                Scalar r = radius * ring / rings;
+                Scalar th = 2.0 * SMath.PI * k / spokes;
+                Vec2 z = centre + Vec2.FromPolar(r, th);
+
+                if (!NewtonToZero(ref z, radius)) continue;
+                if (z.Magnitude > 10.0 * (radius + centre.Magnitude)) continue;
+
+                bool seen = false;
+                foreach (var q in found)
+                    if ((q - z).Magnitude <= 1e-6 * SMath.Max(radius, z.Magnitude)) { seen = true; break; }
+                if (!seen) found.Add(z);
+                if (found.Count >= 5) return found.ToArray();
+
+                if (ring == 0) break;   // the centre is one point, not `spokes` of them
+            }
+
+        return found.ToArray();
+    }
+
+    /// <summary>
+    /// A radius containing every zero of <see cref="DistortionField"/>, from the magnitudes of its
+    /// terms. Each term has a total degree in <c>H</c> - counting <c>H</c> and <c>H*</c> alike -
+    /// and the leading one is degree five.
+    /// </summary>
+    private Scalar RootBound()
+    {
+        Scalar w = SMath.Abs(M511.W);
+        if (w < 1e-300) return 1.0;
+
+        // coefficient magnitude, and total degree in H, term by term
+        var terms = new (Scalar mag, int degree)[]
+        {
+            (2.0 * M511.A.Magnitude, 4), (3.0 * M511.A.Magnitude, 4),
+            (M511.B2.Magnitude, 3), (6.0 * SMath.Abs(M511.B), 3), (3.0 * M511.B2.Magnitude, 3),
+            (3.0 * M511.C.Magnitude, 2), (6.0 * M511.C.Magnitude, 2), (M511.C3.Magnitude, 2),
+            (3.0 * SMath.Abs(M511.D), 1), (2.0 * M511.D2.Magnitude, 1),
+            (M511.E.Magnitude, 0),
+        };
+
+        Scalar bound = 0.0;
+        foreach (var (mag, degree) in terms)
+        {
+            if (mag <= 0.0) continue;
+            Scalar r = SMath.Pow(mag / w, 1.0 / (5 - degree));
+            if (r > bound) bound = r;
+        }
+        return bound > 0.0 ? 2.0 * bound : 1.0;
+    }
+
+    /// <summary>
+    /// Newton on the two real components, with a finite-difference Jacobian.
+    ///
+    /// <para>The acceptance test is measured against the size the field itself has over the
+    /// search region, <c>|W| (R + |z|)^5</c>, not against an absolute epsilon. Newton stalling
+    /// near a shallow minimum that is not a root will leave a residual many orders above that,
+    /// and accepting it would report a node that does not exist - which a loose absolute
+    /// tolerance did, on the first system tried.</para>
+    /// </summary>
+    private bool NewtonToZero(ref Vec2 z, Scalar bound)
+    {
+        Scalar scale = SMath.Max(1.0, z.Magnitude);
+        for (int it = 0; it < 200; it++)
+        {
+            Vec2 f = DistortionField(z);
+            if (IsZero(f, z, bound)) return true;
+
+            Scalar h = 1e-7 * scale;
+            Vec2 fx = DistortionField(new Vec2(z.X + h, z.Y));
+            Vec2 fy = DistortionField(new Vec2(z.X, z.Y + h));
+            Scalar j11 = (fx.X - f.X) / h, j12 = (fy.X - f.X) / h;
+            Scalar j21 = (fx.Y - f.Y) / h, j22 = (fy.Y - f.Y) / h;
+            Scalar det = j11 * j22 - j12 * j21;
+            if (SMath.Abs(det) < 1e-300) return false;
+
+            Scalar dx = (j22 * f.X - j12 * f.Y) / det;
+            Scalar dy = (-j21 * f.X + j11 * f.Y) / det;
+            z = new Vec2(z.X - dx, z.Y - dy);
+            if (z.Magnitude > 1e6 * scale) return false;
+        }
+        return IsZero(DistortionField(z), z, bound);
+    }
+
+    /// <summary>Whether a field value is zero relative to the field's own scale.</summary>
+    private bool IsZero(Vec2 f, Vec2 z, Scalar bound)
+    {
+        Scalar r = bound + z.Magnitude;
+        Scalar typical = SMath.Abs(M511.W) * r * r * r * r * r;
+        return f.Magnitude <= 1e-12 * SMath.Max(typical, 1e-300);
+    }
+
     /// <summary>
     /// The vector whose vanishing defines the elliptical-coma nodes, Eq. (B11)'s bracket. Exposed
     /// so that the analytic nodes can be checked against it rather than against a second program.
@@ -451,6 +651,7 @@ public sealed class NatFifthOrder
             M242 = FieldMoments.Accumulate(j => perSurface(j).W242, sigma, count),
             M420M = FieldMoments.Accumulate(W420M, sigma, count),
             M422 = FieldMoments.Accumulate(j => perSurface(j).W422, sigma, count),
+            M511 = FieldMoments.Accumulate(j => perSurface(j).W511, sigma, count),
         };
     }
 }
