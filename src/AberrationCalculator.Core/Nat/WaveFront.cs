@@ -83,6 +83,50 @@ public static class WaveFront
     }
 
     /// <summary>
+    /// The wave front coefficients of a system, running the scheme in W coordinates.
+    ///
+    /// <para>The setup mirrors <see cref="TertiaryCoefficients"/>: the same stop parameter, the
+    /// same <c>iota</c> for a finite conjugate, and the same aspheric increments, because a
+    /// coefficient computed under a different convention is not comparable with one that is not.
+    /// Returns null when the system has no usable stop.</para>
+    /// </summary>
+    public static Result? FromSystem(Models.OpticalSystem system, Scalar[] indices,
+                                     RayTrace.ParaxialResult paraxial)
+    {
+        if (system == null) throw new ArgumentNullException(nameof(system));
+        if (indices == null) throw new ArgumentNullException(nameof(indices));
+        if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
+
+        int stop = system.StopSurfaceIndex;
+        int last = system.LastOpticalSurface();
+        if (stop < 0 || stop >= system.Surfaces.Count || last < 1) return null;
+
+        Scalar t0 = system.Surfaces[0].Thickness;
+        Scalar iota = Scalar.IsInfinity(t0) ? 0.0 : -paraxial.Efl / t0;
+
+        var scheme = BuchdahlScheme.Compute(system.Surfaces, indices, paraxial.Efl,
+                                            system.Surfaces[stop].SemiDiameter, iota);
+
+        Scalar stopParameter = Scalar.IsInfinity(t0)
+            ? scheme.P
+            : paraxial.EntrancePupilPosition / paraxial.Efl;
+
+        // The aspheric increments are differenced against an all-spherical run, exactly as the
+        // tertiary route does it; Build returns null when nothing is figured.
+        var sphericalW = BuchdahlTableI.Compute(system.Surfaces, indices, paraxial.Efl,
+                                                stopParameter, iota: iota, wCoordinates: true);
+        var macro = BuchdahlCoefficients.Compute(system, paraxial);
+        var increments = AsphericSchemeIncrements.Build(macro, sphericalW, last);
+
+        var rows = increments == null
+            ? sphericalW
+            : BuchdahlTableI.Compute(system.Surfaces, indices, paraxial.Efl, stopParameter,
+                                     increments, iota: iota, wCoordinates: true);
+
+        return FromScheme(rows, last);
+    }
+
+    /// <summary>
     /// The wave front coefficients from a scheme that was run in W coordinates.
     /// </summary>
     /// <param name="rows">

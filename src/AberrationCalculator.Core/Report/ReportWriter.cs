@@ -1136,6 +1136,7 @@ public sealed class ReportWriter
             sb.AppendLine("  sigma is zero, the sums collapse to the ordinary Seidel ones, and every node");
             sb.AppendLine("  sits at the centre of the field. That is the theory reducing correctly, not a");
             sb.AppendLine("  case it declines to handle: perturb a surface and the nodes move.");
+            AppendNatFifthOrder(sb, p, nat);
             return sb.ToString();
         }
 
@@ -1196,7 +1197,123 @@ public sealed class ReportWriter
         sb.AppendLine();
         sb.AppendLine("  The medial vertex and the coma node do not generally coincide: the sigma are the");
         sb.AppendLine("  same for every aberration, but each is weighted by its own surface coefficients.");
+
+        AppendNatFifthOrder(sb, p, nat);
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// The fifth-order half of the nodal report: Thompson's multinodal trilogy, J. Opt. Soc.
+    /// Am. A <b>26</b> 1090 (2009), <b>27</b> 1490 (2010) and <b>28</b> 821 (2011).
+    /// </summary>
+    private void AppendNatFifthOrder(StringBuilder sb, ParaxialResult p, NatField nat)
+    {
+        var wf = WaveFront.FromSystem(_sys, PrimaryIndices, p);
+        if (wf == null) return;
+
+        int last = _sys.LastOpticalSurface();
+        var fifth = NatFifthOrder.Compute(j => wf.PerSurface[j], j => wf.PerSurface[j].W131,
+                                          j => nat.Sigmas.Sigma[j], last + 1);
+
+        sb.AppendLine();
+        sb.AppendLine();
+        sb.AppendLine("NODAL ABERRATION THEORY - FIFTH ORDER");
+        sb.AppendLine("--------------------------------------------------------------------------------");
+        sb.AppendLine("Thompson's multinodal trilogy, J. Opt. Soc. Am. A 26, 1090 (2009); 27, 1490");
+        sb.AppendLine("(2010); 28, 821 (2011). The coefficients come through Buchdahl's W coordinates,");
+        sb.AppendLine("VI Table I and VII Eqs. (6.5-6) and (3.4), and are the RETARDATION of the wave");
+        sb.AppendLine("front, which is what a wave aberration is.");
+        sb.AppendLine();
+
+        sb.AppendLine("  Fifth-order wave coefficients of the system");
+        sb.AppendLine(string.Format(Inv, "    W060  {0,13}   spherical", SciZ(wf.System.W060)));
+        sb.AppendLine(string.Format(Inv, "    W151  {0,13}   field-linear coma", SciZ(wf.System.W151)));
+        sb.AppendLine(string.Format(Inv, "    W240  {0,13}   oblique spherical, field-constant", SciZ(wf.System.W240)));
+        sb.AppendLine(string.Format(Inv, "    W242  {0,13}   oblique spherical, astigmatic", SciZ(wf.System.W242)));
+        sb.AppendLine(string.Format(Inv, "    W331  {0,13}   elliptical coma", SciZ(wf.System.W331)));
+        sb.AppendLine(string.Format(Inv, "    W333  {0,13}   elliptical coma, trefoil", SciZ(wf.System.W333)));
+        sb.AppendLine(string.Format(Inv, "    W420  {0,13}   field curvature", SciZ(wf.System.W420)));
+        sb.AppendLine(string.Format(Inv, "    W422  {0,13}   astigmatism", SciZ(wf.System.W422)));
+        sb.AppendLine(string.Format(Inv, "    W511  {0,13}   distortion", SciZ(wf.System.W511)));
+        sb.AppendLine();
+        sb.AppendLine("    These are in Buchdahl's NORMALISED aperture and field, which is NOT the");
+        sb.AppendLine("    normalisation of the third-order block above: the two differ by a factor");
+        sb.AppendLine("    A^l F^k, one power of the aperture scale per power of rho and one of the");
+        sb.AppendLine("    field scale per power of H. Compare them with each other, not across.");
+        sb.AppendLine();
+        sb.AppendLine("    The NODES below do not suffer from that. Each is a ratio of quantities");
+        sb.AppendLine("    carrying the same powers, so the scales cancel and the positions are in the");
+        sb.AppendLine("    design's own field units - the same ones the third-order nodes use. The");
+        sb.AppendLine("    coma node and the astigmatic midpoint computed by this route agree with the");
+        sb.AppendLine("    Seidel route above to thirteen figures, which is what says so.");
+        sb.AppendLine();
+
+        if (nat.IsAligned)
+        {
+            sb.AppendLine("  This design is aligned, so every fifth-order node also sits at the field");
+            sb.AppendLine("  centre. Perturb a surface and they separate - and they separate differently");
+            sb.AppendLine("  from the third-order ones, which is the whole reason to compute them.");
+            return;
+        }
+
+        sb.AppendLine("  Nodes");
+        WriteNodes(sb, "    W151  coma", new[] { fifth.Node151 });
+        WriteNodes(sb, "    W240M vertex", new[] { fifth.Vertex240M });
+        WriteNodes(sb, "    W242  astigmatism", fifth.Nodes242);
+        WriteNodes(sb, "    W331M coma", fifth.Nodes331M);
+        WriteNodes(sb, "    W333  trefoil", fifth.Nodes333);
+        WriteNodes(sb, "    W420M vertex", new[] { fifth.M420M.a });
+        WriteNodes(sb, "    W422  astigmatism", fifth.Nodes422);
+
+        var d511 = fifth.DistortionNodes();
+        if (d511.Length > 0)
+            WriteNodes(sb, "    W511  distortion", d511);
+        else
+            sb.AppendLine("    W511  distortion    NOT SOLVED - see the note below");
+
+        sb.AppendLine();
+        sb.AppendLine("    W331M is COLLINEAR trinodal - the outer two sit symmetrically about the");
+        sb.AppendLine("    middle one - where W333's three are not. W422 is quadranodal.");
+        sb.AppendLine();
+        sb.AppendLine("    W511 is NOT SOLVED here. Its FIELD is exact - it is checked against the");
+        sb.AppendLine("    defining sum surface by surface - but the closed nodal form is in Thompson's");
+        sb.AppendLine("    1980 dissertation, which is not to hand, and a numerical search written in");
+        sb.AppendLine("    its place disagreed with a direct scan of the field on real lenses. Rather");
+        sb.AppendLine("    than print five plausible positions a scan contradicts, it prints none.");
+        sb.AppendLine();
+
+        sb.AppendLine("  What the fifth order does to the third");
+        sb.AppendLine("    Expanding a fifth-order term about its displaced field centre throws off");
+        sb.AppendLine("    terms of third-order form. They change the magnitude AND the node of the");
+        sb.AppendLine("    third-order aberration they belong with, so the third-order block above is");
+        sb.AppendLine("    not the last word on it.");
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv, "    W131  {0,13}  ->  W131E {1,13}   (2010 Eq. B13)",
+                                    SciZ(fifth.M131.W), SciZ(fifth.W131E)));
+        sb.AppendLine(string.Format(Inv, "          node ({0}, {1})  ->  ({2}, {3})",
+                                    SciZ(fifth.M131.a.X), SciZ(fifth.M131.a.Y),
+                                    SciZ(fifth.Node131E.X), SciZ(fifth.Node131E.Y)));
+        sb.AppendLine(string.Format(Inv, "    W222  {0,13}  ->  W222E {1,13}   (2011 Eq. C19)",
+                                    SciZ(fifth.M222.W), SciZ(fifth.W222E)));
+        sb.AppendLine(string.Format(Inv, "          centre ({0}, {1})  ->  ({2}, {3})",
+                                    SciZ(fifth.M222.a.X), SciZ(fifth.M222.a.Y),
+                                    SciZ(fifth.A222E.X), SciZ(fifth.A222E.Y)));
+        sb.AppendLine(string.Format(Inv, "    W220M {0,13}  ->  W220ME {1,12}   (2011 Sec. 2)",
+                                    SciZ(fifth.M220M.W), SciZ(fifth.W220ME)));
+        sb.AppendLine(string.Format(Inv, "          vertex ({0}, {1})  ->  ({2}, {3})",
+                                    SciZ(fifth.M220M.a.X), SciZ(fifth.M220M.a.Y),
+                                    SciZ(fifth.A220ME.X), SciZ(fifth.A220ME.Y)));
+    }
+
+    /// <summary>One labelled row of node positions, wrapped onto continuation lines.</summary>
+    private static void WriteNodes(StringBuilder sb, string label, Vec2[] nodes)
+    {
+        for (int i = 0; i < nodes.Length; i++)
+            sb.AppendLine(string.Format(Inv, "{0,-22} {1} ({2}, {3})",
+                                        i == 0 ? label : "",
+                                        i == 0 ? (nodes.Length == 1 ? "one node at " : "nodes at    ")
+                                               : "            ",
+                                        SciZ(nodes[i].X), SciZ(nodes[i].Y)));
     }
 
     /// <summary>

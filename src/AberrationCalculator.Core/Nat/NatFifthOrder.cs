@@ -462,25 +462,30 @@ public sealed class NatFifthOrder
     }
 
     /// <summary>
-    /// The nodes of fifth-order distortion - the zeros of <see cref="DistortionField"/> - found
-    /// NUMERICALLY, because Thompson's closed solution is in the 1980 dissertation this archive
-    /// does not hold.
+    /// The nodes of fifth-order distortion, WHERE THEY CAN BE HAD EXACTLY - which is the aligned
+    /// and the uniformly displaced case, both of which put five coincident nodes at the field
+    /// centre. Every other case returns EMPTY, and that is a deliberate refusal rather than a
+    /// gap waiting to be filled in silently.
     ///
-    /// <para><b>How many there are is not five in general, whatever the literature suggests.</b>
-    /// Thompson calls this "the first aberration with five nodes due to the 5th-order vector field
-    /// dependence", and five is indeed the most there can be. But the equation is not a
-    /// polynomial in <c>H</c> alone - it carries <c>H*</c> too, being built from
-    /// <c>(H - sigma)^3 (H* - sigma*)^2</c> - so it is a harmonic-type system whose real root
-    /// count depends on the data, with five an upper bound rather than a promise. On every system
-    /// tried here, synthetic and otherwise, there is exactly ONE node, and that was confirmed by
-    /// a brute-force scan of the whole disc rather than inferred from this search failing to find
-    /// more.</para>
+    /// <para><b>Why it is not solved.</b> Thompson's closed nodal solution is in his 1980
+    /// dissertation, reference [10] of the 2010 paper, which this archive does not hold. A
+    /// multi-start Newton search over <see cref="DistortionField"/> was written in its place, and
+    /// it does not survive checking: on a tilted Cooke triplet a direct scan of the field over
+    /// the whole disc finds four roots, at positions the search does not report, while the search
+    /// returns five elsewhere; on a tilted double Gauss the two disagree again. The answer moved
+    /// each time the acceptance tolerance was retuned, which is the signature of a criterion
+    /// doing the deciding rather than the mathematics. Five plausible coordinates that a
+    /// brute-force scan contradicts are worse than none.</para>
     ///
-    /// <para>So this returns what is actually there. It does not pad the list to five, and a
-    /// caller must not assume a length.</para>
+    /// <para><b>The field itself is exact</b> and is not affected by any of this -
+    /// <see cref="DistortionField"/> is checked against the defining sum surface by surface. A
+    /// caller that wants the nodes can find them from it with a solver it trusts, and will at
+    /// least know it is doing so.</para>
     ///
-    /// <para>The aligned and uniformly displaced cases are exact and short-circuited: there the
-    /// five roots coincide, and Newton on a quintuple root converges only linearly.</para>
+    /// <para>The count is also not simply five. The equation carries <c>H*</c> as well as
+    /// <c>H</c>, being built from <c>(H - sigma)^3 (H* - sigma*)^2</c>, so it is a harmonic-type
+    /// system whose real root count depends on the design; five is an upper bound, and the scans
+    /// above found four and zero.</para>
     /// </summary>
     public Vec2[] DistortionNodes()
     {
@@ -500,29 +505,13 @@ public sealed class NatFifthOrder
         // |W| R^5 <= sum_k coeff_k R^k, so twice the largest (coeff_k/|W|)^(1/(5-k)) bounds them.
         Scalar radius = RootBound();
 
-        var found = new System.Collections.Generic.List<Vec2>();
-        const int rings = 6, spokes = 16;
-
-        for (int ring = 0; ring <= rings; ring++)
-            for (int k = 0; k < spokes; k++)
-            {
-                Scalar r = radius * ring / rings;
-                Scalar th = 2.0 * SMath.PI * k / spokes;
-                Vec2 z = centre + Vec2.FromPolar(r, th);
-
-                if (!NewtonToZero(ref z, radius)) continue;
-                if (z.Magnitude > 10.0 * (radius + centre.Magnitude)) continue;
-
-                bool seen = false;
-                foreach (var q in found)
-                    if ((q - z).Magnitude <= 1e-6 * SMath.Max(radius, z.Magnitude)) { seen = true; break; }
-                if (!seen) found.Add(z);
-                if (found.Count >= 5) return found.ToArray();
-
-                if (ring == 0) break;   // the centre is one point, not `spokes` of them
-            }
-
-        return found.ToArray();
+        // Anything else is NOT SOLVED, and returns empty rather than a guess. See the remarks on
+        // this method: a multi-start Newton search was written, and a direct scan of the field
+        // over the whole disc disagreed with it on real lenses - different positions, different
+        // counts, and an answer that moved every time the acceptance tolerance was retuned. Five
+        // plausible coordinates that a brute-force scan contradicts are worse than none.
+        _ = radius;
+        return Array.Empty<Vec2>();
     }
 
     /// <summary>
@@ -588,12 +577,26 @@ public sealed class NatFifthOrder
         return IsZero(DistortionField(z), z, bound);
     }
 
-    /// <summary>Whether a field value is zero relative to the field's own scale.</summary>
+    /// <summary>
+    /// Whether a field value is zero, measured against how big the field's own terms are AT THAT
+    /// POINT.
+    ///
+    /// <para>The scale has to be local. Using the global search radius instead makes the
+    /// tolerance enormous near the origin, and a single root then passes the test at five nearby
+    /// points and is reported five times - which is exactly what it did, on a tilted triplet,
+    /// before this was measured term by term.</para>
+    /// </summary>
     private bool IsZero(Vec2 f, Vec2 z, Scalar bound)
     {
-        Scalar r = bound + z.Magnitude;
-        Scalar typical = SMath.Abs(M511.W) * r * r * r * r * r;
-        return f.Magnitude <= 1e-12 * SMath.Max(typical, 1e-300);
+        Scalar r = z.Magnitude;
+        Scalar r2 = r * r, r3 = r2 * r, r4 = r3 * r;
+        Scalar scale = SMath.Abs(M511.W) * r4 * r
+                     + 5.0 * M511.A.Magnitude * r4
+                     + (4.0 * M511.B2.Magnitude + 6.0 * SMath.Abs(M511.B)) * r3
+                     + (9.0 * M511.C.Magnitude + M511.C3.Magnitude) * r2
+                     + (3.0 * SMath.Abs(M511.D) + 2.0 * M511.D2.Magnitude) * r
+                     + M511.E.Magnitude;
+        return f.Magnitude <= 1e-12 * SMath.Max(scale, 1e-300);
     }
 
     /// <summary>

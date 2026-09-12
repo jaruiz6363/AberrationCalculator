@@ -428,8 +428,7 @@ public class NatFifthOrderTests
     }
 
     /// <summary>
-    /// Whatever the search returns must actually be a zero of the field, and the count is never
-    /// assumed.
+    /// Outside the two exact cases the node solution is refused, and returns empty.)
     ///
     /// <para>Five is the most fifth-order distortion can have, not the number it does have. The
     /// equation carries <c>H*</c> as well as <c>H</c>, so its real root count depends on the
@@ -440,25 +439,21 @@ public class NatFifthOrderTests
     /// the field has over the search region rather than against an absolute epsilon.</para>
     /// </summary>
     [Fact]
-    public void TheDistortionNodesFoundAreZerosOfTheField()
+    public void ThePerturbedDistortionNodesAreRefusedRatherThanGuessed()
     {
         var f = Build(new Vec2(0.03, -0.017), new Vec2(-0.008, 0.021), new Vec2(0.012, 0.004));
 
-        var nodes = f.DistortionNodes();
-        Assert.NotEmpty(nodes);
+        // Empty, deliberately. A multi-start Newton search was written for this and then removed:
+        // on a tilted Cooke triplet a direct scan of the field over the whole disc finds four
+        // roots at positions the search did not report, and on a tilted double Gauss the two
+        // disagree again. The answer moved every time the acceptance tolerance was retuned, which
+        // says the tolerance was deciding rather than the mathematics. Thompson's closed solution
+        // is in his 1980 dissertation, which is not to hand.
+        Assert.Empty(f.DistortionNodes());
 
-        foreach (var node in nodes)
-        {
-            double scale = Math.Max(1e-3, node.Magnitude);
-            Assert.True(f.DistortionField(node).Magnitude <= 1e-9 * Math.Pow(scale, 5) + 1e-16,
-                $"node {node} is not a zero: field {f.DistortionField(node)}");
-        }
-
-        // And they are distinct from one another.
-        for (int i = 0; i < nodes.Length; i++)
-            for (int k = i + 1; k < nodes.Length; k++)
-                Assert.True((nodes[i] - nodes[k]).Magnitude > 1e-9,
-                    $"nodes {i} and {k} coincide at {nodes[i]}");
+        // The FIELD is unaffected by that and remains exact, which is what the rest of the
+        // distortion tests check. This asserts only that it is a live quantity, not a stub.
+        Assert.True(f.DistortionField(new Vec2(0.2, -0.1)).Magnitude > 0.0);
     }
 
     /// <summary>

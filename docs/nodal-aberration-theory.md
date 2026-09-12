@@ -1258,6 +1258,58 @@ the scan exactly on all three cases.
     W422    FOUR nodes, quadranodal                          2011 (C23)
     W511    one node on everything tried; five is the cap    derived here
 
+## Wired into `--nat`, and two corrections it forced
+
+`--nat` now prints a FIFTH ORDER block after the third-order one, via
+`WaveFront.FromSystem`, which runs the scheme in W coordinates with the same stop parameter,
+`iota` and aspheric increments `TertiaryCoefficients` uses - a coefficient computed under a
+different convention is not comparable with one that is not.
+
+### Correction: the two orders are NOT in the same normalisation
+
+The third-order block comes from the Seidel route, the fifth from Buchdahl's W coordinates, and
+they do not agree in magnitude. Measured on four designs, the ratio is not a single constant but
+
+    wavefront / seidel = A^l F^k
+
+one power of an aperture scale per power of `rho` and one of a field scale per power of `H`.
+Cooke triplet: `W040` gives `A^4 = 182.345`, so `A = 3.675`; `W131` gives `A^3 F = -51.27`, so
+`F = -1.033`; and then `A^2 F^2 = 14.41` and `A F^3 = -4.05` both land, as does `W220P` sharing
+`W222`'s ratio exactly. So it is a normalisation, not an error - but printing the two blocks
+without saying so would have invited a direct comparison that is wrong. The report says so.
+
+**The NODES are immune**, and that is why they are the part worth printing. Each is a ratio of
+quantities carrying the same powers, so the scales cancel. Checked rather than assumed: on a
+perturbed Cooke triplet and a perturbed double Gauss, the coma node and the astigmatic midpoint
+computed through the W-coordinate route agree with the Seidel route to **thirteen figures**. Two
+independent chains - Seidel to `NatField`, and the W scheme to `WaveFront` to `NatFifthOrder` -
+landing on the same field position.
+
+### Correction: W511's nodes are withdrawn
+
+The previous section reported "one node on everything tried", from a numerical search. That was
+based on SYNTHETIC systems. On a real tilted triplet the same search returns five, and a direct
+scan of the field over the whole disc finds **four**, at positions the search does not report; on
+a tilted double Gauss the scan finds none where the search finds one. The answer moved every time
+the acceptance tolerance was retuned, which is the signature of the tolerance deciding rather
+than the mathematics.
+
+So the search is removed. `DistortionNodes` now returns the two cases it can do exactly - aligned
+and uniformly displaced, both five coincident nodes at the field centre - and **empty** otherwise,
+documented as a refusal rather than a gap. The report prints `NOT SOLVED` with the reason.
+
+**The W511 FIELD is unaffected and remains exact**: `DistortionField` is checked against the
+defining sum surface by surface at six field points out to `|H| = 14`. A caller who wants the
+nodes can find them from it with a solver they trust, and will know that is what they are doing.
+
+### What the block prints
+
+The nine fifth-order coefficients; the nodes for `W151`, `W240M`, `W242`, `W331M`, `W333`,
+`W420M` and `W422`; and then **what the fifth order does to the third** - `W131 -> W131E` with
+the coma node moving, `W222 -> W222E` with the astigmatic centre moving, `W220M -> W220ME` with
+the medial vertex moving. That last group is the practical point of the whole exercise: the
+third-order block above is not the last word on a perturbed system.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
