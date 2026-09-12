@@ -158,7 +158,7 @@ Eq. (6.5) the five primary, Eq. (6.6) the nine secondary, Eq. (6.7) fourteen ter
 
 This page is why the note at the top of this file matters. Its OCR is noise, and the paper sat
 here looking like a curiosity until it was rendered as a page image - see
-`reading-scanned-pdfs.md` in the working notes. `nodal-aberration-theory.md` records what it
+`reading-scanned-pdfs.md` in the working notes. `nat-development.md` records what it
 established and what it did not.
 
 Three things it supplies beyond the relations themselves:
@@ -349,7 +349,7 @@ re-normalisation is ever implemented here.
 ## Nodal aberration theory
 
 **None of this is implemented.** These are the sources for the proposal in
-`nodal-aberration-theory.md`, and they are listed here so the reading is not lost and so the
+`nat-development.md`, and they are listed here so the reading is not lost and so the
 gap between what is in hand and what the work needs is on the record.
 
 NAT is a different axis of generalisation from the rest of this file. Everything above extends
@@ -371,7 +371,7 @@ What it settled here:
   for the product, (A6) for the conjugate, (A7) for the product with a conjugate, (A10) for the
   squared vector, and identities (A11) to (A13). `NatTests` checks all of them against the
   implementation rather than against a restatement of it. An earlier draft of
-  `nodal-aberration-theory.md` had the product written with `x` as the real axis, which
+  `nat-development.md` had the product written with `x` as the real axis, which
   contradicted the conjugate rule three lines above it; the appendix settles it.
 - **The third-order node structure**, which had been assembled here from Schmid and reasoning:
   coma (4.7)-(4.9), astigmatism (4.15)-(4.22), medial field curvature (4.27)-(4.31). The last
@@ -399,7 +399,7 @@ informing one.
   measures exactly that quantity from traced rays.
 - **Table 5 shows the two routes agreeing** to four or five figures, so they are not different
   quantities - which established that this repository's disagreement between them was a fault
-  and not a convention. The fault is diagnosed in `nodal-aberration-theory.md`: Gu's expression
+  and not a convention. The fault is diagnosed in `nat-development.md`: Gu's expression
   is derived for ONE perturbed surface and superposing it over several drops the term that
   makes a rigid translation come out zero.
 - **Tables 1 to 5 are a published oracle** - a Ritchey-Chretien prescription, the perturbations
@@ -489,7 +489,7 @@ The access point by which a non-symmetric surface enters NAT at all: a Zernike Z
 stop is added as a field-constant `B222^2`, and everything follows. Gives the binodal solution
 `H = +/- i sqrt(B222^2 / W222)` and the diagnostic that matters - figure error keeps the node
 midpoint at the field centre, secondary-mirror misalignment does not. Its Eqs. (12)-(16) are the
-node algebra transcribed into `nodal-aberration-theory.md`.
+node algebra transcribed into `nat-development.md`.
 
 **[have] Fuerschbach, K., Rolland, J. P. and Thompson, K. P.**, "Extending Nodal Aberration
 Theory to include mount-induced aberrations with application to freeform surfaces,"

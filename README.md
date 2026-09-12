@@ -349,6 +349,10 @@ Working, and validated in `docs/verification.md`:
 - the optimizer: PSD, Hooke-Jeeves and basin hopping over analytic derivatives, with the
   Jacobian checked operand by operand and variable by variable against central differences.
   Spherical surfaces only, on purpose (`docs/optimizer.md`)
+- **nodal aberration theory**, third and fifth order: what the aberrations do when the
+  surfaces are not on a common axis, and where the nodes go. Driven by an `.align` sidecar
+  that works the same for all six formats, and checked against Thompson's and Buchdahl's
+  own published tables rather than against another program (`docs/nodal-aberration-theory.md`)
 
 There is no GUI. The tool writes plain text and TSV files that you can read, diff and
 feed to something else.

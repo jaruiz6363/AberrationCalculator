@@ -1128,6 +1128,7 @@ public sealed class ReportWriter
         sb.AppendLine(string.Format(Inv, "    W220P {0,13}   Petzval", SciZ(nat.Totals.W220P)));
         sb.AppendLine(string.Format(Inv, "    W220S {0,13}   sagittal = W220P + W222/2", SciZ(nat.Totals.W220S)));
         sb.AppendLine(string.Format(Inv, "    W220M {0,13}   medial   = W220P + W222", SciZ(nat.Totals.W220M)));
+        sb.AppendLine(string.Format(Inv, "    W220T {0,13}   tangential = W220P + 3W222/2", SciZ(nat.Totals.W220T)));
         sb.AppendLine(string.Format(Inv, "    W311  {0,13}   distortion", SciZ(nat.Totals.W311)));
         sb.AppendLine();
 

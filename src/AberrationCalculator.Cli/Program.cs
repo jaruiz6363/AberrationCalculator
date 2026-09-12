@@ -37,10 +37,12 @@ OPTIONS
                       Beats ABCALC_DIR, which beats the folder set with BASE, which
                       beats the current directory. An absolute path is never touched.
       --nat
-                      Nodal aberration theory, third order: where each surface's
-                      aberration field has been displaced to and where the nodes of
-                      the system's field are. Only says anything on a design whose
-                      surfaces carry a tilt or a decentre. Abbreviates to --nodal.
+                      Nodal aberration theory, third and fifth order: where each
+                      surface's aberration field has been displaced to, where the
+                      nodes of the system's field are, and what the fifth order does
+                      to the third. Reads tilts, decentres and Zernike overlays from
+                      the .align sidecar. Abbreviates to --nodal. See
+                      docs/nodal-aberration-theory.md.
 
       --distortion-coefficients
                       What the aberration coefficients make of DISTORTION, against

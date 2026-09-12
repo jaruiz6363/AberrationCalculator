@@ -14,7 +14,7 @@ namespace AberrationCalculator.Core.Nat;
 /// symmetric wave aberration by that surface's sigma vector, so it needs <c>Wklm</c>. This
 /// program computes transverse aberration coefficients in Rimmer's notation. The bridge between
 /// them is NOT a gradient: the attempt to make it one is recorded, and refuted, in
-/// <c>docs/nodal-aberration-theory.md</c>. Buchdahl supplies the real relation.</para>
+/// <c>docs/nat-development.md</c>. Buchdahl supplies the real relation.</para>
 ///
 /// <para><b>The identification is forced by counting.</b> Eq. (2.3) defines the rotational
 /// invariants</para>
