@@ -217,4 +217,108 @@ public class WCoordinateSchemeTests
         Assert.Equal((double)rr.Sigma6, (double)rr.W420, 12);
         Assert.Equal((double)rr.Sigma7, (double)rr.W333, 12);
     }
+
+    /// <summary>
+    /// <c>e</c> computed from the rays against <c>e</c> implied by VII Table I.
+    ///
+    /// <para>Buchdahl never published the value, and every check above solved it from
+    /// <c>pi1</c> - which costs one of the fourteen coefficients as a check. Computing it
+    /// instead from where the two paraxial rays reach the axis gives 0.968799 against the
+    /// 0.968801 his table implies, six significant figures, and hands the fitted coefficient
+    /// back.</para>
+    /// </summary>
+    [Fact]
+    public void TheExitPupilDistanceAgreesWithTheOneTableIImplies()
+    {
+        var r = Rows(w: true);
+        double fromTable = Math.Pow(Total(r, 10) / (4.0 * 0.38571), 0.25);
+        double computed = WaveFront.ExitPupilDistance(r[6]);
+        Assert.Equal(fromTable, computed, 5);
+    }
+
+    /// <summary>
+    /// The same chain as <see cref="TheChainFromAPrescriptionReachesVIITableI"/> but through
+    /// <see cref="WaveFront"/>, which computes <c>e</c> instead of fitting it. Every one of the
+    /// fourteen coefficients is then a free check with nothing tuned anywhere.
+    /// </summary>
+    [Fact]
+    public void TheWaveFrontChainReachesVIITableIWithNothingFitted()
+    {
+        var wf = WaveFront.FromScheme(Rows(w: true), 6);
+
+        double[] piI = { 0.38571, -0.016143, 0.082148, -0.016921, -0.019674 };
+        double[] sD = { -18.34, -26.905, -2.547, -5.9997, 0.8986, -0.20577, 0.1806, 0.1471, -0.05877 };
+        double[] sR = { -18.34, -26.905, -2.752, -5.9997, 0.9072, -0.24933, 0.1806, 0.1561, -0.04829 };
+
+        var d = wf.SystemDeformation;
+        var rr = wf.System;
+        double[] gotPi = { d.Pi1, d.Pi2, d.Pi3, d.Pi4, d.Pi5 };
+        double[] gotD = { d.Sigma1, d.Sigma2, d.Sigma3, d.Sigma4, d.Sigma5,
+                          d.Sigma6, d.Sigma7, d.Sigma8, d.Sigma9 };
+        double[] gotR = { rr.Sigma1, rr.Sigma2, rr.Sigma3, rr.Sigma4, rr.Sigma5,
+                          rr.Sigma6, rr.Sigma7, rr.Sigma8, rr.Sigma9 };
+
+        for (int i = 0; i < 5; i++)
+            Assert.True(Math.Abs(gotPi[i] - piI[i]) <= 3e-3 * Math.Abs(piI[i]) + 1e-8,
+                $"pi{i + 1}: got {gotPi[i]}, VII Table I has {piI[i]}");
+        for (int i = 0; i < 9; i++)
+        {
+            Assert.True(Math.Abs(gotD[i] - sD[i]) <= 3e-3 * Math.Abs(sD[i]) + 5e-5,
+                $"sigma{i + 1} (D): got {gotD[i]}, VII Table I has {sD[i]}");
+            Assert.True(Math.Abs(gotR[i] - sR[i]) <= 3e-3 * Math.Abs(sR[i]) + 5e-5,
+                $"'sigma{i + 1} (R): got {gotR[i]}, VII Table I has {sR[i]}");
+        }
+    }
+
+    /// <summary>
+    /// The per-surface split adds up to the system, to machine precision.
+    ///
+    /// <para>It has to: every step from the scheme's per-surface contributions to the retardation
+    /// coefficients is linear. This asserts it anyway, because the claim that the wave front is
+    /// additive over surfaces - unlike the transverse coefficients, which need induced terms - is
+    /// the reason NAT can use this decomposition at all, and a future change that quietly broke
+    /// it would otherwise show up only as a wrong node position.</para>
+    /// </summary>
+    [Fact]
+    public void ThePerSurfaceSplitSumsToTheSystem()
+    {
+        var wf = WaveFront.FromScheme(Rows(w: true), 6);
+
+        double[] sum = new double[14];
+        for (int j = 1; j <= 6; j++)
+        {
+            var s = wf.PerSurface[j];
+            sum[0] += s.Pi1; sum[1] += s.Pi2; sum[2] += s.Pi3; sum[3] += s.Pi4; sum[4] += s.Pi5;
+            sum[5] += s.Sigma1; sum[6] += s.Sigma2; sum[7] += s.Sigma3; sum[8] += s.Sigma4;
+            sum[9] += s.Sigma5; sum[10] += s.Sigma6; sum[11] += s.Sigma7; sum[12] += s.Sigma8;
+            sum[13] += s.Sigma9;
+        }
+
+        var t = wf.System;
+        double[] want = { t.Pi1, t.Pi2, t.Pi3, t.Pi4, t.Pi5, t.Sigma1, t.Sigma2, t.Sigma3,
+                          t.Sigma4, t.Sigma5, t.Sigma6, t.Sigma7, t.Sigma8, t.Sigma9 };
+        for (int i = 0; i < 14; i++)
+            Assert.True(Math.Abs(sum[i] - want[i]) <= 1e-10 * (1.0 + Math.Abs(want[i])),
+                $"coefficient {i}: per-surface sum {sum[i]} against system {want[i]}");
+    }
+
+    /// <summary>
+    /// The individual surfaces are far larger than their sum, which is the whole reason the split
+    /// matters. On this triplet the per-surface W060 runs from +113 to -149 and totals -18.34: an
+    /// eightfold cancellation. A sigma displacement acts on each contribution separately, so a
+    /// misalignment far too small to matter term by term can still move the sum a long way - and
+    /// a decomposition that had quietly collapsed to "the system total, apportioned" would lose
+    /// exactly that effect while still summing correctly.
+    /// </summary>
+    [Fact]
+    public void TheSurfaceContributionsAreMuchLargerThanTheirSum()
+    {
+        var wf = WaveFront.FromScheme(Rows(w: true), 6);
+
+        double largest = 0, total = Math.Abs(wf.System.W060);
+        for (int j = 1; j <= 6; j++) largest = Math.Max(largest, Math.Abs(wf.PerSurface[j].W060));
+
+        Assert.True(largest > 5.0 * total,
+            $"largest per-surface W060 {largest} against system {total}");
+    }
 }
