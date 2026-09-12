@@ -644,6 +644,115 @@ accepts conics precisely because it stops at third order.
 **It does not replace tolerance analysis.** It makes tolerance sensitivity something the optimiser
 can *see*, which is a different claim from predicting a yield.
 
+## Stage 5, step two: the map is not a gradient, and Buchdahl prints it
+
+Step one identified nine wavefront coefficients against Rimmer's twelve transverse ones and
+guessed the bridge was a gradient. That guess was wrong, and it is worth recording exactly how
+it failed, because the wrong version produces plausible numbers rather than obvious ones.
+
+### The third order is a gradient, and that is what misled
+
+Write `y = rho cos(th)`, `x = rho sin(th)`, take `eps = K dW/d(y,x)`, and expand into the slots
+of `Prms.cs`. Note the mixed naming there: `cos2` is `Cos(2t)`, a double angle, while `cos3p` is
+`Cos(t)^3`, a power. At third order every relation closes:
+
+    B = 4K W040     F = K W131     C = K W222     Pi = 2K W220M - K W222
+
+Three of these are over-determined - `W131` alone drives the `one`, `cos2` and `sin2` slots, and
+all three agree - so this is four independent checks, not four definitions. Measured on the
+fixtures, `S_i / Rimmer_i` is the same constant across all five coefficients to seven digits:
+
+    KingslakeDG    -0.1233310      Ladder1_Sphere  -0.1245215
+    CookeTriplet   -0.2000001      Ladder2_Sphere  -0.1969410
+
+and that constant is **exactly `-1/FNumber`**, which `BuchdahlCoefficients.cs` says in its own
+comment above the totals: *"Totals are transverse coefficients: unconverted sums times the
+F/number."* There was never a physical scale constant to find at third order. It is bookkeeping.
+
+### The fifth order is not a gradient
+
+The same derivation forces three ratio constraints, each between coefficients carrying identical
+powers of `rho` and `H`, so no normalisation of pupil, field or F/number can affect them:
+
+    W151 drives both  one  and  cos2              =>   F1 : F2 = 3 : 2
+    W240 -> M2 and M1+M2 ; W242 -> M3 and M1+M2   =>   M1 = M3
+    W331 -> N3 and N1 ; W333 -> N1, N2 only       =>   N1 = N3
+
+All three fail. `Ladder1_Sphere` is a **single surface**, so it has no induced terms at all, and
+it still fails: `F1/F2 = 1.578`, `M1/M3 = 1.940`, `N1/N3 = 4.582`. The induced corrections are
+not the cause.
+
+The deficit does track how well corrected the system is - `KingslakeDG` is 0.1% off, the crude
+ladders 5% to 24% - which is the signature of a correction built from third-order quantities.
+A magnitude proxy across all 28 fixtures supports that direction but is far too crude to confirm
+any particular form, and was not treated as confirmation.
+
+### Buchdahl VII Sec. 6 gives the actual relation
+
+Paper VII Sec. 6 is titled *The relations between W-coefficients and deformation coefficients*,
+and its Eq. (6.6) is the fifth-order map, already solved in the direction needed:
+
+    12 s1 = 2 S1 + 3A          2 s2 = 2 S1b + A + 2Ab
+     8 s3 = 2 S3 + 2Ab + C
+     2 s4 = S4 + 2A + 4Ab      2 s5 = S5 + 2Ab + C      2 s6 = S6
+     3 s7 = S4b + 4Ab + Bb     2 s8 = S5b + Bb + C        s9 = S6b
+
+The left side is the deformation (wavefront) expansion; the right side is the aberration
+coefficients in W-coordinates. **Each wavefront coefficient is its aberration coefficient plus
+third-order terms.** That is the missing piece, and it is linear in third order at fifth order -
+at seventh it becomes quadratic, e.g. `64 t1 = 8 T1 + 20 S1 + 18 A^2 + 15 A`.
+
+The counts settle the identification beyond doubt. Eq. (6.5) has **five** primary, Eq. (6.6)
+**nine** secondary, Eq. (6.7) **fourteen** tertiary, and Buchdahl says so in the text:
+*"it is effectively specified by 5+9+14 = 28 coefficients."* Those are exactly the numbers of
+monomials `lambda^a mu^b nu^c` at each degree once the field-only piston term is dropped. So
+
+    Buchdahl's s1..s9  IS  Thompson's  W060 W151 W240 W242 W331 W333 W420 W422 W511
+
+and the right-hand `S1..S6, S1b..S6b` are twelve - Rimmer's twelve.
+
+Sec. 6(b) also explains the apparent over-count: `pi2`, `s2`, `s4`, `s5` and six of the tertiary
+coefficients each have two alternative expressions, and the 10 implied identities are exactly
+those of paper VI (4.16-18). The naive gradient constraints above were the wrong identities.
+
+### The verification route, and it needs no second program
+
+Paper VII **Table I** tabulates the deformation `D` and retardation `R` coefficients of orders
+3, 5 and 7 for the triplet `Sigma1` at focal length 1 - the same triplet whose paper III Table I
+this program already reproduces:
+
+    pi1  0.38571     s1 -18.34      s4 -5.9997    s7  0.1806
+    pi2 -0.016143    s2 -26.905     s5  0.8986    s8  0.1471
+    pi3  0.082148    s3  -2.547     s6 -0.20577   s9 -0.05877
+    pi4 -0.016921
+    pi5 -0.019674
+
+(the `D` column; the `R` column differs at `s3`, `s5`, `s6`, `s8` and `s9`). **Thompson's `W` is
+the wave aberration, so it is `R`, not `D`** - Eq. (3.4) relates them, and at `s6` the two differ
+by 21%. Getting that wrong would produce a plausible number, not an obvious error.
+
+Two conversions remain before the map can be coded, and both are in papers already on disk:
+
+1. **VI (6.6-10)**, because this program computes *paracanonical* coefficients while Eq. (6.6)
+   is stated for W-coordinates. VII says so explicitly: *"If paracanonical coefficients have
+   been computed in the first place one need only use equations of the type VI(6.6-10)."*
+2. **VII Eq. (3.4)**, deformation to retardation.
+
+and the `e` scaling of Sec. 7(a) applies as usual when `e` is not unity.
+
+### What this closes
+
+The route through Robb's polynomial is abandoned. It was only ever a way to reach the wavefront
+coefficients through the transverse ones this program happens to report, and Buchdahl reaches
+them directly from the same per-surface machinery. The twelve-against-nine puzzle was never an
+over-determination: twelve aberration coefficients plus the third-order ones map onto nine
+wavefront coefficients, with the surplus absorbed by the ten identities.
+
+One further point in Buchdahl's favour for NAT: the wavefront deformation is **additive over
+surfaces**, which the transverse aberration coefficients are not - that is what the induced terms
+exist to repair. Per-surface `W_klm`, which is exactly what NAT displaces by each surface's
+`sigma_j`, is therefore the better-conditioned quantity of the two.
+
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
