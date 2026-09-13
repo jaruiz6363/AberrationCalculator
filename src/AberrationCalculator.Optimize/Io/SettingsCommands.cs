@@ -252,7 +252,8 @@ public static class SettingsCommands
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine();
-        sb.AppendLine("ALIGNMENT  (" + Path.GetFileNameWithoutExtension(lensPath) + ".align)");
+        // The name comes from AlignmentFile, not from a second copy of the rule here.
+        sb.AppendLine("ALIGNMENT  (" + Path.GetFileName(AlignmentFile.PathFor(lensPath)) + ")");
         sb.AppendLine();
 
         if (alignment.Perturbations.Count == 0)

@@ -133,10 +133,20 @@ public sealed class AlignmentSpecification
 /// </summary>
 public static class AlignmentFile
 {
-    /// <summary>The alignment file that belongs beside a lens.</summary>
+    /// <summary>The extension a lens's alignment sidecar carries.</summary>
+    public const string Extension = ".align";
+
+    /// <summary>
+    /// The alignment file that belongs beside a lens, named for it INCLUDING its extension:
+    /// <c>triplet.zmx</c> reads <c>triplet.zmx.align</c>.
+    ///
+    /// <para>That is the same rule the merit function and variable sidecars follow, and for the
+    /// same reason: a folder holding <c>triplet.zmx</c> and <c>triplet.seq</c> must keep their
+    /// settings apart. This once dropped the extension, so those two lenses shared one alignment
+    /// file - two different designs, one record of how the workshop had built them.</para>
+    /// </summary>
     public static string PathFor(string lensPath) =>
-        Path.Combine(Path.GetDirectoryName(Path.GetFullPath(lensPath)) ?? ".",
-                     Path.GetFileNameWithoutExtension(lensPath) + ".align");
+        (lensPath ?? throw new ArgumentNullException(nameof(lensPath))) + Extension;
 
     /// <summary>Reads the file, or an empty specification when there is none.</summary>
     public static AlignmentSpecification ReadFor(string lensPath)

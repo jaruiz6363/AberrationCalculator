@@ -120,13 +120,10 @@ surface 2 alone, and `ZERN 2 FREE` clears every Zernike term without touching ei
 
 ### Where the file lives
 
-Beside the lens, named for it **without** the extension: `triplet.zmx` reads `triplet.align`.
-
-> **This differs from `.mf` and `.var`, deliberately or not.** Those are named for the lens
-> *including* its extension — `triplet.zmx.mf` — so that a folder holding `triplet.zmx` and
-> `triplet.seq` keeps their settings apart. `.align` drops the extension, so those two lenses
-> would share one alignment file. The same argument applies to both, and this one is recorded
-> here rather than quietly assumed to be intended.
+Beside the lens, named for it **including** the extension: `triplet.zmx` reads
+`triplet.zmx.align`. That is the same rule `.mf` and `.var` follow, and for the same reason — a
+folder holding `triplet.zmx` and `triplet.seq` keeps their records apart rather than sharing one
+account of how the workshop built two different designs.
 
 ### What it is for, and what it is not
 

@@ -204,8 +204,9 @@ OUTPUT
   <name>.surface-share.tsv   Per surface: share of the spot and induced fraction.
   <name>.nat.tsv             Full-field aberrations, third and fifth order, with --nat.
 
-  Alignment - how one BUILT instance sits - is read from <name>.align, which is
-  never written back into the lens. Delete it to restore the nominal design.
+  Alignment - how one BUILT instance sits - is read from a sidecar named for the
+  lens INCLUDING its extension, lens.zmx.align, as the .mf and .var files are. It
+  is never written back into the lens: delete it to restore the nominal design.
 
   The .tsv files are tab-separated with full precision, so a script or a
   spreadsheet can use them without reparsing the report.

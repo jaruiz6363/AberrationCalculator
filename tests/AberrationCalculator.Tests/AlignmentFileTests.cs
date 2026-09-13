@@ -181,4 +181,32 @@ public class AlignmentFileTests
             Assert.Equal(a.Ybar[i], b.Ybar[i]);
         }
     }
+
+    /// <summary>
+    /// <b>The sidecar is named for the lens INCLUDING its extension</b>, which is the rule the
+    /// merit function and variable files follow.
+    ///
+    /// <para>It once dropped the extension, so <c>triplet.zmx</c> and <c>triplet.seq</c> in one
+    /// folder shared a single <c>triplet.align</c> - two different designs, one record of how
+    /// the workshop had built them. <c>Sidecar</c> states that reason for the other two; it
+    /// applies here for exactly the same reason.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("triplet.zmx", "triplet.zmx.align")]
+    [InlineData("triplet.seq", "triplet.seq.align")]
+    [InlineData("triplet.lhlt", "triplet.lhlt.align")]
+    [InlineData("no-extension", "no-extension.align")]
+    public void TheSidecarKeepsTheLensExtension(string lens, string expected)
+    {
+        Assert.Equal(expected, System.IO.Path.GetFileName(AlignmentFile.PathFor(lens)));
+    }
+
+    /// <summary>
+    /// And two lenses differing only in extension get two files, which is the whole point.
+    /// </summary>
+    [Fact]
+    public void TwoLensesInOneFolderDoNotShareAnAlignmentFile()
+    {
+        Assert.NotEqual(AlignmentFile.PathFor("triplet.zmx"), AlignmentFile.PathFor("triplet.seq"));
+    }
 }
