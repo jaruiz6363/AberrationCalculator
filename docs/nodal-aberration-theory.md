@@ -22,7 +22,7 @@ This file is what the program does and how to drive it.
 |---|---|
 | **third order** | `W040 W131 W222 W220P W220S W220M W220T W311`, each surface's sigma, the coma node, the astigmatic node pair, the medial vertex |
 | **fifth order** | `W060 W151 W240 W242 W331 W333 W420 W422 W511`, and nodes for all but `W511` |
-| **freeform** | Zernike astigmatism, coma and trefoil overlays on any surface |
+| **freeform** | Zernike astigmatism, coma, trefoil, oblique spherical and fifth-order coma overlays on any surface |
 | **coupling** | what the fifth order does to the third — it changes both the magnitude and the node |
 
 Both orders are reported in the design's own aperture and field, so they may be compared directly.
@@ -44,7 +44,7 @@ matters here.
 ```
     TILT 2 Y 0.115        degrees, about the surface vertex
     DEC  3 X 0.05         lens units
-    ZERN 1 Z10 0.0005     Fringe Zernike, as a surface SAG
+    ZERN 1 Z10 0.0005     Fringe Zernike, as a surface SAG - Z5 to Z15
     TILT 2 FREE           removes only the tilt, leaving any decentre
 ```
 
@@ -175,9 +175,18 @@ surface is at the stop.
 
 | overlay | at the stop | away from the stop |
 |---|---|---|
-| astigmatism `Z5/6` | field-constant astigmatism | + field-linear |
-| coma `Z7/8` | field-constant coma | + field-asymmetric linear astigmatism |
+| astigmatism `Z5/6` | field-constant astigmatism | nothing more - the rest is tilt and piston |
+| coma `Z7/8` | field-constant coma | + field-linear astigmatism and field curvature |
 | trefoil `Z10/11` | field-constant elliptical coma | + **field-conjugate field-linear astigmatism** |
+| oblique spherical `Z12/13` | field-constant oblique spherical | + four more, on the vector squares |
+| fifth-order coma `Z14/15` | field-constant fifth-order coma | + six more, on the first moments |
+
+**A raw Fringe term carries more than its name.** `Z12` is `4 rho^4 cos2phi - 3 rho^2 cos2phi`,
+and the quadratic half is astigmatism; `Z14` carries coma the same way. The sidecar states raw
+sag, so those halves are routed to the third-order overlays rather than dropped - stating `Z12`
+alone really does move the third-order astigmatism, and stating `Z12 + 3 Z5` cancels it back out,
+which is the "adjusted Zernike" the paper works with. `Z10`'s leftover is a pupil tilt, which
+moves the image instead of blurring it, so trefoil needs no such handling.
 
 The trefoil row is the one worth knowing. A trefoil plate at the stop gives pure trefoil; moved
 off the stop it generates astigmatism that grows linearly with field. That is the aberration a
@@ -240,8 +249,6 @@ published number, an internal identity, or two independent routes made to agree.
   removed: a direct scan of the field disagreed with it on real lenses, and the answer moved every
   time the tolerance was retuned. Five plausible coordinates that a scan contradicts are worse
   than none, so it reports none.
-- **Overlays above trefoil** — `Z12/13` and up — are not implemented. The method is the same and
-  the rows are in Fuerschbach's tables.
 - **Seventh order** is not implemented. The tertiary rows of VI Table I are transcribed but unused.
 - **The optimiser stays spherical-only.** NAT here is analysis. The one thing it feeds the
   optimiser is the `ASBLT` operand, which is Gu's as-built tolerance sensitivity.

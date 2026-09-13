@@ -125,6 +125,65 @@ public static class Conventions
                        3.0 * NatTrefoil(z10, z11));
 
     /// <summary>
+    /// Oblique spherical aberration orientation in the NAT frame - Fuerschbach 2014 Eq. (39).
+    /// A two-theta quantity, so it takes astigmatism's form.
+    /// </summary>
+    public static Scalar NatObliqueSpherical(Scalar z12, Scalar z13) =>
+        0.5 * (HalfPi - SMath.Atan2(z13, z12));
+
+    /// <summary>
+    /// Fifth-order aperture coma orientation in the NAT frame - Fuerschbach 2014 Eq. (49). A
+    /// one-theta quantity, so it takes coma's form.
+    /// </summary>
+    public static Scalar NatFifthOrderComa(Scalar z14, Scalar z15) =>
+        HalfPi - SMath.Atan2(z15, z14);
+
+    /// <summary>
+    /// The field-constant OBLIQUE SPHERICAL aberration a Zernike <c>Z12/13</c> overlay contributes
+    /// at the stop - Fuerschbach 2014 Eq. (42), <c>8(n' - n) z12/13 exp(i 2 phi)</c>. Returned as
+    /// the vector <c>B^2_242</c>.
+    /// </summary>
+    public static Vec2 ObliqueSphericalOverlay(Scalar z12, Scalar z13,
+                                               Scalar nBefore, Scalar nAfter) =>
+        Vec2.FromPolar(8.0 * (nAfter - nBefore) * Magnitude(z12, z13),
+                       2.0 * NatObliqueSpherical(z12, z13));
+
+    /// <summary>
+    /// The field-constant FIFTH-ORDER APERTURE COMA a Zernike <c>Z14/15</c> overlay contributes at
+    /// the stop - Fuerschbach 2014 Eq. (52), <c>10(n' - n) z14/15 exp(i phi)</c>. Returned as the
+    /// vector <c>A_151</c>.
+    /// </summary>
+    public static Vec2 FifthOrderComaOverlay(Scalar z14, Scalar z15,
+                                             Scalar nBefore, Scalar nAfter) =>
+        Vec2.FromPolar(10.0 * (nAfter - nBefore) * Magnitude(z14, z15),
+                       NatFifthOrderComa(z14, z15));
+
+    /// <summary>
+    /// The ASTIGMATISM a raw Fringe <c>Z12</c> carries, which must not be dropped.
+    ///
+    /// <para>Fringe <c>Z12 = 4 rho^4 cos2phi - 3 rho^2 cos2phi</c>. Only the quartic part is
+    /// oblique spherical; the quadratic part is exactly <c>-3 Z5</c>, and it blurs. Fuerschbach
+    /// works with an ADJUSTED Zernike, <c>Z12 + 3 Z5</c>, to isolate the quartic - which is the
+    /// same statement seen from the other side. The <c>.align</c> sidecar states raw Fringe sag,
+    /// so the leftover astigmatism is routed to the astigmatism overlay here rather than
+    /// silently lost.</para>
+    ///
+    /// <para>Coma's own overlay needs no such thing: Fringe <c>Z7</c>'s leftover is a pupil tilt,
+    /// which displaces the image instead of blurring it.</para>
+    /// </summary>
+    public static Scalar AstigmatismCarriedByObliqueSpherical(Scalar z12) => -3.0 * z12;
+
+    /// <summary>
+    /// The THIRD-ORDER COMA a raw Fringe <c>Z14</c> carries.
+    ///
+    /// <para><c>Z14 = 10 rho^5 cos - 12 rho^3 cos + 3 rho cos</c>, and with
+    /// <c>Z7 = 3 rho^3 cos - 2 rho cos</c> the remainder after the quintic is
+    /// <c>-4 Z7 - 5 rho cos</c>. The first blurs and is returned; the second is a tilt and does
+    /// not.</para>
+    /// </summary>
+    public static Scalar ComaCarriedByFifthOrderComa(Scalar z14) => -4.0 * z14;
+
+    /// <summary>
     /// The beam displacement across a surface away from the stop, <c>ybar / y</c> - Fuerschbach
     /// 2014 Eq. (1). Multiplying it by the field vector gives the decentre the beam sees, and it
     /// is what turns every field-constant overlay contribution into a field-dependent one.

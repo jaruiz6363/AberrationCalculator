@@ -230,14 +230,28 @@ public sealed class NatField
                 // uniquely among the overlays that is true wherever the surface sits: moving it
                 // off the stop generates a tilt and a piston, which shift the image and its
                 // phase without blurring anything. Fuerschbach Eq. (13).
-                Scalar z5 = surf.Zernike(5), z6 = surf.Zernike(6);
+                //
+                // A raw Fringe Z12 CARRIES astigmatism - it is 4 rho^4 cos2phi - 3 rho^2 cos2phi,
+                // and the quadratic half is exactly -3 Z5. The sidecar states raw Fringe sag, so
+                // that half is routed here rather than dropped. Fuerschbach works with an
+                // "adjusted" Zernike, Z12 + 3 Z5, which is the same statement from the other side.
+                Scalar z5 = surf.Zernike(5)
+                          + Conventions.AstigmatismCarriedByObliqueSpherical(surf.Zernike(12));
+                Scalar z6 = surf.Zernike(6)
+                          + Conventions.AstigmatismCarriedByObliqueSpherical(surf.Zernike(13));
                 if (z5 != 0.0 || z6 != 0.0)
                     b222sq += Conventions.AstigmatismOverlay(z5, z6, nBefore, nAfter);
 
                 // Z7/8, coma. Field constant coma at the stop; away from it, also field-linear
                 // astigmatism and field-linear medial field curvature, both scaled by the beam
                 // walk. Fuerschbach Table 1.
-                Scalar z7 = surf.Zernike(7), z8 = surf.Zernike(8);
+                //
+                // And a raw Fringe Z14 carries coma the same way: its remainder after the
+                // quintic is -4 Z7 less a pupil tilt, and only the first of those blurs.
+                Scalar z7 = surf.Zernike(7)
+                          + Conventions.ComaCarriedByFifthOrderComa(surf.Zernike(14));
+                Scalar z8 = surf.Zernike(8)
+                          + Conventions.ComaCarriedByFifthOrderComa(surf.Zernike(15));
                 if (z7 != 0.0 || z8 != 0.0)
                 {
                     var ffComa = Conventions.ComaOverlay(z7, z8, nBefore, nAfter);

@@ -156,6 +156,12 @@ public readonly struct FieldMoments
     /// </summary>
     public FieldMoments WithC3(Vec2 c3) => new(W, A, B, B2, C, c3, D, D2, E);
 
+    /// <summary>The same moments with the first moment replaced - Fuerschbach 2014 Table 4.</summary>
+    public FieldMoments WithA(Vec2 a) => new(W, a, B, B2, C, C3, D, D2, E);
+
+    /// <summary>The same moments with the vector square replaced - Table 3.</summary>
+    public FieldMoments WithB2(Vec2 b2) => new(W, A, B, b2, C, C3, D, D2, E);
+
     /// <summary>Accumulate from parallel lists.</summary>
     public static FieldMoments Accumulate(IReadOnlyList<Scalar> contributions,
                                           IReadOnlyList<Vec2> sigmas)

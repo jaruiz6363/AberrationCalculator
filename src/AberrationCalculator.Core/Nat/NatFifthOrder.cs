@@ -689,7 +689,9 @@ public sealed class NatFifthOrder
                                         Func<int, Scalar> thirdW131,
                                         Func<int, Vec2> sigma, int count,
                                         Func<int, Vec2>? trefoilOverlay = null,
-                                        Func<int, Scalar>? beamDisplacement = null)
+                                        Func<int, Scalar>? beamDisplacement = null,
+                                        Func<int, Vec2>? obliqueSphericalOverlay = null,
+                                        Func<int, Vec2>? fifthComaOverlay = null)
     {
         if (perSurface == null) throw new ArgumentNullException(nameof(perSurface));
         if (sigma == null) throw new ArgumentNullException(nameof(sigma));
@@ -703,22 +705,67 @@ public sealed class NatFifthOrder
         Scalar W420M(int j) => perSurface(j).W420 + 0.5 * perSurface(j).W422;
         Scalar W220M(int j) => perSurface(j).W220M;
 
+        var m151 = FieldMoments.Accumulate(j => perSurface(j).W151, sigma, count);
+        var m331m = FieldMoments.Accumulate(W331M, sigma, count);
         var m333 = FieldMoments.Accumulate(j => perSurface(j).W333, sigma, count);
+        var m240m = FieldMoments.Accumulate(W240M, sigma, count);
+        var m242 = FieldMoments.Accumulate(j => perSurface(j).W242, sigma, count);
+        var m420m = FieldMoments.Accumulate(W420M, sigma, count);
         var m422 = FieldMoments.Accumulate(j => perSurface(j).W422, sigma, count);
 
-        // Table 2 of Fuerschbach 2014, both rows, SUBTRACTED - see the parameter remarks.
-        if (trefoilOverlay != null)
+        // Each overlay is summed once, weighted by the powers of the beam displacement its table
+        // calls for. ybar/y is zero at a pupil, so every row beyond the first vanishes there -
+        // which is the whole distinction between a plate at the stop and one away from it.
+        Vec2 Sum(Func<int, Vec2>? overlay, int power)
         {
-            Vec2 sum333 = Vec2.Zero, sum422 = Vec2.Zero;
+            if (overlay == null) return Vec2.Zero;
+            Vec2 total = Vec2.Zero;
             for (int j = 0; j < count; j++)
             {
-                Vec2 ff = trefoilOverlay(j);
+                Vec2 ff = overlay(j);
                 if (ff.MagnitudeSquared == 0.0) continue;
-                sum333 += ff;
-                if (beamDisplacement != null) sum422 += beamDisplacement(j) * ff;
+                Scalar d = beamDisplacement == null ? 0.0 : beamDisplacement(j);
+                Scalar w = 1.0;
+                for (int k = 0; k < power; k++) w *= d;
+                total += w * ff;
             }
-            m333 = m333.WithC3(m333.C3 - sum333);
-            m422 = m422.WithC3(m422.C3 - 1.5 * sum422);
+            return total;
+        }
+
+        // ── Table 2: trefoil, Z10/11. Both rows SUBTRACTED, onto the vector CUBES. ──────────
+        if (trefoilOverlay != null)
+        {
+            m333 = m333.WithC3(m333.C3 - Sum(trefoilOverlay, 0));
+            m422 = m422.WithC3(m422.C3 - 1.5 * Sum(trefoilOverlay, 1));
+        }
+
+        // ── Table 3: oblique spherical, Z12/13. Five rows ADDED, onto the vector SQUARES. ──
+        if (obliqueSphericalOverlay != null)
+        {
+            Vec2 s0 = Sum(obliqueSphericalOverlay, 0);
+            Vec2 s1 = Sum(obliqueSphericalOverlay, 1);
+            Vec2 s2 = Sum(obliqueSphericalOverlay, 2);
+            m242 = m242.WithB2(m242.B2 + s0);
+            m333 = m333.WithB2(m333.B2 + (2.0 / 3.0) * s1);
+            m331m = m331m.WithB2(m331m.B2 + 1.5 * s1);
+            m422 = m422.WithB2(m422.B2 + s2);
+            m420m = m420m.WithB2(m420m.B2 + 0.75 * s2);
+        }
+
+        // ── Table 4: fifth-order coma, Z14/15. Seven rows SUBTRACTED, onto the FIRST moments. ─
+        if (fifthComaOverlay != null)
+        {
+            Vec2 s0 = Sum(fifthComaOverlay, 0);
+            Vec2 s1 = Sum(fifthComaOverlay, 1);
+            Vec2 s2 = Sum(fifthComaOverlay, 2);
+            Vec2 s3 = Sum(fifthComaOverlay, 3);
+            m151 = m151.WithA(m151.A - s0);
+            m240m = m240m.WithA(m240m.A - 1.5 * s1);
+            m242 = m242.WithA(m242.A - 2.0 * s1);
+            m333 = m333.WithA(m333.A - (4.0 / 3.0) * s2);
+            m331m = m331m.WithA(m331m.A - 3.0 * s2);
+            m422 = m422.WithA(m422.A - 2.0 * s3);
+            m420m = m420m.WithA(m420m.A - 1.5 * s3);
         }
 
         return new NatFifthOrder
@@ -726,12 +773,12 @@ public sealed class NatFifthOrder
             M131 = FieldMoments.Accumulate(thirdW131, sigma, count),
             M222 = FieldMoments.Accumulate(j => perSurface(j).W222, sigma, count),
             M220M = FieldMoments.Accumulate(W220M, sigma, count),
-            M151 = FieldMoments.Accumulate(j => perSurface(j).W151, sigma, count),
-            M331M = FieldMoments.Accumulate(W331M, sigma, count),
+            M151 = m151,
+            M331M = m331m,
             M333 = m333,
-            M240M = FieldMoments.Accumulate(W240M, sigma, count),
-            M242 = FieldMoments.Accumulate(j => perSurface(j).W242, sigma, count),
-            M420M = FieldMoments.Accumulate(W420M, sigma, count),
+            M240M = m240m,
+            M242 = m242,
+            M420M = m420m,
             M422 = m422,
             M511 = FieldMoments.Accumulate(j => perSurface(j).W511, sigma, count),
         };

@@ -6,7 +6,7 @@ tried, what went wrong and how it was caught, in the order it happened - kept be
 the conclusions are only defensible with the reasoning attached, and because two of the errors
 recorded here were the kind that produce a plausible wrong number rather than an obvious one.
 
-Status: **stages 1 to 4b and 5 implemented**; only overlays above trefoil remain.
+Status: **every stage implemented**.
 
 | stage | what | state |
 |---|---|---|
@@ -15,7 +15,7 @@ Status: **stages 1 to 4b and 5 implemented**; only overlays above trefoil remain
 | 3 | perturbation state, sigma, the field, the nodes, `--nat` | **done** - `Core/Nat/SigmaVector.cs`, `NatField.cs`; validated against Thompson (2009) Tables 4 and 5 |
 | 4a | Zernike astigmatism and coma overlays | **done** - `ZERN` in `.align`, wired into `NatField`; Schmid's diagnostic tested |
 | 4b | trefoil overlays | **done** - `Conventions.TrefoilOverlay`, Fuerschbach 2014 Table 2 wired into `W333` and `W422`; the stop-versus-not experiment reproduced |
-| 4c | Zernike overlays above trefoil, Z12 and up | proposal - the same method, more rows |
+| 4c | Zernike overlays above trefoil, Z12/13 and Z14/15 | **done** - Fuerschbach 2014 Tables 3 and 4, and the astigmatism and coma a raw Fringe term carries |
 | 5 | fifth order | **done** - Buchdahl W coordinates to `Wklm`, the nodal solutions of the trilogy, wired into `--nat` and `nat.tsv` |
 
 **Where a perturbation comes from: the `.align` sidecar**, uniform across all six formats.
@@ -1583,6 +1583,68 @@ zero) while the one that matters is not (its chief-ray incidence is 0.295); that
 vertex is therefore available; that putting a conic on that same surface suppresses the ASPHERIC
 sigma and only that, and declines the medial for the right reason; and that an unfigured design
 has an empty aspheric list whatever its geometry.
+
+## Stage 4c: the overlays above trefoil
+
+Fuerschbach 2014 Eqs. (42) and (52), Tables 3 and 4. Two more overlay types, and the pattern that
+looked like a pattern turns out not to be one.
+
+### The coefficients are not a sequence
+
+    Z5/6   astigmatism         2(n'-n)z at 2 phi
+    Z7/8   coma                3(n'-n)z at   phi
+    Z10/11 trefoil             4(n'-n)z at 3 phi
+    Z12/13 oblique spherical   8(n'-n)z at 2 phi
+    Z14/15 fifth-order coma   10(n'-n)z at   phi
+
+2, 3, 4, 8, 10. Each comes from its own Zernike's radial form - the coefficient on the part that
+lands on a NAT aberration - and there is no rule to guess from the first three.
+
+### Where they land, and the signs are not uniform either
+
+**Table 3**, oblique spherical, five rows, all ADDED, onto the vector SQUARES:
+
+    B^2_242  += sum_j FF B^2_242,j
+    B^2_333  += (2/3) sum_j (ybar/y) FF      B^2_331M += (3/2) sum_j (ybar/y) FF
+    B^2_422  += sum_j (ybar/y)^2 FF          B^2_420M += (3/4) sum_j (ybar/y)^2 FF
+
+**Table 4**, fifth-order coma, seven rows, all SUBTRACTED, onto the FIRST moments:
+
+    A_151  -= sum_j FF A_151,j
+    A_240M -= (3/2) sum (ybar/y) FF          A_242  -= 2 sum (ybar/y) FF
+    A_333  -= (4/3) sum (ybar/y)^2 FF        A_331M -= 3 sum (ybar/y)^2 FF
+    A_422  -= 2 sum (ybar/y)^3 FF            A_420M -= (3/2) sum (ybar/y)^3 FF
+
+Trefoil's two rows are subtracted, onto the CUBES. So across the three tables the target moment
+changes, the sign changes, and neither follows from the other. Every row was read off the
+rendered page and checked against its own "NAT Analog" column, because the text layer loses signs
+and had already done so once.
+
+### A raw Fringe term carries more than its name
+
+`Z12 = 4 rho^4 cos2phi - 3 rho^2 cos2phi`. Only the quartic part is oblique spherical; the
+quadratic part is exactly `-3 Z5`, and it blurs. Likewise `Z14 = 10 rho^5 cos - 12 rho^3 cos +
+3 rho cos`, whose remainder after the quintic is `-4 Z7` less a pupil tilt.
+
+Fuerschbach sidesteps this by working with an ADJUSTED Zernike, `Z12 + 3 Z5`, which isolates the
+quartic. A program reading raw sag from a sidecar cannot: stating `Z12` really does put
+astigmatism on the surface. So the carried halves are routed to the existing third-order
+overlays, and there is a test both ways - `Z12` alone moves the third-order astigmatism, and
+`Z12 + 3 Z5` reduces to pure oblique spherical.
+
+`Z10` needs none of this; its leftover is a pupil tilt, which displaces the image rather than
+blurring it. That is why trefoil looked simpler than it was.
+
+### A test that was wrong, and what it taught
+
+The first version asserted that the field-constant row moves its moment by the SAME amount
+whether the plate sits at the stop or away from it. It does not, and the failure was the test's:
+the overlay is `k(n' - n)z`, and the two surfaces have different index steps - the Cooke
+triplet's stop is a glass-to-air surface and surface 1 an air-to-glass one, 0.17 per cent apart.
+
+The assertion is now that the two moves stand in the ratio of those index steps, which is a
+sharper statement than the one it replaced. The discriminating half of the test never depended on
+it: at the stop the other four or six rows do not move at all, and away from it they all do.
 
 ## Papers
 
