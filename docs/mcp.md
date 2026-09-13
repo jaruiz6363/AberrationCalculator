@@ -63,9 +63,9 @@ Every REPORTING tool takes `lens_file` and an optional `glass_dir`. Most return 
 tables, so a caller can parse a number rather than scrape prose; the four marked *text* are
 verdicts and breakdowns that read far better ruled than flattened into one row per cell.
 
-Two tools do not report on a lens and so carry their own arguments, listed separately below:
-`optimize`, which CHANGES a design, and `base_path`, which says what folder bare file names are
-taken against.
+Three tools take more than a lens and so carry their own arguments, listed separately below:
+`optimize`, which CHANGES a design; `nodal_aberrations`, which has to be told how the surfaces
+are out of place; and `base_path`, which says what folder bare file names are taken against.
 
 | tool | what it gives |
 |---|---|
@@ -111,6 +111,38 @@ the report says so rather than handing back something nobody asked for.
 Formats are taken from the extension: `.zmx`, `.seq`, `.otx`, `.opt`, `.len`, `.osl`, `.json`
 (Optiland) and `.lhlt`.
 
+
+### `nodal_aberrations`
+
+What the aberrations do when the surfaces are **not on a common axis**: where each surface's
+aberration field has been displaced to, where the **nodes** of the system's field are, and what
+the fifth order does to the third. Third and fifth order, both in the design's own units. This
+is the command line's `--nat`, and `docs/nodal-aberration-theory.md` is the long form.
+
+| argument | |
+|---|---|
+| `lens_file` | the lens to analyse. It is read, never written |
+| `alignment` | the perturbation as text, in the `.align` grammar. Omit to read `<lens>.align` beside the lens |
+| `full_field` | return the field **grid** as a tab-separated table instead of the report - magnitude and orientation of every aberration type over a grid of field points, which is what a node map is plotted from |
+| `glass_dir` | optional folder of `.agf` catalogs |
+
+The alignment text goes through the same parser the sidecar uses, so the grammar cannot drift
+between the two ways of stating a perturbation, and a bad line comes back with its line number:
+
+    TILT 2 Y 0.115      degrees, about the surface vertex
+    DEC  3 X 0.05       the design's length units
+    ZERN 1 Z10 0.0005   a Fringe Zernike overlay, as surface sag
+    TILT 2 FREE         drops the tilt only, leaving any decentre
+
+**Every tool on this page reads `<lens>.align` if it is there.** A perturbation is a statement
+about one built instance rather than about the design, so it lives in a sidecar - but it is part
+of what the lens *is* once stated, and the command line applies it to every analysis. The server
+did not, for a while, which meant the same lens read one way through the CLI and another way
+here with nothing to say so.
+
+**On an aligned design it still runs and says so.** Every displacement is zero, the sums
+collapse to the ordinary Seidel ones, and every node sits at the field centre: the theory
+reducing correctly, not a case it declines.
 
 ### `base_path`
 

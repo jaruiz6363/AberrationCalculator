@@ -153,6 +153,57 @@ internal static class ActionTools
             },
             Optimize),
 
+        new ActionTool("nodal_aberrations",
+            "What the aberrations do when the surfaces are NOT on a common axis: where each "
+          + "surface's aberration field has been displaced to, where the NODES of the system's "
+          + "field are, and what the fifth order does to the third.\n\n"
+          + "WHY NODES. A tilted or decentred surface contributes the same rotationally "
+          + "symmetric field it always did, DISPLACED to a different centre in the field of "
+          + "view. Summing displaced fields instead of concentric ones moves the zeros off axis "
+          + "and splits them: astigmatism gets two nodes, elliptical coma three, fifth-order "
+          + "astigmatism four. WHERE THEY SIT SAYS WHAT MOVED - binodal astigmatism whose "
+          + "midpoint stays at the field centre is figure error at the stop, a displaced "
+          + "midpoint is misalignment, and a spot diagram cannot tell those apart.\n\n"
+          + "Third and fifth order, both in the design's own units so they compare directly. "
+          + "See docs/nodal-aberration-theory.md.\n\n"
+          + "THE PERTURBATION. Given as `alignment` text, or read from <lens>.align beside the "
+          + "lens when that is left off - the same file and the same grammar the command line "
+          + "uses, for all six formats. One statement per line, merging into whatever was said "
+          + "before:\n"
+          + "  TILT 2 Y 0.115      degrees, about the surface vertex\n"
+          + "  DEC  3 X 0.05       the design's length units\n"
+          + "  ZERN 1 Z10 0.0005   a Fringe Zernike overlay, as surface SAG\n"
+          + "  TILT 2 FREE         drops the tilt only, leaving any decentre\n\n"
+          + "Surfaces are numbered from 1 and '#' starts a comment. DEGREES throughout - the "
+          + "one angular unit this program takes from a user anywhere, matching the ASBLT merit "
+          + "operand's tilt tolerance.\n\n"
+          + "ZERNIKE TERMS. Z1 to Z18 parse; five PAIRS are consumed - Z5/6 astigmatism, Z7/8 "
+          + "coma, Z10/11 trefoil, Z12/13 oblique spherical, Z14/15 fifth-order aperture coma. "
+          + "Anything else, Z9 spherical among them, is accepted and does NOTHING, a "
+          + "rotationally symmetric departure having no field centre to displace.\n\n"
+          + "ON AN ALIGNED DESIGN it still runs and says so: every displacement is zero, the "
+          + "sums collapse to the ordinary Seidel ones, and every node sits at the field centre. "
+          + "That is the theory reducing correctly, not a case it declines.\n\n"
+          + "SMALL DEPARTURES. This treats a perturbation as a small departure from a symmetric "
+          + "system, which is right for build errors and figure error and WRONG for a design "
+          + "with large deliberate tilts.",
+            new[]
+            {
+                new ArgumentSpec("lens_file", "string",
+                    "The lens to analyse. It is read, never written.", Required: true),
+                new ArgumentSpec("alignment", "string",
+                    "The perturbation as text, in the .align grammar above. Omit to read "
+                  + "<lens>.align beside the lens, or to analyse the nominal design when there "
+                  + "is no such file."),
+                new ArgumentSpec("full_field", "boolean",
+                    "Return the field GRID as a tab-separated table - magnitude and orientation "
+                  + "of every aberration type at each of a grid of field points - instead of the "
+                  + "report. Use it to plot a node map or to find where an aberration vanishes."),
+                new ArgumentSpec("glass_dir", "string",
+                    "Optional folder of .agf catalogs instead of the bundled ones."),
+            },
+            Nodal),
+
         new ActionTool("base_path",
             "Set or show the FOLDER that bare file names are taken to mean, so that lens_file "
           + "and the rest can be given as 'L.zmx' rather than as a full path.\n\n"
@@ -173,6 +224,37 @@ internal static class ActionTools
             },
             SetBasePath),
     };
+
+    /// <summary>
+    /// The command line's <c>--nat</c>, with the perturbation optionally stated inline.
+    ///
+    /// <para>The alignment text goes through <see cref="AlignmentFile.Parse"/> - the same
+    /// parser the sidecar uses - rather than being interpreted here, so the grammar cannot
+    /// drift between the two ways of stating it. A parse error carries the line number, which
+    /// is more use to a caller than a rejected tool call.</para>
+    /// </summary>
+    private static string Nodal(JsonNode? a)
+    {
+        string lens = a?["lens_file"]?.GetValue<string>()
+                      ?? throw new ArgumentException("lens_file is required");
+        string? glass = a?["glass_dir"]?.GetValue<string>();
+        string? text = a?["alignment"]?.GetValue<string>();
+        bool grid = a?["full_field"]?.GetValue<bool>() ?? false;
+
+        AlignmentSpecification? alignment = null;
+        if (!string.IsNullOrWhiteSpace(text))
+            alignment = AlignmentFile.Parse(
+                text.Replace("\r\n", "\n").Split('\n'), "alignment");
+
+        var writer = Tools.Open(lens, glass, alignment);
+        string result = grid ? writer.BuildNatFullFieldTsv() : writer.BuildNatText();
+
+        if (writer.Unresolved.Count > 0)
+            result = "WARNING: unresolved materials: " + string.Join(", ", writer.Unresolved)
+                   + "\nEvery quantity that depends on them is unreliable.\n\n" + result;
+
+        return result;
+    }
 
     /// <summary>The command line's BASE, BASELIST and BASEREMOVE, as one tool.</summary>
     private static string SetBasePath(JsonNode? a)

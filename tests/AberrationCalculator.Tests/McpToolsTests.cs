@@ -94,4 +94,60 @@ public class McpToolsTests
     {
         Assert.Throws<ArgumentException>(() => Tools.Open("", null));
     }
+
+    /// <summary>
+    /// Every tool the server advertises is named in <c>docs/mcp.md</c>, which claims to list
+    /// them.
+    ///
+    /// <para>Mechanical, for the reason <c>OperandDocumentationTests</c> is: <c>ASBLT</c> was
+    /// written, wired in and tested, and left out of the operand table, and nothing failed
+    /// because nothing was looking. A tool is easier to forget still - it is registered in one
+    /// file and documented in another - and an undocumented tool is one a caller will never
+    /// think to ask for.</para>
+    /// </summary>
+    [Fact]
+    public void EveryToolIsNamedInTheDocument()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "docs", "mcp.md")))
+            dir = dir.Parent;
+        if (dir == null) return;   // sources are not here; nothing to check, not something to fail
+
+        string doc = File.ReadAllText(Path.Combine(dir.FullName, "docs", "mcp.md"));
+
+        var missing = new System.Collections.Generic.List<string>();
+        foreach (var tool in Tools.All)
+            if (!doc.Contains("`" + tool.Name + "`", StringComparison.Ordinal))
+                missing.Add(tool.Name);
+        foreach (var tool in ActionTools.All)
+            if (!doc.Contains("`" + tool.Name + "`", StringComparison.Ordinal))
+                missing.Add(tool.Name);
+
+        Assert.True(missing.Count == 0,
+            "docs/mcp.md does not mention: " + string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// And every action tool's arguments are documented too, since those are the ones a caller
+    /// cannot guess from a lens path.
+    /// </summary>
+    [Fact]
+    public void EveryActionToolArgumentIsNamedInTheDocument()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "docs", "mcp.md")))
+            dir = dir.Parent;
+        if (dir == null) return;
+
+        string doc = File.ReadAllText(Path.Combine(dir.FullName, "docs", "mcp.md"));
+
+        var missing = new System.Collections.Generic.List<string>();
+        foreach (var tool in ActionTools.All)
+            foreach (var arg in tool.Arguments)
+                if (!doc.Contains("`" + arg.Name + "`", StringComparison.Ordinal))
+                    missing.Add(tool.Name + "." + arg.Name);
+
+        Assert.True(missing.Count == 0,
+            "docs/mcp.md does not mention: " + string.Join(", ", missing));
+    }
 }

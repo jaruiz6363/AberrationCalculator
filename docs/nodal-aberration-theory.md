@@ -65,6 +65,12 @@ switch.
 the ordinary Seidel ones, and every node sits at the field centre. That is the theory reducing
 correctly rather than declining the case, and it is worth seeing once.
 
+**Over MCP** it is the `nodal_aberrations` tool, which takes the perturbation either from the
+sidecar or as `alignment` text in the grammar below — through the same parser, so the two cannot
+disagree — and returns the field grid instead of the report when asked for `full_field`. Every
+other tool on that server reads `<lens>.align` too, so a perturbed lens reads the same way there
+as it does here. `docs/mcp.md` has the arguments.
+
 ## The `.align` file
 
 ### Why it is a file of its own
