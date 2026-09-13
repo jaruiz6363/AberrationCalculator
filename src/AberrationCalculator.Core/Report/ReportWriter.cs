@@ -8,6 +8,7 @@ using AberrationCalculator.Core.Aberrations;
 using AberrationCalculator.Core.Enums;
 using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.Models;
+using AberrationCalculator.Core.Nat;
 using AberrationCalculator.Core.RayTrace;
 
 namespace AberrationCalculator.Core.Report;
@@ -917,6 +918,13 @@ public sealed class ReportWriter
 
     private static string Sci(double v) => v.ToString("0.0000E+00", Inv);
 
+    /// <summary>
+    /// <see cref="Sci"/> with negative zero folded onto zero. A field vector that is exactly on
+    /// axis in one component prints "-0.0000E+00" otherwise, which reads as a measurement when
+    /// it is the absence of one.
+    /// </summary>
+    private static string SciZ(double v) => Sci(v == 0.0 ? 0.0 : v);
+
     private void Warnings(StringBuilder sb, ParaxialResult p)
     {
         var notes = new List<string>();
@@ -1073,4 +1081,524 @@ public sealed class ReportWriter
     /// <summary>Round-trip form for the TSV, so a reader loses no precision.</summary>
     private static string Raw(double v) =>
         double.IsNaN(v) ? "" : double.IsInfinity(v) ? (v > 0 ? "inf" : "-inf") : v.ToString("R", Inv);
+
+    /// <summary>
+    /// The nodal aberration theory report: where each surface's aberration field has been
+    /// displaced to, and where the nodes of the system's field have ended up.
+    ///
+    /// <para>A total RMS number says a telescope is soft. This says WHICH surface moved, because
+    /// the node geometry is characteristic of the fault: a figure error at the stop contributes
+    /// to the node SPLITTING but not to their midpoint, so its two astigmatic nodes stay
+    /// symmetric about the field centre, while a misaligned surface moves the midpoint and
+    /// carries them off together.</para>
+    ///
+    /// <para>Third order only, which is where nodal aberration theory's node structure is exact
+    /// and where its subject - conic telescopes - lives. An aligned design prints the same
+    /// coefficients it always did and every node at the origin, which is the theory's own
+    /// consistency check rather than a special case.</para>
+    /// </summary>
+    public string BuildNatText()
+    {
+        var sb = new StringBuilder();
+        double field = MaxField();
+
+        sb.AppendLine("NODAL ABERRATION THEORY - THIRD ORDER");
+        sb.AppendLine("--------------------------------------------------------------------------------");
+        sb.AppendLine("Thompson, J. Opt. Soc. Am. A 22, 1389 (2005). Each surface contributes the");
+        sb.AppendLine("rotationally symmetric field it always did, displaced by sigma; the total is the");
+        sb.AppendLine("sum of displaced fields, and its zeros - the NODES - leave the axis.");
+        sb.AppendLine("Field vectors are in the units of the design's field, measured from its centre.");
+        sb.AppendLine();
+
+        if (Math.Abs(field) < 1e-15)
+        {
+            sb.AppendLine("This design has no off-axis field, so it has no aberration field to displace.");
+            return sb.ToString();
+        }
+
+        var p = ParaxialTrace.Trace(_sys, PrimaryIndices, field);
+        var seidel = SeidelCoefficients.Compute(_sys, PrimaryIndices, PrimaryIndices,
+                                                PrimaryIndices, p);
+        var nat = NatField.Compute(_sys, PrimaryIndices, p, seidel);
+
+        sb.AppendLine("  Third-order wave coefficients of the system");
+        sb.AppendLine(string.Format(Inv, "    W040  {0,13}   spherical", SciZ(nat.Totals.W040)));
+        sb.AppendLine(string.Format(Inv, "    W131  {0,13}   coma", SciZ(nat.Totals.W131)));
+        sb.AppendLine(string.Format(Inv, "    W222  {0,13}   astigmatism", SciZ(nat.Totals.W222)));
+        sb.AppendLine(string.Format(Inv, "    W220P {0,13}   Petzval", SciZ(nat.Totals.W220P)));
+        sb.AppendLine(string.Format(Inv, "    W220S {0,13}   sagittal = W220P + W222/2", SciZ(nat.Totals.W220S)));
+        sb.AppendLine(string.Format(Inv, "    W220M {0,13}   medial   = W220P + W222", SciZ(nat.Totals.W220M)));
+        sb.AppendLine(string.Format(Inv, "    W220T {0,13}   tangential = W220P + 3W222/2", SciZ(nat.Totals.W220T)));
+        sb.AppendLine(string.Format(Inv, "    W311  {0,13}   distortion", SciZ(nat.Totals.W311)));
+        sb.AppendLine();
+
+        if (nat.IsAligned)
+        {
+            sb.AppendLine("  This design is ALIGNED - no surface carries a tilt or a decentre - so every");
+            sb.AppendLine("  sigma is zero, the sums collapse to the ordinary Seidel ones, and every node");
+            sb.AppendLine("  sits at the centre of the field. That is the theory reducing correctly, not a");
+            sb.AppendLine("  case it declines to handle: perturb a surface and the nodes move.");
+            AppendNatFifthOrder(sb, p, nat);
+            return sb.ToString();
+        }
+
+        sb.AppendLine("  Perturbations, and the aberration field centre each surface acquires");
+        sb.AppendLine("    sigma points to where that surface's own field lands. It DIVERGES where the");
+        sb.AppendLine("    chief ray strikes a surface normally - that surface then contributes no coma");
+        sb.AppendLine("    and no astigmatism either, so the products the theory uses stay finite.");
+        sb.AppendLine();
+        sb.AppendLine("    surf      dec x      dec y     tilt x     tilt y      sigma x      sigma y");
+        sb.AppendLine("    " + new string('-', 74));
+
+        int last = _sys.LastOpticalSurface();
+        for (int j = 1; j <= last; j++)
+        {
+            var s = _sys.Surfaces[j];
+            bool suppressed = Array.IndexOf(nat.Sigmas.SigmaSuppressedAt, j) >= 0;
+            var sig = nat.Sigmas.Sigma[j];
+            if (!s.IsPerturbed && sig.MagnitudeSquared == 0.0 && !suppressed) continue;
+
+            sb.AppendLine(string.Format(Inv,
+                "    {0,4} {1,10} {2,10} {3,10} {4,10} {5,12} {6,12}",
+                j, Num(s.DecenterX), Num(s.DecenterY),
+                Num(s.TiltX), Num(s.TiltY),
+                suppressed ? "diverges" : SciZ(sig.X),
+                suppressed ? "diverges" : SciZ(sig.Y)));
+        }
+        sb.AppendLine();
+
+        sb.AppendLine("  Nodes");
+        if (nat.ComaNodeExists)
+            sb.AppendLine(string.Format(Inv, "    coma          one node at  ({0}, {1})",
+                                        SciZ(nat.ComaNode.X), SciZ(nat.ComaNode.Y)));
+        else
+            sb.AppendLine("    coma          the system has no third-order coma to displace");
+
+        if (nat.AstigmatismNodesExist)
+        {
+            sb.AppendLine(string.Format(Inv, "    astigmatism   two nodes at ({0}, {1})",
+                                        SciZ(nat.AstigmatismNode1.X), SciZ(nat.AstigmatismNode1.Y)));
+            sb.AppendLine(string.Format(Inv, "                           and ({0}, {1})",
+                                        SciZ(nat.AstigmatismNode2.X), SciZ(nat.AstigmatismNode2.Y)));
+            sb.AppendLine(string.Format(Inv, "                  midpoint     ({0}, {1})",
+                                        SciZ(nat.A222Normalised.X), SciZ(nat.A222Normalised.Y)));
+            sb.AppendLine("                  a midpoint at the field centre is the signature of figure");
+            sb.AppendLine("                  error at the stop; a displaced one, of misalignment.");
+        }
+        else
+        {
+            sb.AppendLine("    astigmatism   the system is anastigmatic, so the binodal form degenerates");
+        }
+
+        if (nat.MedialExists)
+            sb.AppendLine(string.Format(Inv, "    medial focus  vertex at    ({0}, {1})",
+                                        SciZ(nat.MedialVertex.X), SciZ(nat.MedialVertex.Y)));
+        else
+            sb.AppendLine("    medial focus  not available - a sigma diverges, or W220M is zero");
+
+        sb.AppendLine();
+        sb.AppendLine("  The medial vertex and the coma node do not generally coincide: the sigma are the");
+        sb.AppendLine("  same for every aberration, but each is weighted by its own surface coefficients.");
+
+        AppendNatFifthOrder(sb, p, nat);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// The fifth-order half of the nodal report: Thompson's multinodal trilogy, J. Opt. Soc.
+    /// Am. A <b>26</b> 1090 (2009), <b>27</b> 1490 (2010) and <b>28</b> 821 (2011).
+    /// </summary>
+    private void AppendNatFifthOrder(StringBuilder sb, ParaxialResult p, NatField nat)
+    {
+        var wf = WaveFront.FromSystem(_sys, PrimaryIndices, p);
+        if (wf == null) return;
+
+        int last = _sys.LastOpticalSurface();
+        var bridge = BridgeFor(p, wf);
+        var overlay = TrefoilOverlays(bridge, last);
+        var oblique = ObliqueSphericalOverlays(bridge, last);
+        var fifthComa = FifthComaOverlays(bridge, last);
+        var fifth = NatFifthOrder.Compute(
+            j => wf.PerSurface[j], j => wf.PerSurface[j].W131,
+            j => nat.Sigmas.Sigma[j], last + 1,
+            overlay == null ? null : j => overlay[j],
+            j => j >= 1 && j <= last
+                 ? Conventions.BeamDisplacement(p.Y[j], p.Ybar[j]) : 0.0,
+            oblique == null ? null : j => oblique[j],
+            fifthComa == null ? null : j => fifthComa[j]);
+
+        sb.AppendLine();
+        sb.AppendLine();
+        sb.AppendLine("NODAL ABERRATION THEORY - FIFTH ORDER");
+        sb.AppendLine("--------------------------------------------------------------------------------");
+        sb.AppendLine("Thompson's multinodal trilogy, J. Opt. Soc. Am. A 26, 1090 (2009); 27, 1490");
+        sb.AppendLine("(2010); 28, 821 (2011). The coefficients come through Buchdahl's W coordinates,");
+        sb.AppendLine("VI Table I and VII Eqs. (6.5-6) and (3.4), and are the RETARDATION of the wave");
+        sb.AppendLine("front, which is what a wave aberration is.");
+        sb.AppendLine();
+
+        // One unit system. The fifth order is computed through Buchdahl's W coordinates, whose
+        // normalised aperture and field differ from the design's by a factor A^l F^k. That scale
+        // is fitted from the third order, where both routes are available, and it CHECKS ITSELF:
+        // four coefficients give four ratios against two unknowns, so two of them are free. They
+        // agree to machine precision, so the conversion below is exact rather than indicative.
+        Scalar S(int k, int l, Scalar w) => bridge.IsUsable ? bridge.WToSeidel(k, l) * w : w;
+
+        sb.AppendLine(bridge.IsUsable
+            ? "  Fifth-order wave coefficients of the system, in the design's own units"
+            : "  Fifth-order wave coefficients of the system, in Buchdahl's normalised units");
+        sb.AppendLine(string.Format(Inv, "    W060  {0,13}   spherical", SciZ(S(0, 6, wf.System.W060))));
+        sb.AppendLine(string.Format(Inv, "    W151  {0,13}   field-linear coma", SciZ(S(1, 5, wf.System.W151))));
+        sb.AppendLine(string.Format(Inv, "    W240  {0,13}   oblique spherical, field-constant", SciZ(S(2, 4, wf.System.W240))));
+        sb.AppendLine(string.Format(Inv, "    W242  {0,13}   oblique spherical, astigmatic", SciZ(S(2, 4, wf.System.W242))));
+        sb.AppendLine(string.Format(Inv, "    W331  {0,13}   elliptical coma", SciZ(S(3, 3, wf.System.W331))));
+        sb.AppendLine(string.Format(Inv, "    W333  {0,13}   elliptical coma, trefoil", SciZ(S(3, 3, wf.System.W333))));
+        sb.AppendLine(string.Format(Inv, "    W420  {0,13}   field curvature", SciZ(S(4, 2, wf.System.W420))));
+        sb.AppendLine(string.Format(Inv, "    W422  {0,13}   astigmatism", SciZ(S(4, 2, wf.System.W422))));
+        sb.AppendLine(string.Format(Inv, "    W511  {0,13}   distortion", SciZ(S(5, 1, wf.System.W511))));
+        sb.AppendLine();
+
+        if (bridge.IsUsable)
+        {
+            sb.AppendLine(string.Format(Inv,
+                "    These are in the SAME units as the third-order block above, so the two may be"));
+            sb.AppendLine("    compared directly. The fifth order is computed through Buchdahl's W");
+            sb.AppendLine("    coordinates, whose normalised aperture and field differ from the design's");
+            sb.AppendLine(string.Format(Inv,
+                "    by A^l F^k with A = {0} and F = {1} - one power of the aperture",
+                SciZ(bridge.A), SciZ(bridge.F)));
+            sb.AppendLine("    scale per power of rho, one of the field scale per power of H.");
+            sb.AppendLine();
+            sb.AppendLine("    That scale is not assumed. It is fitted from the third order, where both");
+            sb.AppendLine("    routes are available, and it checks itself: four coefficients give four");
+            sb.AppendLine("    ratios against two unknowns, so W040 fixes A, W131 fixes F, and W222 and");
+            sb.AppendLine(string.Format(Inv,
+                "    W311 are free checks. They agree here to {0}, so the conversion is exact",
+                SciZ(bridge.Residual)));
+            sb.AppendLine("    rather than indicative.");
+        }
+        else
+        {
+            sb.AppendLine("    The scale between the two routes could NOT be fitted for this design");
+            sb.AppendLine(string.Format(Inv, "    (residual {0}), so these are left in Buchdahl's",
+                                        SciZ(bridge.Residual)));
+            sb.AppendLine("    normalised aperture and field. They differ from the third-order block");
+            sb.AppendLine("    above by a factor A^l F^k: compare them with each other, not across.");
+        }
+        sb.AppendLine();
+        sb.AppendLine("    The NODES are unaffected either way. Each is a ratio of quantities carrying");
+        sb.AppendLine("    the same powers, so the scales cancel and the positions are in the design's");
+        sb.AppendLine("    own field units regardless. The coma node and the astigmatic midpoint");
+        sb.AppendLine("    computed by this route agree with the Seidel route above to thirteen");
+        sb.AppendLine("    figures, which is what says so.");
+        sb.AppendLine();
+
+        if (nat.IsAligned)
+        {
+            sb.AppendLine("  This design is aligned, so every fifth-order node also sits at the field");
+            sb.AppendLine("  centre. Perturb a surface and they separate - and they separate differently");
+            sb.AppendLine("  from the third-order ones, which is the whole reason to compute them.");
+            return;
+        }
+
+        sb.AppendLine("  Nodes");
+        WriteNodes(sb, "    W151  coma", new[] { fifth.Node151 });
+        WriteNodes(sb, "    W240M vertex", new[] { fifth.Vertex240M });
+        WriteNodes(sb, "    W242  astigmatism", fifth.Nodes242);
+        WriteNodes(sb, "    W331M coma", fifth.Nodes331M);
+        WriteNodes(sb, "    W333  trefoil", fifth.Nodes333);
+        WriteNodes(sb, "    W420M vertex", new[] { fifth.M420M.a });
+        WriteNodes(sb, "    W422  astigmatism", fifth.Nodes422);
+
+        var d511 = fifth.DistortionNodes();
+        if (d511.Length > 0)
+            WriteNodes(sb, "    W511  distortion", d511);
+        else
+            sb.AppendLine("    W511  distortion    NOT SOLVED - see the note below");
+
+        sb.AppendLine();
+        sb.AppendLine("    W331M is COLLINEAR trinodal - the outer two sit symmetrically about the");
+        sb.AppendLine("    middle one - where W333's three are not. W422 is quadranodal.");
+        sb.AppendLine();
+        sb.AppendLine("    W511 is NOT SOLVED here. Its FIELD is exact - it is checked against the");
+        sb.AppendLine("    defining sum surface by surface - but the closed nodal form is in Thompson's");
+        sb.AppendLine("    1980 dissertation, which is not to hand, and a numerical search written in");
+        sb.AppendLine("    its place disagreed with a direct scan of the field on real lenses. Rather");
+        sb.AppendLine("    than print five plausible positions a scan contradicts, it prints none.");
+        sb.AppendLine();
+
+        AppendOverlayNote(sb, bridge, overlay, oblique, fifthComa, last);
+
+        sb.AppendLine("  What the fifth order does to the third");
+        sb.AppendLine("    Expanding a fifth-order term about its displaced field centre throws off");
+        sb.AppendLine("    terms of third-order form. They change the magnitude AND the node of the");
+        sb.AppendLine("    third-order aberration they belong with, so the third-order block above is");
+        sb.AppendLine("    not the last word on it.");
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv, "    W131  {0,13}  ->  W131E {1,13}   (2010 Eq. B13)",
+                                    SciZ(S(1, 3, fifth.M131.W)), SciZ(S(1, 3, fifth.W131E))));
+        sb.AppendLine(string.Format(Inv, "          node ({0}, {1})  ->  ({2}, {3})",
+                                    SciZ(fifth.M131.a.X), SciZ(fifth.M131.a.Y),
+                                    SciZ(fifth.Node131E.X), SciZ(fifth.Node131E.Y)));
+        sb.AppendLine(string.Format(Inv, "    W222  {0,13}  ->  W222E {1,13}   (2011 Eq. C19)",
+                                    SciZ(S(2, 2, fifth.M222.W)), SciZ(S(2, 2, fifth.W222E))));
+        sb.AppendLine(string.Format(Inv, "          centre ({0}, {1})  ->  ({2}, {3})",
+                                    SciZ(fifth.M222.a.X), SciZ(fifth.M222.a.Y),
+                                    SciZ(fifth.A222E.X), SciZ(fifth.A222E.Y)));
+        sb.AppendLine(string.Format(Inv, "    W220M {0,13}  ->  W220ME {1,12}   (2011 Sec. 2)",
+                                    SciZ(S(2, 2, fifth.M220M.W)), SciZ(S(2, 2, fifth.W220ME))));
+        sb.AppendLine(string.Format(Inv, "          vertex ({0}, {1})  ->  ({2}, {3})",
+                                    SciZ(fifth.M220M.a.X), SciZ(fifth.M220M.a.Y),
+                                    SciZ(fifth.A220ME.X), SciZ(fifth.A220ME.Y)));
+        sb.AppendLine();
+        sb.AppendLine("    The three left-hand numbers are the third-order block's own, reached by the");
+        sb.AppendLine("    FIFTH-order route and converted back. That they agree to every digit is the");
+        sb.AppendLine("    round trip closing - the scale, the W-coordinate scheme, Buchdahl VII");
+        sb.AppendLine("    Eqs. (6.5-6) and (3.4) - and it is what licenses reading the arrows.");
+        sb.AppendLine();
+        sb.AppendLine("    W220M is the MEDIAL surface, W220P + W222, the average of the tangential and");
+        sb.AppendLine("    sagittal ones. It is the one with a single node and the one Thompson's");
+        sb.AppendLine("    relations are written in. The sagittal surface, half an astigmatism away, is");
+        sb.AppendLine("    printed as W220S in the third-order block above.");
+    }
+
+    /// <summary>
+    /// What the Zernike overlays above coma are doing, when a surface carries one - Fuerschbach
+    /// 2014 Tables 2, 3 and 4.
+    /// </summary>
+    private void AppendOverlayNote(StringBuilder sb, NormalisationBridge bridge, Vec2[]? trefoil,
+                                   Vec2[]? oblique, Vec2[]? fifthComa, int last)
+    {
+        bool Present(int a, int b)
+        {
+            for (int j = 1; j <= last; j++)
+                if (_sys.Surfaces[j].Zernike(a) != 0.0 || _sys.Surfaces[j].Zernike(b) != 0.0)
+                    return true;
+            return false;
+        }
+
+        bool wantTrefoil = Present(10, 11), wantOblique = Present(12, 13);
+        bool wantComa5 = Present(14, 15);
+        if (!wantTrefoil && !wantOblique && !wantComa5) return;
+
+        sb.AppendLine("  Zernike overlays above coma");
+        if (!bridge.IsUsable)
+        {
+            sb.AppendLine("    A surface carries one, and it has NOT been applied. An overlay's");
+            sb.AppendLine("    contribution is a physical wave amplitude, in the units the third-order");
+            sb.AppendLine("    block uses, and adding it to the fifth order needs the scale between the");
+            sb.AppendLine(string.Format(Inv,
+                          "    two routes. That scale could not be fitted here (residual {0}), so",
+                          SciZ(bridge.Residual)));
+            sb.AppendLine("    applying it would mean choosing a factor that cannot be justified.");
+            return;
+        }
+
+        sb.AppendLine("    Fuerschbach, Rolland and Thompson, Opt. Express 22, 26585 (2014). An");
+        sb.AppendLine("    overlay generates no new aberration TYPE - every term it contributes lands");
+        sb.AppendLine("    on one the theory already had:");
+        sb.AppendLine();
+        sb.AppendLine("      Z10/11 trefoil        4(n'-n)z at 3 phi   -> C3_333, C3_422     2 rows");
+        sb.AppendLine("      Z12/13 obl spherical  8(n'-n)z at 2 phi   -> five B^2 vectors   5 rows");
+        sb.AppendLine("      Z14/15 fifth coma    10(n'-n)z at   phi   -> seven A vectors    7 rows");
+        sb.AppendLine();
+        sb.AppendLine("    Only the FIRST row of each survives at the stop. The rest carry powers of");
+        sb.AppendLine("    the beam walk ybar/y, which is zero at a pupil: there the beam footprint is");
+        sb.AppendLine("    the same for every field point, so a contribution cannot acquire a field");
+        sb.AppendLine("    dependence. Moving the plate off the stop is what turns it on.");
+        sb.AppendLine();
+        sb.AppendLine("    A raw Fringe Z12 also carries astigmatism and a raw Z14 also carries coma -");
+        sb.AppendLine("    the sidecar states raw sag, so those halves are routed to the third-order");
+        sb.AppendLine("    overlays rather than dropped. Z10's leftover is a pupil tilt, which moves");
+        sb.AppendLine("    the image instead of blurring it, so trefoil needs no such handling.");
+        sb.AppendLine();
+        sb.AppendLine("    surf   term      coefficient        ybar/y      overlay magnitude");
+        sb.AppendLine("    " + new string('-', 68));
+
+        var pp = ParaxialTrace.Trace(_sys, PrimaryIndices, MaxField());
+        for (int j = 1; j <= last; j++)
+        {
+            Scalar walk = Conventions.BeamDisplacement(pp.Y[j], pp.Ybar[j]);
+            Row("Z10/11", trefoil, 10, 11);
+            Row("Z12/13", oblique, 12, 13);
+            Row("Z14/15", fifthComa, 14, 15);
+
+            void Row(string name, Vec2[]? ff, int a, int b)
+            {
+                Scalar za = _sys.Surfaces[j].Zernike(a), zb = _sys.Surfaces[j].Zernike(b);
+                if ((za == 0.0 && zb == 0.0) || ff == null) return;
+                sb.AppendLine(string.Format(Inv, "    {0,4}   {1,-8} {2,12} {3,13} {4,20}",
+                    j, name, Num(za != 0.0 ? za : zb), SciZ(walk), SciZ(ff[j].Magnitude)));
+            }
+        }
+        sb.AppendLine();
+    }
+
+    /// <summary>
+    /// The scale between the Seidel route's units and the W-coordinate route's, fitted from the
+    /// third order where both are available. See <see cref="NormalisationBridge"/>.
+    /// </summary>
+    private NormalisationBridge BridgeFor(ParaxialResult p, WaveFront.Result wf)
+    {
+        var s = SeidelCoefficients.Compute(_sys, PrimaryIndices, PrimaryIndices, PrimaryIndices, p);
+        return NormalisationBridge.Fit(
+            new Scalar[] { s.TotalS1 / 8.0, s.TotalS2 / 2.0, s.TotalS3 / 2.0, s.TotalS5 / 2.0 },
+            new Scalar[] { wf.System.W040, wf.System.W131, wf.System.W222, wf.System.W311 });
+    }
+
+    /// <summary>
+    /// Each surface's Zernike trefoil overlay as the vector <c>FF C^3_333,j</c>, converted into
+    /// the units the W-coordinate coefficients use. Null when nothing is figured with trefoil, or
+    /// when the scale could not be fitted - in which case the overlay is DECLINED rather than
+    /// applied at a factor that cannot be justified, and the report says so.
+    /// </summary>
+    private Vec2[]? TrefoilOverlays(NormalisationBridge bridge, int last) =>
+        Overlays(bridge, last, 10, 11, 3, 3, Conventions.TrefoilOverlay);
+
+    /// <summary>
+    /// Each surface's Zernike OBLIQUE SPHERICAL overlay as <c>FF B^2_242,j</c>, Eq. (42).
+    /// </summary>
+    private Vec2[]? ObliqueSphericalOverlays(NormalisationBridge bridge, int last) =>
+        Overlays(bridge, last, 12, 13, 2, 4, Conventions.ObliqueSphericalOverlay);
+
+    /// <summary>
+    /// Each surface's Zernike FIFTH-ORDER COMA overlay as <c>FF A_151,j</c>, Eq. (52).
+    /// </summary>
+    private Vec2[]? FifthComaOverlays(NormalisationBridge bridge, int last) =>
+        Overlays(bridge, last, 14, 15, 1, 5, Conventions.FifthOrderComaOverlay);
+
+    /// <summary>
+    /// The shared shape of all three: read a Zernike pair off each surface, form the overlay
+    /// vector, and convert it into the units the W-coordinate coefficients use. The field and
+    /// aperture powers are those of the aberration the overlay lands on.
+    /// </summary>
+    private Vec2[]? Overlays(NormalisationBridge bridge, int last, int termA, int termB,
+                             int fieldPower, int aperturePower,
+                             Func<Scalar, Scalar, Scalar, Scalar, Vec2> overlay)
+    {
+        bool any = false;
+        for (int j = 1; j <= last && !any; j++)
+            any = _sys.Surfaces[j].Zernike(termA) != 0.0 || _sys.Surfaces[j].Zernike(termB) != 0.0;
+        if (!any || !bridge.IsUsable) return null;
+
+        Scalar scale = bridge.SeidelToW(fieldPower, aperturePower);
+        var ff = new Vec2[last + 1];
+        for (int j = 1; j <= last; j++)
+        {
+            Scalar za = _sys.Surfaces[j].Zernike(termA), zb = _sys.Surfaces[j].Zernike(termB);
+            if (za == 0.0 && zb == 0.0) continue;
+            ff[j] = scale * overlay(za, zb, PrimaryIndices[j - 1], PrimaryIndices[j]);
+        }
+        return ff;
+    }
+
+    /// <summary>One labelled row of node positions, wrapped onto continuation lines.</summary>
+    private static void WriteNodes(StringBuilder sb, string label, Vec2[] nodes)
+    {
+        for (int i = 0; i < nodes.Length; i++)
+            sb.AppendLine(string.Format(Inv, "{0,-22} {1} ({2}, {3})",
+                                        i == 0 ? label : "",
+                                        i == 0 ? (nodes.Length == 1 ? "one node at " : "nodes at    ")
+                                               : "            ",
+                                        SciZ(nodes[i].X), SciZ(nodes[i].Y)));
+    }
+
+    /// <summary>
+    /// A full-field display as TSV: the magnitude and orientation of third-order coma and
+    /// astigmatism on a grid of field points.
+    ///
+    /// <para>This is what the node geometry looks like when it is drawn, and it is the form an
+    /// alignment engineer reads. Astigmatism is a squared-vector quantity, so HALF its
+    /// orientation is the azimuth of the line image - the column says so rather than leaving the
+    /// factor of two to be discovered.</para>
+    /// </summary>
+    public string BuildNatFullFieldTsv(int steps = 9)
+    {
+        double field = MaxField();
+        var sb = new StringBuilder();
+
+        if (Math.Abs(field) < 1e-15)
+        {
+            sb.AppendLine("hx\thy\tcoma\tcoma_orientation_deg\tastigmatism\tline_image_azimuth_deg");
+            return sb.ToString();
+        }
+
+        var p = ParaxialTrace.Trace(_sys, PrimaryIndices, field);
+        var seidel = SeidelCoefficients.Compute(_sys, PrimaryIndices, PrimaryIndices,
+                                                PrimaryIndices, p);
+        var nat = NatField.Compute(_sys, PrimaryIndices, p, seidel);
+
+        // The fifth order rides along when the wave front chain is available. The third-order
+        // columns keep their names and their meaning, so a reader of the old file still works.
+        var wf = WaveFront.FromSystem(_sys, PrimaryIndices, p);
+        NatFifthOrder? fifth = wf == null ? null
+            : NatFifthOrder.Compute(j => wf.PerSurface[j], j => wf.PerSurface[j].W131,
+                                    j => nat.Sigmas.Sigma[j], _sys.LastOpticalSurface() + 1);
+
+        sb.Append("hx\thy\tcoma\tcoma_orientation_deg\tastigmatism\tline_image_azimuth_deg");
+        if (fifth != null)
+            sb.Append("\tcoma_E\tcoma_E_orientation_deg"
+                    + "\tastigmatism_E\tastigmatism_E_azimuth_deg"
+                    + "\tcoma5\tcoma5_orientation_deg"
+                    + "\tcoma331\tcoma331_orientation_deg"
+                    + "\ttrefoil\ttrefoil_azimuth_deg"
+                    + "\tastig5\tastig5_azimuth_deg"
+                    + "\tdistortion5\tdistortion5_orientation_deg");
+        sb.AppendLine();
+
+        const double deg = 180.0 / Math.PI;
+        for (int iy = 0; iy < steps; iy++)
+        {
+            double hy = steps == 1 ? 0.0 : -1.0 + 2.0 * iy / (steps - 1);
+            for (int ix = 0; ix < steps; ix++)
+            {
+                double hx = steps == 1 ? 0.0 : -1.0 + 2.0 * ix / (steps - 1);
+                var h = new Vec2(hx, hy);
+                var coma = nat.ComaAt(h);
+                var ast = nat.AstigmatismAt(h);
+
+                sb.Append(string.Join("\t",
+                    Raw(hx), Raw(hy),
+                    Raw(coma.Magnitude), Raw(coma.Orientation * deg),
+                    Raw(ast.Magnitude), Raw(0.5 * ast.Orientation * deg)));
+
+                if (fifth != null)
+                {
+                    // Each aberration's azimuth on the sky is its orientation divided by the
+                    // power of theta it carries: one for coma and distortion, two for a line
+                    // image, three for trefoil. Dividing by the wrong one rotates the pattern
+                    // by a plausible amount rather than an obvious one.
+                    // coma_E and astigmatism_E sit beside coma and astigmatism, so they are put
+                    // into the SAME units. The two routes differ by a normalisation - see the
+                    // note in the text report - but the RATIO W131E/W131 is free of it, both
+                    // being Buchdahl's, so multiplying by the Seidel W131 lands in Seidel units
+                    // exactly, with no scale factor to derive. On an aligned system the pair
+                    // then agrees with the uncorrected column to the last digit.
+                    Scalar comaScale = Math.Abs((double)fifth.M131.W) > 1e-300
+                        ? nat.Totals.W131 / fifth.M131.W : 0.0;
+                    Scalar astScale = Math.Abs((double)fifth.M222.W) > 1e-300
+                        ? nat.Totals.W222 / fifth.M222.W : 0.0;
+
+                    var cE = comaScale * fifth.ComaVector131E(h);
+                    var aE = astScale * fifth.AstigmatismVector222E(h);
+                    var c5 = fifth.ComaVector151(h);
+                    var c331 = fifth.ComaVector331M(h);
+                    var tre = fifth.TrefoilVector(h);
+                    var a5 = fifth.AstigmatismVector422(h);
+                    var d5 = fifth.DistortionField(h);
+
+                    sb.Append("\t" + string.Join("\t",
+                        Raw(cE.Magnitude), Raw(cE.Orientation * deg),
+                        Raw(aE.Magnitude), Raw(0.5 * aE.Orientation * deg),
+                        Raw(c5.Magnitude), Raw(c5.Orientation * deg),
+                        Raw(c331.Magnitude), Raw(c331.Orientation * deg),
+                        Raw(tre.Magnitude), Raw(tre.Orientation * deg / 3.0),
+                        Raw(a5.Magnitude), Raw(0.5 * a5.Orientation * deg),
+                        Raw(d5.Magnitude), Raw(d5.Orientation * deg)));
+                }
+                sb.AppendLine();
+            }
+        }
+        return sb.ToString();
+    }
 }

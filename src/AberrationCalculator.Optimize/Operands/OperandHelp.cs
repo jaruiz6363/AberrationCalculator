@@ -64,6 +64,10 @@ public static class OperandHelp
             "Real distortion, per cent: real chief-ray height against the paraxial height it "
           + "should have had.",
 
+        OperandType.ASBLT =>
+            "RMS wavefront error a decentre and tilt tolerance would induce, averaged over the "
+          + "field. Nodal aberration theory: what survives being BUILT, not what was drawn.",
+
         _ => string.Empty,
     };
 
@@ -85,6 +89,7 @@ public static class OperandHelp
         OperandType.EGT => "EGT, 10, MIN 1, 2, 4",
         OperandType.EAT => "EAT, 10, MIN 0.5, 2, 4",
         OperandType.DTRGT => "DTRGT, 10, MIN 1.5, MAX 12, 2, 4",
+        OperandType.ASBLT => "ASBLT, 10, TAR 0, 0.04, 0.15",
         _ => type + ", 1, TAR 0, 7, 1, 1, 0, 1",
     };
 

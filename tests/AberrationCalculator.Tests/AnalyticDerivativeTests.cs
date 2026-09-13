@@ -83,6 +83,11 @@ public class AnalyticDerivativeTests
         new Operand { Type = OperandType.AXC, Target = 0.0 },
         new Operand { Type = OperandType.DISTF, Hy = 1.0, Target = 0.0 },
 
+        // The as-built term. Its derivative runs through the paraxial recurrence and the
+        // curvatures only - no coefficients and no rays - so it exercises a path none of the
+        // others take, and Gu's tolerances from his own Cooke triplet run are what it is given.
+        new Operand { Type = OperandType.ASBLT, Decentre = 0.0399, Tilt = 9.176 / 60.0, Target = 0.0 },
+
         // Boundary operands are deliberately given limits the design VIOLATES, so that the
         // residual is live and its derivative is not trivially zero. A satisfied boundary has
         // no gradient by design, and testing that would test nothing.

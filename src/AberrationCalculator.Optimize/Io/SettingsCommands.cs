@@ -57,6 +57,20 @@ public static class SettingsCommands
         new Definition("PICKUPLIST", false, "List the pickups, numbered."),
         new Definition("PICKUPREMOVE", true, "Remove a pickup by its number from PICKUPLIST."),
 
+        new Definition("TILT", true,
+            "Say a surface is tilted, in DEGREES: TILT \"2 X 0.115 Y 0\". Merges; "
+          + "TILT \"2 FREE\" drops the tilt and leaves any decentre alone."),
+        new Definition("DEC", true,
+            "Say a surface is decentred, in the design's length units: DEC \"2 Y 0.05\". "
+          + "Merges; DEC \"2 FREE\" drops it."),
+        new Definition("ZERN", true,
+            "Say a surface carries a Zernike figure error, as surface SAG in lens units: "
+          + "ZERN \"1 Z5 0.0001 Z6 0\". Terms are named by Fringe number; ZERN \"1 FREE\" drops them."),
+        new Definition("ALIGNLIST", false,
+            "List the perturbations - what is out of place, and by how much."),
+        new Definition("ALIGNREMOVE", true,
+            "Remove a surface's perturbation by its number from ALIGNLIST."),
+
         new Definition("OP", true,
             "Add a merit function operand: OP \"EFL, 100, TAR 50, 2\"."),
         new Definition("OPLIST", false, "List the merit function, numbered."),
@@ -174,9 +188,96 @@ public static class SettingsCommands
                     $"{keyword.ToUpperInvariant()} is not about a particular lens; "
                   + "it is run by ExecuteGlobal");
 
+            case "TILT": case "DEC": case "ZERN": case "ALIGNLIST": case "ALIGNREMOVE":
+                throw new ArgumentException(
+                    $"{keyword.ToUpperInvariant()} is about how a lens was BUILT rather than "
+                  + "what may be optimised about it; it is run by ExecuteAlignment");
+
             default:
                 throw new ArgumentException($"'{keyword}' is not a command");
         }
+    }
+
+    /// <summary>
+    /// Runs an alignment command - one that says how a lens was BUILT rather than what may be
+    /// optimised about it.
+    ///
+    /// <para>Separated from <see cref="Execute"/> because it takes no <c>OptimizationSetup</c>:
+    /// a perturbation is not a variable, not a pickup and not an operand, and putting it in that
+    /// container would tie a statement about the workshop to a statement about the search. It
+    /// lives in its own sidecar for the same reason - see <c>AlignmentFile</c>.</para>
+    /// </summary>
+    public static Result ExecuteAlignment(string keyword, string? argument,
+                                          AlignmentSpecification alignment, string lensPath)
+    {
+        if (alignment == null) throw new ArgumentNullException(nameof(alignment));
+
+        switch (keyword.ToUpperInvariant())
+        {
+            case "TILT":
+                AlignmentFile.MergeLine(alignment, "TILT " + Require(argument, "TILT"));
+                return new Result(ListAlignment(alignment, lensPath), true);
+
+            case "DEC":
+                AlignmentFile.MergeLine(alignment, "DEC " + Require(argument, "DEC"));
+                return new Result(ListAlignment(alignment, lensPath), true);
+
+            case "ZERN":
+                AlignmentFile.MergeLine(alignment, "ZERN " + Require(argument, "ZERN"));
+                return new Result(ListAlignment(alignment, lensPath), true);
+
+            case "ALIGNLIST":
+                return new Result(ListAlignment(alignment, lensPath), false);
+
+            case "ALIGNREMOVE":
+                alignment.Perturbations.RemoveAt(
+                    Index(argument, "ALIGNREMOVE", alignment.Perturbations.Count) - 1);
+                return new Result(ListAlignment(alignment, lensPath), true);
+
+            default:
+                throw new ArgumentException($"'{keyword}' is not an alignment command");
+        }
+    }
+
+    /// <summary>Whether this keyword is one <see cref="ExecuteAlignment"/> handles.</summary>
+    public static bool IsAlignmentCommand(string word) =>
+        word != null && word.ToUpperInvariant() switch
+        {
+            "TILT" or "DEC" or "ZERN" or "ALIGNLIST" or "ALIGNREMOVE" => true,
+            _ => false,
+        };
+
+    /// <summary>The perturbations, numbered so that ALIGNREMOVE has something to name.</summary>
+    public static string ListAlignment(AlignmentSpecification alignment, string lensPath)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine();
+        // The name comes from AlignmentFile, not from a second copy of the rule here.
+        sb.AppendLine("ALIGNMENT  (" + Path.GetFileName(AlignmentFile.PathFor(lensPath)) + ")");
+        sb.AppendLine();
+
+        if (alignment.Perturbations.Count == 0)
+        {
+            sb.AppendLine("  Nothing is out of place: this is the design as drawn.");
+            return sb.ToString();
+        }
+
+        var ordered = new List<Perturbation>(alignment.Perturbations);
+        ordered.Sort((a, b) => a.Surface.CompareTo(b.Surface));
+
+        sb.AppendLine("      surf     tilt x     tilt y      dec x      dec y");
+        sb.AppendLine("             degrees    degrees");
+        sb.AppendLine("  " + new string('-', 54));
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            var p = ordered[i];
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "  {0,2}  {1,4} {2,10} {3,10} {4,10} {5,10}",
+                i + 1, p.Surface, N(p.TiltX), N(p.TiltY), N(p.DecenterX), N(p.DecenterY)));
+        }
+        return sb.ToString();
+
+        static string N(double v) => v == 0.0 ? "-" : v.ToString("0.######", CultureInfo.InvariantCulture);
     }
 
     /// <summary>

@@ -8,9 +8,11 @@ file records what each source contributes and whether it has been read.
 Status: **[have]** the paper is in hand. **[wanted]** it is cited downstream but has not
 been obtained here.
 
-Note on the scanned papers: the text layer on the 1958 and 1976 scans is 1950s-70s OCR and
-is unusable for anything mathematical - the tables and equations come out as noise. Their
-prose is readable; their formulae are not. Working from them requires page images.
+Note on the scanned papers: the text layer on the 1958, 1970 and 1976 scans is 1950s-70s OCR
+and is unusable for anything mathematical - the tables and equations come out as noise. Their
+prose is readable; their formulae are not. Working from them requires page images. Everything
+quoted from Sands (1970) below is prose for that reason; his Eqs. (33)-(34) and (45) and his
+Sec. VIII identities have been located but not transcribed.
 
 ## Primary sources
 
@@ -18,6 +20,18 @@ prose is readable; their formulae are not. Working from them requires page image
 London, 1954). Dover reprint, New York, 1968.
 The origin of the coefficients this whole program computes. Never cited in this repo
 until now, which was an omission - the coefficients carry his name on every screen.
+
+**The Dover reprint carries the whole journal series as an appendix**, which changes what
+acquiring it is worth. Sands (1970), who cites the Dover edition as his reference 1,
+describes "the thirteen papers under the same general title and reprinted at the end of
+OAC" and cites them by number throughout - OACIII, OACVI, OACVII, OACXII. So the series
+runs to at least twelve papers and the reprint holds all of them.
+
+The consequence for this file is that `### The rest of Buchdahl's series` below is not a
+shopping list of separate items. **One book discharges it, along with every monograph
+section the tertiary work needs** - Secs. 65-66, 80, 81, 84, 85, 22(b) with Eq. (22.27),
+218(a), and the Chap. 3 and Eq. (21.6) identities Sands says Table I was built on. It is
+the highest-value single acquisition on this page and it is not close.
 
 **[wanted] Rimmer, M.**, M.S. Thesis, Institute of Optics, University of Rochester,
 Rochester, New York, 1963.
@@ -113,6 +127,57 @@ normally unchanged, so the book alone may not carry the tertiary computation.
 
 ### The rest of Buchdahl's series
 
+The series runs to at least fourteen papers, and I to XIII are reprinted at the end of the Dover
+monograph - see the note under it above. Ten are now in hand. The numbering is exact, from
+footnote 2 of XII and footnote 1 of XIV:
+
+| | citation | subject | |
+|---|---|---|---|
+| I | *J. Opt. Soc. Am.* **46**, 941 (1956) | tertiary spherical aberration - B7's origin | wanted |
+| II | **48**, 563 (1958) | the tertiary intrinsic coefficients | have |
+| III | **48**, 747 (1958) | computing the tertiary - Table I, Table II | have |
+| IV | **48**, 757 (1958) | quaternary (ninth-order) spherical | have |
+| V | **49**, 1113 (1959) | on the quality of predicted displacements | have |
+| VI | **50**, 534 (1960) | coordinates lying partly in the image space - the W coordinates | have |
+| VII | **50**, 540 (1960) | deformation and retardation of the wave front | have |
+| VIII | **50**, 678 (1960) | spherical aberration of order eleven | have |
+| IX | **51**, 608 (1961) | theory of reversible optical systems | have |
+| X, XI, XIII | ? | ? | wanted, citations unpinned |
+| XII | **55**, 641 (1965) | remarks relating to aberrations of any order | have |
+| XIV | **59**, 1422 (1969) | simplified computational form of the iteration equations | have |
+
+Neither XII nor XIV cites X, XI or XIII, so their citations need a JOSA index; nothing yet
+suggests they bear on this work.
+
+**[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. VII. The Primary, Secondary, and
+Tertiary Deformation and Retardation of the Wave Front," *J. Opt. Soc. Am.* **50**, 540 (1960).
+**The bridge between this program's transverse coefficients and the WAVE-FRONT coefficients
+nodal aberration theory is written in.** Its Sec. 6 is titled "The Relations Between
+W-Coefficients and Deformation Coefficients" and gives them explicitly at all three orders:
+Eq. (6.5) the five primary, Eq. (6.6) the nine secondary, Eq. (6.7) fourteen tertiary.
+
+This page is why the note at the top of this file matters. Its OCR is noise, and the paper sat
+here looking like a curiosity until it was rendered as a page image - see
+`reading-scanned-pdfs.md` in the working notes. `nat-development.md` records what it
+established and what it did not.
+
+Three things it supplies beyond the relations themselves:
+
+- **Eq. (4.6), `eps' = dD/dy`, which he calls exact**: the transverse ray displacement is the
+  gradient of the wave-front deformation. That is the mechanism, and it is what makes the
+  correspondence checkable against coefficients this program already computes.
+- **Redundancy.** The derivation yields two expressions for several coefficients, and he notes
+  that "the 10 identities between the W coefficients of the first three orders so implied are
+  exactly those given by the equations of VI (4.16-18)". Self-checking, as his tertiary
+  identities are.
+- **A published numerical answer.** Sec. 7(b): Table I gives the deformation and retardation
+  coefficients of the first three orders for the triplet of III Sec. 3 - the same lens whose
+  Table I this repository already reproduces - with the W coefficients themselves in VI Table II.
+
+And one trap, Sec. 7(a): his `e` is not unity, so the coefficients carry powers of it -
+`A: -1, B: 0, C: 1, S1: -1, S3,S4: 1, S5: 2, S6: 3`, barred coefficients taking an extra factor.
+A coefficient right and its power of `e` wrong reads as a plausible number rather than an error.
+
 **[wanted] Buchdahl, H. A.**, *J. Opt. Soc. Am.* **46**, 941 (1956). Paper I of the series.
 
 **[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. II. The Tertiary Intrinsic
@@ -141,23 +206,96 @@ Soc. Am.* **63**, 582-588 (1973).
 The focus-adjustment method Robb points to for exactly the defocus-blindness problem.
 The highest-value item on this list for anyone optimising against PRMSA.
 
-**[wanted] Cruickshank, F. D. and Hills, G. A.**, "Use of Optical Aberration Coefficients
+**[have] Cruickshank, F. D. and Hills, G. A.**, "Use of Optical Aberration Coefficients
 in Optical Design," *J. Opt. Soc. Am.* **50**, 379-387 (1960).
 Robb states his derivation is based on this paper.
 
-**[wanted] Buchdahl, H. A.**, "Optical Aberration Coefficients. V. On the Quality of
+**[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. V. On the Quality of
 Predicted Displacements," *J. Opt. Soc. Am.* **49**, 1113-1121 (1959).
 On how well a truncated coefficient series predicts real ray displacements - the
 question this program's field-accuracy caveat is about.
 
-**[wanted] Hopkins, G. W.**, "Proximate Ray Tracing and Optical Aberration Coefficients,"
+**[have] Hopkins, G. W.**, "Proximate Ray Tracing and Optical Aberration Coefficients,"
 *J. Opt. Soc. Am.* **66**, 405-410 (1976).
 A different algorithm for the same coefficients. Useful as an independent check.
 
-**[wanted] Sands, P. J.**, "Aberration Coefficients and Unusual Coordinates for Specifying
-Rays," *Appl. Opt.* **9**, 828-836 (1970).
-Robb notes that section VI of this paper handles designs with large pupil aberrations,
-where the plain seventh-order treatment becomes inexact.
+**[have] Sands, P. J.**, "Aberration Coefficients and Unusual Coordinates for Specifying
+Rays," *Appl. Opt.* **9**(4), 828-836 (1970).
+Robb points at its section VI for designs with large pupil aberrations. It turns out to
+carry rather more than that, and three of the four things it settles were open questions
+in this file.
+
+**1. It names the cause of the accuracy limit this program measured.** Sands found a system
+whose seventh-order series failed at a half-field of only 35 degrees while others held to
+almost 45, and the difference was not field, aperture or figuring:
+
+> "Close inspection revealed that for the system in question the pupil aberrations were
+> large, whereas for systems in which the predictions were good over an extended range of
+> field angles, the pupil aberrations were quite small."
+
+`spot-prediction.md` reports the same behaviour from the other end - "the order a design
+needs is a property of that design, not a general rule", with one of five lenses not
+described at seventh order at all. Sands says which property. That makes it a testable
+prediction rather than an observation: compute the pupil aberration of those five lenses
+and see whether it sorts them in the order their series accuracy does. **Nothing in this
+repository has tried that**, and it is the cheapest open question here.
+
+**2. It is a caveat on the distortion report, and on per-aberration attribution generally.**
+When rays are specified by the paraxial entrance pupil (Buchdahl's SPC, which is what this
+program uses) and the pupil aberrations are large, the ray `S = 0` does not pass through
+the centre of the stop. Sands' conclusion is blunt: the coefficients "are not the
+coefficients of distortion", and for coma "the image patch obtained under the same
+circumstances need bear no resemblance to the familiar comatic image. Strictly speaking in
+this case, the coefficients in question do not govern linear coma and their usual
+interpretation is invalid."
+
+This bears directly on `--distortion-coefficients`, whose entire claim is that it says
+WHICH ORDER the distortion is, and on `ContributionAnalysis`, which attributes spot size
+per named aberration. Neither is wrong, and on the designs measured here neither is in
+danger. But the condition under which the naming stops meaning anything is now known, is
+checkable, and is not currently checked or stated.
+
+**3. The fix, and what it would cost.** Section VI introduces *aperture coordinates* -
+specify a ray by where it crosses the physical stop rather than the paraxial entrance
+pupil. Vignetting becomes exactly `|S| <= 1`, the usual interpretation of the coefficients
+is restored, and the new quantities are nearly free: `A*a = 0` and `A*b = -Gb` at the stop
+surface, Eqs. (33)-(34), "their computation is somewhat trivial".
+
+The cost is architectural and it is not small. With SPC the coefficients can be computed
+**surface by surface**, which is exactly how `BuchdahlTableI` is written. With aperture
+coordinates they cannot:
+
+> "before the exact nth-order surface contributions can be computed at any surface, the
+> intermediate coefficients of all lower orders must be known at least up to the aperture
+> stop ... the computation of the aberration coefficients must proceed order by order, in
+> contrast to the case of SPC."
+
+Sands adds that aperture coordinates are a special case of Buchdahl's GPC and are identical
+with the W coordinates of paper VI.
+
+**4. A lead on Table I.** Sands states that "explicit use of the identities OAC Eq. (21.6)
+was made when constructing OACIII, Table 1", and that the second set of identities - those
+from the invariance of `E*` - were used there "in particular in lines 20-24 and 81-100 in
+Table 1". Both sets change form under non-linear coordinates, and Sec. VIII gives the
+modified versions.
+
+Worth noting beside the record above that Buchdahl's own printed numbers found errors in
+this program's `t100..t108`. Sands independently identifies lines 81-100 as the block built
+on those identities. That is a coincidence of ranges and nothing more until someone looks,
+but it is the kind of lead that is cheap to follow and expensive to have missed.
+
+**[wanted] Sands, P. J.**, Thesis, Australian National University (1967).
+Reference 2 of the above. Two things in it that nothing else here covers: an expansion of
+the aberration function about the **principal ray** rather than the axis - which is a
+generalisation of Buchdahl's theory, and is conceptually the same move nodal aberration
+theory makes with its optical axis ray - and, in Chapter 10, a method for determining the
+shape of the actual entrance pupil as a function of field angle "correct to any order",
+which Sands says is widely believed to require extensive ray tracing.
+
+**[wanted] Buchdahl, H. A.**, *An Introduction to Hamiltonian Optics* (Cambridge University
+Press, New York, 1970), Sec. 37.
+Reference 3 of the above. Cited by Sands for the ideal-wave-surface coordinates of his
+Sec. VII.
 
 **[wanted] Woodruff, C. J.**, "A Comparison, Using Orthogonal Coefficients, of Two Forms
 of Aberration Balancing," *Opt. Acta* **22**, 933-941 (1975).
@@ -207,6 +345,191 @@ components and the wave aberration function.
 **[wanted] Nijboer, B. R. A.**, *Physica* **10**, 679 (1943).
 The wave aberration function used in the 1995 paper. Only needed if the wave-aberration
 re-normalisation is ever implemented here.
+
+## Nodal aberration theory
+
+**None of this is implemented.** These are the sources for the proposal in
+`nat-development.md`, and they are listed here so the reading is not lost and so the
+gap between what is in hand and what the work needs is on the record.
+
+NAT is a different axis of generalisation from the rest of this file. Everything above extends
+the aberration expansion in **order**, with rotational symmetry assumed. NAT extends it in
+**symmetry**, with the order held at third. The two compose, and NAT wants as input exactly the
+per-surface coefficients this program already computes.
+
+### The foundation
+
+**[have] Thompson, K. P.**, "Description of the third-order optical aberrations of
+near-circular pupil optical systems without symmetry," *J. Opt. Soc. Am. A* **22**(7),
+1389-1401 (2005). DOI 10.1364/JOSAA.22.001389 (OSA pattern - verify on retrieval).
+The paper every one of the six below cites, as [2], [4] or [13], and the foundation of the
+whole subject. `Core/Nat/Vec2.cs` implements its Appendix A.
+
+What it settled here:
+
+- **The vector algebra, term for term.** Appendix A prints the component forms - (A1) and (A9)
+  for the product, (A6) for the conjugate, (A7) for the product with a conjugate, (A10) for the
+  squared vector, and identities (A11) to (A13). `NatTests` checks all of them against the
+  implementation rather than against a restatement of it. An earlier draft of
+  `nat-development.md` had the product written with `x` as the real axis, which
+  contradicted the conjugate rule three lines above it; the appendix settles it.
+- **The third-order node structure**, which had been assembled here from Schmid and reasoning:
+  coma (4.7)-(4.9), astigmatism (4.15)-(4.22), medial field curvature (4.27)-(4.31). The last
+  of those corrected a guess - the medial focal surface is displaced, not tilted, and its
+  `B220M` is a DOT product where astigmatism's `B222^2` is a vector square.
+- **`W220M = W220 + W222/2`**, his Eq. (4.11), which `Nat/WaveCoefficients.cs` had already
+  implemented from the same reasoning and is now sourced.
+- **The sigma convention**, though not the paraxial formula for it. Sec. 3 defines sigma
+  geometrically, as the projection of the line joining the pupil centre to the surface's centre
+  of curvature, with `H_Aj = H - sigma_j` as Eq. (3.1). That resolves the direction Gu's
+  Eqs. (21) and (27) disagree about into something testable.
+- One implementation instruction, from the remark under Eq. (4.31): the displacement vectors
+  "for each aberration are identical", so sigma is computed once per surface and only the
+  weights differ.
+
+**[have] Thompson, K. P., Schmid, T., Cakmakci, O. and Rolland, J. P.**, "Real-ray-based
+method for locating individual surface aberration field centers in imaging optical systems
+without rotational symmetry," *J. Opt. Soc. Am. A* **26**(6), 1503-1517 (2009).
+DOI 10.1364/JOSAA.26.001503 (OSA pattern - verify on retrieval).
+The authority on the sigma vector, and it settled an open question here rather than merely
+informing one.
+
+- **Eq. (10)** gives the paraxial sigma as `-ibar* / ibar`: the angle of incidence of the
+  OPTICAL AXIS RAY on the local surface, over the nominal chief-ray incidence. `RealSigma.cs`
+  measures exactly that quantity from traced rays.
+- **Table 5 shows the two routes agreeing** to four or five figures, so they are not different
+  quantities - which established that this repository's disagreement between them was a fault
+  and not a convention. The fault is diagnosed in `nat-development.md`: Gu's expression
+  is derived for ONE perturbed surface and superposing it over several drops the term that
+  makes a rigid translation come out zero.
+- **Tables 1 to 5 are a published oracle** - a Ritchey-Chretien prescription, the perturbations
+  applied to it, both ray traces, and the resulting sigma vectors. The same standard as
+  Buchdahl's Table I: numbers printed beside the lens they were computed on.
+- **Eq. (11) gives a SECOND sigma vector for an aspheric surface**, from the aspheric departure
+  treated as a zero-power plate after Burch, distinct from the one for the spherical base. At
+  the secondary of his telescope the two differ by more than a factor of two. This is Schmid
+  2010's `sigma_SPH` and `sigma_ASPH`, and it is not implemented here - so `--nat` is currently
+  right only for spherical surfaces.
+
+**[have] Thompson, K. P.**, the multinodal fifth-order trilogy, *J. Opt. Soc. Am. A*:
+
+- I, "spherical aberration", **26**(5), 1090 (2009)
+- II, "the comatic aberrations", **27**(6), 1490 (2010)
+- III, "the astigmatic aberrations", **28**(5), 821 (2011)
+
+Fifth-order nodal aberration theory. Three things they settle:
+
+- **Appendix B of paper I is the GENERAL pattern**, not a list of special cases:
+
+      Wklm  = sum_j Wklm,j
+      Aklm  = sum_j Wklm,j sigma_j        ->  aklm  = Aklm/Wklm,  Hklm = H - aklm
+      Bklm  = sum_j Wklm,j (sigma_j . sigma_j)  ->  bklm  = Bklm/Wklm - aklm . aklm
+      B2klm = sum_j Wklm,j sigma_j^2      ->  b2klm = B2klm/Wklm - a2klm
+
+  which is exactly what `NatField` already does at third order, scalar-versus-vector
+  distinction included. **The fifth order is the same machinery with more coefficients**, so
+  the structural work is done and what remains is supplying them.
+- **Appendix A of paper I names the fifth-order set**: `W060, W151, W240, W242, W331, W333,
+  W420, W422, W511`. Nine wavefront coefficients against Rimmer's twelve transverse ones,
+  because a transverse coefficient is a derivative of a wavefront one and the two do not
+  correspond term for term. Johnson (1973) Table I, already recorded above, bridges them
+  through the NAMED aberrations - "5th oblique spherical, tangential = M1+M2+M3" and the rest -
+  which is a second route to the map alongside Buchdahl paper VII Sec. 6.
+- **An erratum for Thompson (2005)**: its Appendix A Eq. (A5) is misprinted and should read
+  `A B = |A||B| exp(i(alpha + beta))`. `Vec2` implements the corrected form - orientations ADD -
+  and `NatTests.MultiplicationAddsOrientations` pins it. The printed error was noticed here
+  when the OCR of the 2005 appendix disagreed with its own Eq. (A1); it is now confirmed as a
+  misprint by the author rather than a reading difficulty. Thompson also corrects Fig. 10 of
+  that paper, where the lower arrow should be labelled `+ib311`.
+
+**[wanted] Shack, R. V. and Thompson, K. P.**, "Influence of alignment errors of a telescope
+system on its aberration field," *Proc. SPIE* **251**, 146-153 (1980).
+Where the idea starts. Cited by all six papers below; of historical rather than implementation
+value, since the 2005 paper supersedes it as a source of equations.
+
+**[wanted] Buchroeder, R. A.**, "Tilted component optical systems," Ph.D. dissertation
+(University of Arizona, 1976), and **Thompson, K. P.**, "Aberration fields in tilted and
+decentered optical systems," Ph.D. dissertation (University of Arizona, 1980).
+The two theses the whole field rests on. Gu's appendix credits Buchroeder with the optical axis
+ray tracing method it uses.
+
+### The application layer - all in hand
+
+These six are the PDFs read for the proposal. Between them they cover figure error, mount error,
+freeform surfaces and tolerancing, and one of them happens to carry the derivation that makes
+the first three stages implementable without the 2005 paper.
+
+**[have] Gu, Z., Wang, Y. and Yan, C.**, "Optical system optimization method for as-built
+performance based on nodal aberration theory," *Opt. Express* **28**(6), 7928-7942 (2020).
+DOI 10.1364/OE.385089 (verify on retrieval - OSA moved to manuscript-number DOIs around
+this date, so the volume.page pattern used above does not apply). Open access.
+**The most directly usable paper in the set, and the one Stage 2 implements.** Its appendix
+reproduces the paraxial sigma-vector derivation in full - Eqs. (17) to (34) - which is why
+third-order NAT can be built here before the 2005 paper arrives.
+
+Two things make it a good fit for this repository specifically. It needs no ray tracing beyond
+the paraxial marginal and chief rays, which are already computed; and it is algebraic in those
+rays, so it lands on the dual-number path and the optimiser gets analytic derivatives of
+tolerance sensitivity for free.
+
+It also supplies a complete acceptance test, which almost nothing else in this file does:
+Table 1 is the starting Cooke triplet, Table 3 is the optimised one, and the text gives every
+setting needed to reproduce the run. An implementation that can walk from one to the other has
+tested the model, the derivative and the optimiser at once.
+
+Reported outcome: about a tenth of a wave of nominal performance given up, nearly two tenths
+recovered at the eightieth percentile of a 2000-sample Monte Carlo, standard deviation at
+64 per cent of the traditionally optimised design's. Against Zemax's TOLR, comparable quality in
+one to two minutes rather than eight hours.
+
+**[have] Schmid, T., Rolland, J. P., Rakich, A. and Thompson, K. P.**, "Separation of the
+effects of astigmatic figure error from misalignments using Nodal Aberration Theory (NAT),"
+*Opt. Express* **18**(16), 17433-17447 (2010). DOI 10.1364/OE.18.017433.
+The access point by which a non-symmetric surface enters NAT at all: a Zernike Z5/6 error at the
+stop is added as a field-constant `B222^2`, and everything follows. Gives the binodal solution
+`H = +/- i sqrt(B222^2 / W222)` and the diagnostic that matters - figure error keeps the node
+midpoint at the field centre, secondary-mirror misalignment does not. Its Eqs. (12)-(16) are the
+node algebra transcribed into `nat-development.md`.
+
+**[have] Fuerschbach, K., Rolland, J. P. and Thompson, K. P.**, "Extending Nodal Aberration
+Theory to include mount-induced aberrations with application to freeform surfaces,"
+*Opt. Express* **20**(18), 20139-20155 (2012). DOI 10.1364/OE.20.020139.
+Takes the non-symmetric surface off the stop, where the beam displacement `dh = (ybar/y) H`
+makes the contribution field dependent. The result worth having: three-point mount trefoil
+produces **field linear, field conjugate astigmatism** as well as the expected trefoil - the
+first time a conjugate field dependence was tied to an observable. Also introduces the freeform
+sigma vector for an overlay decentred from the optical axis ray.
+
+Caution for anyone implementing from the PDF in hand: the text layer of its Eq. (10), which is
+the constant relating `C333^3` to the measured `z10/11`, is damaged. Read it off the page image.
+
+**[have] Fuerschbach, K., Rolland, J. P. and Thompson, K. P.**, "Theory of aberration fields for
+general optical systems with freeform surfaces," *Opt. Express* **22**(22), 26585-26606 (2014).
+DOI 10.1364/OE.22.026585.
+The complete table, and the reference for Stage 4. Every Fringe Zernike pair through Z17/18
+(tetrafoil), what field-constant vector it contributes at the stop, and which existing NAT term
+it extends when the surface is away from the stop. Its conclusion is the useful one: **there are
+no new aberration types**, only field dependences NAT already described but which were too small
+to notice in tilted-and-decentred systems and dominate in freeform ones.
+
+**[have] Fuerschbach, K., Rolland, J. P. and Thompson, K. P.**, "Nodal Aberration Theory Applied
+to Freeform Surfaces," *Proc. SPIE* (2014).
+The conference version of the above, with the aberration-generating Schmidt telescope built and
+measured. Shorter and more readable; the 2014 Optics Express paper is the one to implement from.
+
+**[have] Jiang, Y., Wang, L., Zeng, X., Liu, Y., Hu, J. and Li, W.**, "Aberration field
+distribution characterization and tolerance analysis based on nodal aberration theory,"
+*Opt. Express* **33**(23), 49313-49330 (2025). DOI 10.1364/OE.582222 (verify on retrieval).
+Open access.
+The current state of the art, and the source of the validation threshold used in the proposal:
+full-field displays from the analytic model compared against real-ray tracing by a similarity
+measure, with agreement above 0.8 taken as validation.
+
+Extends to fifth order and to off-axis pupils, and is a caution as much as a source: it takes
+its fifth-order coefficients from **Sasian's** set rather than Thompson's or Rimmer's, so the
+notation problem noted above has three sides to it and not two. Cites Zhang for the induced
+fifth-order components and for the exact freeform decentre-and-tilt formulas; neither has been
+obtained here.
 
 ## Books that shaped the approach
 
@@ -281,8 +604,11 @@ images infinity onto its focus with no spherical aberration at any order, so eve
 must cancel term for term. A single conic surface can be traced analytically and expanded as
 `eps = a3 y^3 + a5 y^5 + a7 y^7 + ...`, which gives the third, fifth and seventh order
 coefficients as numbers - no series, no table, no macro. See `ParabolicMirrorTests` and
-`ExactConicSurfaceTests`. **This is what establishes the ASPHERIC third and fifth order**,
-and it had to, because no other implementation available here computes them.
+`ExactConicSurfaceTests`. **This is what establishes the ASPHERIC third and fifth order** - they were available first and
+they need no other program at all. (An earlier version of this line added "and it had to,
+because no other implementation available here computes them", which is wrong: FIFTHORD handles
+aspheres. It was not the ESTABLISHING check, but it was never unable to be a corroborating one.
+See **On FIFTHORD** below.)
 
 **3. Inverse real ray tracing.** `CoefficientInversion` recovers coefficients from the
 landings of real traced rays by scaling and an odd-polynomial fit. It is this repository's
@@ -292,6 +618,15 @@ including every aspheric one.
 **4. An independent implementation of the third and fifth order**, written in C++ by this
 repository's author directly from Buchdahl's book - a different lineage from the same
 source, described below. It does not implement aspherics.
+
+**4a. The same C++ codebase supplies the tilted-surface transform.** `RayTrace/LocalFrame.cs`
+is a port of its `coordinate_break_C`, and the conventions it fixes - degrees, the minus sign
+on the x tilt where the y tilt has none, the composition order, decentre-before-rotate - are
+copied rather than re-derived, because they are the error-prone part and a tested version
+existed. The INVERSE is derived here; `LocalFrameTests` guards the derivation by requiring the
+round trip to be the identity, and the whole transform by requiring a uniformly decentred lens
+to image exactly like the nominal one moved over. No third-party program is involved at any
+point.
 
 **5. Forbes' series trace** for the seventh order, from a separate published paper with no
 shared code. See `forbes.md`.
@@ -306,8 +641,17 @@ across seven designs, to a worst-case residual of 1.1e-12.
 That agreement is recorded because it is worth recording, and because a reader with that
 macro can repeat it without trusting anything here. **It is not what determined that
 these results are correct.** The checks above did, and they were available first; the
-agreement was an outcome, not a guide. FIFTHORD computes neither the aspheric coefficients
-nor the twenty tertiary coefficients, so it could not have settled either.
+agreement was an outcome, not a guide. FIFTHORD does not compute the twenty tertiary
+coefficients, so it could not have settled those.
+
+**Correction, 2026-09-12. This section previously said FIFTHORD computes neither the aspheric
+coefficients nor the tertiary ones. The aspheric half of that is wrong: FIFTHORD does handle
+aspheres.** The claim was never checked, and the page contradicted itself two paragraphs later
+by listing "the aspheric r^8 handling" among the things this program departs from it on - a
+departure that presupposes something to depart from. What the sentence was reaching for is
+narrower and still true: the macro was not what established the aspheric third and fifth order
+here, because the closed-form analytic surfaces above were available first and are stronger.
+But it could have corroborated them, and saying it could not was a misstatement.
 
 The macro is not redistributed here and no part of it is included in this repository. Where
 this program departs from it - the aspheric r^8 handling, the F/number sign convention, the

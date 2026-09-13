@@ -264,6 +264,62 @@ what the rays agree with — which convicts the one part of the scheme that had 
 reconstructed here, because Buchdahl never published it. On spherical designs the two routes
 agree to roundoff and the rays back both.
 
+## When the surfaces are not on a common axis
+
+Everything above assumes a lens with an axis. Tilt a surface or decentre it and the aberration
+coefficients stop being the whole story - not because new aberrations appear, but because the
+old ones move.
+
+A perturbed surface contributes the same rotationally symmetric field it always did,
+**displaced**: shifted to a different centre in the field of view. The system's aberration is the
+sum of those displaced fields, and the sum's zeros - the **nodes** - leave the middle of the
+field and separate from one another. Astigmatism acquires two nodes, elliptical coma three,
+fifth-order astigmatism four. That is nodal aberration theory, and this program computes it to
+**fifth order**.
+
+    abcalc lens.zmx --nat
+
+The perturbation goes in an `.align` sidecar beside the lens, and it is the same file whichever
+of the six formats the lens is in - `.zmx` has coordinate breaks, `.lhlt` does not, and neither
+matters here:
+
+    TILT 2 Y 0.115        degrees
+    DEC  3 X 0.05         lens units
+    ZERN 1 Z10 0.0005     a Fringe Zernike overlay, as surface sag
+
+**Why the nodes are worth having: they are a signature.** Where they sit says what moved. Binodal
+astigmatism whose midpoint stays at the field centre is figure error at the stop; a displaced
+midpoint is misalignment. A spot diagram shows the blur either way and cannot tell you which. The
+same holds for a freeform surface - a Zernike trefoil plate at the stop produces trefoil, and the
+*same plate moved off the stop* produces astigmatism growing linearly with field, which is the
+aberration a three-point mount error makes.
+
+The report gives both orders in the design's own units, each surface's displacement, the nodes of
+every aberration type, and what the fifth order does to the third - on a triplet with one surface
+tilted, third-order coma is 17 per cent larger than the third-order coefficients alone say, and
+its node has moved. A field grid goes to `<name>.nat.tsv` beside the lens.
+
+**It is checked against published tables rather than against another program.** Thompson's
+Tables 3 to 5, Buchdahl's VI Table II and VII Table I; the internal identities of VI (4.17); and
+physical invariants - a uniformly displaced system splits no node, an aligned one collapses to
+ordinary Seidel. Where a result could not be had honestly it is not printed: fifth-order
+distortion's field is exact and its nodes are refused, because the closed solution is in a 1980
+dissertation this repository does not hold and a numerical search disagreed with a direct scan of
+the field.
+
+**And one piece of it reaches the optimizer.** The `ASBLT` merit operand is the wavefront error a
+decentre and tilt tolerance would induce, from the same theory and from the two paraxial rays the
+program already has - no rays traced, and analytic on the dual-number compile like every other
+derivative here. It exists because a design can always be driven to a smaller predicted spot by
+making it more sensitive to the tolerances it will be built to, and nothing else in the merit
+function objects: `PRMSA` is measured on a perfectly centred lens and does not know the lens will
+be assembled by somebody. `docs/optimizer.md` has it.
+
+`docs/nodal-aberration-theory.md` is the documentation - how to read every line of the report and
+every column of the TSV, what is verified and against what, and what it does not do.
+`docs/nat-development.md` is the working log, kept because several of its conclusions are only
+defensible with the reasoning attached.
+
 ## Two things for OpticStudio users
 
 Beside the calculator itself, the repository holds two programs that report third-, fifth-
@@ -331,6 +387,9 @@ as air.
   (Buchdahl/Rimmer).
 - **PRMS** - the RMS spot size predicted from those coefficients, per field and per
   wavelength, and **PRMSA**, the weighted composite over all of them.
+- **Nodal aberration theory** - third and fifth order, for a design whose surfaces are not on
+  a common axis: where each surface's aberration field has been displaced to, where the nodes
+  of the system's field are, and what the fifth order does to the third.
 
 ## Status
 
@@ -349,6 +408,10 @@ Working, and validated in `docs/verification.md`:
 - the optimizer: PSD, Hooke-Jeeves and basin hopping over analytic derivatives, with the
   Jacobian checked operand by operand and variable by variable against central differences.
   Spherical surfaces only, on purpose (`docs/optimizer.md`)
+- **nodal aberration theory**, third and fifth order: what the aberrations do when the
+  surfaces are not on a common axis, and where the nodes go. Driven by an `.align` sidecar
+  that works the same for all six formats, and checked against Thompson's and Buchdahl's
+  own published tables rather than against another program (`docs/nodal-aberration-theory.md`)
 
 There is no GUI. The tool writes plain text and TSV files that you can read, diff and
 feed to something else.

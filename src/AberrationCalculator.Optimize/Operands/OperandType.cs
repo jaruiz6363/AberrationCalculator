@@ -99,4 +99,28 @@ public enum OperandType
     /// height it should have had, as a percentage of that height.
     /// </summary>
     DISTF,
+
+    // ── As built ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The RMS wavefront error a stated decentre and tilt tolerance will induce, averaged over
+    /// the field. Nodal aberration theory, after Gu 2020.
+    ///
+    /// <para>Every other operand here measures the design that was DRAWN. This one measures how
+    /// much of that performance survives being built: a misaligned surface still contributes its
+    /// own rotationally symmetric aberration field, only displaced, and the displacement is
+    /// linear in the perturbation - so the induced coma and astigmatism follow in closed form
+    /// from the paraxial marginal and chief rays. No rays are traced for it beyond those two,
+    /// and its derivative is exact like everything else here.</para>
+    ///
+    /// <para>It is a companion to <see cref="PRMSA"/> and not a replacement: PRMSA says how good
+    /// the design is, this says how much of that is real. A design can always be pushed to a
+    /// smaller predicted spot by making itself more delicate, and without this term in the merit
+    /// function nothing notices.</para>
+    ///
+    /// <para>Units are the design's length units, not waves. The two tolerances are given as
+    /// inputs - decentre first, then tilt in DEGREES, the same unit the .align sidecar states a
+    /// tilt in and the only angular unit this program uses.</para>
+    /// </summary>
+    ASBLT,
 }

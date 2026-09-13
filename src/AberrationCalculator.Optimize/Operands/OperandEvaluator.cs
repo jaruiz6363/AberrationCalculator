@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using AberrationCalculator.Optimize.Evaluation;
 
 using AdA = Ad::AberrationCalculator.Core.Aberrations;
+using AdN = Ad::AberrationCalculator.Core.Nat;
 using Dual = Ad::AberrationCalculator.Core.Ad.Dual;
 using DMath = Ad::AberrationCalculator.Core.Ad.DualMath;
 
@@ -54,6 +55,8 @@ public static class OperandEvaluator
             OperandType.AXC => AxialColour(probe, ctx),
             OperandType.DISTF => Distortion(op, probe, ctx),
 
+            OperandType.ASBLT => AsBuilt(op, probe, ctx),
+
             _ => throw new NotSupportedException("unknown operand type " + op.Type),
         };
     }
@@ -92,6 +95,41 @@ public static class OperandEvaluator
             }
         }
         return AdA.Prms.Composite(cases);
+    }
+
+    /// <summary>
+    /// The RMS wavefront error the stated tolerances would induce, averaged over the field.
+    ///
+    /// <para>Nodal aberration theory, after Gu 2020; the derivation and the two modelling
+    /// choices it rests on are in <c>Core/Nat/Sensitivity.cs</c>. It costs one paraxial trace
+    /// and a double loop over surfaces - no rays, no coefficients, no Buchdahl chain.</para>
+    ///
+    /// <para>The field average is taken over the fields the design defines, weighted as they
+    /// are weighted, exactly as PRMSA averages over them. Only the field-linear astigmatic term
+    /// sees the field, and it enters squared, so the mean of the SQUARED fractional height is
+    /// the exact quantity wanted rather than an approximation of it.</para>
+    /// </summary>
+    private static Dual AsBuilt(Operand op, DesignProbe probe, OperandContext ctx)
+    {
+        int w = ctx.WaveIndex(op.Wave);
+        var p = probe.Paraxial(w);
+
+        // Degrees on the page, radians in the theory - the one conversion, in one place.
+        double tilt = op.Tilt * Math.PI / 180.0;
+
+        double max = ctx.MaxField;
+        double num = 0.0, den = 0.0;
+        for (int f = 1; f <= ctx.FieldCount; f++)
+        {
+            double h = Math.Abs(max) > 1e-15 ? ctx.Fields[f] / max : 0.0;
+            double weight = ctx.FieldWeights[f];
+            num += weight * h * h;
+            den += weight;
+        }
+        double meanSquareField = den > 0.0 ? num / den : 1.0;
+
+        return AdN.Sensitivity.AsBuilt(probe.System, probe.Indices(w), p,
+                                       op.Decentre, tilt, meanSquareField);
     }
 
     /// <summary>

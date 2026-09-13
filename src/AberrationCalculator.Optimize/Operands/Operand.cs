@@ -44,6 +44,12 @@ public sealed class Operand
     /// <summary>Sagittal pupil coordinate as a fraction of the pupil radius.</summary>
     public double Px { get; init; }
 
+    /// <summary>Decentre tolerance, in the design's length units. See <see cref="OperandType.ASBLT"/>.</summary>
+    public double Decentre { get; init; }
+
+    /// <summary>Tilt tolerance, in DEGREES. See <see cref="OperandType.ASBLT"/>.</summary>
+    public double Tilt { get; init; }
+
     /// <summary>The value a target operand is driven to. Ignored by a boundary operand.</summary>
     public double Target { get; init; }
 
@@ -112,6 +118,12 @@ public sealed class Operand
                         break;
                     case OperandInput.Py:
                         if (Py != 0.0) s += " py" + N(Py);
+                        break;
+                    case OperandInput.Decentre:
+                        s += " dec" + N(Decentre);
+                        break;
+                    case OperandInput.Tilt:
+                        s += " tilt" + N(Tilt) + "deg";
                         break;
                 }
             }

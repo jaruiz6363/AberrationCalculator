@@ -82,6 +82,12 @@ public sealed class DesignProbe
     public int ImageSurface => _sys.Surfaces.Count - 1;
 
     /// <summary>The paraxial trace at one wavelength, taken at the maximum field.</summary>
+    /// <summary>
+    /// Refractive index after each surface, at one wavelength. Exposed for the operands that
+    /// need the prescription itself rather than a quantity derived from it.
+    /// </summary>
+    public Dual[] Indices(int wave) => _indices[Clamp(wave)];
+
     public AdR.ParaxialResult Paraxial(int wave) => Paraxial(wave, _maxField);
 
     /// <summary>The paraxial trace at one wavelength and one field.</summary>

@@ -31,6 +31,7 @@
     <CoreSource Include="../AberrationCalculator.Core/Models/OpticalSystem.cs" />
     <CoreSource Include="../AberrationCalculator.Core/RayTrace/ParaxialTrace.cs" />
     <CoreSource Include="../AberrationCalculator.Core/RayTrace/RealRayTrace.cs" />
+    <CoreSource Include="../AberrationCalculator.Core/RayTrace/LocalFrame.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/BuchdahlCoefficients.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/BuchdahlScheme.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/BuchdahlTableI.cs" />
@@ -42,6 +43,16 @@
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/TertiaryScriptT.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/AsphericSchemeIncrements.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/Prms.cs" />
+
+    <!--
+      Nodal aberration theory's tolerance sensitivity. Algebraic in the paraxial rays and the
+      curvatures, so the optimiser gets the derivative of as-built performance for the same
+      price as its value. It deliberately does NOT go through SeidelCoefficients, which is
+      still plain double: the quantity it needs is the Seidel kernel with both incidences
+      divided out, and recovering that from S1, S2 or S3 would reintroduce a division by an
+      incidence that vanishes at normal incidence. See the note in the file.
+    -->
+    <CoreSource Include="../AberrationCalculator.Core/Nat/Sensitivity.cs" />
 
     <!--
       Forbes' series trace is NOT differentiated, because the optimiser never reaches it: it

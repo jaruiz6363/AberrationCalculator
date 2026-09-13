@@ -36,6 +36,14 @@ OPTIONS
       --dir <dir>     Take bare file names as meaning this folder, for this run only.
                       Beats ABCALC_DIR, which beats the folder set with BASE, which
                       beats the current directory. An absolute path is never touched.
+      --nat
+                      Nodal aberration theory, third and fifth order: where each
+                      surface's aberration field has been displaced to, where the
+                      nodes of the system's field are, and what the fifth order does
+                      to the third. Reads tilts, decentres and Zernike overlays from
+                      the .align sidecar. Abbreviates to --nodal. See
+                      docs/nodal-aberration-theory.md.
+
       --distortion-coefficients
                       What the aberration coefficients make of DISTORTION, against
                       the rays. Not a distortion report - tracing one chief ray gives
@@ -144,6 +152,12 @@ COMMANDS
   abcalc <lens> OPLIST
   abcalc <lens> OPREMOVE 3                      remove number 3
 
+  abcalc <lens> TILT ""2 X 0.115""                 a surface is tilted, in DEGREES
+  abcalc <lens> DEC ""2 Y 0.05""                   and decentred, in lens units
+  abcalc <lens> ZERN ""1 Z5 0.0001""              a Zernike figure error, surface sag
+  abcalc <lens> ALIGNLIST                       list what is out of place
+  abcalc <lens> ALIGNREMOVE 1                   remove number 1
+
   abcalc HELP                                   list every command and operand
   abcalc HELP VAR                               explain one of them
   abcalc HELP EFL                               what an operand takes
@@ -188,6 +202,11 @@ OUTPUT
   <name>.contributions.tsv   Per-aberration isolated RMS and share of the spot.
   <name>.surfaces.tsv        Per surface: intrinsic, aspheric, induced, and their total.
   <name>.surface-share.tsv   Per surface: share of the spot and induced fraction.
+  <name>.nat.tsv             Full-field aberrations, third and fifth order, with --nat.
+
+  Alignment - how one BUILT instance sits - is read from a sidecar named for the
+  lens INCLUDING its extension, lens.zmx.align, as the .mf and .var files are. It
+  is never written back into the lens: delete it to restore the nominal design.
 
   The .tsv files are tab-separated with full precision, so a script or a
   spreadsheet can use them without reparsing the report.
@@ -220,6 +239,7 @@ EXIT CODES
     {
         string? lensPath = null, outDir = null, glassDir = null, baseDir = null;
         bool writeFiles = true, quiet = false, screen = false, forbes = false, distortion = false;
+        bool nat = false;
         double screenH = 1.0;
         int forbesDegree = 3;
 
@@ -258,6 +278,7 @@ EXIT CODES
                     }
                     break;
                 case "--distortion-coefficients": case "--distortion": distortion = true; break;
+                case "--nat": case "--nodal": nat = true; break;
 
                 case "--optimize": case "--optimise":
                     optimise = true;
@@ -413,6 +434,21 @@ EXIT CODES
 
         var system = LensFile.Read(lensPath, catalog);
 
+        // How this instance was BUILT, if anybody has said. Nothing but nodal aberration theory
+        // reads it: the paraxial trace, the coefficients and the real ray trace are all
+        // rotationally symmetric constructions and do not see these fields at all. It is applied
+        // here anyway so that every mode gets the same system, and no writer knows about the
+        // perturbation properties, so a --save can never leak a build error into a prescription.
+        try
+        {
+            AberrationCalculator.Core.IO.AlignmentFile.ReadFor(lensPath).ApplyTo(system);
+        }
+        catch (FormatException ex)
+        {
+            Console.Error.WriteLine("error: " + ex.Message);
+            return 1;
+        }
+
         // Settings commands come first: they edit what the optimiser will be told, and running
         // them alongside a run in one invocation means "set this up, then use it".
         if (commands.Count > 0)
@@ -454,6 +490,22 @@ EXIT CODES
         // And so does the distortion check, which is a measurement rather than a report and
         // is the only one of these that traces rays.
         if (distortion) { Console.Write(writer.BuildDistortionText()); return writer.Unresolved.Count > 0 ? 2 : 0; }
+
+        // The nodal report answers a question about a MISALIGNED lens, which none of the others
+        // can be asked at all, so it is its own mode rather than a section of the main report.
+        if (nat)
+        {
+            Console.Write(writer.BuildNatText());
+            if (writeFiles)
+            {
+                string dir = outDir ?? Path.GetDirectoryName(Path.GetFullPath(lensPath)) ?? ".";
+                Directory.CreateDirectory(dir);
+                string stem = Path.GetFileNameWithoutExtension(lensPath);
+                string tsv = Write(dir, stem + ".nat.tsv", writer.BuildNatFullFieldTsv());
+                if (!quiet) Console.WriteLine(Environment.NewLine + "  full-field display: " + tsv);
+            }
+            return writer.Unresolved.Count > 0 ? 2 : 0;
+        }
 
         // So does the Forbes report, which is a different question about the same lens.
         if (forbes)
@@ -545,15 +597,23 @@ EXIT CODES
                                    List<(string Keyword, string? Argument)> commands, bool quiet)
     {
         var setup = AberrationCalculator.Optimize.Io.SettingsStore.Load(system, lensPath);
-        bool changed = false;
+        var alignment = AberrationCalculator.Core.IO.AlignmentFile.ReadFor(lensPath);
+        bool changed = false, alignmentChanged = false;
 
         foreach (var (keyword, argument) in commands)
         {
             AberrationCalculator.Optimize.Io.SettingsCommands.Result result;
+            bool isAlignment =
+                AberrationCalculator.Optimize.Io.SettingsCommands.IsAlignmentCommand(keyword);
             try
             {
-                result = AberrationCalculator.Optimize.Io.SettingsCommands.Execute(
-                    keyword, argument, setup, lensPath);
+                // Alignment is about how the lens was BUILT, not what may be optimised about
+                // it, so it has its own container and its own sidecar. See AlignmentFile.
+                result = isAlignment
+                    ? AberrationCalculator.Optimize.Io.SettingsCommands.ExecuteAlignment(
+                          keyword, argument, alignment, lensPath)
+                    : AberrationCalculator.Optimize.Io.SettingsCommands.Execute(
+                          keyword, argument, setup, lensPath);
             }
             catch (Exception ex) when (ex is ArgumentException || ex is FormatException)
             {
@@ -561,13 +621,38 @@ EXIT CODES
                 return 1;
             }
 
-            changed |= result.Changed;
+            if (isAlignment) alignmentChanged |= result.Changed;
+            else changed |= result.Changed;
             if (!quiet) Console.Write(result.Output);
         }
 
-        if (!changed) return 0;
+        var written = new List<string>();
 
-        var written = AberrationCalculator.Optimize.Io.SettingsStore.Save(system, lensPath, setup);
+        if (alignmentChanged)
+        {
+            string path = AberrationCalculator.Core.IO.AlignmentFile.PathFor(lensPath);
+            if (alignment.IsEmpty) { if (File.Exists(path)) File.Delete(path); }
+            else
+            {
+                File.WriteAllText(path,
+                    AberrationCalculator.Core.IO.AlignmentFile.Write(
+                        alignment, Path.GetFileName(lensPath)));
+                written.Add(path);
+            }
+        }
+
+        if (!changed)
+        {
+            if (written.Count > 0 && !quiet)
+            {
+                Console.WriteLine("Written:");
+                foreach (string path in written) Console.WriteLine("  " + path);
+                Console.WriteLine();
+            }
+            return 0;
+        }
+
+        written.AddRange(AberrationCalculator.Optimize.Io.SettingsStore.Save(system, lensPath, setup));
         if (!quiet)
         {
             Console.WriteLine("Written:");

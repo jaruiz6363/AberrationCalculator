@@ -233,10 +233,25 @@ public static class BuchdahlTableI
     /// starting height of the q ray. His own triplet has p = 0.113227.
     /// <see cref="BuchdahlScheme"/> computes it from the stop surface.
     /// </param>
+    /// <param name="wCoordinates">
+    /// Run the scheme in Buchdahl's <b>W coordinates</b> rather than the paracanonical ones,
+    /// by applying the modified rows of paper VI Table I, p.536.
+    ///
+    /// <para>The two systems differ in which end the pupil variable is referenced to:
+    /// paracanonical takes the ray's height on the object side, W coordinates take it at the
+    /// exit pupil (VII Eq. (2.2), <c>S = e^-1 Y_E'</c>). In this scheme that shows up as a
+    /// change of reference point and nothing more - every paracanonical row here carries its
+    /// running sums back to the FIRST surface, and every W row carries them forward to the
+    /// IMAGE SPACE, which is Buchdahl's double prime.</para>
+    ///
+    /// <para>It matters because the wave front coefficients of VII Eq. (6.6) are stated for W
+    /// coordinates, and the fifth-order aberration coefficients differ between the two systems
+    /// by up to six per cent (VI Table II). The primary coefficients do not differ at all.</para>
+    /// </param>
     public static BuchdahlTableIRow[] Compute(
         IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl,
         Scalar stopParameter, IReadOnlyList<Scalar[]>? aspheric = null,
-        bool tertiaryHatOnly = false, Scalar iota = default)
+        bool tertiaryHatOnly = false, Scalar iota = default, bool wCoordinates = false)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -601,6 +616,27 @@ public static class BuchdahlTableI
             // t1p is z1 itself; the rest are short recurrences on the earlier ones.
         }
 
+        // ── The image space, for W coordinates ──────────────────────────────────────────
+        // Buchdahl's double prime: "the value of the quantity in question in the image space"
+        // (VI Sec. 5(b)(ii)). For this scheme that has one concrete meaning - a running sum
+        // taken over ALL surfaces instead of stopping short of the current one, and an angle
+        // product built from the FINAL primed angles. These are the only extra quantities the
+        // W rows of VI Table I need beyond what the paracanonical scheme already computes.
+        Scalar dpA = 0, dpAbar = 0, dpB = 0, dpC = 0, dpCbar = 0;
+        Scalar dp9 = 0, dp81 = 0, dp82 = 0;
+        Scalar dpPi = 0;                 // Buchdahl's varpi in the image space
+        if (wCoordinates)
+        {
+            for (int j = 1; j < count - 1; j++)
+            {
+                var tj = rows[j].T;
+                dpA += tj[10]; dpAbar += tj[11]; dpB += tj[12]; dpC += tj[13]; dpCbar += tj[14];
+                dpPi += tj[8];
+            }
+            Scalar vpEnd = rows[count - 2].VpPrime, vqEnd = rows[count - 2].VqPrime;
+            dp9 = vpEnd * vpEnd; dp81 = vpEnd * vqEnd; dp82 = vqEnd * vqEnd;
+        }
+
         // ── The induced mechanism ───────────────────────────────────────────────────────
         // Buchdahl's Sum_1^{j-1}: what a surface inherits from all those before it. This
         // is a second pass because each surface needs totals over its predecessors, which
@@ -632,7 +668,14 @@ public static class BuchdahlTableI
             // all look similar - leading asterisk, trailing asterisk, subscript one - and
             // each means something different. This entry is not a running sum at all,
             // which is why it never fitted the pattern of t15..t19.
-            t[20] = 0.5 * (rows[1].T[9] - t[9]) + t[16];
+            //
+            // VI Table I replaces it with the same quantity referred to the IMAGE SPACE:
+            //     t20 = t16 - (1/2)t9 + K,   K = ((1/2)t9 - t16)''
+            // which is the whole of the difference between the two coordinate systems at this
+            // row - the reference point moves from the first surface to the image space.
+            t[20] = wCoordinates
+                ? (t[16] - 0.5 * t[9]) + (0.5 * dp9 - dpAbar)
+                : 0.5 * (rows[1].T[9] - t[9]) + t[16];
         }
 
         // ── The q-side primary coefficients and the dagger family ───────────────────────
@@ -640,11 +683,44 @@ public static class BuchdahlTableI
         Scalar first9 = rows[1].T[9];
         Scalar first81 = rows[1].T[2] * rows[1].T[5];
         Scalar first82 = rows[1].T[5] * rows[1].T[5];
+
+        // ── The same four rows in W coordinates, VI Table I ─────────────────────────────
+        //     t21 = -(1/2)t2 t5 + t18 + K,   K = ((1/2)t2 t5 - t18)''
+        //     t22 = 2(t21 - t18) + t17 + K,  K = (2 t18 - t17)''
+        //     t23 = -(1/2)t5^2 + t19 + K,    K = ((1/2)t5^2 - t19)''
+        //     t24 = (t23 - t23*)t6 + t24*                                             [*]
+        //
+        // t24 is marked [*], which by Sec. 5(b)(iv) means its entries are calculated starting
+        // from the LAST column rather than the first - the paracanonical recursion runs forward
+        // from surface one, this one runs backward from the image space. Sec. 5(b)(v) supplies
+        // the seed: a starred quantity at the last surface is to be read as zero. Because that
+        // recursion needs t23 everywhere before it can start, these four are computed in their
+        // own pass here rather than inside the loop below.
+        if (wCoordinates)
+        {
+            for (int i = 1; i < count - 1; i++)
+            {
+                var t = rows[i].T;
+                t[21] = (t[18] - 0.5 * t[2] * t[5]) + (0.5 * dp81 - dpC);
+                t[22] = 2.0 * (t[21] - t[18]) + t[17] + (2.0 * dpC - dpB);
+                t[23] = (t[19] - 0.5 * t[5] * t[5]) + (0.5 * dp82 - dpCbar);
+            }
+            for (int i = count - 2; i >= 1; i--)
+            {
+                var t = rows[i].T;
+                Scalar next23 = i + 1 < count - 1 ? rows[i + 1].T[23] : 0.0;
+                Scalar next24 = i + 1 < count - 1 ? rows[i + 1].T[24] : 0.0;
+                t[24] = (t[23] - next23) * t[6] + next24;
+            }
+        }
+
         for (int i = 1; i < count - 1; i++)
         {
             var t = rows[i].T;
             var prev = rows[i - 1].T;
 
+            if (!wCoordinates)
+            {
             t[21] = 0.5 * (first81 - t[2] * t[5]) + t[18];
             t[22] = 2.0 * (t[21] - t[18]) + t[17];
             t[23] = 0.5 * (first82 - t[5] * t[5]) + t[19];
@@ -702,6 +778,7 @@ public static class BuchdahlTableI
             rows[i].QDelta23 = carried;
             Scalar t24Spherical = carried + (prev[24] - prev24Figured);
             t[24] = t24Spherical + rows[i].T24Figured;
+            }
 
             t[25] = t[6] * t[15] - t[20];
             t[26] = t[6] * t[16] - t[21];
@@ -867,10 +944,10 @@ public static class BuchdahlTableI
 
             Secondary(t, ap, rows[i].QApSpherical, rows[i].C13Spherical,
                       rows[i].Q2ApSpherical, rows[i].QC13Spherical, rows[i].QOmega, qSec,
-                      dSpherical, sphericalSix, standalone: true, tS, bS, mS);
+                      dSpherical, sphericalSix, standalone: true, tS, bS, mS, dpPi);
             Secondary(t, af, rr * af, rr * rr * af,
                       rr * rr * af, rr * (rr * rr * af), rr * t[8], qFigured,
-                      dFigured, figuredSix, standalone: false, tF, bF, mF);
+                      dFigured, figuredSix, standalone: false, tF, bF, mF, dpPi);
 
             // The figuring's D half travels on the INCIDENCE ratio, not the height ratio.
             //
@@ -1343,7 +1420,7 @@ public static class BuchdahlTableI
     private static void Secondary(Scalar[] t, Scalar a, Scalar ab, Scalar cc,
                                   Scalar q2a, Scalar qcc, Scalar qom, Scalar[] qs,
                                   Scalar[] d, Scalar[] s, bool standalone,
-                                  Scalar[] total, Scalar[] bar, Scalar[] mid)
+                                  Scalar[] total, Scalar[] bar, Scalar[] mid, Scalar piImage)
     {
         // Every barred entry is (84.42), s-bar_mu = q s_mu + the bracket in d6..d8, so the
         // only place q appears is the lift q s_mu. It is never formed as a product with q:
@@ -1375,8 +1452,16 @@ public static class BuchdahlTableI
         total[2] = s3;
         bar[2] = a * d[8] + cc * d[6] + q3;
 
-        Scalar s4mid = 2.0 * (s3mid - s[2]) + s[3];
-        Scalar q4mid = 2.0 * (q3mid - qs[2]) + qs[3];
+        // t55 in W coordinates, VI Table I:  t55 = 2(pi'' t11 + t51 - t50) + t54, against the
+        // paracanonical 2(t51 - t50) + t54. The whole modification is the one extra term
+        // 2 pi'' t11, and because t55 enters s4 additively with coefficient one it shifts BOTH
+        // members of the fourth pair by the same amount - which is how it was found. The barred
+        // line takes the same term with every factor advanced one power of q, and t12 is the
+        // q-advanced t11 up to the factor of two carried in its own definition.
+        Scalar s4mid = 2.0 * (s3mid - s[2]) + s[3]
+                     + (standalone ? 2.0 * piImage * t[11] : 0.0);
+        Scalar q4mid = 2.0 * (q3mid - qs[2]) + qs[3]
+                     + (standalone ? piImage * t[12] : 0.0);
         mid[3] = s4mid;
         Scalar s4 = 2.0 * ab * d[2] + s4mid;
         Scalar q4 = 2.0 * q2a * d[2] + q4mid;

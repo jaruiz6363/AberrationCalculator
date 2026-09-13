@@ -34,7 +34,19 @@ internal static class Tools
     /// than a silent fallback, because without a catalog every glass resolves as air and the
     /// whole answer is quietly wrong.
     /// </summary>
-    public static ReportWriter Open(string lensPath, string? glassDir)
+    public static ReportWriter Open(string lensPath, string? glassDir) =>
+        Open(lensPath, glassDir, null);
+
+    /// <summary>
+    /// As above, with the alignment stated inline rather than read from the sidecar.
+    ///
+    /// <para>Passing null reads <c>&lt;lens&gt;.align</c> if it is there, which is what the
+    /// command line does for every analysis. It matters that both do the same thing: a lens with
+    /// a perturbation beside it must not read one way through the CLI and another through this
+    /// server.</para>
+    /// </summary>
+    public static ReportWriter Open(string lensPath, string? glassDir,
+                                    AlignmentSpecification? alignment)
     {
         if (string.IsNullOrWhiteSpace(lensPath))
             throw new ArgumentException("a lens file path is required");
@@ -62,6 +74,7 @@ internal static class Tools
         }
 
         var system = LensFile.Read(lensPath, catalog);
+        (alignment ?? AlignmentFile.ReadFor(lensPath)).ApplyTo(system);
         return new ReportWriter(system, catalog, Path.GetFullPath(lensPath));
     }
 

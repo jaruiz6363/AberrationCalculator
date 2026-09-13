@@ -25,6 +25,13 @@ public static class DoubleMath
     public static double Cos(double x) => Math.Cos(x);
     public static double Tan(double x) => Math.Tan(x);
     public static double Atan(double x) => Math.Atan(x);
+
+    /// <summary>
+    /// The two-argument arctangent, <c>atan(a/b)</c> with the quadrant kept. Nodal aberration
+    /// theory needs it because an orientation there runs over a full turn, not half of one, and
+    /// the single-argument form would fold opposite vectors onto each other.
+    /// </summary>
+    public static double Atan2(double a, double b) => Math.Atan2(a, b);
     public static double Round(double x) => Math.Round(x);
     public static double Min(double a, double b) => Math.Min(a, b);
     public static double Max(double a, double b) => Math.Max(a, b);
