@@ -196,6 +196,7 @@ so `RY, 1, TAR 0, 7` is surface seven at the reference colour, the full field an
 | `DTRGT` | diameter-to-thickness ratio | `surface, surface2` |
 | `PX PY PZ PL PM PN` | paraxial ray position and direction cosines | `surface, wave, hy, px, py` |
 | `RX RY RZ RL RM RN` | the same for a real ray | `surface, wave, hy, px, py` |
+| `ASBLT` | wavefront error a build tolerance would induce | `decentre, tilt, wave` |
 
 `hy` is a **fraction of the maximum field**, 0 on axis and 1 at the corner — not an index into the
 field list, so a merit function can ask for seven tenths of the field whether or not the design
@@ -259,6 +260,46 @@ right weight depends on the design, and the handful of examples in this reposito
 to generalise from. Changing a weight changes the scale of the merit, so two runs weighted
 differently are not comparable by their merit numbers at all — judge them on the physical
 quantities the report prints.
+
+### The one operand about what gets BUILT
+
+Every operand above measures the design on the page. `ASBLT` measures what will survive being
+made.
+
+```
+ASBLT, 10, TAR 0, 0.04, 0.15             # 0.04 lens units of decentre, 0.15 DEGREES of tilt
+```
+
+It is the RMS wavefront error a decentre and tilt tolerance of the stated size would induce. The
+theory is nodal: a perturbed surface contributes the same rotationally symmetric aberration field
+it always did, displaced by a vector linear in the perturbation, so the induced coma and
+astigmatism can be written down in closed form. Gu, Wang and Yan, *Opt. Express* **28**(6), 7928
+(2020).
+
+The two tolerances are **RSS'd, not added** - over the surfaces, and over the two error types at
+each surface - because they are independent errors of manufacture rather than a single known
+displacement. A decentre enters as its equivalent tilt, `c D`, which is how a shift of a surface
+with curvature acts. The field dependence is carried by the mean-square field height over the
+design's own field points and their weights.
+
+**Why it is worth having.** A design can always be driven to a smaller predicted spot by making
+it more sensitive to the tolerances it will actually be built to, and **nothing else in the merit
+function objects** — `PRMSA` is measured on a perfectly centred lens and does not know the lens
+will be assembled by somebody. This is the term that objects.
+
+**It traces no rays.** The result is algebraic in the two paraxial rays the program already has —
+`y, ybar, u, ubar, n, c` — so it costs the evaluation loop almost nothing, and it differentiates
+exactly on the dual-number compile like everything else here rather than being a difference
+quotient bolted on beside the analytic ones.
+
+**Tilt is in DEGREES.** It is the one angular quantity this program takes from a user anywhere,
+and it matches the `.align` sidecar that drives `--nat`. The conversion to radians happens once,
+inside the evaluator.
+
+A sensible use is as a bound rather than a target — `ASBLT, 1, MAX 0.05, 0.04, 0.15` says the
+design must stay buildable to that tolerance without paying for buildability it does not need.
+Stated as `TAR 0` with a weight it competes with the spot, which is the trade it exists to make
+visible, and how hard to push is a decision this document will not make for you.
 
 ## Variables and pickups
 

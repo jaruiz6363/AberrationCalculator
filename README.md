@@ -307,6 +307,14 @@ distortion's field is exact and its nodes are refused, because the closed soluti
 dissertation this repository does not hold and a numerical search disagreed with a direct scan of
 the field.
 
+**And one piece of it reaches the optimizer.** The `ASBLT` merit operand is the wavefront error a
+decentre and tilt tolerance would induce, from the same theory and from the two paraxial rays the
+program already has - no rays traced, and analytic on the dual-number compile like every other
+derivative here. It exists because a design can always be driven to a smaller predicted spot by
+making it more sensitive to the tolerances it will be built to, and nothing else in the merit
+function objects: `PRMSA` is measured on a perfectly centred lens and does not know the lens will
+be assembled by somebody. `docs/optimizer.md` has it.
+
 `docs/nodal-aberration-theory.md` is the documentation - how to read every line of the report and
 every column of the TSV, what is verified and against what, and what it does not do.
 `docs/nat-development.md` is the working log, kept because several of its conclusions are only
