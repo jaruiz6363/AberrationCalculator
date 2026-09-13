@@ -44,12 +44,13 @@ matters here.
 ```
     TILT 2 Y 0.115        degrees, about the surface vertex
     DEC  3 X 0.05         lens units
-    ZERN 1 Z10 0.0005     Fringe Zernike, as a surface SAG - Z5 to Z15
+    ZERN 1 Z10 0.0005     Fringe Zernike, as a surface SAG
     TILT 2 FREE           removes only the tilt, leaving any decentre
 ```
 
 Lines merge: `TILT 2 X 0.1` followed by `TILT 2 Y 0.05` leaves surface 2 tilted about both axes.
-Angles are degrees throughout the program, with no exceptions.
+Angles are degrees throughout the program, with no exceptions. The next section is the full
+grammar.
 
 Then:
 
@@ -63,6 +64,78 @@ switch.
 **On an aligned design it still runs, and says so.** Every sigma is zero, the sums collapse to
 the ordinary Seidel ones, and every node sits at the field centre. That is the theory reducing
 correctly rather than declining the case, and it is worth seeing once.
+
+## The `.align` file
+
+### Why it is a file of its own
+
+A perturbation is a statement about **one built instance** — "this surface ended up fifty microns
+off" — not about the lens. Writing it into the prescription would corrupt the design record with a
+build error, and for a `.lhlt`, which keeps its variables inside the lens file, that is exactly
+where the variables rule would have put it. So alignment gets its own sidecar, uniformly for all
+six formats, and **deleting that file restores the nominal design exactly**.
+
+It is not a `.var` either. Variables say what the OPTIMISER may move; these say what the WORKSHOP
+got wrong. Neither is a merit function, which is the only one of the three that can be carried
+from one design to another at all.
+
+### The grammar
+
+    TILT <surface> [X <deg>] [Y <deg>] [FREE]
+    DEC  <surface> [X <len>] [Y <len>] [FREE]         DECENTER and DECENTRE also accepted
+    ZERN <surface> [Z<n> <sag>]... [FREE]             ZERNIKE also accepted
+
+Blank lines are ignored and `#` starts a comment. Surfaces are numbered from 1. A keyword with nothing after
+the surface number is a no-op rather than an error, so `TILT 2` does not wipe surface 2.
+
+**Tilts are in DEGREES**, which is how every lens format states one, and degrees are the only
+angular unit this program takes from a user anywhere — the `ASBLT` merit operand states its tilt
+tolerance in them too, so a number copied from one to the other means what it said. Radians appear
+once, in the conversion on read.
+
+**Decentres are in the design's length units.** Zernike coefficients are a surface **sag**, in the
+same units, and are **raw Fringe** terms.
+
+The file accepts `Z1` to `Z18` and refuses anything outside that by name rather than ignoring it.
+The theory consumes **five pairs**:
+
+    Z5/6    astigmatism          Z7/8    coma           Z10/11  trefoil
+    Z12/13  oblique spherical    Z14/15  fifth-order aperture coma
+
+**Everything else parses and does nothing** - `Z9` spherical aberration among them, since a
+rotationally symmetric departure displaces no field centre. A term stated outside those five
+pairs is accepted in silence and has no effect, which is worth knowing before wondering why the
+nodes did not move.
+
+### Lines merge, and `FREE` is the way back out
+
+Exactly as `VAR` does:
+
+    TILT 2 X 0.1
+    TILT 2 Y 0.05          # surface 2 is now tilted about BOTH axes
+
+Because a value cannot be removed by leaving it off, there has to be a word that says to drop it.
+`FREE` drops **only its own kind**: `TILT 2 FREE` clears the tilt and leaves any decentre on
+surface 2 alone, and `ZERN 2 FREE` clears every Zernike term without touching either.
+
+### Where the file lives
+
+Beside the lens, named for it **without** the extension: `triplet.zmx` reads `triplet.align`.
+
+> **This differs from `.mf` and `.var`, deliberately or not.** Those are named for the lens
+> *including* its extension — `triplet.zmx.mf` — so that a folder holding `triplet.zmx` and
+> `triplet.seq` keeps their settings apart. `.align` drops the extension, so those two lenses
+> would share one alignment file. The same argument applies to both, and this one is recorded
+> here rather than quietly assumed to be intended.
+
+### What it is for, and what it is not
+
+The paraxial trace is a rotationally symmetric construction and does not read these at all. Nodal
+aberration theory treats a perturbation as a **small departure** from the symmetric system, which
+is right for alignment errors and wrong for a design with large deliberate tilts. Such a design
+needs a real-ray treatment on the optical axis ray, which this program does not have.
+
+So: use it for build errors and figure error. Do not use it to model a scanner.
 
 ## Reading the report
 
