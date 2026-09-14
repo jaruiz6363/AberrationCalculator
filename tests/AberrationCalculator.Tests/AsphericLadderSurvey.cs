@@ -421,6 +421,73 @@ public class AsphericLadderSurvey
     }
 
     /// <summary>
+    /// Which of the twenty totals the confirmed (85.1) reading breaks on the two designs it
+    /// makes worse - both of which figure the LAST powered surface.
+    ///
+    /// <para>The reading is correct by the source: (85.1) gives the barred (Y) member as
+    /// <c>q~ 'G-_p - 'G-_q</c> on the same accumulations as its (I) partner, and rebuilding
+    /// <c>'S-_1q</c> as an explicit accumulation is algebraically identical to applying the
+    /// reading as a delta, so no reformulation can change these numbers. Something else is
+    /// wrong, and the totals say where: each T-bar entry is built from named daggers, so the
+    /// one that moves names the entry.</para>
+    /// </summary>
+    [Fact]
+    public void WhichTotalsTheConfirmedReadingBreaks()
+    {
+        var reading = new BuchdahlAsphericScheme.Options
+        {
+            SharedQBarWithSplitPrimary = true,
+            YBarredFromSharedAccumulations = true,
+        };
+
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tentry\tforbes\tas-built rel%\treading rel%\tverdict");
+
+        foreach (string name in new[] { "Ladder2_A4_Second", "Ladder2_FiguredSphere_Then_A4",
+                                        "Ladder3_A4_Middle", "CookeTriplet_SPOTM_START_LO_ASPHERE" })
+        {
+            var d = Load(name);
+            var (fT, fB) = TotalsFromTau(d.Forbes);
+            var (aT, aB) = TotalsFromTau(NewRoute(name, null));
+            var (rT, rB) = TotalsFromTau(NewRoute(name, reading));
+
+            double big = 0.0;
+            for (int k = 1; k <= 10; k++)
+            {
+                big = Math.Max(big, Math.Abs(fT[k]));
+                big = Math.Max(big, Math.Abs(fB[k]));
+            }
+
+            for (int pass = 0; pass < 2; pass++)
+            {
+                var f = pass == 0 ? fT : fB;
+                var a = pass == 0 ? aT : aB;
+                var r = pass == 0 ? rT : rB;
+                string tag = pass == 0 ? "T" : "Tbar";
+
+                for (int k = 1; k <= 10; k++)
+                {
+                    if (Math.Abs(f[k]) < 1e-12 * big) continue;
+                    double before = 100 * Math.Abs(a[k] - f[k]) / Math.Abs(f[k]);
+                    double after = 100 * Math.Abs(r[k] - f[k]) / Math.Abs(f[k]);
+                    if (before < 0.5 && after < 0.5) continue;
+
+                    string verdict = after < before * 0.9 ? "better"
+                                   : after > before * 1.1 ? "WORSE" : "same";
+                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                        "{0}\t{1}{2}\t{3:E3}\t{4:F2}\t{5:F2}\t{6}",
+                        name, tag, k, f[k], before, after, verdict));
+                }
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-reading-totals.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
     /// Where the arrangement goes wrong at the level it computes: which of the twenty totals,
     /// and by how much of itself.
     /// </summary>
