@@ -52,6 +52,19 @@ public sealed class BuchdahlTableIRow
     public readonly Scalar[] SecBarFigLift = new Scalar[6];
 
     /// <summary>
+    /// The D half of the figured secondary increment, which the barred entry carries on the
+    /// INCIDENCE ratio while the L half goes on the height ratio - (60.3) giving the figuring
+    /// two halves like everything else.
+    ///
+    /// <para>Recorded, not used: it is already added into <see cref="SecBarFig"/> where it is
+    /// formed, and nothing here reads it back. It is kept so that the identity it completes can
+    /// be checked - <c>s-_1p^fig = q D + q~ L + alpha(2q~ A_(Y) + A-_(Y))</c> - which is M
+    /// (68.8) written out, and which cannot be tested from the row without it. On a spherical
+    /// system it is never even computed.</para>
+    /// </summary>
+    public readonly Scalar[] SecDFigured = new Scalar[6];
+
+    /// <summary>
     /// The surface's OWN quantities split into the two halves of M (65.7), which the Sec. 85
     /// two-pass needs: the hat half rides i_p, the check half y_p. Spherical content is
     /// entirely hat, a sphere having no check half at all.
@@ -967,6 +980,7 @@ public static class BuchdahlTableI
                 var dOnly = SecondaryDHalf(t, kk, cc, figNow, s1);
                 Scalar lead = t[6] - rr;
                 for (int m = 0; m < 6; m++) bF[m] += lead * dOnly[m];
+                for (int m = 0; m < 6; m++) rows[i].SecDFigured[m] = dOnly[m];
             }
 
             for (int q = 1; q <= 5; q++) { rows[i].MSph[q] = mS[q]; rows[i].MFig[q] = mF[q]; }

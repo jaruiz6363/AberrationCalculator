@@ -65,8 +65,19 @@ public class BuchdahlSymbolDictionaryTests
         var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, paraxial.Efl,
                                             sys.Surfaces[stop].SemiDiameter, iota);
 
+        // The figuring has to be carried in, or every figured quantity is zero and a test that
+        // needs one silently passes on nothing. The spherical identities above are unaffected -
+        // on a sphere the increments are null - but the alpha bracket cannot be tested without
+        // them.
+        var coefficients = BuchdahlCoefficients.Compute(sys, paraxial);
+        var spherical = BuchdahlTableI.Compute(sys.Surfaces, n, paraxial.Efl, scheme.P,
+                                               iota: iota);
+        var increments = AsphericSchemeIncrements.Build(coefficients, spherical,
+                                                        sys.LastOpticalSurface());
+
         count = sys.Surfaces.Count;
-        return BuchdahlTableI.Compute(sys.Surfaces, n, paraxial.Efl, scheme.P, iota: iota);
+        return BuchdahlTableI.Compute(sys.Surfaces, n, paraxial.Efl, scheme.P, increments,
+                                      iota: iota);
     }
 
     /// <summary>One candidate identity: a name, and the two sides to compare.</summary>
@@ -221,6 +232,76 @@ public class BuchdahlSymbolDictionaryTests
     /// Sec. 85: a correction was built on the equation as printed, and reported as neutral,
     /// when the bracket it formed was not the one the scheme uses.</para>
     /// </summary>
+    /// <summary>
+    /// <b>The alpha bracket of M (68.8), derived - and already in the scheme.</b>
+    ///
+    /// <para>The dictionary gives the spherical relation outright: (68.6) is
+    /// <c>s_1p = s_1p^ + 3 a_p A_(I)</c> and the barred entry is <c>q s_1p + a_p t31</c> with
+    /// <c>t31 = -q t25 + t26</c>, so</para>
+    /// <code>
+    ///   s-_1p = q s_1p^ + a_p (2q A_(I) + A-_(I))
+    /// </code>
+    /// <para>Sec. 85 splits <c>a_p</c> into <c>0a_p + alpha</c> and pairs the check half with the
+    /// (Y) family rather than the (I) family, which gives the figured half at once:</para>
+    /// <code>
+    ///   s-_1p^fig = q~ s_1p^fig,intrinsic + alpha (2q~ A_(Y) + A-_(Y))
+    /// </code>
+    /// <para>Collecting (68.8)'s own alpha terms - <c>3q A_(Y) - X + (q~ - q)[(A-_p - 2A_q) +
+    /// (2q~ - q)A_p]</c> with X the corrected spherical bracket - gives coefficients
+    /// <c>2q~^2</c>, <c>-2q~</c>, <c>q~</c> and <c>-1</c> on A_p, A_q, A-_p and A-_q: the same
+    /// four. So the alpha bracket is right as printed, and the misprint is confined to the
+    /// spherical half.</para>
+    ///
+    /// <para><b>What that settles.</b> The scheme's figured unbarred secondary is
+    /// <c>s_1p^fig,intr + 3 alpha A_(Y)</c> and its lift is <c>q~</c> times that, so the
+    /// derivation above predicts</para>
+    /// <code>
+    ///   SecBarFig[0] - SecBarFigLift[0] = alpha (A-_(Y) - q~ A_(Y)) = alpha Y31
+    /// </code>
+    /// <para>which is what this checks. It holding means the scheme ALREADY satisfies (68.8) in
+    /// full - so the three readings that tried to add (68.8)'s bracket, or the difference
+    /// <c>SecBarFig - SecBarFigLift</c>, or the increment's figured half, were each adding a
+    /// second copy of something already there. That is why all three were neutral or harmful,
+    /// and it takes the whole figured SECONDARY out of the search.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("Ladder3_A4_Middle")]
+    [InlineData("Ladder3_A4_First")]
+    [InlineData("Ladder2_A4_First")]
+    [InlineData("Ladder2_A4_Second")]
+    [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE")]
+    public void TheAlphaBracketIsAlreadyInTheFiguredBarredSecondary(string fixtureName)
+    {
+        var rows = Rows(fixtureName, out int count);
+        bool tested = false;
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var r = rows[i];
+            if (Math.Abs(r.ApFigured) < 1e-14) continue;
+
+            // s-_1p^fig = q D + q~ L + alpha(2q~ A_(Y) + A-_(Y)), and the lift is q~(D + L), so
+            // what is left over is the alpha bracket plus (q - q~) times the D half. (60.3)
+            // gives the figuring two halves like everything else, and the D one rides the
+            // incidence ratio - which is the piece the first pass of this derivation missed.
+            double predicted = r.ApFigured * r.Y[31]
+                             + (r.T[6] - r.Rho) * r.SecDFigured[0];
+            double actual = r.SecBarFig[0] - r.SecBarFigLift[0];
+            double scale = Math.Max(Math.Abs(predicted), Math.Abs(actual));
+            if (scale < 1e-14) continue;
+
+            tested = true;
+            Assert.True(Math.Abs(predicted - actual) / scale < 1e-10,
+                $"{fixtureName} surface {i}: the derivation says the figured barred secondary "
+              + $"exceeds its lift by alpha Y31 = {predicted:E8}, and the scheme has "
+              + $"{actual:E8}. Either the derivation is wrong or the scheme does not satisfy "
+              + "(68.8).");
+        }
+
+        Assert.True(tested, $"{fixtureName} has no surface with a figured primary, so it cannot "
+                          + "test this at all.");
+    }
+
     [Fact]
     public void TheStandaloneTermOf688IsBarred()
     {
