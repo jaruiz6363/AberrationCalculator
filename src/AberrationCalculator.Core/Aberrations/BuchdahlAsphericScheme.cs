@@ -192,6 +192,43 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool Equation688BracketInDagger { get; init; }
 
+        /// <summary>
+        /// Whether the dagger recursions carry the figured half of the WHOLE increment on the
+        /// height ratio, rather than the lift half of the barred secondary alone.
+        ///
+        /// <para><b>The scheme's own note states the requirement and then gives up on it.</b>
+        /// Each of the six recursions multiplies an increment in the accumulated q-side
+        /// secondary by the PREVIOUS surface's q; that increment already carries the surface's
+        /// own ratio inside it, M (65.7) having put the figured half of a q-side quantity on the
+        /// height ratio, so multiplying by q a second time gives the figured half <c>q q~</c>
+        /// where it should have <c>q~</c> squared. The remedy is one extra product per line, on
+        /// the INCREMENT rather than the accumulation - the same correction <c>t24</c> makes one
+        /// order down.</para>
+        ///
+        /// <para>The note then says the increment's figured half "is exactly the previous
+        /// surface's own figured barred secondary", and adds that the closed form for t86 also
+        /// "carries other figured content through products of accumulations, but a product has no
+        /// additive figured half to speak of, and taking one - by shadowing the accumulations or
+        /// by differencing a spherical twin - measures worse on every multi-surface design
+        /// tried".</para>
+        ///
+        /// <para><b>Both halves of that are wrong.</b> A product of accumulations has a perfectly
+        /// definite additive figured half, because M (67.1-2) splits every accumulation exactly:
+        /// for <c>X = X_s + X_f</c> and <c>Y = Y_s + Y_f</c> the figured half of <c>XY</c> is
+        /// <c>XY - X_s Y_s</c>, which needs no shadowing and no twin system - both halves of
+        /// every accumulation are already on the row. And the measurement that rejected it was
+        /// made with the instrument that divided each error by the largest coefficient in the
+        /// set, which is blind to this arrangement's actual failures: the two designs it quotes
+        /// at 5.29 and 5.30 per cent are at 467 and 284 per cent when each coefficient is asked
+        /// about on its own terms.</para>
+        ///
+        /// <para>So this evaluates the six q-side secondaries twice - once as they stand, once
+        /// with every accumulation reduced to its spherical half - and differences them. On a
+        /// sphere, and on any figuring whose primary contribution vanishes, the two evaluations
+        /// are identical and the correction is exactly zero.</para>
+        /// </summary>
+        public bool DaggerIncrementFiguredHalfOnHeightRatio { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -238,6 +275,7 @@ public static class BuchdahlAsphericScheme
         var figured = AccumulatedFiguredPrimary(rows, count);
         var dagger = options.FullFiguredBarredSecondaryInDagger
                      || options.Equation688BracketInDagger
+                     || options.DaggerIncrementFiguredHalfOnHeightRatio
                    ? DaggerDelta(rows, count, options) : null;
 
         for (int i = 1; i < count - 1; i++)
@@ -381,15 +419,112 @@ public static class BuchdahlAsphericScheme
     /// added together. <c>[19]</c> is cross-checked against the scheme's own
     /// <c>T19Figured</c>, which it must equal.</para>
     /// </summary>
-    private static Scalar[][] AccumulatedFiguredPrimary(BuchdahlTableIRow[] rows, int count)
+    /// <summary>
+    /// The six q-side secondary coefficients - the scheme's t86, t89, t92, t94, t97 and t98 -
+    /// from the accumulations they are built out of.
+    ///
+    /// <para>A transcription of the closed forms, so that they can be evaluated a second time on
+    /// the SPHERICAL half of every accumulation and the two differenced. It is checked against
+    /// the scheme's own entries by <c>BuchdahlAsphericSchemeTests</c>; a transcription that has
+    /// drifted would otherwise produce a plausible correction out of nothing.</para>
+    ///
+    /// <param name="a">The primary accumulations t15..t24, indexed from zero.</param>
+    /// <param name="s">The accumulated BARRED secondaries t70, t72, t74, t76, t78, t80.</param>
+    /// </summary>
+    private static Scalar[] QSideSecondaries(Scalar t9, Scalar t81, Scalar t82,
+                                             Scalar[] a, Scalar[] s)
+    {
+        Scalar t15 = a[0], t16 = a[1], t17 = a[2], t18 = a[3], t19 = a[4];
+        Scalar t20 = a[5], t21 = a[6], t22 = a[7], t23 = a[8], t24 = a[9];
+
+        Scalar t83 = t16 - t20, t84 = t17 - t22, t85 = t19 - t23;
+
+        Scalar q86 = -1.5 * t83 * t83 + t9 * t16 - t16 * t20
+                     + t15 * t21 - t15 * t81 + s[0];
+
+        Scalar t87 = (2.0 * t21 - t22 - t81) * t16 + t9 * t21 - t20 * t81;
+        Scalar t88 = (2.0 * t23 - t82) * t15 - t17 * t20 + t9 * t17;
+        Scalar q89 = -3.0 * t83 * t84 + t87 + t88 + s[1];
+
+        Scalar t90 = -0.5 * t81 * t84 + t9 * t19 - t20 * t82;
+        Scalar t91 = t18 * t21 + t15 * t24 - t16 * t23 - t19 * t20;
+        Scalar q92 = -3.0 * t83 * t85 + s[2] + t90 + t91;
+
+        Scalar t93 = 2.0 * (2.0 * t16 * t23 - t16 * t82 + t9 * t23) - t17 * t22;
+        Scalar q94 = -1.5 * t84 * t84 + t81 * t84 + s[3] + t93;
+
+        Scalar t95 = (2.0 * t18 - t17 + t81) * t23 + t19 * t81 - t22 * t82;
+        Scalar t96 = (2.0 * t16 + t9) * t24 - t19 * t22 - t18 * t82;
+        Scalar q97 = -3.0 * t84 * t85 + t95 + t96 + s[4];
+
+        Scalar q98 = -1.5 * t85 * t85 + t24 * t81 + t18 * t24
+                     - t23 * t82 - t19 * t23 + s[5];
+
+        return new[] { q86, q89, q92, q94, q97, q98 };
+    }
+
+    /// <summary>
+    /// The q-side secondaries as they stand, and again on the spherical half of every
+    /// accumulation. Their difference is the figured half of each, exactly - products included,
+    /// since M (67.1-2) splits every accumulation that enters them.
+    /// </summary>
+    public static (Scalar[] Full, Scalar[] Figured) QSideHalves(
+        BuchdahlTableIRow row, Scalar[] figuredPrimary, Scalar[] figuredSecondary)
+    {
+        var t = row.T;
+        var a = new[] { t[15], t[16], t[17], t[18], t[19],
+                        t[20], t[21], t[22], t[23], t[24] };
+        var s = new[] { t[70], t[72], t[74], t[76], t[78], t[80] };
+
+        var aS = new Scalar[10];
+        for (int k = 0; k < 10; k++) aS[k] = a[k] - figuredPrimary[15 + k];
+        var sS = new Scalar[6];
+        for (int k = 0; k < 6; k++) sS[k] = s[k] - figuredSecondary[k];
+
+        var full = QSideSecondaries(t[9], t[81], t[82], a, s);
+        var spherical = QSideSecondaries(t[9], t[81], t[82], aS, sS);
+
+        var figured = new Scalar[6];
+        for (int k = 0; k < 6; k++) figured[k] = full[k] - spherical[k];
+        return (full, figured);
+    }
+
+    /// <summary>
+    /// The figured half of each surface's accumulated BARRED secondaries - t70, t72, t74, t76,
+    /// t78 and t80 - which is the running sum of the figured barred secondary the scheme already
+    /// forms per surface.
+    /// </summary>
+    private static Scalar[][] AccumulatedFiguredSecondary(BuchdahlTableIRow[] rows, int count)
     {
         var result = new Scalar[count][];
-        var running = new Scalar[23];
+        var running = new Scalar[6];
 
         for (int i = 1; i < count - 1; i++)
         {
-            var mine = new Scalar[23];
+            var mine = new Scalar[6];
+            Array.Copy(running, mine, 6);
+            result[i] = mine;
+            for (int m = 0; m < 6; m++) running[m] += rows[i].SecBarFig[m];
+        }
+        return result;
+    }
+
+    private static Scalar[][] AccumulatedFiguredPrimary(BuchdahlTableIRow[] rows, int count)
+    {
+        var result = new Scalar[count][];
+        var running = new Scalar[25];
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var mine = new Scalar[25];
             Array.Copy(running, mine, running.Length);
+
+            // t23 and t24 the scheme already splits for itself - t23's figured half is the same
+            // running sum of c-bar_p that t19 carries, and t24's is the recursion on the previous
+            // surface's height ratio that (67.2) requires. Taken from the row rather than
+            // recomputed, so the two cannot drift apart.
+            mine[23] = rows[i].T19Figured;
+            mine[24] = rows[i].T24Figured;
 
             // t20 = (1/2)(t9 at surface one - t9 here) + t16, t21 = (...) + t18 and
             // t22 = 2(t21 - t18) + t17. The leading terms are ray-angle constructions with no
@@ -431,6 +566,8 @@ public static class BuchdahlAsphericScheme
     {
         var delta = new Scalar[count][];
         var running = new Scalar[6];
+        var figuredPrimary = AccumulatedFiguredPrimary(rows, count);
+        var figuredSecondary = AccumulatedFiguredSecondary(rows, count);
 
         for (int i = 1; i < count - 1; i++)
         {
@@ -439,6 +576,37 @@ public static class BuchdahlAsphericScheme
             {
                 var prv = rows[i - 1];
                 Scalar dPrevRatio = prv.Rho - prv.T[6];
+
+                if (options.DaggerIncrementFiguredHalfOnHeightRatio)
+                {
+                    // The bracket each recursion multiplies by the previous surface's q is
+                    //     prev70 + (t86 - prev86)
+                    // and its five partners. Its figured half is taken exactly: every
+                    // accumulation entering the closed forms is split by (67.1-2), so the
+                    // products have definite halves and nothing is estimated.
+                    //
+                    // The scheme already subtracts dPrevRatio times the LIFT half; what is
+                    // wanted is dPrevRatio times the whole increment's figured half, so the
+                    // move is the difference of the two.
+                    var fpPrev = figuredPrimary[i - 1];
+                    var fsPrev = figuredSecondary[i - 1];
+                    var fpHere = figuredPrimary[i];
+                    var fsHere = figuredSecondary[i];
+
+                    var (_, figuredPrev) = QSideHalves(rows[i - 1], fpPrev, fsPrev);
+                    var (_, figuredHere) = QSideHalves(rows[i], fpHere, fsHere);
+
+                    for (int m = 0; m < 6; m++)
+                    {
+                        bool regularised = m == 5 && prv.FlatInCollimatedSpace;
+                        Scalar increment = fsPrev[m] - figuredPrev[m] + figuredHere[m];
+                        Scalar moved = increment - prv.SecBarFigLift[m];
+                        d[m] = running[m] + (regularised ? 0.0 : -dPrevRatio * moved);
+                    }
+                    delta[i] = d;
+                    Array.Copy(d, running, 6);
+                    continue;
+                }
 
                 if (options.Equation688BracketInDagger)
                 {

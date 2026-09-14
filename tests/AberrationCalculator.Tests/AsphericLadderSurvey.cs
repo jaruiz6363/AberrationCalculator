@@ -88,6 +88,9 @@ public class AsphericLadderSurvey
                 new BuchdahlAsphericScheme.Options { FullFiguredBarredSecondaryInDagger = true }),
             ("eq-68.8-bracket",
                 new BuchdahlAsphericScheme.Options { Equation688BracketInDagger = true }),
+            ("dagger-increment-figured-half",
+                new BuchdahlAsphericScheme.Options
+                    { DaggerIncrementFiguredHalfOnHeightRatio = true }),
         };
 
         var sb = new StringBuilder();
@@ -458,6 +461,45 @@ public class AsphericLadderSurvey
         if (Math.Abs(reference) < 1e-300) return "-";
         return (100 * Math.Abs(mine - reference) / Math.Abs(reference))
             .ToString("F3", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Pins how M (68.8)'s accumulations map onto the scheme's entries, using the SPHERICAL case
+    /// as the identity - it is verified against Buchdahl's own printed numbers, so whatever the
+    /// symbols mean, the two must agree there.
+    ///
+    /// <para>(68.8) has <c>s-_1p = q s_1p - ['A_q - q('A-_p + 'A_q) + q^2 'A_p] a_p + ...</c>,
+    /// and the scheme forms the same barred entry as <c>a_p t31 + q s_1p</c>. So <c>t31</c> must
+    /// BE the negative of that bracket. If it is, reading the bracket off t15, t16 and t20 is
+    /// right and the (68.8) reading was transcribed correctly; if it is not, that reading was
+    /// measuring the wrong quantity and its result means nothing.</para>
+    /// </summary>
+    [Fact]
+    public void WhatTheAccumulationsInEq688Are()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tsurf\tt31\t-[A_q-q(Abar_p+A_q)+q^2 A_p]\tdiff\tusing t21 instead");
+
+        foreach (string name in new[] { "Ladder3_Sphere", "CookeTriplet",
+                                        "Ladder3_A4_Middle", "KingslakeDG" })
+        {
+            var rows = RowsFor(name, out int count);
+            for (int i = 1; i < count - 1; i++)
+            {
+                var t = rows[i].T;
+                double q = t[6];
+                double withT20 = -(t[20] - q * (t[16] + t[20]) + q * q * t[15]);
+                double withT21 = -(t[21] - q * (t[16] + t[21]) + q * q * t[15]);
+                if (Math.Abs(t[31]) < 1e-14 && Math.Abs(withT20) < 1e-14) continue;
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\t{1}\t{2:E5}\t{3:E5}\t{4:E2}\t{5:E5}",
+                    name, i, t[31], withT20, t[31] - withT20, withT21));
+            }
+        }
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-t31.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
     }
 
     private static BuchdahlTableIRow[] RowsFor(string name, out int count)
