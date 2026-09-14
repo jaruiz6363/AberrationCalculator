@@ -31,6 +31,8 @@ public class AsphericLadderSurvey
         "Ladder2_FiguredSphere_First", "Ladder2_FiguredSphere_Second",
         "Ladder2_FiguredSphere_Both", "Ladder2_FiguredSphere_Then_A4",
         "Ladder2_FlatFigured", "Ladder2_FiguredFlatRear",
+        "Ladder3_Sphere", "Ladder3_A4_First", "Ladder3_A4_Middle",
+        "Ladder3_FiguredSphere_Middle",
         "CookeTriplet", "CookeTriplet_PRMSA_START_LO_ASPHERE",
         "CookeTriplet_SPOTM_START_LO_ASPHERE", "CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8",
         "TertiaryTestbed_Triplet24",
@@ -182,9 +184,8 @@ public class AsphericLadderSurvey
     public void BracketSizes()
     {
         var sb = new StringBuilder();
-        foreach (string name in new[] { "Ladder2_A4_First", "Ladder2_A4_Second",
-                                        "CookeTriplet_SPOTM_START_LO_ASPHERE",
-                                        "CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8" })
+        foreach (string name in new[] { "Ladder3_A4_Middle", "Ladder3_A4_First",
+                                        "Ladder2_A4_First", "Ladder2_A4_Second" })
         {
             var rows = RowsFor(name, out int count);
             sb.AppendLine();
@@ -229,6 +230,43 @@ public class AsphericLadderSurvey
             }
             _out.WriteLine($"{name}: largest move in the ten totals = {worst:E4}");
         }
+    }
+
+    /// <summary>
+    /// For the FIRST secondary we now hold two things that claim to be the same quantity: the
+    /// bracket M (68.8) prints, and the difference the scheme can form between the figured
+    /// barred secondary and its lift half. Reading 3 uses the difference and helps a great deal
+    /// where the figuring is in the middle while hurting where it is first; (68.8) helps less
+    /// and hurts nowhere. Both cannot be right, and comparing them at m = 0 says what the
+    /// difference carries that the printed bracket does not.
+    /// </summary>
+    [Fact]
+    public void BracketAgainstTheDifference()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tsurf\teq68.8_bracket\tsecBarFig-Lift\tdifference\tratio");
+        foreach (string name in new[] { "Ladder3_A4_Middle", "Ladder3_A4_First",
+                                        "Ladder2_A4_First", "Ladder2_A4_Second",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE" })
+        {
+            var rows = RowsFor(name, out int count);
+            for (int i = 1; i < count - 1; i++)
+            {
+                var r = rows[i]; var t = r.T;
+                double printed = r.ApFigured
+                               * ((t[16] - 2.0 * t[20]) + (2.0 * r.Rho - t[6]) * t[15]);
+                double formed = r.SecBarFig[0] - r.SecBarFigLift[0];
+                if (Math.Abs(printed) < 1e-14 && Math.Abs(formed) < 1e-14) continue;
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\t{1}\t{2:E4}\t{3:E4}\t{4:E4}\t{5:F4}",
+                    name, i, printed, formed, formed - printed,
+                    Math.Abs(printed) > 1e-20 ? formed / printed : double.NaN));
+            }
+        }
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-bracket-vs-diff.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
     }
 
     private static BuchdahlTableIRow[] RowsFor(string name, out int count)

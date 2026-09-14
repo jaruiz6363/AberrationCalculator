@@ -113,6 +113,7 @@ public class AsphericInducedLadderTests
     [Theory]
     [InlineData("Ladder1_Sphere")]
     [InlineData("Ladder2_Sphere")]
+    [InlineData("Ladder3_Sphere")]
     public void TheSphericalRungsAreCorrect(string fixtureName)
     {
         var (worst, residual) = Score(fixtureName);
@@ -178,12 +179,75 @@ public class AsphericInducedLadderTests
     }
 
     /// <summary>
+    /// THE THIRD RUNG: a figured surface with a powered surface on BOTH sides of it.
+    ///
+    /// <para>Ladder2 cannot produce this. Figure its first powered surface and nothing has
+    /// accumulated ahead for the induced terms to be built from; figure its second and nothing
+    /// downstream ever reads what it accumulates. Several terms of the arrangement - M (68.8)'s
+    /// bracket among them, which is built from the accumulations ahead of a figured surface and
+    /// read by the surface after it - are therefore identically zero on every rung of it, and a
+    /// reading of them cannot be tested at all. The triplets do exercise those terms, but a
+    /// six-surface triplet mixes intrinsic and induced content in exactly the way the ladder was
+    /// built to avoid.</para>
+    ///
+    /// <para><b>These fixtures were built in a lens design program rather than generated.</b>
+    /// A generated fixture and the code under test can share an assumption, and then the fixture
+    /// is shaped by the very error it is meant to expose. Ladder3 is a cemented doublet - three
+    /// powered surfaces, no flats among them, the same remote plano stop, aperture, field and
+    /// wavelength as the rest of the family, and its first two surfaces identical to Ladder2's
+    /// so that the two compare directly.</para>
+    ///
+    /// <para>What it is: surfaces 2 and 3 as Ladder2 has them, +50 in SK16 and -83.3333, but the
+    /// second is now a cemented interface into SF10 with a third powered surface at -60 behind
+    /// it. The figuring goes on the MIDDLE one.</para>
+    /// </summary>
+    [Fact]
+    public void TheMiddleRungIsSoundAndItsSphericalTwinIsCorrect()
+    {
+        var (worstSpherical, residualSpherical) = Score("Ladder3_Sphere");
+        Assert.True(residualSpherical < 1e-3,
+            $"Ladder3_Sphere: the fit did not close, residual {residualSpherical:E2}");
+        Assert.True(worstSpherical < 0.005,
+            $"Ladder3_Sphere: worst disagreement with the rays is {100 * worstSpherical:F3} per "
+          + "cent on a system of SPHERES. The fixture is at fault, not the theory - it was "
+          + "0.001 per cent when it was built.");
+
+        var (_, residualFigured) = Score("Ladder3_A4_Middle");
+        Assert.True(residualFigured < 1e-3,
+            $"Ladder3_A4_Middle: the fit did not close, residual {residualFigured:E2}. Nothing "
+          + "read off this rung means anything.");
+    }
+
+    /// <summary>
+    /// The control that goes with it. A figured SPHERE in Buchdahl's sense (Sec. 66a) has
+    /// <c>8A4 + Kc^3 = 0</c>, so <c>alpha = c-_1 y_p^4</c> of M (67.1) vanishes and with it every
+    /// term that carries the figuring's primary. It must therefore stay at the ray oracle's
+    /// floor whatever reading of Sec. 85 is in force, on the middle rung as on the others.
+    ///
+    /// <para>If this ever fails, a reading has moved something that carries no figured primary,
+    /// and it is refuted without reference to whether it improved anything else.</para>
+    /// </summary>
+    [Fact]
+    public void TheFiguredSphereOnTheMiddleRungStaysAtTheFloor()
+    {
+        var (worst, residual) = Score("Ladder3_FiguredSphere_Middle");
+
+        Assert.True(residual < 1e-3,
+            $"Ladder3_FiguredSphere_Middle: the fit did not close, residual {residual:E2}");
+        Assert.True(worst < 0.005,
+            $"Ladder3_FiguredSphere_Middle: worst disagreement with the rays is "
+          + $"{100 * worst:F3} per cent. Its figuring has no primary content, so the induced "
+          + "stage has nothing to get wrong - it was 0.001 per cent when this was written.");
+    }
+
+    /// <summary>
     /// The two rungs where the scheme is known to be wrong. Only the soundness of the oracle is
     /// asserted - see the class remarks for why the disagreement itself is left unpinned.
     /// </summary>
     [Theory]
     [InlineData("Ladder2_A4_First")]
     [InlineData("Ladder2_A4_Second")]
+    [InlineData("Ladder3_A4_First")]
     public void TheOracleIsSoundOnTheRungsWhereTheInducedStageFails(string fixtureName)
     {
         var (_, residual) = Score(fixtureName);
