@@ -62,6 +62,19 @@ disagrees with Forbes on the small tertiary coefficients of a figured design —
 factor of nearly five including its sign, tau20 by half — while the large ones agree to under
 one per cent. Use Forbes for figured systems; that is what `zosapi/` exists for.
 
+Measured across the ladder and the figured triplets, each coefficient against itself: the worst
+runs from 19 per cent to a factor of thirteen, with between 6 and 19 of the twenty out by more
+than one per cent. **Where the scheme is right it is exact rather than close** — every spherical
+design, every design with a single powered surface however figured, and every design whose
+figuring is a Buchdahl figured sphere (`8A4 + Kc³ = 0`, so the figuring's primary contribution
+vanishes) comes back with none of the twenty out by one per cent. So the fault is in the induced
+stage and specifically in what the figuring's PRIMARY content does there.
+
+Two cautions for anyone measuring this, both of which cost time here. Normalising the error by
+the largest coefficient in the set hides it almost entirely — a small coefficient wrong by five
+times is nothing beside the largest, and the design that does exactly that reports as 1.7 per
+cent. And a predicted spot cannot see it at all; see below.
+
 **A second ray route says the same thing about `tau20`.** The inversion above (evidence 3) is
 the general one. This is a narrower instrument over the same rays: at zero pupil radius the
 transverse polynomial has three terms separated by their power of the field alone, so `E`,
