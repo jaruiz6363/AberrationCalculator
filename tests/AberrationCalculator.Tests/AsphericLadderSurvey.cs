@@ -95,6 +95,8 @@ public class AsphericLadderSurvey
                 new BuchdahlAsphericScheme.Options { NoFiguredCorrectionInDagger = true }),
             ("q-side-products-spherical",
                 new BuchdahlAsphericScheme.Options { QSideProductsOnSphericalHalves = true }),
+            ("Y-barred-shared-accumulations",
+                new BuchdahlAsphericScheme.Options { YBarredFromSharedAccumulations = true }),
         };
 
         var sb = new StringBuilder();

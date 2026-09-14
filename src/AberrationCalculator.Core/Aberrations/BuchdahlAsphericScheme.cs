@@ -292,6 +292,41 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool QSideProductsOnSphericalHalves { get; init; }
 
+        /// <summary>
+        /// Whether the BARRED members of the (Y) secondary-order family are formed from the same
+        /// accumulations as their (I) partners, with only the ratio changed - which is what
+        /// (85.1) says, if it governs them at all.
+        ///
+        /// <para><b>Derived rather than guessed at.</b> M (84.24) gives the pattern one order up,
+        /// <c>q1 = i_p(q1^ + A_(I) t1^ + S1_(I) s1^) + T1_(I) a</c>, so the family carried at each
+        /// order pairs with the intrinsic of the order below: <c>t101..t114</c> is the
+        /// SECONDARY-order family <c>S_(I)</c>. Its dagger is formed exactly as the primary one
+        /// is - <c>t115 = -q t101 + t102</c> against <c>t31 = -q t25 + t26</c> - which identifies
+        /// <c>t102</c> as the BARRED member <c>S-1_(I)</c>.</para>
+        ///
+        /// <para>The primitive is <c>t101 = q t69 - 'S1_q</c> on the unbarred accumulation, and
+        /// the scheme's own <c>+ q t70</c> term shows <c>t102 = q t70 - 'S-1_q</c> on the barred
+        /// one. (84.15) and (85.1) then give the (Y) member from the SAME two accumulations with
+        /// <c>q~</c> in place of <c>q</c>, so</para>
+        /// <code>
+        ///   Y102 = q~ t70 - 'S-1_q = t102 + (q~ - q) t70
+        /// </code>
+        /// <para>and likewise Y104, Y107, Y109, Y112 and Y114 on t72, t74, t76, t78 and t80. The
+        /// scheme instead rebuilds each recursion with the previous surface's rho and its own
+        /// previous (Y) value, which constructs a DIFFERENT <c>'S-1_q</c> - and 'S-1_q is a q-side
+        /// accumulation, not a family member, so (85.1) says both families share it.</para>
+        ///
+        /// <para>The primitive members already do exactly this: <c>Y101 = q~ t69 - t86</c> is
+        /// <c>t101 + (q~ - q) t69</c> written out. This is that same rule applied to the barred
+        /// members, which is the one place the scheme departs from it.</para>
+        ///
+        /// <para><b>It was tried before and rejected on the wrong instrument.</b> The working
+        /// notes record this exact form measuring worse - "Ladder2_A4_Second goes from 6.85 to
+        /// 10.59 per cent" - but those are share-of-the-largest figures, and that design is at
+        /// 39.9 per cent when each coefficient is asked about on its own terms.</para>
+        /// </summary>
+        public bool YBarredFromSharedAccumulations { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -377,6 +412,29 @@ public static class BuchdahlAsphericScheme
                 var src = checkHalf ? r.Y : oFamily;
                 for (int m = 25; m <= 33; m++) t[m] = src[m];
                 for (int m = 101; m <= 120; m++) t[m] = src[m];
+
+                // (85.1) on the barred members of the secondary-order family: the same two
+                // accumulations as the (I) partner, joined on the height ratio instead of the
+                // incidence ratio. The six p-side accumulations are the BARRED secondary sums
+                // t70, t72, t74, t76, t78 and t80, which is what the (I) members carry.
+                if (options.YBarredFromSharedAccumulations && checkHalf)
+                {
+                    Scalar yShift = r.Rho - t[6];
+
+                    t[102] = oFamily[102] + yShift * t[70];
+                    t[104] = oFamily[104] + yShift * t[72];
+                    t[107] = oFamily[107] + yShift * t[74];
+                    t[109] = oFamily[109] + yShift * t[76];
+                    t[112] = oFamily[112] + yShift * t[78];
+                    t[114] = oFamily[114] + yShift * t[80];
+
+                    t[115] = -r.Rho * t[101] + t[102];
+                    t[116] = -r.Rho * t[103] + t[104];
+                    t[117] = -r.Rho * t[105] + t[107];
+                    t[118] = -r.Rho * t[108] + t[109];
+                    t[119] = -r.Rho * t[110] + t[112];
+                    t[120] = -r.Rho * t[113] + t[114];
+                }
 
                 // The q-side closed forms with their products taken on the spherical halves.
                 // Both families move: each is built from the same t86..t98, differing only in
