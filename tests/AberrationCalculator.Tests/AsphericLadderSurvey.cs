@@ -99,6 +99,14 @@ public class AsphericLadderSurvey
                 new BuchdahlAsphericScheme.Options { SharedQBarWithSplitPrimary = true }),
             ("spherical-accumulations-in-direct-uses",
                 new BuchdahlAsphericScheme.Options { SphericalAccumulationsInDirectUses = true }),
+            ("dagger-on-increment-alone",
+                new BuchdahlAsphericScheme.Options { DaggerCorrectionOnIncrementAlone = true }),
+            ("increment-alone + D-half",
+                new BuchdahlAsphericScheme.Options
+                {
+                    DaggerCorrectionOnIncrementAlone = true,
+                    FiguredSecondarySplitByDandL = true,
+                }),
             ("lift-split-by-D-and-L",
                 new BuchdahlAsphericScheme.Options { LiftSplitByDandL = true }),
             ("D-half-into-the-hat",

@@ -488,6 +488,38 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool LiftSplitByDandL { get; init; }
 
+        /// <summary>
+        /// Whether the dagger correction carries the figured half of the INCREMENT ALONE - the
+        /// per-surface q-side secondary - rather than the p-side lift standing in for it.
+        ///
+        /// <para><b>Derived, not guessed.</b> Inverting <c>'S-_1q = q t70 - t102</c> through the
+        /// scheme's recursion gives, per surface,</para>
+        /// <code>
+        ///   s-1q = q s1q + a_q t31 + (q~ - q) lift
+        /// </code>
+        /// <para>whose first two terms are the exact q-side mirror of the p-side relation the
+        /// dictionary verified at 1.6E-15, <c>s-1p = q s1p + a_p t31</c>, with <c>t99 = a_q</c>
+        /// standing where that has <c>a_p</c>. The third has no spherical counterpart; its job,
+        /// in the scheme's own words, is that the figured half of the increment "already carries
+        /// surface i-1's own ratio inside it ... so multiplying by q a second time gives the
+        /// figured half q q~ where it should have q~ squared". The repair to that is
+        /// <c>+(q~ - q)</c> times the FIGURED HALF OF s1q - and <c>lift</c>, which is
+        /// <c>q~</c> times the figured P-SIDE secondary, is a stand-in for it.</para>
+        ///
+        /// <para><b>How this differs from reading 5</b>, which used the figured half of the whole
+        /// bracket <c>prev70 + s1q</c> and was refuted at 467 to 10252 per cent: it drops
+        /// <c>prev70</c>. The scheme's note argues for exactly that - "setting the increments
+        /// aside ... the previous q there is a summation partner that cancels rather than a
+        /// per-surface tag, and correcting it as though it were one costs a factor of ten". That
+        /// factor of ten is what reading 5 paid.</para>
+        ///
+        /// <para>The figured half of <c>s1q</c> is had by differencing the figured half of
+        /// <c>'S1_q</c> between surfaces, which <see cref="QSideHalves"/> computes exactly -
+        /// every accumulation entering the closed form is split by (67.1-2), so the products
+        /// have definite halves.</para>
+        /// </summary>
+        public bool DaggerCorrectionOnIncrementAlone { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -539,6 +571,7 @@ public static class BuchdahlAsphericScheme
                      || options.Equation688BracketInDagger
                      || options.DaggerIncrementFiguredHalfOnHeightRatio
                      || options.NoFiguredCorrectionInDagger
+                     || options.DaggerCorrectionOnIncrementAlone
                    ? DaggerDelta(rows, count, options) : null;
 
         for (int i = 1; i < count - 1; i++)
@@ -1082,6 +1115,30 @@ public static class BuchdahlAsphericScheme
                         bool regularised = m == 5 && prv.FlatInCollimatedSpace;
                         d[m] = running[m]
                              + (regularised ? 0.0 : dPrevRatio * prv.SecBarFigLift[m]);
+                    }
+                    delta[i] = d;
+                    Array.Copy(d, running, 6);
+                    continue;
+                }
+
+                if (options.DaggerCorrectionOnIncrementAlone)
+                {
+                    // The figured half of the per-surface q-side secondary, by differencing the
+                    // figured half of its accumulation. prev70 is deliberately absent: it
+                    // telescopes, and correcting it as though it were a per-surface tag is what
+                    // cost reading 5 a factor of ten.
+                    var fpPrev2 = figuredPrimary[i - 1];
+                    var fsPrev2 = figuredSecondary[i - 1];
+                    var (_, figuredAtPrev) = QSideHalves(rows[i - 1], fpPrev2, fsPrev2);
+                    var (_, figuredAtHere) = QSideHalves(rows[i], figuredPrimary[i],
+                                                         figuredSecondary[i]);
+
+                    for (int m = 0; m < 6; m++)
+                    {
+                        bool regularised = m == 5 && prv.FlatInCollimatedSpace;
+                        Scalar increment = figuredAtHere[m] - figuredAtPrev[m];
+                        Scalar moved = increment - prv.SecBarFigLift[m];
+                        d[m] = running[m] + (regularised ? 0.0 : -dPrevRatio * moved);
                     }
                     delta[i] = d;
                     Array.Copy(d, running, 6);
