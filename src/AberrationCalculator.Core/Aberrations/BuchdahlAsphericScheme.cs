@@ -442,6 +442,52 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool FiguredSecondarySplitByDandL { get; init; }
 
+        /// <summary>
+        /// DIAGNOSTIC. Give the DIRECT uses of the accumulated primaries - t15..t24 as they
+        /// appear in the induced terms t131, t135 and the rest - their spherical halves only,
+        /// leaving the (I) and (Y) family members built from the full ones.
+        ///
+        /// <para>The accumulated figured primary reaches a downstream surface by two routes: it
+        /// is combined into the family by (84.15), and it appears directly in the induced terms
+        /// as products with the surface's own quantities. On <c>Ladder2_A4_First</c> the whole
+        /// error is in one spherical surface's HAT pass, where those are the only two routes
+        /// figuring can take at all - so suppressing one says which carries it. A probe, not a
+        /// candidate arrangement: the halves do not sum to the total under it.</para>
+        /// </summary>
+        public bool SphericalAccumulationsInDirectUses { get; init; }
+
+        /// <summary>
+        /// Whether the LIFT the dagger recursions carry is split by (60.3) as well - <c>q D +
+        /// q~ L</c> rather than <c>q~ (D + L)</c>.
+        ///
+        /// <para><b>The same fact one place further on.</b> The figured barred secondary is
+        /// <c>q D + q~ L + alpha(...)</c> - derived, verified at 1E-10, and the reason the
+        /// scheme adds <c>(q - q~) D</c> to it. Its LIFT half, which the dagger recursions carry
+        /// on <c>(q~ - q)</c>, is formed as <c>rr * tF</c>, that is <c>q~ (D + L)</c>. If the
+        /// barred secondary splits that way then so does its lift, and the two differ by
+        /// <c>(q~ - q) D</c>.</para>
+        ///
+        /// <para><b>It is live exactly where nothing else is.</b> The correction it changes is
+        /// non-zero only when the PREVIOUS surface is figured, and it scales with D, which is
+        /// proportional to <c>c1</c>. So it cannot move a figured sphere, and it CAN move
+        /// <c>Ladder2_A4_First</c> and <c>Ladder3_A4_First</c> - the rungs whose figuring is on
+        /// the first powered surface, which no reading so far has touched at all, because every
+        /// other correction needs something accumulated ahead of the figured surface and there
+        /// is nothing.</para>
+        ///
+        /// <para><b>REFUTED.</b> It moves those rungs the wrong way - <c>Ladder2_A4_First</c>
+        /// from 31.1 to 103.2 per cent and <c>Ladder3_A4_First</c> from 233.5 to 352.5 - and
+        /// costs the Cooke triplet 467 to 522. The selectivity was right and the direction
+        /// wrong, which by now is a familiar shape. Kept for the record, and because the
+        /// argument for it remains the best one anybody has for that site.</para>
+        ///
+        /// <para>NOTE it cannot be combined with <see cref="SharedQBarWithSplitPrimary"/> or
+        /// <see cref="YBarredFromSharedAccumulations"/>: those ASSIGN the dagger entries where
+        /// this one adds to them, so setting both silently discards this. A combined column in
+        /// the survey is therefore not what it claims and should not be read.</para>
+        /// </summary>
+        public bool LiftSplitByDandL { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -536,6 +582,30 @@ public static class BuchdahlAsphericScheme
                 // The shared q-side barred accumulation with its primary split, and - that being
                 // shared rather than a family member - the (Y) barred members read off the
                 // corrected (I) ones by (85.1). One correction in two halves.
+                // The lift split by (60.3): q D + q~ L in place of q~ (D + L). The correction
+                // the recursions carry is -(q~ - q) x lift, so the move is +(q~ - q)^2 D.
+                if (options.LiftSplitByDandL && i > 1)
+                {
+                    var prv2 = rows[i - 1];
+                    Scalar dr = prv2.Rho - prv2.T[6];
+                    Scalar shift2 = dr * dr;
+
+                    t[102] += shift2 * prv2.SecDFigured[0];
+                    t[104] += shift2 * prv2.SecDFigured[1];
+                    t[107] += shift2 * prv2.SecDFigured[2];
+                    t[109] += shift2 * prv2.SecDFigured[3];
+                    t[112] += shift2 * prv2.SecDFigured[4];
+                    t[114] += shift2 * prv2.SecDFigured[5];
+
+                    Scalar ratio2 = checkHalf ? r.Rho : t[6];
+                    t[115] = -ratio2 * t[101] + t[102];
+                    t[116] = -ratio2 * t[103] + t[104];
+                    t[117] = -ratio2 * t[105] + t[107];
+                    t[118] = -ratio2 * t[108] + t[109];
+                    t[119] = -ratio2 * t[110] + t[112];
+                    t[120] = -ratio2 * t[113] + t[114];
+                }
+
                 if (options.SharedQBarWithSplitPrimary || options.YBarredFromSharedAccumulations)
                 {
                     // The two halves are separable, and worth separating: the split-primary
@@ -634,6 +704,14 @@ public static class BuchdahlAsphericScheme
                 t[40] = t[38] + 2.0 * t[10] * t[25];
             }
 
+            // DIAGNOSTIC: the direct uses of the accumulated primaries on their spherical halves
+            // only. The family members are already built and stored on the row, so they keep the
+            // full accumulations - which is the point, the two routes being what this separates.
+            var oAcc = new Scalar[25];
+            for (int m = 15; m <= 24; m++) oAcc[m] = t[m];
+            if (options.SphericalAccumulationsInDirectUses)
+                for (int m = 15; m <= 24; m++) t[m] -= figured[i][m];
+
             // Some induced terms involve NO quantity of this surface at all - they are built
             // from the accumulated coefficients alone, and belong to ONE pass rather than to
             // both. The all-zero residue measures them so they can be taken off the check half,
@@ -674,6 +752,8 @@ public static class BuchdahlAsphericScheme
                 check[k] -= residueCheck[k];
                 checkBar[k] -= residueCheckBar[k];
             }
+
+            for (int m = 15; m <= 24; m++) t[m] = oAcc[m];
 
             // Put the row back exactly as it was found.
             Family(checkHalf: false);
