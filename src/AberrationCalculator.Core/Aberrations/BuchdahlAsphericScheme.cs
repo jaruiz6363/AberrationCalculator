@@ -175,6 +175,19 @@ public static class BuchdahlAsphericScheme
         /// which is not on these pages, so this reading supplies the first alone and leaves the
         /// rest as they are rather than guessing at them by pattern.</para>
         ///
+        /// <para><b>The transcription is pinned.</b> The three accumulations this forms the
+        /// bracket from - <c>t16</c>, <c>t20</c> and <c>t15</c> as <c>'A-_p</c>, <c>'A_q</c> and
+        /// <c>'A_p</c> - are established by measurement in
+        /// <c>BuchdahlSymbolDictionaryTests</c>: M (68.6), two equations earlier on the same
+        /// page, closes at 2.3E-16 with exactly that reading. They were once thought to be
+        /// guessed, and this reading was withdrawn as void on that ground; the withdrawal was
+        /// wrong and the reading stands as measured.</para>
+        ///
+        /// <para>What IS misprinted in (68.8) is its spherical part, whose standalone
+        /// <c>'A_q</c> has to be <c>'A-_q</c> for the equation to agree with Buchdahl's own
+        /// Table I. That half of the equation is not used here, so the misprint does not touch
+        /// this reading - see <c>TheStandaloneTermOf688IsBarred</c>.</para>
+        ///
         /// <para><b>THE LADDER CANNOT TEST THIS, and that is the finding.</b> The bracket is
         /// built from what has accumulated AHEAD of the figured surface, and it is read by the
         /// surface AFTER it. Every ladder rung fails one of those two conditions:
