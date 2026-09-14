@@ -128,6 +128,13 @@ public class AsphericLadderSurvey
                     BarredQAccumulationFromIdentities = true,
                     FiguredSecondarySplitByDandL = true,
                 }),
+            ("identities + D-half + 6th",
+                new BuchdahlAsphericScheme.Options
+                {
+                    BarredQAccumulationFromIdentities = true,
+                    FiguredSecondarySplitByDandL = true,
+                    SixthBarredMemberByEquation851 = true,
+                }),
             ("both-halves-together",
                 new BuchdahlAsphericScheme.Options
                 {
@@ -601,6 +608,180 @@ public class AsphericLadderSurvey
 
         string path = Path.Combine(
             Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-defect2.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// Defect 2 again, now over the barred q accumulation the identities supply rather than one
+    /// known to be wrong. Every earlier localisation of it was made with the recursion's
+    /// accumulation in force, which the identities show was compensating part of it - so which
+    /// totals are wrong, and which family of the check half's barred rule carries them, has to be
+    /// asked over.
+    /// </summary>
+    [Fact]
+    public void DefectTwoOverTheExactAccumulation()
+    {
+        var baseline = new BuchdahlAsphericScheme.Options
+        {
+            BarredQAccumulationFromIdentities = true,
+            FiguredSecondarySplitByDandL = true,
+        };
+        var probes = new (string Name, BuchdahlAsphericScheme.Options? O)[]
+        {
+            ("as-built", null),
+            ("ident+D", baseline),
+            ("ident+D+6th", baseline with { SixthBarredMemberByEquation851 = true }),
+            ("drop own-prim x tert", baseline with
+                { DropOwnPrimaryTimesTertiaryFamilyInCheckBarred = true }),
+            ("drop dagger x own-sec", baseline with
+                { DropDaggerTimesOwnSecondaryInCheckBarred = true }),
+            ("t38 for t40", baseline with { IntrinsicSecondaryInCheckBarred = true }),
+            ("chain on pass ratio", baseline with { IntrinsicChainOnPassRatio = true }),
+        };
+
+        var sb = new StringBuilder();
+        foreach (string name in new[] { "Ladder2_A4_Second", "Ladder2_FiguredSphere_Then_A4",
+                                        "Ladder2_A4_Both", "Ladder3_A4_Middle",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE" })
+        {
+            var d = Load(name);
+            var (fT, fB) = TotalsFromTau(d.Forbes);
+            var got = new (double[] T, double[] B)[probes.Length];
+            for (int i = 0; i < probes.Length; i++)
+                got[i] = TotalsFromTau(NewRoute(name, probes[i].O));
+
+            double big = 0.0;
+            for (int k = 1; k <= 10; k++)
+                big = Math.Max(big, Math.Max(Math.Abs(fT[k]), Math.Abs(fB[k])));
+
+            sb.AppendLine();
+            sb.Append(name).Append("\tentry\tforbes");
+            foreach (var p in probes) sb.Append('\t').Append(p.Name);
+            sb.AppendLine();
+
+            for (int pass = 0; pass < 2; pass++)
+            {
+                var f = pass == 0 ? fT : fB;
+                for (int k = 1; k <= 10; k++)
+                {
+                    if (Math.Abs(f[k]) < 1e-12 * big) continue;
+                    bool any = false;
+                    var line = new StringBuilder();
+                    line.Append('\t').Append(pass == 0 ? "T" : "Tbar").Append(k).Append('\t')
+                        .Append(f[k].ToString("E3", CultureInfo.InvariantCulture));
+                    foreach (var g in got)
+                    {
+                        double v = pass == 0 ? g.T[k] : g.B[k];
+                        double rel = 100 * Math.Abs(v - f[k]) / Math.Abs(f[k]);
+                        if (rel >= 0.5) any = true;
+                        line.Append('\t').Append(rel.ToString("F2", CultureInfo.InvariantCulture));
+                    }
+                    if (any) sb.AppendLine(line.ToString());
+                }
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-defect2-exact.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// Which SINGLE entry, wrong by a single factor, explains the totals that remain wrong over
+    /// the exact accumulation.
+    ///
+    /// <para>For each entry of each pass: scale it by <c>1 + eps</c>, read the change in all
+    /// twenty totals as its contribution <c>c</c>, and fit the one multiplier <c>x</c> that best
+    /// removes the error <c>e</c> (each total weighed by its own size, as the tables report
+    /// them). The explained share <c>1 - |e - x c|^2 / |e|^2</c> ranks the entries. A fault in
+    /// one entry shows as a share near one with a plain multiplier; a share that stays low for
+    /// every entry says the fault is not a single entry's value at all.</para>
+    /// </summary>
+    [Fact]
+    public void WhichSingleEntryExplainsTheRemainingTotals()
+    {
+        var baseline = new BuchdahlAsphericScheme.Options
+        {
+            BarredQAccumulationFromIdentities = true,
+            FiguredSecondarySplitByDandL = true,
+            SixthBarredMemberByEquation851 = true,
+        };
+
+        var indices = new List<int> { 10, 13 };
+        for (int m = 25; m <= 30; m++) indices.Add(m);
+        indices.AddRange(new[] { 38, 44, 45, 50, 51, 54, 55, 59, 61, 65, 66 });
+        for (int m = 101; m <= 114; m++) indices.Add(m);
+        for (int m = 121; m <= 130; m++) indices.Add(m);
+
+        const double eps = 1e-4;
+        var sb = new StringBuilder();
+
+        foreach (string name in new[] { "Ladder2_A4_Second", "Ladder2_FiguredSphere_Then_A4",
+                                        "Ladder2_A4_Both" })
+        {
+            var d = Load(name);
+            var (fT, fB) = TotalsFromTau(d.Forbes);
+            var (bT, bB) = TotalsFromTau(NewRoute(name, baseline));
+
+            var e = new double[20];
+            var w = new double[20];
+            double big = 0.0;
+            for (int k = 1; k <= 10; k++) big = Math.Max(big, Math.Max(Math.Abs(fT[k]), Math.Abs(fB[k])));
+            for (int k = 1; k <= 10; k++)
+            {
+                w[k - 1] = Math.Abs(fT[k]) < 1e-12 * big ? 0.0 : 1.0 / Math.Abs(fT[k]);
+                w[k + 9] = Math.Abs(fB[k]) < 1e-12 * big ? 0.0 : 1.0 / Math.Abs(fB[k]);
+                e[k - 1] = w[k - 1] * (fT[k] - bT[k]);
+                e[k + 9] = w[k + 9] * (fB[k] - bB[k]);
+            }
+            double ee = 0.0;
+            foreach (double v in e) ee += v * v;
+
+            var ranked = new List<(double Share, string Label, double X, string Top)>();
+            foreach (bool check in new[] { true, false })
+                foreach (int idx in indices)
+                {
+                    var (pT, pB) = TotalsFromTau(NewRoute(name, baseline with
+                        { ScaleOneEntry = (idx, 1.0 + eps, check) }));
+                    var c = new double[20];
+                    double cc = 0.0, ec = 0.0;
+                    for (int k = 1; k <= 10; k++)
+                    {
+                        c[k - 1] = w[k - 1] * (pT[k] - bT[k]) / eps;
+                        c[k + 9] = w[k + 9] * (pB[k] - bB[k]) / eps;
+                    }
+                    for (int k = 0; k < 20; k++) { cc += c[k] * c[k]; ec += e[k] * c[k]; }
+                    if (cc < 1e-30) continue;
+                    double x = ec / cc;
+                    double share = ee < 1e-30 ? 0.0 : 1.0 - (ee - x * ec) / ee;
+
+                    // The totals this entry reaches most, so a high share can be read.
+                    var reach = new List<(double, string)>();
+                    for (int k = 0; k < 20; k++)
+                        if (Math.Abs(c[k]) > 1e-12)
+                            reach.Add((Math.Abs(c[k]), (k < 10 ? "T" : "Tb") + (k < 10 ? k + 1 : k - 9)));
+                    reach.Sort((a, b) => b.Item1.CompareTo(a.Item1));
+                    string top = string.Join(",", reach.GetRange(0, Math.Min(4, reach.Count))
+                                                       .ConvertAll(r => r.Item2));
+
+                    ranked.Add((share, (check ? "check t" : "hat t") + idx, x, top));
+                }
+
+            ranked.Sort((a, b) => b.Share.CompareTo(a.Share));
+            sb.AppendLine();
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "{0}  (rms relative error over the totals {1:F2} %)",
+                name, 100 * Math.Sqrt(ee / 20)));
+            sb.AppendLine("\tentry\texplained\tmultiplier-1\treaches");
+            foreach (var r in ranked.GetRange(0, Math.Min(12, ranked.Count)))
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "\t{0}\t{1:F3}\t{2:E3}\t{3}", r.Label, r.Share, r.X, r.Top));
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-single-entry.tsv");
         File.WriteAllText(path, sb.ToString());
         _out.WriteLine(sb.ToString());
     }

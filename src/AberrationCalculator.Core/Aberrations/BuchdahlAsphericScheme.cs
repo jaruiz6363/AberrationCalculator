@@ -573,6 +573,60 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool BarredQAccumulationFromIdentities { get; init; }
 
+        /// <summary>
+        /// Whether the check half's SIXTH barred member is formed by (85.1) from the (I) one -
+        /// <c>Y114 = q~ t80 - 'S-6_q</c> with <c>'S-6_q = q t80 - t114</c> - instead of by the
+        /// (Y) recursion.
+        ///
+        /// <para><b>The gap it closes.</b> <see cref="BarredQAccumulationFromIdentities"/> sets
+        /// the first five members of both families from the shared accumulation, and the
+        /// identities cannot supply <c>Sbar_6q</c>, so t114 was left alone - in BOTH halves. In
+        /// the check half that leaves Y114 on the (Y) recursion, which for the other five members
+        /// builds a different quantity altogether (80 per cent from (85.1)'s even on a sphere).
+        /// Measured over that arrangement, T10 is wrong by exactly what it was as built on every
+        /// design, and T10 is the one total whose formula carries t114 and nothing the injection
+        /// moved. The four barred totals that improve when the tertiary-family terms are dropped
+        /// - T-bar6, 8, 9 and 10 - are the four that carry t120.</para>
+        ///
+        /// <para>The (I) recursion's accumulation is exact wherever nothing figured lies ahead,
+        /// which is every rung that figures its last powered surface.</para>
+        ///
+        /// <para><b>MEASURED, over identities plus D half</b> - relative error of each total
+        /// against Forbes, per cent:</para>
+        /// <code>
+        ///                          T9          T10         T-bar6      T-bar9      T-bar10
+        ///   Ladder2_A4_Second      6.08 3.25   5.05 1.56   3.41 1.99   9.94 7.05   6.02 3.36
+        ///   FiguredSphere_Then_A4  6.28 3.35   5.09 1.57   3.50 2.04   9.71 6.89   5.99 3.35
+        ///   Ladder2_A4_Both        6.63 3.74   5.12 1.55   3.19 1.92  11.09 7.92   6.28 3.61
+        ///   Ladder3_A4_Middle      0.18 0.24   0.68 0.31   0.13 0.18   2.20 1.30   0.40 0.37
+        ///   CookeTriplet_SPOTM    18.74 11.00  0.64 7.13  11.87 7.87   0.17 0.08  31.45 23.55
+        /// </code>
+        /// <para>Right in direction everywhere it should be, and nothing else moves. The triplet's
+        /// T10 goes the other way, which is the expected failure: it has figuring AHEAD of later
+        /// surfaces, where the (I) recursion's sixth accumulation is wrong for the same reason
+        /// the other five were - and the identities cannot replace that one.</para>
+        ///
+        /// <para>What is left is not one wrong value. <see cref="ScaleOneEntry"/> fitted over every
+        /// entry of both passes explains at best 64 per cent of the remaining error on
+        /// <c>Ladder2_A4_Second</c>, with the leader changing from rung to rung and the leaders
+        /// dominated by what reaches T-bar8, the largest relative error. The remainder - T5 and
+        /// T-bar5 with t110 or t119 in them, and T-bar8 - is a matter of terms, not of an entry.
+        /// </para>
+        /// </summary>
+        public bool SixthBarredMemberByEquation851 { get; init; }
+
+        /// <summary>
+        /// DIAGNOSTIC, not a parameter. Multiply one entry by a factor in one pass only, just
+        /// before that pass runs, with the entries derived from it re-formed.
+        ///
+        /// <para>It exists for a structure test: the totals are polynomial in every entry, so a
+        /// small scaling gives each entry's contribution to all twenty at once, and a single
+        /// wrong entry must explain every total's error with ONE multiplier. An entry whose fitted
+        /// multiplier leaves most of the error unexplained is not the fault, however large its
+        /// share of any one total. Never a candidate arrangement.</para>
+        /// </summary>
+        public (int Index, Scalar Factor, bool CheckHalf)? ScaleOneEntry { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -776,6 +830,16 @@ public static class BuchdahlAsphericScheme
                     t[119] = -ratio * t[110] + t[112];
                 }
 
+                // The sixth member, which the identities cannot supply: the (I) recursion's
+                // accumulation 'S-6q = q t80 - t114, joined on the height ratio by (85.1). The hat
+                // half is the (I) member already and does not move.
+                if (options.SixthBarredMemberByEquation851 && checkHalf
+                    && !r.FlatInCollimatedSpace && SMath.Abs(t[6]) < 1e6)
+                {
+                    t[114] = oFamily[114] + (r.Rho - t[6]) * t[80];
+                    t[120] = -r.Rho * t[113] + t[114];
+                }
+
                 // The accumulated figuring re-combined on the height ratio. The (Y) family is
                 // already combined on it, so this moves the (I) family alone - which is what
                 // makes the reading testable: a spherical surface downstream of a figured one
@@ -849,11 +913,40 @@ public static class BuchdahlAsphericScheme
                 checkSec = c;
             }
 
+            // DIAGNOSTIC: one entry scaled in one pass, its derived entries re-formed on that
+            // pass's ratio. The row is put back below exactly as for every other swap.
+            void ScaleOne(bool checkHalf, Scalar ratio)
+            {
+                if (options.ScaleOneEntry is not { } s || s.CheckHalf != checkHalf) return;
+                t[s.Index] *= s.Factor;
+                if (SMath.Abs(ratio) < 1e6)
+                {
+                    if (s.Index >= 25 && s.Index <= 30)
+                    {
+                        t[31] = -ratio * t[25] + t[26];
+                        t[32] = -ratio * t[27] + t[28];
+                        t[33] = -ratio * t[29] + t[30];
+                    }
+                    if (s.Index >= 101 && s.Index <= 114)
+                    {
+                        t[115] = -ratio * t[101] + t[102];
+                        t[116] = -ratio * t[103] + t[104];
+                        t[117] = -ratio * t[105] + t[107];
+                        t[118] = -ratio * t[108] + t[109];
+                        t[119] = -ratio * t[110] + t[112];
+                        t[120] = -ratio * t[113] + t[114];
+                    }
+                }
+                t[40] = t[38] + 2.0 * t[10] * t[25];
+            }
+
             Load(r.ApSpherical, r.C13Spherical, hatSec, r.MSph, r.ZHat);
+            ScaleOne(checkHalf: false, t[6]);
             Pass(t, t[6], hat, hatBar, options, r.FlatInCollimatedSpace, r.QT152);
 
             Family(checkHalf: true);
             Load(r.ApFigured, r.C13Figured, checkSec, r.MFig, r.ZCheck);
+            ScaleOne(checkHalf: true, r.Rho);
             Pass(t, r.Rho, check, checkBar, options, checkHalf: true);
             for (int k = 1; k <= 10; k++)
             {
