@@ -264,6 +264,21 @@ public class AsphericInducedLadderTests
     ///
     /// <para>If this ever fails, a reading has moved something that carries no figured primary,
     /// and it is refuted without reference to whether it improved anything else.</para>
+    ///
+    /// <para><b>But this particular rung is a WEAK control, and nothing much should be read into
+    /// its passing.</b> Measured against its own r^4 twin, it drives the figured secondary to
+    /// 1.6E-3 against 3.0E-2 and the figured tertiary to 2.3E-3 against 2.1E-2 - about a
+    /// twentieth and a ninth - and the figuring moves the coefficients by 0.08 per cent against
+    /// 5.1. Two reasons: the middle surface is a cemented interface, where the index step is
+    /// 0.108 against an air-glass 0.62, and a conic of -0.6 puts very little into the r^6 term
+    /// that is all a figured sphere has left. Its alpha is not exactly zero either - -5.3E-6,
+    /// from the A4 in the fixture being 0.12 per cent off the exact 8A4 + Kc^3 = 0.</para>
+    ///
+    /// <para>The control that the localisation actually rests on is
+    /// <c>TheFiguredSphereRungsAreStrongControls</c> below, on Ladder1 and Ladder2, where the
+    /// figured secondary and tertiary reach 88 and 87 per cent of their r^4 twins with alpha
+    /// exactly zero. To make this rung comparable it wants a deeper conic with the matching A4 -
+    /// for R = -83.3333, K = -3 and A4 = -6.4800078E-7.</para>
     /// </summary>
     [Fact]
     public void TheFiguredSphereOnTheMiddleRungStaysAtTheFloor()
@@ -276,6 +291,83 @@ public class AsphericInducedLadderTests
             $"Ladder3_FiguredSphere_Middle: worst disagreement with the rays is "
           + $"{100 * worst:F3} per cent. Its figuring has no primary content, so the induced "
           + "stage has nothing to get wrong, and it was exact when this was written.");
+    }
+
+    /// <summary>
+    /// <b>The figured-sphere control is a real control, and this is what says so.</b>
+    ///
+    /// <para>The whole localisation turns on one comparison: figured spheres come out exact and
+    /// r^4 figuring does not, so the defect is in the figuring's PRIMARY content. That inference
+    /// is worth exactly as much as the control is. A figured sphere is a sphere to fourth order
+    /// in sag - the conic's r^4 term is <c>(1+K)c^3/8</c> and Buchdahl's <c>A4 = -Kc^3/8</c>
+    /// leaves <c>c^3/8</c>, which is the sphere's - so it CANNOT have a figured primary. The
+    /// question is whether anything else survives, or whether it is a null test.</para>
+    ///
+    /// <para>It is not. On these rungs the figured secondary and the figured tertiary reach most
+    /// of what their r^4 twins reach, with alpha exactly zero:</para>
+    ///
+    /// <code>
+    ///                                  alpha   figured sec   figured tert
+    ///   Ladder1_FiguredSphere          0.000       2.096         16.79
+    ///   Ladder1_A4                     1.290       2.368         19.19
+    ///   Ladder2_FiguredSphere_First    0.000       0.212          3.62
+    ///   Ladder2_A4_First               0.326       0.378          4.85
+    /// </code>
+    ///
+    /// <para>So the same code paths run at 56 to 88 per cent of full strength with one input
+    /// switched off, which is what a single-variable experiment is supposed to look like.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("Ladder1_FiguredSphere", "Ladder1_A4")]
+    [InlineData("Ladder2_FiguredSphere_First", "Ladder2_A4_First")]
+    public void TheFiguredSphereRungsAreStrongControls(string control, string twin)
+    {
+        var (alpha, sec, tert) = Figuring(control);
+        var (_, secTwin, tertTwin) = Figuring(twin);
+
+        Assert.True(alpha == 0.0,
+            $"{control}: a figured sphere has no figured primary by construction - its r^4 sag "
+          + $"is a sphere's - yet alpha is {alpha:E3}. The fixture does not satisfy "
+          + "8A4 + Kc^3 = 0, and the control is not the one it claims to be.");
+
+        Assert.True(sec > 0.4 * secTwin,
+            $"{control}: the figured secondary is {sec:E3} against {secTwin:E3} on {twin}. Too "
+          + "little of the aspheric path is being exercised for this to be a control at all.");
+
+        Assert.True(tert > 0.4 * tertTwin,
+            $"{control}: the figured tertiary is {tert:E3} against {tertTwin:E3} on {twin}. "
+          + "Same objection.");
+    }
+
+    /// <summary>The three things the scheme carries for a figured surface, at its strongest.</summary>
+    private static (double Alpha, double Secondary, double Tertiary) Figuring(string fixtureName)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(fixtureName), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+
+        var p = ParaxialTrace.Trace(sys, n, field);
+        var b = BuchdahlCoefficients.Compute(sys, p);
+        double objectDistance = sys.Surfaces[0].Thickness;
+        double iota = double.IsInfinity(objectDistance) ? 0.0 : -p.Efl / objectDistance;
+        var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                            sys.Surfaces[sys.StopSurfaceIndex].SemiDiameter,
+                                            iota);
+        var spherical = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+        var increments = AsphericSchemeIncrements.Build(b, spherical, sys.LastOpticalSurface());
+        var rows = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, increments,
+                                          iota: iota);
+
+        double alpha = 0.0, sec = 0.0, tert = 0.0;
+        for (int i = 1; i < sys.Surfaces.Count - 1; i++)
+        {
+            alpha = Math.Max(alpha, Math.Abs(rows[i].ApFigured));
+            for (int m = 1; m <= 6; m++) sec = Math.Max(sec, Math.Abs(rows[i].SecFig[m]));
+            for (int m = 1; m <= 10; m++) tert = Math.Max(tert, Math.Abs(rows[i].ZCheck[m]));
+        }
+        return (alpha, sec, tert);
     }
 
     /// <summary>

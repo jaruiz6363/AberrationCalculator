@@ -516,6 +516,60 @@ public class AsphericLadderSurvey
         _out.WriteLine(sb.ToString());
     }
 
+    /// <summary>
+    /// How much of the aspheric machinery a FIGURED SPHERE actually exercises.
+    ///
+    /// <para>The control rests on it: those rungs come out exact, the r^4 rungs do not, and the
+    /// difference between them is what says the defect lives in the figuring's PRIMARY content.
+    /// That inference is only worth as much as the control is - if a figured sphere barely
+    /// perturbs the scheme at all, "exact" there is not evidence of anything.</para>
+    ///
+    /// <para>So this prints, per figured surface, the three things the scheme carries: the
+    /// figured primary alpha, the figured secondary, and the figured tertiary. A figured sphere
+    /// should show alpha at zero and the other two alive; if all three are near zero it is a null
+    /// test wearing a control's clothes.</para>
+    /// </summary>
+    [Fact]
+    public void WhatAFiguredSphereExercises()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tsurf\talpha\t|sec_fig|\t|z_check|\tfiguring_work_pct");
+
+        foreach (string name in new[] { "Ladder1_FiguredSphere",
+                                        "Ladder2_FiguredSphere_First",
+                                        "Ladder2_FiguredSphere_Both",
+                                        "Ladder3_FiguredSphere_Middle",
+                                        "Ladder1_A4", "Ladder2_A4_First",
+                                        "Ladder3_A4_Middle" })
+        {
+            var d = Load(name);
+            var bare = LoadStripped(name);
+            double work = 0.0;
+            for (int k = 1; k <= 20; k++)
+                work = Math.Max(work, Math.Abs(d.Forbes[k] - bare[k]) / d.Largest);
+
+            var rows = RowsFor(name, out int count);
+            for (int i = 1; i < count - 1; i++)
+            {
+                var r = rows[i];
+
+                double sec = 0.0, z = 0.0;
+                for (int m = 1; m <= 6; m++) sec = Math.Max(sec, Math.Abs(r.SecFig[m]));
+                for (int m = 1; m <= 10; m++) z = Math.Max(z, Math.Abs(r.ZCheck[m]));
+                if (Math.Abs(r.ApFigured) < 1e-15 && sec < 1e-15 && z < 1e-15) continue;
+
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\t{1}\t{2:E3}\t{3:E3}\t{4:E3}\t{5:F2}",
+                    name, i, r.ApFigured, sec, z, 100 * work));
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-control.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
     private static BuchdahlTableIRow[] RowsFor(string name, out int count)
     {
         var catalog = CatalogLocator.LoadBundled();
