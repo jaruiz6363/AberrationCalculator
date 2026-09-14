@@ -84,6 +84,8 @@ public class AsphericLadderSurvey
                 new BuchdahlAsphericScheme.Options { AccumulatedFiguringOnHeightRatio = true }),
             ("full-figured-barred-secondary-in-dagger",
                 new BuchdahlAsphericScheme.Options { FullFiguredBarredSecondaryInDagger = true }),
+            ("eq-68.8-bracket",
+                new BuchdahlAsphericScheme.Options { Equation688BracketInDagger = true }),
         };
 
         var sb = new StringBuilder();
@@ -105,11 +107,22 @@ public class AsphericLadderSurvey
             foreach (var r in readings)
             {
                 double[] tau = NewRoute(name, r.O);
-                double worst = 0.0;
+
+                // Worst AND rms over the twenty. The worst alone hid the fourth reading
+                // entirely: it moved the totals by a large amount while leaving the single
+                // worst coefficient untouched, so the column read as "changes nothing".
+                double worst = 0.0, sum = 0.0;
                 for (int k = 1; k <= 20; k++)
-                    worst = Math.Max(worst, Math.Abs(tau[k] - d.Rays[k]) / d.Largest);
+                {
+                    double e = (tau[k] - d.Rays[k]) / d.Largest;
+                    worst = Math.Max(worst, Math.Abs(e));
+                    sum += e * e;
+                }
                 sb.Append('\t')
-                  .Append((100 * worst).ToString("F3", CultureInfo.InvariantCulture));
+                  .Append((100 * worst).ToString("F3", CultureInfo.InvariantCulture))
+                  .Append('/')
+                  .Append((100 * Math.Sqrt(sum / 20)).ToString("F3",
+                                                               CultureInfo.InvariantCulture));
             }
             sb.AppendLine();
         }
@@ -157,6 +170,89 @@ public class AsphericLadderSurvey
             Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-shift-scan.tsv");
         File.WriteAllText(path, sb.ToString());
         _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// What (68.8)'s dropped bracket actually evaluates to, surface by surface. A reading that
+    /// changes nothing might be right and inert, or might be reaching a quantity that is zero
+    /// for a reason that makes the whole rung unable to test it - and those are not the same
+    /// thing to learn.
+    /// </summary>
+    [Fact]
+    public void BracketSizes()
+    {
+        var sb = new StringBuilder();
+        foreach (string name in new[] { "Ladder2_A4_First", "Ladder2_A4_Second",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8" })
+        {
+            var rows = RowsFor(name, out int count);
+            sb.AppendLine();
+            sb.AppendLine(name + "  surf\talpha\trho\tq\tA_p\tAbar_p\tA_q\tbracket");
+            for (int i = 1; i < count - 1; i++)
+            {
+                var r = rows[i]; var t = r.T;
+                double bracket = r.ApFigured
+                               * ((t[16] - 2.0 * t[20]) + (2.0 * r.Rho - t[6]) * t[15]);
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "\t{0}\t{1:E3}\t{2:E3}\t{3:E3}\t{4:E3}\t{5:E3}\t{6:E3}\t{7:E3}",
+                    i, r.ApFigured, r.Rho, t[6], t[15], t[16], t[20], bracket));
+            }
+        }
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-brackets.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>Does the reading reach the totals at all, before asking whether it helps?</summary>
+    [Fact]
+    public void BracketReachesTheTotals()
+    {
+        foreach (string name in new[] { "CookeTriplet_SPOTM_START_LO_ASPHERE",
+                                        "Ladder2_A4_Second" })
+        {
+            var rows = RowsFor(name, out int count);
+            var plain = BuchdahlAsphericScheme.Totals(
+                rows, count, BuchdahlAsphericScheme.Options.AsBuilt);
+
+            var rows2 = RowsFor(name, out int count2);
+            var moved = BuchdahlAsphericScheme.Totals(
+                rows2, count2,
+                new BuchdahlAsphericScheme.Options { Equation688BracketInDagger = true });
+
+            double worst = 0.0;
+            for (int k = 1; k <= 10; k++)
+            {
+                worst = Math.Max(worst, Math.Abs(plain.T[k] - moved.T[k]));
+                worst = Math.Max(worst, Math.Abs(plain.Tbar[k] - moved.Tbar[k]));
+            }
+            _out.WriteLine($"{name}: largest move in the ten totals = {worst:E4}");
+        }
+    }
+
+    private static BuchdahlTableIRow[] RowsFor(string name, out int count)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+        var p = ParaxialTrace.Trace(sys, n, field);
+        var coefficients = BuchdahlCoefficients.Compute(sys, p);
+        double objectDistance = sys.Surfaces[0].Thickness;
+        bool infinite = double.IsInfinity(objectDistance);
+        double iota = infinite ? 0.0 : -p.Efl / objectDistance;
+        int stop = sys.StopSurfaceIndex;
+        var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                            sys.Surfaces[stop].SemiDiameter, iota);
+        var spherical = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+        var increments = AsphericSchemeIncrements.Build(coefficients, spherical,
+                                                        sys.LastOpticalSurface());
+        double stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
+        count = sys.Surfaces.Count;
+        return BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, stopParameter, increments,
+                                      iota: iota);
     }
 
     /// <summary>The new routine's tau, in the transverse convention the oracles use.</summary>

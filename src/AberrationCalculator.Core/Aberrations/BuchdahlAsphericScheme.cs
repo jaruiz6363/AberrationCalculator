@@ -149,6 +149,49 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool FullFiguredBarredSecondaryInDagger { get; init; }
 
+        /// <summary>
+        /// The second member of M (68.8)'s <c>(q~ - q)</c> group, which the scheme drops.
+        ///
+        /// <para>M p.116 gives the barred first secondary outright:</para>
+        ///
+        /// <code>
+        ///   s-_1p = q s_1p - ['A_q - q('A-_p + 'A_q) + q^2 'A_p] a_p
+        ///                  + (q~ - q){ y_p s^v_1p + c-_1 y_p^4 [('A-_p - 2'A_q)
+        ///                                                       + (2q~ - q)'A_p] }
+        /// </code>
+        ///
+        /// <para>with <c>alpha = c-_1 y_p^4</c> by (67.1). The group in <c>q~ - q</c> has TWO
+        /// members. The scheme carries the first - that is <c>SecBarFigLift</c>, the check
+        /// secondary - and drops the second, which is <b>alpha times a bracket of accumulated
+        /// primaries</b>. Buchdahl's own sentence after the equation says the <c>q~ - q</c> term
+        /// "is characteristic of the complications referred to at the end of Sec. 65".</para>
+        ///
+        /// <para><b>This is the ladder's finding in print.</b> The dropped member carries alpha,
+        /// which vanishes identically for figuring with <c>c_1 = 0</c> - a figured sphere - and
+        /// not otherwise. That is precisely the class the ladder separates: figured spheres
+        /// right to 0.006 per cent, r^4 figuring wrong by 1.3 to 7.8.</para>
+        ///
+        /// <para>Printed for <c>s_1p</c> only. The other five are said to follow from (29.8),
+        /// which is not on these pages, so this reading supplies the first alone and leaves the
+        /// rest as they are rather than guessing at them by pattern.</para>
+        ///
+        /// <para><b>THE LADDER CANNOT TEST THIS, and that is the finding.</b> The bracket is
+        /// built from what has accumulated AHEAD of the figured surface, and it is read by the
+        /// surface AFTER it. Every ladder rung fails one of those two conditions:
+        /// <c>Ladder2_A4_First</c> figures the first powered surface, so the accumulations in
+        /// the bracket are all zero; <c>Ladder2_A4_Second</c> figures the last, so no surface
+        /// ever reads it. The bracket is identically zero on all seventeen rungs, and the
+        /// reading moves nothing. On the triplets, where it is not zero, it moves the rms by a
+        /// per cent or two in either direction depending on its sign - which settles nothing
+        /// either.</para>
+        ///
+        /// <para><b>What is missing is a fixture, not a reading:</b> a figured surface with
+        /// powered surfaces both before and after it, which no design in
+        /// <c>tests/fixtures/lenses</c> provides in isolation. Until that exists this reading
+        /// cannot be confirmed or refuted, and it is left off.</para>
+        /// </summary>
+        public bool Equation688BracketInDagger { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -194,7 +237,8 @@ public static class BuchdahlAsphericScheme
         var Tbar = new Scalar[11];
         var figured = AccumulatedFiguredPrimary(rows, count);
         var dagger = options.FullFiguredBarredSecondaryInDagger
-                   ? DaggerDelta(rows, count) : null;
+                     || options.Equation688BracketInDagger
+                   ? DaggerDelta(rows, count, options) : null;
 
         for (int i = 1; i < count - 1; i++)
         {
@@ -383,7 +427,7 @@ public static class BuchdahlAsphericScheme
     /// follow them one for one, each being the same entry less a multiple of a quantity this
     /// does not move.</para>
     /// </summary>
-    private static Scalar[][] DaggerDelta(BuchdahlTableIRow[] rows, int count)
+    private static Scalar[][] DaggerDelta(BuchdahlTableIRow[] rows, int count, Options options)
     {
         var delta = new Scalar[count][];
         var running = new Scalar[6];
@@ -395,6 +439,23 @@ public static class BuchdahlAsphericScheme
             {
                 var prv = rows[i - 1];
                 Scalar dPrevRatio = prv.Rho - prv.T[6];
+
+                if (options.Equation688BracketInDagger)
+                {
+                    // M (68.8), second member of the (q~ - q) group, for s_1p:
+                    //     alpha [ ('A-_p - 2'A_q) + (2q~ - q)'A_p ]
+                    // with alpha = c-_1 y_p^4, which is the scheme's figured primary, and the
+                    // three accumulations as the surface found them.
+                    var pt = prv.T;
+                    Scalar alpha = prv.ApFigured;
+                    Scalar bracket = alpha * ((pt[16] - 2.0 * pt[20])
+                                              + (2.0 * prv.Rho - pt[6]) * pt[15]);
+                    d[0] = running[0] - dPrevRatio * bracket;
+                    for (int m = 1; m < 6; m++) d[m] = running[m];
+                    delta[i] = d;
+                    Array.Copy(d, running, 6);
+                    continue;
+                }
 
                 for (int m = 0; m < 6; m++)
                 {
