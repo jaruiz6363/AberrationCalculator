@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AberrationCalculator.Core.Aberrations;
+using AberrationCalculator.Core.Forbes;
 using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.IO;
 using AberrationCalculator.Core.RayTrace;
@@ -24,32 +25,39 @@ namespace AberrationCalculator.Tests;
 /// where intrinsic and induced content are inseparable. On the ladder they separate completely.
 /// </para>
 ///
-/// <para><b>What it found</b>, measured at the commit that added this file, as the worst
-/// disagreement with the ray-inversion oracle expressed as a share of the LARGEST coefficient
-/// in the set - relative error is meaningless on a coefficient three orders below the rest,
-/// which is where the inversion noise floor sits:</para>
+/// <para><b>What it finds</b>, as the worst relative error over the twenty coefficients, each
+/// against itself, with Forbes' series as the reference:</para>
 ///
 /// <code>
-///   one powered surface, spherical        no induced      0.032%
-///   one powered surface, r^4 figured      no induced      0.026%
-///   one powered surface, conic figured    no induced      0.112%
-///   two powered surfaces, spherical       induced         0.005%
-///   two powered surfaces, r^4 on first    induced          1.716%
-///   two powered surfaces, r^4 on second   induced         12.282%
+///   one powered surface, spherical        no induced      none out by 1%
+///   one powered surface, r^4 figured      no induced      none
+///   one powered surface, conic figured    no induced      none
+///   two powered surfaces, spherical       induced         none
+///   two powered surfaces, figured SPHERE  induced         none
+///   two powered surfaces, r^4 on first    induced         31%,  8 of 20 out by 1%
+///   two powered surfaces, r^4 on second   induced         40%, 19 of 20
+///   three surfaces, r^4 in the middle     induced         19%, 12 of 20
 /// </code>
 ///
-/// <para>So the INTRINSIC aspheric tertiary is right - a figured surface with no induced terms
-/// is as accurate as a spherical one - and the whole error is in the induced stage. The two
-/// failing cases decompose without ambiguity, because the spherical ladder is clean and the
-/// one-surface figured cases are clean: in the first, a SPHERICAL surface's induced terms are
-/// built from accumulated FIGURED content; in the second, a FIGURED surface's induced terms are
-/// built from accumulated SPHERICAL content. Both are wrong.</para>
+/// <para>So the INTRINSIC aspheric tertiary is not merely as good as a spherical one, it is
+/// EXACT - none of the twenty out by one per cent - and the whole error is in the induced stage.
+/// The failing cases decompose without ambiguity, because the spherical rungs are clean and the
+/// one-surface figured ones are clean: with the figuring first, a SPHERICAL surface's induced
+/// terms are built from accumulated FIGURED content; with it second, a FIGURED surface's are
+/// built from accumulated SPHERICAL content.</para>
 ///
-/// <para>The second figure was 38.896 per cent when this file was written. It came down to
-/// 16.542 when the check pass was given the (Y) family at secondary order, and to 12.282 when
-/// it was given the (Y) family at tertiary order too. The FIRST is untouched by both, its
-/// figured surface being the first powered one, with nothing accumulated ahead of it for
-/// either family to carry - so that rung is now the whole of what is left.</para>
+/// <para><b>A figured SPHERE is the control that names the mechanism.</b> Buchdahl's Sec. 66a
+/// figuring has <c>8A4 + Kc^3 = 0</c>, so the figuring's PRIMARY contribution vanishes while its
+/// sixth-order content does not; those rungs push as much figuring through the induced stage as
+/// the r^4 ones and come out exact. The induced stage does not fail on figuring - it fails on
+/// the figuring's primary content.</para>
+///
+/// <para><b>These figures are not the ones this file was written with.</b> It originally scored
+/// each error as a share of the LARGEST coefficient in the set, which is blind to exactly the
+/// failures this arrangement has: <c>docs/verification.md</c> records tau15 out by a factor of
+/// nearly five and tau20 by half while the large ones agree to one per cent, and under that
+/// normalisation the design that does it reported as 1.7 per cent. The rungs above read 0.026,
+/// 0.112 and 12.282 per cent then. Nothing about the scheme changed; the instrument did.</para>
 ///
 /// <para>The two failing cases are deliberately NOT pinned to a number here. Freezing today's
 /// wrong values would bless them, and whoever fixes the induced stage would have to rewrite the
@@ -75,7 +83,26 @@ public class AsphericInducedLadderTests
                   : (double)typeof(BuchdahlTerms).GetField("Tau" + k)!.GetValue(t)!;
     }
 
-    private static (double WorstShare, double Residual) Score(string fixtureName)
+    /// <summary>
+    /// The worst RELATIVE error over the twenty coefficients, each against itself, and the
+    /// ray-inversion residual that says whether the rung means anything at all.
+    ///
+    /// <para><b>This used to divide every error by the largest coefficient in the set, and that
+    /// was wrong.</b> <c>docs/verification.md</c> records this arrangement getting tau15 out by a
+    /// factor of nearly five including its sign and tau20 by half, while the large ones agree to
+    /// one per cent - and divided by the largest coefficient, a small one wrong by five times is
+    /// nothing. The instrument reported the design that does exactly that as 1.7 per cent. A gate
+    /// built on it can pass while a coefficient is out by a factor of ten.</para>
+    ///
+    /// <para>The reference is FORBES rather than the ray inversion, for the same reason. Relative
+    /// error is meaningless at the inversion's noise floor, which is what the old normalisation
+    /// was working around; Forbes' series is an expansion rather than a least-squares recovery
+    /// from traced landings, so it has no floor of its own and tracks the rays to between 0.001
+    /// and 0.13 per cent on every design here. The inversion is still run, because its RESIDUAL
+    /// is what says the traced data is representable in the tau basis at all - without that, a
+    /// disagreement on this rung could not be blamed on the scheme.</para>
+    /// </summary>
+    private static (double WorstRelative, double Residual) Score(string fixtureName)
     {
         var catalog = CatalogLocator.LoadBundled();
         var sys = LensFile.Read(Fixtures.Lens(fixtureName), catalog);
@@ -94,13 +121,24 @@ public class AsphericInducedLadderTests
         double Scheme(int k) => k == 1 ? t.B7
             : (double)typeof(BuchdahlTerms).GetField("Tau" + k)!.GetValue(t)!;
 
+        var forbes = ForbesCoefficients.Invert(sys, n, p, field);
+        Assert.NotNull(forbes);
+
         double big = 0.0;
         for (int k = 1; k <= 20; k++) big = Math.Max(big, Math.Abs(Scheme(k)));
         Assert.True(big > 0.0, $"{fixtureName}: every coefficient is zero");
 
         double worst = 0.0;
         for (int k = 1; k <= 20; k++)
-            worst = Math.Max(worst, Math.Abs(Scheme(k) - inv!.Tau[k]) / big);
+        {
+            double reference = forbes!.Tau[k];
+
+            // A coefficient that is zero to within a billionth of the largest has no signal to
+            // take a relative error against, and dividing by it would manufacture one.
+            if (Math.Abs(reference) < 1e-9 * big) continue;
+
+            worst = Math.Max(worst, Math.Abs(Scheme(k) - reference) / Math.Abs(reference));
+        }
 
         return (worst, inv!.Residual);
     }
@@ -122,9 +160,9 @@ public class AsphericInducedLadderTests
             $"{fixtureName}: the least-squares fit did not close, residual {residual:E2}. " +
             "Nothing read off this rung means anything.");
         Assert.True(worst < 0.005,
-            $"{fixtureName}: worst disagreement with the rays is {100 * worst:F3} per cent of " +
-            "the largest coefficient, on a system of SPHERES where the scheme is known right. " +
-            "The ladder or the oracle has broken, not the aspheric tertiary.");
+            $"{fixtureName}: worst RELATIVE error over the twenty is {100 * worst:F3} per cent, " +
+            "on a system of SPHERES where the scheme is known right - it agrees with Forbes to " +
+            "roundoff there. The ladder or the oracle has broken, not the aspheric tertiary.");
     }
 
     /// <summary>
@@ -145,10 +183,10 @@ public class AsphericInducedLadderTests
         Assert.True(residual < 1e-3,
             $"{fixtureName}: the fit did not close, residual {residual:E2}");
         Assert.True(worst < 0.005,
-            $"{fixtureName}: worst disagreement with the rays is {100 * worst:F3} per cent of " +
-            "the largest coefficient. On a single powered surface there are NO induced terms, " +
-            "so this is the intrinsic aspheric tertiary alone, and it was 0.026 per cent (r^4) " +
-            "and 0.112 per cent (conic) when this test was written.");
+            $"{fixtureName}: worst RELATIVE error over the twenty is {100 * worst:F3} per cent. " +
+            "On a single powered surface there are NO induced terms, so this is the intrinsic " +
+            "aspheric tertiary alone, and NONE of the twenty was out by one per cent when this " +
+            "was measured - it is exact, not merely close.");
     }
 
     /// <summary>
@@ -210,7 +248,7 @@ public class AsphericInducedLadderTests
         Assert.True(worstSpherical < 0.005,
             $"Ladder3_Sphere: worst disagreement with the rays is {100 * worstSpherical:F3} per "
           + "cent on a system of SPHERES. The fixture is at fault, not the theory - it was "
-          + "0.001 per cent when it was built.");
+          + "exact - none of the twenty out by one per cent - when it was built.");
 
         var (_, residualFigured) = Score("Ladder3_A4_Middle");
         Assert.True(residualFigured < 1e-3,
@@ -237,7 +275,7 @@ public class AsphericInducedLadderTests
         Assert.True(worst < 0.005,
             $"Ladder3_FiguredSphere_Middle: worst disagreement with the rays is "
           + $"{100 * worst:F3} per cent. Its figuring has no primary content, so the induced "
-          + "stage has nothing to get wrong - it was 0.001 per cent when this was written.");
+          + "stage has nothing to get wrong, and it was exact when this was written.");
     }
 
     /// <summary>
