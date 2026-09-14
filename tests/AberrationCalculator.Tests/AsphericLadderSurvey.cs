@@ -91,6 +91,10 @@ public class AsphericLadderSurvey
             ("dagger-increment-figured-half",
                 new BuchdahlAsphericScheme.Options
                     { DaggerIncrementFiguredHalfOnHeightRatio = true }),
+            ("no-figured-correction-in-dagger",
+                new BuchdahlAsphericScheme.Options { NoFiguredCorrectionInDagger = true }),
+            ("q-side-products-spherical",
+                new BuchdahlAsphericScheme.Options { QSideProductsOnSphericalHalves = true }),
         };
 
         var sb = new StringBuilder();

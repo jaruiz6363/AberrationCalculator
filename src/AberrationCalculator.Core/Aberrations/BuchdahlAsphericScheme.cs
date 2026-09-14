@@ -242,6 +242,56 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool DaggerIncrementFiguredHalfOnHeightRatio { get; init; }
 
+        /// <summary>
+        /// Whether the dagger recursions carry NO figured correction at all - the opposite of
+        /// every other reading here.
+        ///
+        /// <para><b>Why this follows from the derivation.</b> The figured barred secondary is now
+        /// known exactly and shown to be what the scheme computes:</para>
+        /// <code>
+        ///   s-_mu^fig = q D_mu + q~ L_mu + alpha (bracket_mu)
+        /// </code>
+        /// <para>It ALREADY carries the incidence ratio on its D half and the height ratio on its
+        /// L half. The scheme's note argues that the increment "already carries surface i-1's own
+        /// ratio inside it ... so multiplying by q a second time gives the figured half q q~ where
+        /// it should have q~ squared", and subtracts <c>(q~ - q)</c> times the lift to repair it.
+        /// But if the accumulated barred secondary is already right, the recursion's q is doing
+        /// the same job for the figured half that it does for the spherical one, and there is
+        /// nothing to repair - the subtraction is then an over-correction rather than a
+        /// correction.</para>
+        ///
+        /// <para>Five readings have tried to put MORE into this site, and every one was adding a
+        /// second copy of something already present. This asks the question the other way round.
+        /// </para>
+        /// </summary>
+        public bool NoFiguredCorrectionInDagger { get; init; }
+
+        /// <summary>
+        /// Whether the CLOSED FORMS for the q-side secondaries evaluate their products of
+        /// accumulations on the spherical halves alone, the figuring reaching them only through
+        /// the accumulated barred secondary they already carry.
+        ///
+        /// <para><b>Why this site, now that the others are cleared.</b> The figured secondary is
+        /// verified against (68.8). The dagger correction is confirmed from both sides - adding
+        /// alpha content to it breaks the r^4 rungs, removing it breaks the figured-sphere rungs
+        /// that were exact. What is left in the chain between a figured surface and the surface
+        /// that reads it is <c>t86</c> and its five partners, which express the accumulated
+        /// q-side secondary as products of the accumulated PRIMARIES.</para>
+        ///
+        /// <para>Those closed forms are identities for a spherical system, where each surface's
+        /// q-side primary is its p-side one carried on <c>q</c>. For a figured surface it is
+        /// carried on <c>q~</c> instead - that is the whole of (67.2) - so the identity that
+        /// justifies the closed form does not hold for the figured content, and the products
+        /// carry it anyway.</para>
+        ///
+        /// <para><b>It predicts the ladder exactly.</b> A figured sphere has <c>alpha = 0</c>, so
+        /// the primary accumulations have no figured content at all, the products are untouched,
+        /// and those rungs stay exact - which they are, 0 of 20. An r^4 figuring puts alpha into
+        /// the accumulations and the products mis-carry it - and those rungs are the broken ones.
+        /// No other candidate left standing distinguishes the two classes this way.</para>
+        /// </summary>
+        public bool QSideProductsOnSphericalHalves { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -286,9 +336,12 @@ public static class BuchdahlAsphericScheme
         var T = new Scalar[11];
         var Tbar = new Scalar[11];
         var figured = AccumulatedFiguredPrimary(rows, count);
+        var qSide = options.QSideProductsOnSphericalHalves ? QSideDelta(rows, count)
+                  : default((Scalar[][], Scalar[][], Scalar[][], Scalar[][]));
         var dagger = options.FullFiguredBarredSecondaryInDagger
                      || options.Equation688BracketInDagger
                      || options.DaggerIncrementFiguredHalfOnHeightRatio
+                     || options.NoFiguredCorrectionInDagger
                    ? DaggerDelta(rows, count, options) : null;
 
         for (int i = 1; i < count - 1; i++)
@@ -324,6 +377,29 @@ public static class BuchdahlAsphericScheme
                 var src = checkHalf ? r.Y : oFamily;
                 for (int m = 25; m <= 33; m++) t[m] = src[m];
                 for (int m = 101; m <= 120; m++) t[m] = src[m];
+
+                // The q-side closed forms with their products taken on the spherical halves.
+                // Both families move: each is built from the same t86..t98, differing only in
+                // the ratio that combines them.
+                if (options.QSideProductsOnSphericalHalves)
+                {
+                    var prim = checkHalf ? qSide.Item3[i] : qSide.Item1[i];
+                    var rec = checkHalf ? qSide.Item4[i] : qSide.Item2[i];
+                    Scalar ratio = checkHalf ? r.Rho : t[6];
+
+                    t[101] += prim[0]; t[103] += prim[1]; t[105] += prim[2];
+                    t[108] += prim[3]; t[110] += prim[4]; t[113] += prim[5];
+
+                    t[102] += rec[0]; t[104] += rec[1]; t[107] += rec[2];
+                    t[109] += rec[3]; t[112] += rec[4]; t[114] += rec[5];
+
+                    t[115] = -ratio * t[101] + t[102];
+                    t[116] = -ratio * t[103] + t[104];
+                    t[117] = -ratio * t[105] + t[107];
+                    t[118] = -ratio * t[108] + t[109];
+                    t[119] = -ratio * t[110] + t[112];
+                    t[120] = -ratio * t[113] + t[114];
+                }
 
                 // The induced bracket of the figured barred secondary, put back on the height
                 // ratio. The (Y) family is already combined on that ratio, so its correction
@@ -575,6 +651,75 @@ public static class BuchdahlAsphericScheme
     /// follow them one for one, each being the same entry less a multiple of a quantity this
     /// does not move.</para>
     /// </summary>
+    /// <summary>
+    /// How the (I) and (Y) tertiary families move when the q-side closed forms take their
+    /// products on the spherical halves of the accumulations.
+    ///
+    /// <para>Propagated as a DIFFERENCE rather than rebuilt. Writing <c>g</c> for the figured
+    /// half the products carry - the whole figured half of <c>t86</c> less the part that comes in
+    /// through the accumulated barred secondary, which stays - the primitive members move by
+    /// <c>+g</c> and each recursion by <c>ratio (g_i - g_{i-1})</c> carried forward, because
+    /// every one is of the form <c>-ratio(prev_sec - prev_q + q) + ... + previous</c>. Nothing
+    /// else in them touches the q-side forms.</para>
+    ///
+    /// <para>Returns six deltas per surface for the (I) family and six for the (Y): in order
+    /// t101/t102, t103/t104, t105/t107, t108/t109, t110/t112, t113/t114.</para>
+    /// </summary>
+    private static (Scalar[][] Primitive, Scalar[][] Recursion,
+                    Scalar[][] PrimitiveY, Scalar[][] RecursionY)
+        QSideDelta(BuchdahlTableIRow[] rows, int count)
+    {
+        var figuredPrimary = AccumulatedFiguredPrimary(rows, count);
+        var figuredSecondary = AccumulatedFiguredSecondary(rows, count);
+
+        var primitive = new Scalar[count][];
+        var recursion = new Scalar[count][];
+        var primitiveY = new Scalar[count][];
+        var recursionY = new Scalar[count][];
+
+        var g = new Scalar[count][];
+        for (int i = 1; i < count - 1; i++)
+        {
+            var (_, figured) = QSideHalves(rows[i], figuredPrimary[i], figuredSecondary[i]);
+            var mine = new Scalar[6];
+            for (int m = 0; m < 6; m++)
+                mine[m] = figured[m] - figuredSecondary[i][m];   // the products' share alone
+            g[i] = mine;
+        }
+
+        var runningI = new Scalar[6];
+        var runningY = new Scalar[6];
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var p = new Scalar[6];
+            var pY = new Scalar[6];
+            for (int m = 0; m < 6; m++) { p[m] = g[i][m]; pY[m] = g[i][m]; }
+            primitive[i] = p;
+            primitiveY[i] = pY;
+
+            var r = new Scalar[6];
+            var rY = new Scalar[6];
+            if (i > 1)
+            {
+                Scalar qPrev = rows[i - 1].T[6];
+                Scalar rhoPrev = rows[i - 1].Rho;
+                for (int m = 0; m < 6; m++)
+                {
+                    Scalar step = g[i][m] - g[i - 1][m];
+                    r[m] = runningI[m] + qPrev * step;
+                    rY[m] = runningY[m] + rhoPrev * step;
+                }
+            }
+            recursion[i] = r;
+            recursionY[i] = rY;
+            Array.Copy(r, runningI, 6);
+            Array.Copy(rY, runningY, 6);
+        }
+
+        return (primitive, recursion, primitiveY, recursionY);
+    }
+
     private static Scalar[][] DaggerDelta(BuchdahlTableIRow[] rows, int count, Options options)
     {
         var delta = new Scalar[count][];
@@ -589,6 +734,20 @@ public static class BuchdahlAsphericScheme
             {
                 var prv = rows[i - 1];
                 Scalar dPrevRatio = prv.Rho - prv.T[6];
+
+                if (options.NoFiguredCorrectionInDagger)
+                {
+                    // Take the existing -(q~ - q) x lift straight back out.
+                    for (int m = 0; m < 6; m++)
+                    {
+                        bool regularised = m == 5 && prv.FlatInCollimatedSpace;
+                        d[m] = running[m]
+                             + (regularised ? 0.0 : dPrevRatio * prv.SecBarFigLift[m]);
+                    }
+                    delta[i] = d;
+                    Array.Copy(d, running, 6);
+                    continue;
+                }
 
                 if (options.DaggerIncrementFiguredHalfOnHeightRatio)
                 {
