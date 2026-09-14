@@ -136,6 +136,49 @@ public class BuchdahlSymbolDictionaryTests
             t => t[27], t => 2.0 * t[6] * t[16] - t[22]);
     }
 
+    /// <summary>
+    /// M (29.5) states how an accumulation is formed - <c>'A_pj = sum_{i&lt;j} 'a_pi</c> and
+    /// <c>'A-_pj = sum_{i&lt;j} q_i 'a_pi</c>, each term carrying its OWN surface's ratio. The
+    /// p-side sums are plainly that in the scheme; what is not obvious is whether the q-side
+    /// ones are, since the scheme reaches <c>t20</c> by a closed form
+    /// (<c>t20 = (t9 at surface one - t9)/2 + t16</c>) rather than by summing anything.
+    ///
+    /// <para>This asks whether it nevertheless EQUALS the accumulation of the per-surface q-side
+    /// primary <c>t99 = a_q</c>. It matters because the open defect needs
+    /// <c>'S-_1q</c> built as an accumulation in its own right rather than inverted out of
+    /// <c>t102</c>, and if the q-side accumulations follow the same rule one order down, the
+    /// same construction is available one order up.</para>
+    /// </summary>
+    [Fact]
+    public void TheQSideAccumulationIsASumOfThePerSurfaceQSidePrimary()
+    {
+        var sb = new StringBuilder();
+
+        foreach (string name in Spherical)
+        {
+            var rows = Rows(name, out int count);
+            double running = 0.0;
+
+            for (int i = 1; i < count - 1; i++)
+            {
+                var t = rows[i].T;
+                double scale = Math.Max(Math.Abs(t[20]), Math.Abs(running));
+                double residual = scale < 1e-14 ? 0.0 : Math.Abs(t[20] - running) / scale;
+
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\tsurf {1}\tt20 {2:E6}\tsum t99 {3:E6}\trel {4:E2}",
+                    name, i, t[20], running, residual));
+
+                running += t[99];
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "buchdahl-qside.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
     [Fact]
     public void TheDictionary()
     {
