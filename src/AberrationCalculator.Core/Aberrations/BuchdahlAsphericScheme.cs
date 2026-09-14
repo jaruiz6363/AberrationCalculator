@@ -520,6 +520,59 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool DaggerCorrectionOnIncrementAlone { get; init; }
 
+        /// <summary>
+        /// Whether the barred members of the secondary-order family take the accumulated barred
+        /// q-side secondary from M Sec. 22's identities instead of from the dagger recursion.
+        ///
+        /// <para><b>Why this is possible at all.</b> M Sec. 19: "when all the p-coefficients are
+        /// known, all but one of the q-coefficients ... can be obtained from them by means of the
+        /// identities". <see cref="BuchdahlSecondaryQ"/> recovers <c>Sbar_1q .. Sbar_5q</c> that
+        /// way, and the (I) members are <c>t102 = q t70 - 'S-1_q</c> and partners - which closes
+        /// to 1E-15 on every spherical fixture, so the correspondence is measured, not assumed.
+        /// </para>
+        ///
+        /// <para><b>Why it is aimed here.</b> The identities are properties of the characteristic
+        /// function, not of spheres, and on figured systems they reproduce the closed form for
+        /// <c>t86</c> to 1E-14 on every surface - so the q-side accumulation is right and its
+        /// increment IS the per-surface contribution. What the recursion builds from it is not:
+        /// the barred accumulation it reaches differs from the identities' by 24 per cent in the
+        /// first member on <c>Ladder2_A4_First</c>, and by tens of per cent on the triplets. The
+        /// figured-sphere rungs agree to 5E-16, which is why they were exact all along.</para>
+        ///
+        /// <para>(85.1) gives the (Y) member from the same accumulation on the height ratio, so
+        /// both families are set. <c>Sbar_6q</c> is the one the identities cannot supply, so
+        /// <c>t114</c> keeps the recursion.</para>
+        ///
+        /// <para><b>MEASURED - DEFECT 3 IS HERE.</b> Worst relative error against Forbes / count
+        /// over one per cent:</para>
+        /// <code>
+        ///   design                    as-built   identities   + D-half
+        ///   Ladder2_A4_First           31.1/ 8     0.2/ 0      0.2/ 0
+        ///   Ladder2_A4_First_FlatRear   5.9/ 7     0.2/ 0      0.2/ 0
+        ///   Ladder2_A4_Then_FigSphere  31.2/ 8     0.2/ 0      0.2/ 0
+        ///   Ladder3_A4_First          233.5/ 6     0.6/ 0      0.6/ 0
+        ///   Ladder3_A4_Middle          18.7/12    20.5/ 4     13.5/ 2
+        ///   Ladder2_A4_Second          39.9/19   520.7/18    172.2/16
+        ///   CookeTriplet_PRMSA         17.3/12    16.1/11     16.1/ 9
+        ///   CookeTriplet_SPOTM        467.4/ 8   399.4/ 8    210.1/ 7
+        /// </code>
+        /// <para>Every rung that figures the first powered surface goes to the oracle's floor -
+        /// the rungs no reading had moved at all. Spheres and figured spheres stay exact.</para>
+        ///
+        /// <para>On the two rungs that figure the LAST powered surface it reproduces the (85.1)
+        /// reading's numbers to the decimal, alone and with the D half - so the accumulation
+        /// that reading built was already right there, and what is left on them is defect 2 in
+        /// the check half's barred rule, which this does not reach. The triplets carry both
+        /// faults, and are worse here than under D half plus (85.1), whose wrong accumulation
+        /// presumably offset part of defect 2; that is an inference, not a measurement.</para>
+        ///
+        /// <para>Not adopted: the flat-in-collimated-space surfaces, where q is infinite, keep the
+        /// recursion, and on <c>Ladder2_FlatFigured</c> the recovery's own (22.42)/(22.53) check
+        /// fails at 76 per cent, so the 812 to 710 it measures there means nothing either way.
+        /// </para>
+        /// </summary>
+        public bool BarredQAccumulationFromIdentities { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -699,6 +752,28 @@ public static class BuchdahlAsphericScheme
                     t[109] += d[3]; t[112] += d[4]; t[114] += d[5];
                     t[115] += d[0]; t[116] += d[1]; t[117] += d[2];
                     t[118] += d[3]; t[119] += d[4]; t[120] += d[5];
+                }
+
+                // The barred q-side accumulation from the identities rather than the recursion,
+                // shared by both families and joined on each one's own ratio by (85.1). Where the
+                // ratio is infinite the members cannot be formed as products and are left alone.
+                if (options.BarredQAccumulationFromIdentities && !r.FlatInCollimatedSpace
+                    && SMath.Abs(t[6]) < 1e6)
+                {
+                    var s = BuchdahlSecondaryQ.At(rows, i);
+                    Scalar ratio = checkHalf ? r.Rho : t[6];
+
+                    t[102] = ratio * t[70] - s[1];
+                    t[104] = ratio * t[72] - s[2];
+                    t[107] = ratio * t[74] - s[3];
+                    t[109] = ratio * t[76] - s[4];
+                    t[112] = ratio * t[78] - s[5];
+
+                    t[115] = -ratio * t[101] + t[102];
+                    t[116] = -ratio * t[103] + t[104];
+                    t[117] = -ratio * t[105] + t[107];
+                    t[118] = -ratio * t[108] + t[109];
+                    t[119] = -ratio * t[110] + t[112];
                 }
 
                 // The accumulated figuring re-combined on the height ratio. The (Y) family is

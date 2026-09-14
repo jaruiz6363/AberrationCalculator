@@ -120,6 +120,14 @@ public class AsphericLadderSurvey
                 }),
             ("Y-barred-shared-accumulations",
                 new BuchdahlAsphericScheme.Options { YBarredFromSharedAccumulations = true }),
+            ("barred-q-from-identities",
+                new BuchdahlAsphericScheme.Options { BarredQAccumulationFromIdentities = true }),
+            ("identities + D-half",
+                new BuchdahlAsphericScheme.Options
+                {
+                    BarredQAccumulationFromIdentities = true,
+                    FiguredSecondarySplitByDandL = true,
+                }),
             ("both-halves-together",
                 new BuchdahlAsphericScheme.Options
                 {
@@ -745,6 +753,194 @@ public class AsphericLadderSurvey
             Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-control.tsv");
         File.WriteAllText(path, sb.ToString());
         _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// <b>Is t86 the accumulated first q-side secondary on a FIGURED system?</b>
+    ///
+    /// <para>Six dagger corrections have failed, and every one assumed that <c>t86|i -
+    /// t86|i-1</c> is surface i-1's q-side secondary. Asking whether the increment is "a
+    /// per-surface quantity" settles nothing - any closed form of accumulations has increments
+    /// that depend only on what lies at and before the surface. The question with content is
+    /// whether the closed form is <c>'S1_q</c> at all once the system is figured.</para>
+    ///
+    /// <para><b>An independent value.</b> M (21.6) gives <c>omega1 = 'S-1_p - 'S1_q</c> and
+    /// (22.41) <c>omega7 = 4 'S-1_p - 'S2_p</c>; together they give
+    /// <c>omega7 - 2 omega1 = 3[AB] + paraxial terms</c>, and (22.12) accumulates [AB] surface
+    /// by surface from the primaries. So</para>
+    /// <code>
+    ///   'S1_q = t70 - (omega7 - 3[AB] + N1 vp^2 dvp - (1/4) N1 dvp (vp^2 + 3 vp1^2)) / 2
+    /// </code>
+    /// <para>from nothing but the p-side secondary sums and the primaries - all verified on
+    /// figured systems, by the primary and secondary identities and against Forbes.
+    /// <c>TheBracketReproducesTheDeterminedAB</c> closes this at 1E-9 on Buchdahl's spherical
+    /// triplet. The identities come from the characteristic function, not from the surfaces
+    /// being spheres, so they hold for figuring as well.</para>
+    ///
+    /// <para>Each residual is printed against the figured content of t86 itself - the
+    /// difference from a spherical twin with the same stop - so it reads as a share of what
+    /// the figuring put there.</para>
+    /// </summary>
+    [Fact]
+    public void IsT86TheAccumulatedFirstQSecondary()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tsurf\tt86\tidentity\trel\tt86_figured\tresid/figured"
+                    + "\td_t86\td_identity\td_resid/d_figured");
+
+        foreach (string name in Designs)
+        {
+            var rows = RowsFor(name, out int count, out var twin, out double n1);
+            double vp1 = rows[1][2];
+            double ab = 0.0;
+            double prevT86 = 0.0, prevId = 0.0, prevFig = 0.0;
+
+            for (int i = 1; i < count - 1; i++)
+            {
+                var r = rows[i];
+                double vp = r[2];
+                double omega7 = 4.0 * r[70] - r[71];
+                double dvp = vp * vp - vp1 * vp1;
+                double omega1 = 0.5 * (omega7 - 3.0 * ab + n1 * vp * vp * dvp
+                                       - 0.25 * n1 * dvp * (vp * vp + 3.0 * vp1 * vp1));
+                double identity = r[70] - omega1;
+                double t86 = r[86];
+                double figured = t86 - twin[i][86];
+
+                double scale = Math.Max(Math.Abs(t86), Math.Abs(identity));
+                double rel = scale < 1e-14 ? 0.0 : Math.Abs(t86 - identity) / scale;
+                double ofFig = Math.Abs(figured) < 1e-14 ? double.NaN
+                             : Math.Abs(t86 - identity) / Math.Abs(figured);
+
+                double dT = t86 - prevT86, dI = identity - prevId, dF = figured - prevFig;
+                double dOfFig = Math.Abs(dF) < 1e-14 ? double.NaN : Math.Abs(dT - dI) / Math.Abs(dF);
+
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\t{1}\t{2:E6}\t{3:E6}\t{4:E2}\t{5:E3}\t{6:E2}\t{7:E4}\t{8:E4}\t{9:E2}",
+                    name, i, t86, identity, rel, figured, ofFig, dT, dI, dOfFig));
+
+                prevT86 = t86; prevId = identity; prevFig = figured;
+
+                // (22.12): Delta[AB] = (1/N1){(A|b) - (B|a) + (a|b)}, the pairing skew over p, q.
+                double Ap = r[15], Aq = r[20], Bp = 2.0 * r[16], Bq = r[22];
+                double ap = r[10], aq = r[99], bp = 2.0 * r[11], bq = r[100];
+                ab += (Ap * bq - Aq * bp - (Bp * aq - Bq * ap) + (ap * bq - aq * bp)) / n1;
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-t86-identity.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// <b>What the barred q-side accumulation the dagger family carries SHOULD be</b>, from the
+    /// identities, against what the scheme builds.
+    ///
+    /// <para>The (I) barred members are <c>t102 = q t70 - 'S-1_q</c> and partners, so the
+    /// scheme's <c>'S-_q</c> is read back as <c>q 'S-_p - t102</c>. <see cref="BuchdahlSecondaryQ"/>
+    /// recovers the same accumulations from M Sec. 22 without the dagger recursion at all -
+    /// <c>Sbar_1q</c> from omega9 and t73, <c>Sbar_3q</c> from omega15 and t79, neither touching
+    /// a q-side closed form. So the value the recursion must reach is known per surface, and
+    /// every reading of the correction can be judged against it rather than against the totals
+    /// several stages downstream.</para>
+    ///
+    /// <para>Printed four ways: the (I) member as built, the same with the lift correction taken
+    /// back out, and the (Y) member likewise on the height ratio - so it says whether the
+    /// correction should exist, and on which family.</para>
+    /// </summary>
+    [Fact]
+    public void WhatTheBarredQAccumulationShouldBe()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tsurf\tm\tidentity\tI_built\tI_nocorr\tY_built"
+                    + "\terr_I_built\terr_I_nocorr\terr_Y_built\tlift_corr");
+
+        // (m, barred p sum, (I) barred member): Sbar_1q .. Sbar_5q.
+        var sites = new[] { (1, 70, 102), (2, 72, 104), (3, 74, 107), (4, 76, 109), (5, 78, 112) };
+
+        foreach (string name in Designs)
+        {
+            var rows = RowsFor(name, out int count, out _, out double n1);
+            var corr = new double[6];
+
+            for (int i = 1; i < count - 1; i++)
+            {
+                var r = rows[i];
+                var t = r.T;
+
+                if (i > 1)
+                {
+                    var prv = rows[i - 1];
+                    double dr = prv.Rho - prv.T[6];
+                    for (int m = 0; m < 5; m++) corr[m] += dr * prv.SecBarFigLift[m];
+                }
+
+                if (r.FlatInCollimatedSpace || Math.Abs(t[6]) > 1e6) continue;
+                var id = BuchdahlSecondaryQ.At(rows, i, n1);
+
+                // The recovery's one internal check, (22.42) against (22.53) for Sbar_2q, on the
+                // figured rows as well - it passes through t92 and so vouches for the closed forms
+                // Sbar_2q, Sbar_4q and Sbar_5q lean on.
+                double alt = BuchdahlSecondaryQ.SecondBarredQAlternative(rows, i, n1);
+                double altScale = Math.Max(Math.Abs(alt), 1e-14);
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "#alt\t{0}\t{1}\t(22.42) {2:E6}\t(22.53) {3:E6}\trel {4:E2}",
+                    name, i, id[2], alt, Math.Abs(id[2] - alt) / altScale));
+
+                foreach (var (m, sp, member) in sites)
+                {
+                    double target = id[m];
+                    double iBuilt = t[6] * t[sp] - t[member];
+                    double iNo = t[6] * t[sp] - (t[member] + corr[m - 1]);
+                    // The (Y) recursion carries no lift correction, so it has no second column.
+                    double yBuilt = r.Rho * t[sp] - r.Y[member];
+
+                    double scale = Math.Max(Math.Abs(target), 1e-14);
+                    string E(double v) =>
+                        (Math.Abs(v - target) / scale).ToString("E2", CultureInfo.InvariantCulture);
+
+                    if (Math.Abs(target) < 1e-14 && Math.Abs(iBuilt) < 1e-14) continue;
+                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                        "{0}\t{1}\t{2}\t{3:E5}\t{4:E5}\t{5:E5}\t{6:E5}\t{7}\t{8}\t{9}\t{10:E3}",
+                        name, i, m, target, iBuilt, iNo, yBuilt,
+                        E(iBuilt), E(iNo), E(yBuilt), corr[m - 1]));
+                }
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-qbar-identity.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    private static BuchdahlTableIRow[] RowsFor(string name, out int count,
+                                               out BuchdahlTableIRow[] twin, out double n1)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+        var p = ParaxialTrace.Trace(sys, n, field);
+        var coefficients = BuchdahlCoefficients.Compute(sys, p);
+        double objectDistance = sys.Surfaces[0].Thickness;
+        bool infinite = double.IsInfinity(objectDistance);
+        double iota = infinite ? 0.0 : -p.Efl / objectDistance;
+        int stop = sys.StopSurfaceIndex;
+        var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                            sys.Surfaces[stop].SemiDiameter, iota);
+        var spherical = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+        var increments = AsphericSchemeIncrements.Build(coefficients, spherical,
+                                                        sys.LastOpticalSurface());
+        double stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
+        count = sys.Surfaces.Count;
+        n1 = n[0];
+        twin = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, stopParameter, iota: iota);
+        return BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, stopParameter, increments,
+                                      iota: iota);
     }
 
     private static BuchdahlTableIRow[] RowsFor(string name, out int count)
