@@ -231,6 +231,16 @@ public class BuchdahlSymbolDictionaryTests
     /// misprint rather than a faint scan. It is recorded here because it cost a reading of
     /// Sec. 85: a correction was built on the equation as printed, and reported as neutral,
     /// when the bracket it formed was not the one the scheme uses.</para>
+    ///
+    /// <para><b>SETTLED FROM THE SOURCE.</b> The above was an inference from Buchdahl's printed
+    /// Table I. M (29.7) - which (68.8) names outright as the formula it is "analogous to" -
+    /// prints the same bracket, and prints it BARRED:</para>
+    /// <code>
+    ///   s-_1p = [...] s_1p - ['A-_q - q('A-_p + 'A_q) + q^2 'A_p] a_p .      (29.7)
+    /// </code>
+    /// <para>So the two independent routes agree: the scheme's own t31, measured against Table I,
+    /// and Buchdahl's Sec. 29 algebra. It is (68.8) that is wrong, in one overbar, and nothing
+    /// about this program is.</para>
     /// </summary>
     /// <summary>
     /// <b>The alpha bracket of M (68.8), derived - and already in the scheme.</b>
