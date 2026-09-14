@@ -327,6 +327,40 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool YBarredFromSharedAccumulations { get; init; }
 
+        /// <summary>
+        /// Whether the accumulated q-side barred secondary splits the q-side PRIMARY it carries,
+        /// pairing its figured half with the (Y) dagger as Sec. 85 requires - and, with that
+        /// fixed, whether the (Y) barred members follow from the (I) ones by (85.1).
+        ///
+        /// <para><b>The derivation.</b> <c>t102 = q t70 - 'S-1_q</c> inverts, and substituting
+        /// the scheme's recursion and the same relation one surface back gives</para>
+        /// <code>
+        ///   'S-1_q|i = 'S-1_q|i-1 + q dS1_q + t31 t99 + (q~ - q) lift     (at surface i-1)
+        /// </code>
+        /// <para>so each surface contributes <c>s-1q = q s1q + a_q t31 + ...</c> - the q-side
+        /// mirror of the p-side relation the dictionary verified at 1.6E-15,
+        /// <c>s-1p = q s1p + a_p t31</c>, with <c>t99 = a_q</c> where that has <c>a_p</c>.</para>
+        ///
+        /// <para><b>And there is the defect.</b> <c>a_q</c> has a figured half - <c>q~ alpha</c>
+        /// by (67.2) - and Sec. 85 requires the check half of a surface's own quantity to pair
+        /// with the (Y) family, not the (I) one. The scheme pairs the whole of <c>a_q</c>, and of
+        /// <c>b_q = t100</c>, with the (I) daggers t31, t32, t33. Every site is a product of one
+        /// of those daggers with t99 or t100, and each is corrected by the difference of the two
+        /// daggers times the figured half alone.</para>
+        ///
+        /// <para>Because <c>'S-1_q</c> is an accumulation shared by BOTH families rather than a
+        /// family member, the correction belongs in the (I) recursion as much as the (Y) one -
+        /// so unlike <see cref="YBarredFromSharedAccumulations"/> this reaches the HAT pass, and
+        /// can move the rungs whose figuring is on the first powered surface. Nothing tried so
+        /// far has moved those at all.</para>
+        ///
+        /// <para>The two halves are applied together because they are one correction: with
+        /// <c>'S-1_q</c> shared and correct, (85.1) gives the (Y) member as
+        /// <c>q~ t70 - 'S-1_q</c> outright, which is the earlier reading's form over a corrected
+        /// accumulation.</para>
+        /// </summary>
+        public bool SharedQBarWithSplitPrimary { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -373,6 +407,7 @@ public static class BuchdahlAsphericScheme
         var figured = AccumulatedFiguredPrimary(rows, count);
         var qSide = options.QSideProductsOnSphericalHalves ? QSideDelta(rows, count)
                   : default((Scalar[][], Scalar[][], Scalar[][], Scalar[][]));
+        var qBar = options.SharedQBarWithSplitPrimary ? SharedQBarDelta(rows, count) : null;
         var dagger = options.FullFiguredBarredSecondaryInDagger
                      || options.Equation688BracketInDagger
                      || options.DaggerIncrementFiguredHalfOnHeightRatio
@@ -417,24 +452,34 @@ public static class BuchdahlAsphericScheme
                 // accumulations as the (I) partner, joined on the height ratio instead of the
                 // incidence ratio. The six p-side accumulations are the BARRED secondary sums
                 // t70, t72, t74, t76, t78 and t80, which is what the (I) members carry.
-                if (options.YBarredFromSharedAccumulations && checkHalf)
+                // The shared q-side barred accumulation with its primary split, and - that being
+                // shared rather than a family member - the (Y) barred members read off the
+                // corrected (I) ones by (85.1). One correction in two halves.
+                if (options.SharedQBarWithSplitPrimary || options.YBarredFromSharedAccumulations)
                 {
-                    Scalar yShift = r.Rho - t[6];
+                    // The two halves are separable, and worth separating: the split-primary
+                    // delta is zero wherever the previous surface is unfigured or has nothing
+                    // accumulated ahead of it, so the two reach different designs.
+                    var d = options.SharedQBarWithSplitPrimary ? qBar[i] : new Scalar[6];
+                    Scalar qbShift = checkHalf && options.YBarredFromSharedAccumulations
+                                   ? r.Rho - t[6] : 0.0;
 
-                    t[102] = oFamily[102] + yShift * t[70];
-                    t[104] = oFamily[104] + yShift * t[72];
-                    t[107] = oFamily[107] + yShift * t[74];
-                    t[109] = oFamily[109] + yShift * t[76];
-                    t[112] = oFamily[112] + yShift * t[78];
-                    t[114] = oFamily[114] + yShift * t[80];
+                    t[102] = oFamily[102] + d[0] + qbShift * t[70];
+                    t[104] = oFamily[104] + d[1] + qbShift * t[72];
+                    t[107] = oFamily[107] + d[2] + qbShift * t[74];
+                    t[109] = oFamily[109] + d[3] + qbShift * t[76];
+                    t[112] = oFamily[112] + d[4] + qbShift * t[78];
+                    t[114] = oFamily[114] + d[5] + qbShift * t[80];
 
-                    t[115] = -r.Rho * t[101] + t[102];
-                    t[116] = -r.Rho * t[103] + t[104];
-                    t[117] = -r.Rho * t[105] + t[107];
-                    t[118] = -r.Rho * t[108] + t[109];
-                    t[119] = -r.Rho * t[110] + t[112];
-                    t[120] = -r.Rho * t[113] + t[114];
+                    Scalar ratio = checkHalf ? r.Rho : t[6];
+                    t[115] = -ratio * t[101] + t[102];
+                    t[116] = -ratio * t[103] + t[104];
+                    t[117] = -ratio * t[105] + t[107];
+                    t[118] = -ratio * t[108] + t[109];
+                    t[119] = -ratio * t[110] + t[112];
+                    t[120] = -ratio * t[113] + t[114];
                 }
+
 
                 // The q-side closed forms with their products taken on the spherical halves.
                 // Both families move: each is built from the same t86..t98, differing only in
@@ -776,6 +821,63 @@ public static class BuchdahlAsphericScheme
         }
 
         return (primitive, recursion, primitiveY, recursionY);
+    }
+
+    /// <summary>
+    /// How the six barred members of the secondary-order family move when the q-side primary
+    /// they carry is split, its figured half pairing with the (Y) dagger instead of the (I) one.
+    ///
+    /// <para>Every site is a product of one dagger with <c>t99</c> or <c>t100</c> - the q-side
+    /// primary and its partner, whose figured halves are <c>q~ alpha</c> and
+    /// <c>2 q~^2 alpha</c> by (67.2). Writing <c>e = Y_dagger - dagger</c>, each site moves by
+    /// <c>e</c> times that figured half, and every recursion carries its own previous value, so
+    /// the moves accumulate.</para>
+    ///
+    /// <para>Returned in the order t102, t104, t107, t109, t112, t114; t115 to t120 follow one
+    /// for one, each being the same entry less a multiple of a primitive member this does not
+    /// move.</para>
+    /// </summary>
+    private static Scalar[][] SharedQBarDelta(BuchdahlTableIRow[] rows, int count)
+    {
+        var delta = new Scalar[count][];
+        var running = new Scalar[6];
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var d = new Scalar[6];
+            if (i > 1)
+            {
+                var prv = rows[i - 1];
+                var pt = prv.T;
+                var pY = prv.Y;
+
+                Scalar e31 = pY[31] - pt[31];
+                Scalar e32 = pY[32] - pt[32];
+                Scalar e33 = pY[33] - pt[33];
+
+                Scalar f99 = prv.Rho * prv.ApFigured;                      // a_q figured half
+                Scalar f100 = 2.0 * prv.Rho * prv.Rho * prv.ApFigured;     // b_q figured half
+                Scalar qp = pt[6];
+
+                // t102: - prev31 prev99
+                d[0] = running[0] - e31 * f99;
+                // t104: - prev31 prev100 - prev32 prev99
+                d[1] = running[1] - e31 * f100 - e32 * f99;
+                // t107, through t106: -0.5 prev6 prev31 prev100 - prev33 prev99
+                d[2] = running[2] - 0.5 * qp * e31 * f100 - e33 * f99;
+                // t109: - prev32 prev100
+                d[3] = running[3] - e32 * f100;
+                // t112, through t111: -(0.5 prev6 prev32 + prev33) prev100
+                d[4] = running[4] - (0.5 * qp * e32 + e33) * f100;
+                // t114: prev6 (-0.5 prev33 prev100)
+                d[5] = running[5] - 0.5 * qp * e33 * f100;
+            }
+
+            delta[i] = d;
+            Array.Copy(d, running, 6);
+        }
+
+        return delta;
     }
 
     private static Scalar[][] DaggerDelta(BuchdahlTableIRow[] rows, int count, Options options)
