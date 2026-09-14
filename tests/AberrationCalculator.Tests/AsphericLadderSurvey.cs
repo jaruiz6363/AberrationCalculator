@@ -488,6 +488,86 @@ public class AsphericLadderSurvey
     }
 
     /// <summary>
+    /// Which of the two families of term in the barred rule carries defect 2.
+    ///
+    /// <para>On <c>Ladder2_A4_Second</c> the figured surface is the last powered one and the one
+    /// before it is a sphere, so every contribution to T-bar except that surface's CHECK half is
+    /// spherical and known right - the whole 79 per cent error sits in one place. The barred rule
+    /// there is <c>q~ T_1 + t115 alpha + Y31 t40</c>, two families of term, and suppressing each
+    /// in turn says which carries it. Suppression is a probe, not a candidate arrangement.</para>
+    /// </summary>
+    [Fact]
+    public void WhichTermOfTheBarredRuleCarriesDefectTwo()
+    {
+        var probes = new (string Name, BuchdahlAsphericScheme.Options? O)[]
+        {
+            ("as-built", null),
+            ("drop own-primary x tertiary-family",
+                new BuchdahlAsphericScheme.Options
+                    { DropOwnPrimaryTimesTertiaryFamilyInCheckBarred = true }),
+            ("drop dagger x own-secondary",
+                new BuchdahlAsphericScheme.Options
+                    { DropDaggerTimesOwnSecondaryInCheckBarred = true }),
+            ("drop both",
+                new BuchdahlAsphericScheme.Options
+                {
+                    DropOwnPrimaryTimesTertiaryFamilyInCheckBarred = true,
+                    DropDaggerTimesOwnSecondaryInCheckBarred = true,
+                }),
+            ("t38 for t40 in check barred",
+                new BuchdahlAsphericScheme.Options { IntrinsicSecondaryInCheckBarred = true }),
+            ("t38 + the (85.1) reading",
+                new BuchdahlAsphericScheme.Options
+                {
+                    IntrinsicSecondaryInCheckBarred = true,
+                    SharedQBarWithSplitPrimary = true,
+                    YBarredFromSharedAccumulations = true,
+                }),
+        };
+
+        var sb = new StringBuilder();
+
+        foreach (string name in new[] { "Ladder2_A4_Second", "Ladder2_FiguredSphere_Then_A4",
+                                        "Ladder3_A4_Middle" })
+        {
+            var d = Load(name);
+            var (fT, fB) = TotalsFromTau(d.Forbes);
+
+            sb.AppendLine();
+            sb.Append(name).Append("\tentry\tforbes");
+            foreach (var p in probes) sb.Append('\t').Append(p.Name);
+            sb.AppendLine();
+
+            var got = new (double[] T, double[] B)[probes.Length];
+            for (int i = 0; i < probes.Length; i++) got[i] = TotalsFromTau(NewRoute(name, probes[i].O));
+
+            double big = 0.0;
+            for (int k = 1; k <= 10; k++)
+            {
+                big = Math.Max(big, Math.Abs(fT[k]));
+                big = Math.Max(big, Math.Abs(fB[k]));
+            }
+
+            for (int k = 1; k <= 10; k++)
+            {
+                if (Math.Abs(fB[k]) < 1e-12 * big) continue;
+                sb.Append("\tTbar").Append(k).Append('\t')
+                  .Append(fB[k].ToString("E3", CultureInfo.InvariantCulture));
+                foreach (var g in got)
+                    sb.Append('\t')
+                      .Append((100 * Math.Abs(g.B[k] - fB[k]) / Math.Abs(fB[k]))
+                                  .ToString("F2", CultureInfo.InvariantCulture));
+                sb.AppendLine();
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-defect2.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
     /// Where the arrangement goes wrong at the level it computes: which of the twenty totals,
     /// and by how much of itself.
     /// </summary>

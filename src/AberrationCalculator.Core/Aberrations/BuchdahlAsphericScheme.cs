@@ -361,6 +361,58 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool SharedQBarWithSplitPrimary { get; init; }
 
+        /// <summary>
+        /// DIAGNOSTIC. Suppress, in the CHECK half only, the terms of the barred tertiary that
+        /// pair the surface's own primary with the tertiary-order family - <c>t10 x t115</c> and
+        /// its partners.
+        /// </summary>
+        /// <remarks>
+        /// The barred rule derived from (85.3) is <c>t-_1 = q t_1 + t31 s^_1 + t115 a^</c>, which
+        /// is the code's structure exactly, so the formula is not at fault. Its check half has
+        /// two families of term - own primary times tertiary family, and secondary dagger times
+        /// own secondary - and on <c>Ladder2_A4_Second</c> the whole error of T-bar1 is in that
+        /// one check half, every other contribution to it being spherical. Suppressing each
+        /// family in turn therefore says which carries the error, with no other design's
+        /// behaviour mixed in. Suppression is not a correction and is never a candidate
+        /// arrangement; it is a probe.
+        /// </remarks>
+        public bool DropOwnPrimaryTimesTertiaryFamilyInCheckBarred { get; init; }
+
+        /// <summary>DIAGNOSTIC. The other family: secondary dagger times the surface's own
+        /// secondary, <c>t31 x t40</c> and its partners, in the check half only.</summary>
+        public bool DropDaggerTimesOwnSecondaryInCheckBarred { get; init; }
+
+        /// <summary>
+        /// Whether the check half's barred tertiary pairs its dagger with the INTRINSIC first
+        /// secondary <c>t38</c> rather than with <c>t40 = t38 + 2 a A_(I)</c>.
+        ///
+        /// <para><b>Where the candidate comes from.</b> Barring (85.3) gives</para>
+        /// <code>
+        ///   t-_1 = q t_1 + t31 s^_1 + t115 a^
+        /// </code>
+        /// <para>in which the dagger multiplies the INTRINSIC secondary. The code multiplies
+        /// <c>t40</c>, which is that intrinsic plus a family term - <c>2 a A_(I)</c> in the hat
+        /// half, <c>2 alpha A_(Y)</c> in the check. The probe
+        /// <c>WhichTermOfTheBarredRuleCarriesDefectTwo</c> shows this is the term carrying the
+        /// error: suppressing it takes T-bar1 from 79 to 15 per cent on the two designs that
+        /// figure their last powered surface, while suppressing the other family makes things
+        /// slightly worse.</para>
+        ///
+        /// <para><b>The objection to it, which is why it is measured and not assumed.</b> The
+        /// same <c>t40</c> is verified in the HAT half by the published tertiary totals, and
+        /// (85.5) says the bracketed factors are the same in both halves - "for the lengthy
+        /// factors, composed of the intermediate coefficients, in the equations for g^(m) and
+        /// gv(m) respectively are the same". A reading that used t38 in one half and t40 in the
+        /// other would contradict that unless the difference is absorbed elsewhere. So this is
+        /// a test of a candidate, not a proposal.</para>
+        ///
+        /// <para>Only the first secondary can be tested this way: <c>t40</c> is the one of the
+        /// six whose relation to its intrinsic counterpart is explicit. The others - t45, t51,
+        /// t55, t61, t66 - are Secondary's "mid" quantities, which are not the intrinsic plus a
+        /// family term, so no equivalent substitution exists for them.</para>
+        /// </summary>
+        public bool IntrinsicSecondaryInCheckBarred { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -561,7 +613,7 @@ public static class BuchdahlAsphericScheme
             // and this makes the whole check half vanish identically, which it must.
             Family(checkHalf: true);
             Load(0.0, 0.0, zero, zero, zero);
-            Pass(t, r.Rho, residueCheck, residueCheckBar, options);
+            Pass(t, r.Rho, residueCheck, residueCheckBar, options, checkHalf: true);
 
             Family(checkHalf: false);
             Load(r.ApSpherical, r.C13Spherical, r.SecSph, r.MSph, r.ZHat);
@@ -569,7 +621,7 @@ public static class BuchdahlAsphericScheme
 
             Family(checkHalf: true);
             Load(r.ApFigured, r.C13Figured, r.SecFig, r.MFig, r.ZCheck);
-            Pass(t, r.Rho, check, checkBar, options);
+            Pass(t, r.Rho, check, checkBar, options, checkHalf: true);
             for (int k = 1; k <= 10; k++)
             {
                 check[k] -= residueCheck[k];
@@ -986,7 +1038,7 @@ public static class BuchdahlAsphericScheme
     /// </summary>
     private static void Pass(Scalar[] t, Scalar carry, Scalar[] outTotals, Scalar[] outBarred,
                              Options options, bool carryIsInfinite = false,
-                             Scalar qT152 = default)
+                             Scalar qT152 = default, bool checkHalf = false)
     {
         // M (26.2) gives b_p = 2 q a_p, and that is how b reaches the arrangement: a bare ratio
         // beside an accumulated family member, the pair multiplying this surface's own a. In the
@@ -1090,29 +1142,45 @@ public static class BuchdahlAsphericScheme
 
         // M (84.23): the barred entries follow from the unbarred ones by replacing the intrinsic
         // part with the ratio times itself and every intermediate by its barred form.
-        outBarred[1] = carry * t[132] + t[10] * t[115] + t[31] * t[40];
-        outBarred[2] = carry * (2.0 * t[10] * t[115] + t[135])
-                     + t[10] * t[116] + t[31] * t[45] + t[32] * t[40];
+        // The two families of term in the barred rule, separable so that either can be probed.
+        // In the hat half both are always present; the flags act on the check half alone.
+        Scalar pt = checkHalf && options.DropOwnPrimaryTimesTertiaryFamilyInCheckBarred
+                  ? 0.0 : 1.0;                                  // own primary x tertiary family
+        Scalar ds = checkHalf && options.DropDaggerTimesOwnSecondaryInCheckBarred
+                  ? 0.0 : 1.0;                                  // dagger x own secondary
+
+        // Each product is scaled in place, leaving the order and association of the sums exactly
+        // as they were - a regrouping here changes the rounding and the parity gate fails, which
+        // is how the first attempt at this probe was caught.
+        // The surface's own first secondary, as the dagger terms pair with it. Identical to
+        // t[40] unless the candidate is in force, so the parity gate is untouched.
+        Scalar ownS1 = checkHalf && options.IntrinsicSecondaryInCheckBarred ? t[38] : t[40];
+
+        outBarred[1] = carry * t[132] + pt * t[10] * t[115] + ds * t[31] * ownS1;
+        outBarred[2] = carry * (pt * 2.0 * t[10] * t[115] + t[135])
+                     + pt * t[10] * t[116] + ds * t[31] * t[45] + ds * t[32] * ownS1;
         outBarred[3] = carry * t[137]
-                     + t[10] * t[117] + t[13] * t[115] + t[31] * t[51] + t[33] * t[40];
-        outBarred[4] = carry * (2.0 * t[116] * t[10] + t[139])
-                     + t[118] * t[10] + t[31] * t[55] + t[32] * t[45];
-        outBarred[5] = carry * (2.0 * t[117] * t[10] + t[141])
-                     + t[119] * t[10] + t[13] * t[116]
-                     + t[31] * t[61] + t[32] * t[51] + t[33] * t[45];
+                     + pt * t[10] * t[117] + pt * t[13] * t[115]
+                     + ds * t[31] * t[51] + ds * t[33] * ownS1;
+        outBarred[4] = carry * (pt * 2.0 * t[116] * t[10] + t[139])
+                     + pt * t[118] * t[10] + ds * t[31] * t[55] + ds * t[32] * t[45];
+        outBarred[5] = carry * (pt * 2.0 * t[117] * t[10] + t[141])
+                     + pt * t[119] * t[10] + pt * t[13] * t[116]
+                     + ds * t[31] * t[61] + ds * t[32] * t[51] + ds * t[33] * t[45];
         outBarred[6] = carry * t[144]
-                     + t[10] * t[120] + t[13] * t[117] + t[31] * t[66] + t[33] * t[51];
-        outBarred[7] = carry * (2.0 * t[10] * t[118] + t[146]) + t[32] * t[55];
-        outBarred[8] = carry * (2.0 * t[10] * t[119] + t[148])
-                     + t[13] * t[118] + t[32] * t[61] + t[33] * t[55];
-        outBarred[9] = carry * (2.0 * t[10] * t[120] + t[150])
-                     + t[13] * t[119] + t[32] * t[66] + t[33] * t[61];
+                     + pt * t[10] * t[120] + pt * t[13] * t[117]
+                     + ds * t[31] * t[66] + ds * t[33] * t[51];
+        outBarred[7] = carry * (pt * 2.0 * t[10] * t[118] + t[146]) + ds * t[32] * t[55];
+        outBarred[8] = carry * (pt * 2.0 * t[10] * t[119] + t[148])
+                     + pt * t[13] * t[118] + ds * t[32] * t[61] + ds * t[33] * t[55];
+        outBarred[9] = carry * (pt * 2.0 * t[10] * t[120] + t[150])
+                     + pt * t[13] * t[119] + ds * t[32] * t[66] + ds * t[33] * t[61];
 
         // Where the ratio is infinite, q t155 cannot be formed as a product. t155 differs from
         // t152 by 4 t19 t65 + t153 + t154, which a surface with nothing accumulated ahead of it
         // does not have; the remainder keeps the plain product, so nothing else moves.
         Scalar carriedT155 = carryIsInfinite ? qT152 + carry * (t[155] - t[152])
                                              : carry * t[155];
-        outBarred[10] = carriedT155 + t[13] * t[120] + t[33] * t[66];
+        outBarred[10] = carriedT155 + pt * t[13] * t[120] + ds * t[33] * t[66];
     }
 }
