@@ -413,6 +413,35 @@ public static class BuchdahlAsphericScheme
         /// </summary>
         public bool IntrinsicSecondaryInCheckBarred { get; init; }
 
+        /// <summary>
+        /// Whether the figured intrinsic secondary is split between the halves by (60.3) - its
+        /// D part into the HAT half, its L part into the check - rather than going wholly into
+        /// the check half.
+        ///
+        /// <para><b>Why this is the candidate.</b> (60.3) is <c>dLambda = D I + L Y</c>: the D
+        /// part rides the incidence and the L part the height, and (85.3) puts the hat
+        /// quantities on <c>i_p</c> and the check on <c>y_p</c>. So a figuring's D half belongs
+        /// in the HAT half. The scheme loads the whole figured secondary - D and L together -
+        /// into the check pass. It knows about the split: it forms <c>SecondaryDHalf</c> and uses
+        /// it to correct the BARRED secondary by <c>(q - q~) D</c>, which is the same fact
+        /// applied in one place and not the other.</para>
+        ///
+        /// <para><b>It predicts the blindness exactly.</b> The suspect product is
+        /// <c>Y31 x s^v_1</c>, and every passing gate is blind to it:</para>
+        /// <list type="bullet">
+        /// <item>one powered surface - <c>t15</c> and <c>t20</c> are zero, so every term carrying
+        /// <c>t38</c> vanishes and <c>Ladder1_A4</c> cannot see it whatever it holds;</item>
+        /// <item>figured SPHERE - if the D half is proportional to <c>c1</c> it is zero there,
+        /// so the split is a no-op and those rungs stay exact;</item>
+        /// <item>r^4 figuring with something accumulated ahead - neither escape applies, and
+        /// those are precisely the broken rungs.</item>
+        /// </list>
+        ///
+        /// <para>The total is preserved either way, <c>(sph + D) + (fig - D) = sph + fig</c>, so
+        /// nothing moves on a design where the halves are not separately used.</para>
+        /// </summary>
+        public bool FiguredSecondarySplitByDandL { get; init; }
+
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
     }
@@ -616,11 +645,29 @@ public static class BuchdahlAsphericScheme
             Pass(t, r.Rho, residueCheck, residueCheckBar, options, checkHalf: true);
 
             Family(checkHalf: false);
-            Load(r.ApSpherical, r.C13Spherical, r.SecSph, r.MSph, r.ZHat);
+            // (60.3) puts the figuring's D half on the incidence and its L half on the height,
+            // so the D half belongs with the hat quantities. The total is unchanged.
+            var hatSec = r.SecSph;
+            var checkSec = r.SecFig;
+            if (options.FiguredSecondarySplitByDandL)
+            {
+                var h = new Scalar[7];
+                var c = new Scalar[7];
+                for (int m = 1; m <= 6; m++)
+                {
+                    Scalar d = r.SecDFigured[m - 1];
+                    h[m] = r.SecSph[m] + d;
+                    c[m] = r.SecFig[m] - d;
+                }
+                hatSec = h;
+                checkSec = c;
+            }
+
+            Load(r.ApSpherical, r.C13Spherical, hatSec, r.MSph, r.ZHat);
             Pass(t, t[6], hat, hatBar, options, r.FlatInCollimatedSpace, r.QT152);
 
             Family(checkHalf: true);
-            Load(r.ApFigured, r.C13Figured, r.SecFig, r.MFig, r.ZCheck);
+            Load(r.ApFigured, r.C13Figured, checkSec, r.MFig, r.ZCheck);
             Pass(t, r.Rho, check, checkBar, options, checkHalf: true);
             for (int k = 1; k <= 10; k++)
             {

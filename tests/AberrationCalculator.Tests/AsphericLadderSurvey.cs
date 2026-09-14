@@ -97,6 +97,15 @@ public class AsphericLadderSurvey
                 new BuchdahlAsphericScheme.Options { QSideProductsOnSphericalHalves = true }),
             ("split-primary-only",
                 new BuchdahlAsphericScheme.Options { SharedQBarWithSplitPrimary = true }),
+            ("D-half-into-the-hat",
+                new BuchdahlAsphericScheme.Options { FiguredSecondarySplitByDandL = true }),
+            ("D-half-plus-85.1",
+                new BuchdahlAsphericScheme.Options
+                {
+                    FiguredSecondarySplitByDandL = true,
+                    SharedQBarWithSplitPrimary = true,
+                    YBarredFromSharedAccumulations = true,
+                }),
             ("Y-barred-shared-accumulations",
                 new BuchdahlAsphericScheme.Options { YBarredFromSharedAccumulations = true }),
             ("both-halves-together",
@@ -516,6 +525,15 @@ public class AsphericLadderSurvey
                 }),
             ("t38 for t40 in check barred",
                 new BuchdahlAsphericScheme.Options { IntrinsicSecondaryInCheckBarred = true }),
+            ("D half into the hat",
+                new BuchdahlAsphericScheme.Options { FiguredSecondarySplitByDandL = true }),
+            ("D half + the (85.1) reading",
+                new BuchdahlAsphericScheme.Options
+                {
+                    FiguredSecondarySplitByDandL = true,
+                    SharedQBarWithSplitPrimary = true,
+                    YBarredFromSharedAccumulations = true,
+                }),
             ("t38 + the (85.1) reading",
                 new BuchdahlAsphericScheme.Options
                 {
