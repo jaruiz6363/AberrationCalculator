@@ -1,0 +1,557 @@
+using System;
+using System.Collections.Generic;
+
+namespace AberrationCalculator.Core.Aberrations;
+
+/// <summary>
+/// The tertiary coefficients of a FIGURED system, by M Sec. 85 - the aspherical form of the
+/// condensed iteration - written as a routine of its own.
+///
+/// <para><b>Why this is separate from <see cref="BuchdahlTableI"/>.</b> The spherical seventh
+/// order there is established: twenty tau against Buchdahl's own printed numbers, against an
+/// independent implementation, and against Forbes' series trace to 2E-13 at both conjugates.
+/// None of that is in question and none of it is touched here. What is in question is the
+/// ASPHERICAL arrangement, which Buchdahl specifies in Sec. 85 but never published an arranged
+/// table for, and which is the one part of this subject with no printed answer to check
+/// against. Changing the working scheme to chase it would put the established half at risk of
+/// the same experiment; so this routine takes the scheme's per-surface quantities - which are
+/// right, and are shared - and does the tertiary arrangement over again on its own terms.</para>
+///
+/// <para><b>Where the defect is, measured rather than argued.</b> The ladder fixtures switch
+/// the induced terms on and off (see <c>AsphericInducedLadderTests</c>), and a second control
+/// says how much work the figuring is doing on each rung. Ranked by error per unit of that
+/// work, the rungs separate cleanly:</para>
+///
+/// <code>
+///   one powered surface, any figuring    no induced     0.03 - 0.13 %   (the oracle's floor)
+///   figured SPHERE, two surfaces         induced        0.006 - 0.008 %
+///   r^4 figured, two surfaces            induced        1.3 - 7.8 %
+///   figured flat                         induced        28 - 61 %
+/// </code>
+///
+/// <para>A figured sphere in Buchdahl's sense (Sec. 66a) is figuring built so that
+/// <c>8 A4 + K c^3 = 0</c> - its PRIMARY contribution vanishes while its sixth-order content
+/// does not. Those rungs carry as much figuring through the induced stage as the others and
+/// come out at the ray oracle's own noise floor, some sixty times better per unit of figuring
+/// than the r^4 rungs. So the induced stage does not fail on figuring as such: <b>it fails on
+/// the figuring's PRIMARY content</b>, and that is what this routine is aimed at.</para>
+///
+/// <para><b>What Sec. 85 requires.</b> (60.3) replaces the spherical <c>dLambda = I D</c> with
+/// <c>dLambda = D I + L Y</c>: a figured surface has a second half that rides the ray HEIGHT
+/// where the first rides the incidence. Every coefficient splits into a hat half and a check
+/// half, the two are carried down the chain on their own ratios - <c>q = i_q/i_p</c> for the
+/// hat, <c>q~ = y_q/y_p</c> for the check - and they are added only at the end. Sec. 85 is
+/// all-or-nothing: every coefficient splits or none does, and a computation that splits some
+/// and not others is worse than one that splits neither.</para>
+///
+/// <para><b>On a spherical surface the check half is identically zero</b>, L being zero, so
+/// this routine must reproduce <see cref="BuchdahlTableI"/> exactly on a system of spheres.
+/// That is the gate it is built against, not an afterthought - see
+/// <c>BuchdahlAsphericSchemeTests</c>.</para>
+/// </summary>
+public static class BuchdahlAsphericScheme
+{
+    /// <summary>
+    /// Which ratio the check pass carries where the arrangement uses one.
+    ///
+    /// <para>These are readings of Sec. 85, not parameters to be tuned. Each names a site where
+    /// the text is compatible with more than one arrangement and the ladder can say which,
+    /// which is how the (Y) family was settled. They are here so that the reading in force is
+    /// visible and can be changed in one place when the source page that settles it is read;
+    /// they are not a fit, and none of them has a continuous knob.</para>
+    /// </summary>
+    public sealed record Options
+    {
+        /// <summary>
+        /// Whether the INTRINSIC chain - t134..t152, which builds the surface's own tertiary
+        /// from its z quantities - runs on the pass's own ratio in the check half, or on the
+        /// incidence ratio q in both halves.
+        ///
+        /// <para><c>false</c> reproduces <see cref="BuchdahlTableI"/> exactly and is the
+        /// starting point, so that any move can be attributed. <c>true</c> is what Sec. 85
+        /// requires if the chain is read as part of the split, which is how the SECONDARY is
+        /// already treated: the figured half of <c>Secondary()</c> runs on the height ratio.
+        /// </para>
+        /// </summary>
+        public bool IntrinsicChainOnPassRatio { get; init; }
+
+        /// <summary>
+        /// Whether the FIGURED half of the accumulated primary travels on the height ratio
+        /// wherever it is combined into a family, rather than on the ratio of the family that
+        /// is combining it.
+        ///
+        /// <para><b>What this is aimed at.</b> On <c>Ladder2_A4_First</c> the figured surface is
+        /// the first powered one and the second is a sphere. A sphere has no check half, so the
+        /// second surface's whole contribution comes from the HAT pass, and the only figured
+        /// thing it can see is what has accumulated ahead of it. That rung is wrong by 1.3 per
+        /// cent. The fault therefore has to be in how accumulated figuring reaches a pass, and
+        /// nowhere else - there is no other route by which it could reach that surface.</para>
+        ///
+        /// <para><b>Why the height ratio.</b> (60.3) splits the surface contribution as
+        /// <c>D I + L Y</c>. The figuring is the L half, whose components go as the ray heights,
+        /// so its chain ratio is <c>q~ = y_q/y_p</c>; that is already why the figured primary's
+        /// barred partners are formed on rho rather than on q, and why the figured half of the
+        /// secondary runs on rho. What this reading says is that the L half keeps that ratio
+        /// when it is being combined by (84.15) as well - it does not acquire the incidence
+        /// ratio by being accumulated into a sum that a later surface reads.</para>
+        ///
+        /// <para><b>It is already in the scheme, for one entry.</b> <c>t24</c> is a recursion
+        /// carrying the previous surface's ratio, and its figured half is accumulated on that
+        /// surface's rho rather than its q - the working scheme does this and records that the
+        /// fifth and sixth secondary coefficients were wrong without it. This reading is that
+        /// same treatment carried to the rest of the family instead of to one entry of it.</para>
+        ///
+        /// <para>It cannot move a sphere, which has no figured half, and it cannot move a
+        /// figured SPHERE in Buchdahl's sense, whose figured primary is zero by construction -
+        /// which is exactly the pattern the ladder shows.</para>
+        /// </summary>
+        public bool AccumulatedFiguringOnHeightRatio { get; init; }
+
+        /// <summary>
+        /// DIAGNOSTIC, not a parameter. How much of the height-ratio shift above to apply:
+        /// 0 is the arrangement as built, 1 is the full swap.
+        ///
+        /// <para>It exists to answer one question that cannot be answered by trying readings one
+        /// at a time - whether a SINGLE number applied at this one site can bring all twenty tau
+        /// to the rays at once. If it can, the site and the structure are right and the number
+        /// names which reading; if the twenty disagree about where the zero is, the structure is
+        /// wrong and no reading of this site will fix it. Fitting it and shipping the fitted
+        /// value would be worthless - a constant chosen to make one ladder agree tells you
+        /// nothing about the next design.</para>
+        /// </summary>
+        public Scalar HeightRatioShiftFraction { get; init; } = 1.0;
+
+        /// <summary>
+        /// Whether the WHOLE of a figured surface's barred secondary travels on the height ratio
+        /// in the dagger recursions of the surface after it, rather than only the part of it
+        /// that is that surface's own height ratio applied once.
+        ///
+        /// <para><b>This is the site the ladder points at.</b> The dagger family t102, t104,
+        /// t107, t109, t112 and t114 each carry a correction on the previous surface's
+        /// <c>rho - q</c>, and the working scheme applies it to the LIFT half of the figured
+        /// barred secondary alone. Its own note says why the rest is left out - the remainder is
+        /// an induced bracket "every term of which carries the figured primary and so vanishes
+        /// with c1" - and that sentence is the ladder's finding stated in advance: a figured
+        /// SPHERE has c1 = 0, so for it the two halves coincide and the scheme is right to
+        /// 0.006 per cent; an r^4 figuring has c1 != 0, so for it a term that should travel on
+        /// the height ratio travels on the incidence ratio instead, and the scheme is wrong by
+        /// 1.3 to 7.8 per cent.</para>
+        ///
+        /// <para>The note records that two earlier attempts on this measured worse. Both
+        /// ESTIMATED the induced half - by shadowing the accumulations, or by differencing a
+        /// spherical twin. This one does not estimate it: the figured barred secondary and its
+        /// lift half are both already on the row, so their difference is the bracket exactly.
+        /// </para>
+        ///
+        /// <para>It cannot move a sphere, which has no figured secondary, nor a figured sphere,
+        /// whose bracket vanishes identically - so it is inert on every rung that is already
+        /// right, by construction rather than by luck.</para>
+        /// </summary>
+        public bool FullFiguredBarredSecondaryInDagger { get; init; }
+
+        /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
+        public static readonly Options AsBuilt = new();
+    }
+
+    /// <summary>
+    /// tau1..tau20 for a figured system, indexed 1..20 to match the literature.
+    ///
+    /// <para>The per-surface quantities come from the shared scheme - they are not recomputed
+    /// here and not disputed - and only the tertiary arrangement over them is this routine's
+    /// own.</para>
+    /// </summary>
+    public static Scalar[] Tau(
+        IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl,
+        Scalar stopParameter, IReadOnlyList<Scalar[]>? aspheric = null,
+        Scalar iota = default, Options? options = null)
+    {
+        if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
+
+        var rows = BuchdahlTableI.Compute(surfaces, indices, efl, stopParameter, aspheric,
+                                          iota: iota);
+        var totals = Totals(rows, surfaces.Count, options ?? Options.AsBuilt);
+
+        return TertiaryCoefficients.AssembleTau(totals.T, totals.Tbar);
+    }
+
+    /// <summary>The ten tertiary totals over the system, unbarred and barred.</summary>
+    public readonly record struct SystemTotals(Scalar[] T, Scalar[] Tbar);
+
+    /// <summary>
+    /// The two passes of Sec. 85, surface by surface, summed over the system.
+    ///
+    /// <para>The rows carry both halves of every quantity already - the scheme computes them
+    /// and then adds them together, one line too early for this purpose - so what happens here
+    /// is that each pass is given its own half and its own family, and the two are added only
+    /// at the end.</para>
+    /// </summary>
+    public static SystemTotals Totals(BuchdahlTableIRow[] rows, int count, Options options)
+    {
+        if (rows == null) throw new ArgumentNullException(nameof(rows));
+        options ??= Options.AsBuilt;
+
+        var T = new Scalar[11];
+        var Tbar = new Scalar[11];
+        var figured = AccumulatedFiguredPrimary(rows, count);
+        var dagger = options.FullFiguredBarredSecondaryInDagger
+                   ? DaggerDelta(rows, count) : null;
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var r = rows[i];
+            var t = r.T;
+
+            // The surface's own quantities, swapped per half and put back after. The row is
+            // shared with the scheme that produced it, so it is left exactly as it was found.
+            Scalar o10 = t[10], o13 = t[13], o40 = t[40];
+            Scalar o38 = t[38], o44 = t[44], o50 = t[50], o54 = t[54], o59 = t[59], o65 = t[65];
+            Scalar o45 = t[45], o51 = t[51], o55 = t[55], o61 = t[61], o66 = t[66];
+            var oz = new Scalar[11];
+            for (int m = 1; m <= 10; m++) oz[m] = t[120 + m];
+            var oFamily = new Scalar[156];
+            for (int m = 25; m <= 33; m++) oFamily[m] = t[m];
+            for (int m = 101; m <= 120; m++) oFamily[m] = t[m];
+
+            var hat = new Scalar[11];
+            var hatBar = new Scalar[11];
+            var check = new Scalar[11];
+            var checkBar = new Scalar[11];
+            var residueCheck = new Scalar[11];
+            var residueCheckBar = new Scalar[11];
+            var zero = new Scalar[11];
+
+            // M (85.1): the hat pass is combined by the (I) family, the check pass by the (Y)
+            // family - the same p and q quantities on the height ratio instead of the incidence
+            // ratio. Both are built alongside each other by the scheme; here each pass is given
+            // the one that belongs to it, at BOTH orders.
+            void Family(bool checkHalf)
+            {
+                var src = checkHalf ? r.Y : oFamily;
+                for (int m = 25; m <= 33; m++) t[m] = src[m];
+                for (int m = 101; m <= 120; m++) t[m] = src[m];
+
+                // The induced bracket of the figured barred secondary, put back on the height
+                // ratio. The (Y) family is already combined on that ratio, so its correction
+                // would be rho - rho and there is nothing to put back; this moves the (I)
+                // family alone.
+                if (dagger != null && !checkHalf)
+                {
+                    var d = dagger[i];
+                    t[102] += d[0]; t[104] += d[1]; t[107] += d[2];
+                    t[109] += d[3]; t[112] += d[4]; t[114] += d[5];
+                    t[115] += d[0]; t[116] += d[1]; t[117] += d[2];
+                    t[118] += d[3]; t[119] += d[4]; t[120] += d[5];
+                }
+
+                // The accumulated figuring re-combined on the height ratio. The (Y) family is
+                // already combined on it, so this moves the (I) family alone - which is what
+                // makes the reading testable: a spherical surface downstream of a figured one
+                // contributes through the hat pass only, and this is the sole thing that
+                // changes for it.
+                if (!options.AccumulatedFiguringOnHeightRatio || checkHalf) return;
+
+                var f = figured[i];
+                Scalar shift = options.HeightRatioShiftFraction * (r.Rho - t[6]);
+                if (shift == 0.0) return;
+
+                t[25] += shift * f[15];
+                t[26] += shift * f[16];
+                t[27] += 2.0 * shift * f[16];
+                t[28] += shift * f[17];
+                t[29] += shift * f[18];
+                t[30] += shift * f[19];
+
+                // The dagger pair follows from the six, by the same (84.15) it always did.
+                t[31] = -t[6] * t[25] + t[26];
+                t[32] = -t[6] * t[27] + t[28];
+                t[33] = -t[6] * t[29] + t[30];
+            }
+
+            void Load(Scalar ap, Scalar c13, IReadOnlyList<Scalar> sec,
+                      IReadOnlyList<Scalar> mm, IReadOnlyList<Scalar> z)
+            {
+                t[10] = ap;
+                t[13] = c13;
+                t[38] = sec[1]; t[44] = sec[2]; t[50] = sec[3];
+                t[54] = sec[4]; t[59] = sec[5]; t[65] = sec[6];
+                t[45] = mm[1]; t[51] = mm[2]; t[55] = mm[3]; t[61] = mm[4]; t[66] = mm[5];
+                for (int m = 1; m <= 10; m++) t[120 + m] = z[m];
+                t[40] = t[38] + 2.0 * t[10] * t[25];
+            }
+
+            // Some induced terms involve NO quantity of this surface at all - they are built
+            // from the accumulated coefficients alone, and belong to ONE pass rather than to
+            // both. The all-zero residue measures them so they can be taken off the check half,
+            // with the same intermediates as the pass it is taken off or it removes
+            // accumulated-only terms of the wrong family. On a sphere every check input is zero
+            // and this makes the whole check half vanish identically, which it must.
+            Family(checkHalf: true);
+            Load(0.0, 0.0, zero, zero, zero);
+            Pass(t, r.Rho, residueCheck, residueCheckBar, options);
+
+            Family(checkHalf: false);
+            Load(r.ApSpherical, r.C13Spherical, r.SecSph, r.MSph, r.ZHat);
+            Pass(t, t[6], hat, hatBar, options, r.FlatInCollimatedSpace, r.QT152);
+
+            Family(checkHalf: true);
+            Load(r.ApFigured, r.C13Figured, r.SecFig, r.MFig, r.ZCheck);
+            Pass(t, r.Rho, check, checkBar, options);
+            for (int k = 1; k <= 10; k++)
+            {
+                check[k] -= residueCheck[k];
+                checkBar[k] -= residueCheckBar[k];
+            }
+
+            // Put the row back exactly as it was found.
+            Family(checkHalf: false);
+            t[10] = o10; t[13] = o13; t[40] = o40;
+            t[38] = o38; t[44] = o44; t[50] = o50; t[54] = o54; t[59] = o59; t[65] = o65;
+            t[45] = o45; t[51] = o51; t[55] = o55; t[61] = o61; t[66] = o66;
+            for (int m = 1; m <= 10; m++) t[120 + m] = oz[m];
+
+            // (85.3): the total is the sum of the two halves, and the barred entry the sum of
+            // the two BARRED halves - each formed by (84.23) within its own pass, not the total
+            // times a ratio, which would drop the barred intermediates entirely.
+            for (int k = 1; k <= 10; k++)
+            {
+                T[k] += hat[k] + check[k];
+                Tbar[k] += hatBar[k] + checkBar[k];
+            }
+        }
+
+        return new SystemTotals(T, Tbar);
+    }
+
+    /// <summary>
+    /// The figured half of the accumulated primary coefficients, surface by surface: what has
+    /// been accumulated AHEAD of each surface from the L term of (60.3) alone.
+    ///
+    /// <para>Indexed to match the scheme's entries - <c>[15]</c> the running sum of a,
+    /// <c>[16]</c> of a-bar, <c>[17]</c> of b, <c>[18]</c> of c, <c>[19]</c> of c-bar, and then
+    /// the q-side entries <c>[20]</c> to <c>[22]</c>, which differ from those only by terms the
+    /// figuring does not reach.</para>
+    ///
+    /// <para>Nothing new is computed here. Each surface's figured primary and the height ratio
+    /// it travels on are already on the row, and the barred partners are formed from them the
+    /// same way the scheme forms them; the two halves are simply kept apart instead of being
+    /// added together. <c>[19]</c> is cross-checked against the scheme's own
+    /// <c>T19Figured</c>, which it must equal.</para>
+    /// </summary>
+    private static Scalar[][] AccumulatedFiguredPrimary(BuchdahlTableIRow[] rows, int count)
+    {
+        var result = new Scalar[count][];
+        var running = new Scalar[23];
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var mine = new Scalar[23];
+            Array.Copy(running, mine, running.Length);
+
+            // t20 = (1/2)(t9 at surface one - t9 here) + t16, t21 = (...) + t18 and
+            // t22 = 2(t21 - t18) + t17. The leading terms are ray-angle constructions with no
+            // figuring in them, so each q-side entry inherits the figured half of the p-side
+            // entry it carries and nothing else.
+            mine[20] = mine[16];
+            mine[21] = mine[18];
+            mine[22] = mine[17];
+            result[i] = mine;
+
+            var r = rows[i];
+            Scalar a = r.ApFigured, rho = r.Rho;
+            running[15] += a;
+            running[16] += rho * a;
+            running[17] += 2.0 * rho * rho * a;
+            running[18] += r.C13Figured;
+            running[19] += r.C14Figured;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// How much each dagger entry moves when the whole figured barred secondary is carried on
+    /// the height ratio instead of its lift half alone.
+    ///
+    /// <para>Computed as a DIFFERENCE from the scheme's own values rather than by rebuilding the
+    /// recursions. Each of the six is of the form <c>(terms) + previous + correction</c>, so a
+    /// change to the correction propagates additively and nothing else in the recursion has to
+    /// be reproduced - which also means the delta is exactly zero wherever the bracket is, and
+    /// the arrangement cannot be disturbed by rounding on a design this reading does not
+    /// touch.</para>
+    ///
+    /// <para>The six are t102, t104, t107, t109, t112 and t114, in that order; t115 to t120
+    /// follow them one for one, each being the same entry less a multiple of a quantity this
+    /// does not move.</para>
+    /// </summary>
+    private static Scalar[][] DaggerDelta(BuchdahlTableIRow[] rows, int count)
+    {
+        var delta = new Scalar[count][];
+        var running = new Scalar[6];
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var d = new Scalar[6];
+            if (i > 1)
+            {
+                var prv = rows[i - 1];
+                Scalar dPrevRatio = prv.Rho - prv.T[6];
+
+                for (int m = 0; m < 6; m++)
+                {
+                    // Where the previous surface is flat and faces collimated space its q is
+                    // infinite and the whole correction is absent from the arrangement - the
+                    // bracket there is regularised as a limit rather than formed as a product -
+                    // so there is nothing to change and the accumulated delta simply carries.
+                    bool regularised = m == 5 && prv.FlatInCollimatedSpace;
+                    Scalar bracket = prv.SecBarFig[m] - prv.SecBarFigLift[m];
+                    d[m] = running[m] + (regularised ? 0.0 : -dPrevRatio * bracket);
+                }
+            }
+
+            delta[i] = d;
+            Array.Copy(d, running, 6);
+        }
+
+        return delta;
+    }
+
+    /// <summary>
+    /// One pass of (84.23) / (85.3): ten tertiary coefficients and their barred partners, from
+    /// whichever half's quantities have been loaded and whichever family has been selected.
+    ///
+    /// <para><paramref name="carry"/> is the pass's ratio - q for the hat half, q-tilde for the
+    /// check. With homogeneous inputs it is a single scalar for the whole pass, which is what
+    /// lets the barred entries be read off the unbarred ones.</para>
+    /// </summary>
+    private static void Pass(Scalar[] t, Scalar carry, Scalar[] outTotals, Scalar[] outBarred,
+                             Options options, bool carryIsInfinite = false,
+                             Scalar qT152 = default)
+    {
+        // M (26.2) gives b_p = 2 q a_p, and that is how b reaches the arrangement: a bare ratio
+        // beside an accumulated family member, the pair multiplying this surface's own a. In the
+        // CHECK half the primary is a_v and its partner is b_v = 2 q~ a_v - the height ratio,
+        // not the incidence ratio.
+        Scalar bq = carry;
+
+        // The ratio the INTRINSIC chain travels on. Reading it as part of the split makes it the
+        // pass's own ratio; in the hat pass the two are the same number, so the spherical result
+        // is bit-identical either way.
+        Scalar chain = options.IntrinsicChainOnPassRatio ? carry : t[6];
+
+        t[134] = 6.0 * chain * t[121] + t[122];
+        t[136] = 0.5 * (t[134] + t[122]) * chain + t[123] + t[124];
+        t[138] = 4.0 * (t[136] - t[123] + t[124]);
+        t[140] = (-2.0 * chain * t[134] + 4.0 * t[136] + t[138] + 8.0 * t[124]) * chain + t[125];
+        t[143] = ((t[123] + t[124] - t[136]) * chain + 0.5 * t[140] + 0.5 * t[125]) * chain
+                 + t[126];
+        t[145] = (2.0 / 3.0) * (4.0 * (t[124] - t[123]) * chain + t[140] - t[125]) + t[127];
+        t[147] = (4.0 * (t[124] - t[123]) * chain + 3.0 * t[127] - 2.0 * t[125]) * chain
+                 + t[128] - 4.0 * t[126] + 4.0 * t[143];
+        t[149] = ((4.0 * chain * t[124] + t[125] + 0.75 * t[127] - 0.75 * t[145]) * chain
+                  + t[147] + 2.0 * t[126] + t[128]) * chain + t[129];
+        t[151] = ((chain * t[121] + t[122]) * chain + t[123] + 9.0 * t[124]) * chain
+                 + t[125] + t[127];
+        t[152] = ((chain * t[151] + t[126] + t[128]) * chain + t[129]) * chain + t[130];
+
+        t[131] = 4.0 * ((-t[8] * t[15] + 2.0 * t[44]) * 0.125 * t[15] - t[20] * t[38]);
+        t[132] = (t[25] * t[25] + 3.0 * t[101]) * t[10] + t[25] * t[40] + t[121] + t[131];
+
+        t[135] = t[134]
+               + 4.0 * (0.5 * (t[26] + t[27]) * t[25] + bq * t[101]
+                        + 0.5 * t[102] + 0.75 * t[103]) * t[10]
+               + 3.0 * (-(t[15] * t[16] + t[69] / 3.0) * t[8] + t[44] * t[83])
+               + 2.0 * (t[50] + t[54]) * t[15] + t[25] * t[45] + t[27] * t[40]
+               - 4.0 * (t[21] + t[22]) * t[38];
+
+        t[137] = t[136]
+               + (2.0 * (bq * t[102] + t[25] * t[29]) + t[26] * t[26] + 3.0 * t[105]) * t[10]
+               - (0.5 * t[16] * t[16] + t[15] * t[18] + t[70]) * t[8]
+               + t[25] * t[51] + t[29] * t[40]
+               + 2.0 * (-2.0 * t[23] * t[38] + t[50] * t[83]) + t[15] * t[59]
+               + 0.5 * t[44] * t[84] + t[13] * t[101];
+
+        t[139] = t[138]
+               + (2.0 * (2.0 * bq * t[103] + t[25] * t[28] + t[26] * t[27])
+                  + t[27] * t[27] + 2.0 * t[104] + 3.0 * t[108]) * t[10]
+               - (4.0 * t[16] * t[16] + t[15] * t[17] + t[71]) * t[8]
+               + 4.0 * (-2.0 * t[23] * t[38] + t[16] * t[50]) + t[27] * t[45] + t[25] * t[55]
+               + 2.0 * ((3.0 * t[16] - t[20]) * t[54] + t[15] * t[59])
+               + (t[17] - 2.0 * t[21] - 3.0 * t[22]) * t[44];
+
+        t[141] = t[140]
+               + 2.0 * ((2.0 * t[105] + t[104]) * bq + t[107] + 1.5 * t[110]) * t[10]
+                 + t[13] * t[103]
+               + 2.0 * ((t[28] + t[29]) * t[26] + t[25] * t[30] + t[27] * t[29]) * t[10]
+               - ((3.0 * t[18] + t[17]) * t[16] + t[15] * t[19] + t[72] + t[73]) * t[8]
+               + (t[19] - 5.0 * t[23]) * t[44] + t[29] * t[45]
+               + (3.0 * t[50] + t[54]) * t[84] + t[27] * t[51]
+               + (5.0 * t[16] - t[20]) * t[59] + t[25] * t[61]
+               + 4.0 * (t[15] * t[65] - t[24] * t[38]);
+
+        t[144] = t[143]
+               + (2.0 * (bq * t[107] + t[26] * t[30]) + t[29] * t[29] + 3.0 * t[113]) * t[10]
+               - (0.5 * t[18] * t[18] + t[16] * t[19] + t[74]) * t[8]
+                 + t[29] * t[51] + t[25] * t[66]
+               + 2.0 * (2.0 * t[16] * t[65] + t[50] * t[85])
+                 - t[24] * t[44] + t[13] * t[105]
+               + 0.5 * t[59] * t[84];
+
+        t[146] = t[145]
+               + 2.0 * ((2.0 * bq * t[108] + t[27] * t[28] + t[109]) * t[10] + t[54] * t[84])
+               - (2.0 * t[16] * t[17] + t[75]) * t[8] + t[27] * t[55]
+               + 4.0 * (t[16] * t[59] - t[23] * t[44]);
+
+        t[148] = t[147]
+               - ((0.5 * t[17] + t[18]) * t[17] + t[76] + t[77]) * t[8] + t[13] * t[108]
+               + 2.0 * (-t[8] * t[16] + t[54]) * t[19] + t[29] * t[55] + t[27] * t[61]
+               + (2.0 * ((2.0 * t[110] + t[109]) * bq + t[28] * t[29]
+                         + t[27] * t[30] + t[112]) + t[28] * t[28]) * t[10]
+               + 8.0 * (-0.25 * ((2.0 * t[50] + 3.0 * t[54]) * t[23] + t[24] * t[44])
+                        + t[16] * t[65])
+               + (3.0 * t[17] + 2.0 * t[18] - t[22]) * t[59];
+
+        t[150] = t[149]
+               + 2.0 * ((2.0 * t[113] + t[112]) * bq + t[28] * t[30]
+                        + t[29] * t[30] + t[114]) * t[10]
+               - ((t[17] + t[18]) * t[19] + t[78] + t[79]) * t[8] + t[13] * t[110]
+               + 4.0 * ((t[17] + t[18]) * t[65] + 0.75 * t[59] * t[85])
+                 + t[29] * t[61] + t[27] * t[66]
+               - 2.0 * (t[50] + t[54]) * t[24];
+
+        t[153] = (2.0 * bq * t[114] + t[30] * t[30]) * t[10] + t[13] * t[113];
+        t[154] = -(0.5 * t[19] * t[19] + t[80]) * t[8] + t[29] * t[66] - t[24] * t[59];
+        t[155] = 4.0 * t[19] * t[65] + t[152] + t[153] + t[154];
+
+        outTotals[1] = t[132];  outTotals[2] = t[135];  outTotals[3] = t[137];
+        outTotals[4] = t[139];  outTotals[5] = t[141];  outTotals[6] = t[144];
+        outTotals[7] = t[146];  outTotals[8] = t[148];  outTotals[9] = t[150];
+        outTotals[10] = t[155];
+
+        // M (84.23): the barred entries follow from the unbarred ones by replacing the intrinsic
+        // part with the ratio times itself and every intermediate by its barred form.
+        outBarred[1] = carry * t[132] + t[10] * t[115] + t[31] * t[40];
+        outBarred[2] = carry * (2.0 * t[10] * t[115] + t[135])
+                     + t[10] * t[116] + t[31] * t[45] + t[32] * t[40];
+        outBarred[3] = carry * t[137]
+                     + t[10] * t[117] + t[13] * t[115] + t[31] * t[51] + t[33] * t[40];
+        outBarred[4] = carry * (2.0 * t[116] * t[10] + t[139])
+                     + t[118] * t[10] + t[31] * t[55] + t[32] * t[45];
+        outBarred[5] = carry * (2.0 * t[117] * t[10] + t[141])
+                     + t[119] * t[10] + t[13] * t[116]
+                     + t[31] * t[61] + t[32] * t[51] + t[33] * t[45];
+        outBarred[6] = carry * t[144]
+                     + t[10] * t[120] + t[13] * t[117] + t[31] * t[66] + t[33] * t[51];
+        outBarred[7] = carry * (2.0 * t[10] * t[118] + t[146]) + t[32] * t[55];
+        outBarred[8] = carry * (2.0 * t[10] * t[119] + t[148])
+                     + t[13] * t[118] + t[32] * t[61] + t[33] * t[55];
+        outBarred[9] = carry * (2.0 * t[10] * t[120] + t[150])
+                     + t[13] * t[119] + t[32] * t[66] + t[33] * t[61];
+
+        // Where the ratio is infinite, q t155 cannot be formed as a product. t155 differs from
+        // t152 by 4 t19 t65 + t153 + t154, which a surface with nothing accumulated ahead of it
+        // does not have; the remainder keeps the plain product, so nothing else moves.
+        Scalar carriedT155 = carryIsInfinite ? qT152 + carry * (t[155] - t[152])
+                                             : carry * t[155];
+        outBarred[10] = carriedT155 + t[13] * t[120] + t[33] * t[66];
+    }
+}

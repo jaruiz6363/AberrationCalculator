@@ -1,0 +1,288 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
+using AberrationCalculator.Core.Aberrations;
+using AberrationCalculator.Core.Forbes;
+using AberrationCalculator.Core.Glass;
+using AberrationCalculator.Core.IO;
+using AberrationCalculator.Core.RayTrace;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace AberrationCalculator.Tests;
+
+/// <summary>
+/// TEMPORARY diagnostic. Where the aspheric tertiary stands today, rung by rung, against both
+/// oracles at once. Delete when the aspheric arrangement is settled.
+/// </summary>
+public class AsphericLadderSurvey
+{
+    private readonly ITestOutputHelper _out;
+    public AsphericLadderSurvey(ITestOutputHelper output) => _out = output;
+
+    private static readonly string[] Designs =
+    {
+        "Ladder1_Sphere", "Ladder1_A4", "Ladder1_Conic", "Ladder1_FiguredSphere",
+        "Ladder2_Sphere", "Ladder2_Sphere_FlatRear",
+        "Ladder2_A4_First", "Ladder2_A4_Second", "Ladder2_A4_Both",
+        "Ladder2_A4_First_FlatRear", "Ladder2_A4_Then_FiguredSphere",
+        "Ladder2_FiguredSphere_First", "Ladder2_FiguredSphere_Second",
+        "Ladder2_FiguredSphere_Both", "Ladder2_FiguredSphere_Then_A4",
+        "Ladder2_FlatFigured", "Ladder2_FiguredFlatRear",
+        "CookeTriplet", "CookeTriplet_PRMSA_START_LO_ASPHERE",
+        "CookeTriplet_SPOTM_START_LO_ASPHERE", "CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8",
+        "TertiaryTestbed_Triplet24",
+    };
+
+    [Fact]
+    public void Survey()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tworst_vs_rays_pct\tworst_k_rays\tworst_vs_forbes_pct"
+                    + "\tworst_k_forbes\tforbes_vs_rays_pct\tresidual\tfiguring_work_pct");
+
+        foreach (string name in Designs)
+        {
+            string row;
+            try { row = Row(name); }
+            catch (Exception ex) { row = name + "\tFAILED: " + ex.Message; }
+            sb.AppendLine(row);
+            _out.WriteLine(row);
+        }
+
+        // Per-coefficient detail on the rungs that matter.
+        foreach (string name in new[] { "Ladder2_A4_First", "Ladder2_A4_Second" })
+        {
+            sb.AppendLine();
+            sb.AppendLine(name + "  k\tbuchdahl\tforbes\trays\tB-F share\tF-R share");
+            var d = Detail(name);
+            foreach (string line in d) sb.AppendLine(line);
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-survey.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine("written: " + path);
+    }
+
+    /// <summary>
+    /// Every reading of Sec. 85 the new routine offers, measured against the rays on every
+    /// rung. This is the instrument the aspheric arrangement is settled with: a reading either
+    /// moves the broken rungs toward the oracle or it does not.
+    /// </summary>
+    [Fact]
+    public void Readings()
+    {
+        var readings = new (string Name, BuchdahlAsphericScheme.Options? O)[]
+        {
+            ("as-built", null),
+            ("intrinsic-chain-on-pass-ratio",
+                new BuchdahlAsphericScheme.Options { IntrinsicChainOnPassRatio = true }),
+            ("accumulated-figuring-on-height-ratio",
+                new BuchdahlAsphericScheme.Options { AccumulatedFiguringOnHeightRatio = true }),
+            ("full-figured-barred-secondary-in-dagger",
+                new BuchdahlAsphericScheme.Options { FullFiguredBarredSecondaryInDagger = true }),
+        };
+
+        var sb = new StringBuilder();
+        sb.Append("design\tfiguring_work_pct");
+        foreach (var r in readings) sb.Append('\t').Append(r.Name);
+        sb.AppendLine();
+
+        foreach (string name in Designs)
+        {
+            var d = Load(name);
+            var bare = LoadStripped(name);
+            double work = 0.0;
+            for (int k = 1; k <= 20; k++)
+                work = Math.Max(work, Math.Abs(d.Forbes[k] - bare[k]) / d.Largest);
+
+            sb.Append(name).Append('\t')
+              .Append((100 * work).ToString("F1", CultureInfo.InvariantCulture));
+
+            foreach (var r in readings)
+            {
+                double[] tau = NewRoute(name, r.O);
+                double worst = 0.0;
+                for (int k = 1; k <= 20; k++)
+                    worst = Math.Max(worst, Math.Abs(tau[k] - d.Rays[k]) / d.Largest);
+                sb.Append('\t')
+                  .Append((100 * worst).ToString("F3", CultureInfo.InvariantCulture));
+            }
+            sb.AppendLine();
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-readings.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// Can ONE number at the accumulated-figuring site bring all twenty tau to the rays at once?
+    /// If the twenty agree about where the zero is, the structure is right; if they scatter, no
+    /// reading of that site can fix it and the search moves elsewhere.
+    /// </summary>
+    [Fact]
+    public void ShiftScan()
+    {
+        var sb = new StringBuilder();
+        foreach (string name in new[] { "Ladder2_A4_First", "Ladder2_A4_Both",
+                                        "Ladder2_A4_First_FlatRear", "Ladder2_FlatFigured",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE" })
+        {
+            var d = Load(name);
+            sb.AppendLine();
+            sb.AppendLine(name + "\tx\tworst_pct\tworst_k");
+            foreach (double x in new[] { -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0, 2.0 })
+            {
+                var tau = NewRoute(name, new BuchdahlAsphericScheme.Options
+                {
+                    AccumulatedFiguringOnHeightRatio = true,
+                    HeightRatioShiftFraction = x,
+                });
+                double worst = 0.0; int kw = 0;
+                for (int k = 1; k <= 20; k++)
+                {
+                    double e = Math.Abs(tau[k] - d.Rays[k]) / d.Largest;
+                    if (e > worst) { worst = e; kw = k; }
+                }
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "\t{0,5}\t{1:F3}\t{2}", x, 100 * worst, kw));
+            }
+        }
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-shift-scan.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>The new routine's tau, in the transverse convention the oracles use.</summary>
+    private static double[] NewRoute(string name, BuchdahlAsphericScheme.Options? options)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+
+        var p = ParaxialTrace.Trace(sys, n, field);
+        var coefficients = BuchdahlCoefficients.Compute(sys, p);
+
+        double objectDistance = sys.Surfaces[0].Thickness;
+        bool infinite = double.IsInfinity(objectDistance);
+        double iota = infinite ? 0.0 : -p.Efl / objectDistance;
+
+        int stop = sys.StopSurfaceIndex;
+        var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                            sys.Surfaces[stop].SemiDiameter, iota);
+        var spherical = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+        var increments = AsphericSchemeIncrements.Build(coefficients, spherical,
+                                                        sys.LastOpticalSurface());
+
+        double stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
+        double g = 1.0 - stopParameter * iota;
+        double lengthFactor = p.Efl / (p.N[sys.LastOpticalSurface()] * scheme.PRayFinalAngle);
+        double u = -(0.5 * p.Epd / p.Efl) / g;
+        double hmax = infinite
+            ? Math.Tan(field * Math.PI / 180.0)
+            : -(p.ParaxialImageHeight / p.Magnification) / objectDistance;
+
+        var raw = BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, stopParameter,
+                                             increments, iota, options);
+        return TertiaryCoefficients.ToTransverse(raw, lengthFactor, u, hmax,
+                                                 coefficients.Totals.B7);
+    }
+
+    private sealed record Loaded(double[] Scheme, double[] Forbes, double[] Rays,
+                                 double Largest, double Residual);
+
+    private static Loaded Load(string name)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+
+        var p = ParaxialTrace.Trace(sys, n, field);
+        var b = BuchdahlCoefficients.Compute(sys, p);
+        TertiaryCoefficients.Attach(sys, n, p, b, field);
+        var t = b.Totals;
+
+        var scheme = new double[21];
+        for (int k = 1; k <= 20; k++)
+            scheme[k] = k == 1 ? t.B7
+                : (double)typeof(BuchdahlTerms).GetField("Tau" + k)!.GetValue(t)!;
+
+        var inv = CoefficientInversion.Invert(sys, n, p, field);
+        var forbes = ForbesCoefficients.Invert(sys, n, p, field);
+
+        double big = 0.0;
+        for (int k = 1; k <= 20; k++) big = Math.Max(big, Math.Abs(scheme[k]));
+
+        return new Loaded(scheme, forbes?.Tau ?? new double[21], inv?.Tau ?? new double[21],
+                          big, inv?.Residual ?? double.NaN);
+    }
+
+    /// <summary>
+    /// The same lens with every figuring removed, by Forbes - so that "the figuring does real
+    /// work on this rung" is a measurement rather than an assumption. Without it, a rung that
+    /// agrees might only be one where the figuring does nothing.
+    /// </summary>
+    private static double[] LoadStripped(string name)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+        foreach (var s in sys.Surfaces)
+        {
+            s.Conic = 0.0;
+            for (int k = 0; k < s.AsphericCoefficients.Length; k++)
+                s.AsphericCoefficients[k] = 0.0;
+        }
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+        var p = ParaxialTrace.Trace(sys, n, field);
+        return ForbesCoefficients.Invert(sys, n, p, field)?.Tau ?? new double[21];
+    }
+
+    private static string Row(string name)
+    {
+        var d = Load(name);
+        var bare = LoadStripped(name);
+        double work = 0.0;
+        for (int k = 1; k <= 20; k++)
+            work = Math.Max(work, Math.Abs(d.Forbes[k] - bare[k]) / d.Largest);
+
+        double wr = 0, wf = 0, fr = 0;
+        int kr = 0, kf = 0;
+        for (int k = 1; k <= 20; k++)
+        {
+            double a = Math.Abs(d.Scheme[k] - d.Rays[k]) / d.Largest;
+            double b = Math.Abs(d.Scheme[k] - d.Forbes[k]) / d.Largest;
+            double c = Math.Abs(d.Forbes[k] - d.Rays[k]) / d.Largest;
+            if (a > wr) { wr = a; kr = k; }
+            if (b > wf) { wf = b; kf = k; }
+            if (c > fr) fr = c;
+        }
+        return string.Format(CultureInfo.InvariantCulture,
+            "{0}\t{1:F3}\t{2}\t{3:F3}\t{4}\t{5:F3}\t{6:E1}\t{7:F3}",
+            name, 100 * wr, kr, 100 * wf, kf, 100 * fr, d.Residual, 100 * work);
+    }
+
+    private static List<string> Detail(string name)
+    {
+        var d = Load(name);
+        var lines = new List<string>();
+        for (int k = 1; k <= 20; k++)
+            lines.Add(string.Format(CultureInfo.InvariantCulture,
+                "  tau{0}\t{1:E6}\t{2:E6}\t{3:E6}\t{4:F3}\t{5:F3}",
+                k, d.Scheme[k], d.Forbes[k], d.Rays[k],
+                100 * Math.Abs(d.Scheme[k] - d.Forbes[k]) / d.Largest,
+                100 * Math.Abs(d.Forbes[k] - d.Rays[k]) / d.Largest));
+        return lines;
+    }
+}

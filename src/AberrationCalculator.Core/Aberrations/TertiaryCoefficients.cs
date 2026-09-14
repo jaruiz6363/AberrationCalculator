@@ -37,6 +37,20 @@ public static class TertiaryCoefficients
                 Tb[m] += rows[i].TertiaryTotalBar[m];
             }
 
+        return AssembleTau(T, Tb);
+    }
+
+    /// <summary>
+    /// Buchdahl's ten tertiary coefficients and their barred partners, read as Robb's twenty
+    /// tau. Paper III Table II, and nothing else.
+    ///
+    /// <para>Split out so that <see cref="BuchdahlAsphericScheme"/> can reach the same tau from
+    /// its own totals. The table is a fact about the two notations rather than about how the
+    /// totals were arrived at, so two routes that disagree about a figured surface must still
+    /// agree about this.</para>
+    /// </summary>
+    internal static Scalar[] AssembleTau(Scalar[] T, Scalar[] Tb)
+    {
         var tau = new Scalar[21];
         tau[1] = T[1];
         tau[2] = Tb[1] + T[2] / 2.0;
