@@ -253,8 +253,16 @@ public class Surface
     {
         get
         {
-            if (SMath.Abs(Conic) > 1e-12) return true;
-            foreach (Scalar a in AsphericCoefficients) if (SMath.Abs(a) > 1e-30) return true;
+            // Vanishes, not a magnitude test, and the difference is the whole of whether a
+            // figuring variable works. In the differentiating build a conic of exactly 0 with a
+            // derivative of 1 - a spherical surface whose conic the optimiser has just been
+            // handed as a variable - is NOT absent: it is the quantity being moved. A magnitude
+            // test reads it from the value alone, calls the surface spherical, and every
+            // aberration coefficient comes back with a right value and a zero derivative, so
+            // the optimiser concludes that figuring the surface cannot help because it cannot
+            // see that it would. In plain double this is the same comparison it always was.
+            if (!SMath.Vanishes(Conic, 1e-12)) return true;
+            foreach (Scalar a in AsphericCoefficients) if (!SMath.Vanishes(a, 1e-30)) return true;
             return false;
         }
     }

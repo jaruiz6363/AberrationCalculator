@@ -139,42 +139,160 @@ public class AnalyticDerivativeTests
     }
 
     /// <summary>
-    /// A figured design is refused, and told why.
+    /// <b>A figuring variable that starts at exactly zero keeps its gradient.</b> This is the
+    /// case a designer actually meets: a spherical surface, a conic declared variable, and the
+    /// optimiser asked to find out whether figuring it helps. The conic is 0 on the first
+    /// evaluation.
     ///
-    /// <para>Not because the number would be wrong. Buchdahl's aspheric seventh order needs an
-    /// arrangement he never published and this repository has one that agrees with Forbes to
-    /// 2E-10 or better - the refusal is that routing to it would put a test for figuring inside
-    /// the evaluation loop and cost a second run of the scheme, and that route has not been
-    /// wired through and Jacobian-checked. The run stops before it starts rather than taking a
-    /// path nothing here has measured.</para>
+    /// <para>It is the same hazard as
+    /// <see cref="ACurvatureVariableStartingAtExactlyZeroKeepsItsGradient"/> and it bites harder.
+    /// Whether the aspheric block runs at all is decided by asking whether the figuring is
+    /// non-zero, and a magnitude test answers that from the VALUE alone - so a conic of 0 with
+    /// derivative 1 reads as a sphere, the whole aspheric arrangement is skipped, and every
+    /// coefficient comes back with a correct value and a zero derivative. The merit function
+    /// would be right, the gradient would be silently short, and the optimiser would report that
+    /// figuring the surface does not help because it could not see that it would.</para>
+    ///
+    /// <para>The fix is <c>SMath.Vanishes</c>, which is the same comparison in <c>double</c> and
+    /// additionally asks about the derivative in the dual build. A structural zero has no
+    /// derivative either, so the sparse skips that keep the chain fast are untouched.</para>
     /// </summary>
     [Fact]
-    public void AFiguredDesignIsRefusedBeforeAnythingRuns()
+    public void AFiguringVariableStartingAtExactlyZeroKeepsItsGradient()
     {
-        var catalog = CatalogLocator.LoadBundled();
-        var system = LensFile.Read(Fixtures.Lens("CookeTriplet"), catalog);
-        system.Surfaces[1].Conic = -0.42;
+        var vars = Spread(new[]
+        {
+            new Variable { Kind = VariableKind.Conic, Surface = 1 },
+            new Variable { Kind = VariableKind.Asphere4, Surface = 2 },
+            new Variable { Kind = VariableKind.Curvature, Surface = 4 },
+        });
 
-        var ex = Assert.Throws<NotSupportedException>(
-            () => new Design(system, catalog, TripletVariables()));
+        // Every surface spherical, and left that way: the figuring variables start at zero.
+        var (design, merit) = Build("CookeTriplet", vars, EveryOperand());
 
-        Assert.Contains("SPHERICAL", ex.Message);
-        Assert.Contains("surface 1", ex.Message);
-        // It has to say what to do instead, not merely refuse.
-        Assert.Contains("--forbes", ex.Message);
+        Assert.Equal(0.0, design.System.Surfaces[1].Conic);
+        Assert.Equal(0.0, design.System.Surfaces[2].AsphericCoefficients[1]);
+        Assert.False(design.System.Surfaces[1].IsFigured);
+
+        CheckJacobian(design, merit, vars);
     }
 
-    /// <summary>An aspheric coefficient is figuring just as a conic is.</summary>
+    /// <summary>
+    /// The same for r^6 and r^8, which enter the arrangement through different terms than r^4
+    /// does and are skipped by their own test.
+    /// </summary>
     [Fact]
-    public void AnAsphericTermCountsAsFiguringToo()
+    public void HigherAsphericVariablesStartingAtZeroKeepTheirGradients()
+    {
+        var vars = Spread(new[]
+        {
+            new Variable { Kind = VariableKind.Asphere6, Surface = 2 },
+            new Variable { Kind = VariableKind.Asphere8, Surface = 2 },
+            new Variable { Kind = VariableKind.Curvature, Surface = 1 },
+        });
+
+        var (design, merit) = Build("CookeTriplet", vars, EveryOperand());
+        CheckJacobian(design, merit, vars);
+    }
+
+    /// <summary>
+    /// <b>A figured design is optimised, and every derivative through the aspheric arrangement
+    /// is exact.</b> This is the test the figuring variables exist for.
+    ///
+    /// <para>It used to assert the opposite - that a figured design was refused - and the
+    /// refusal was right while Buchdahl's aspheric seventh order was a reconstruction the rays
+    /// rejected. That arrangement is now established (<c>docs/verification.md</c>), so the
+    /// design runs, and what has to be checked is no longer that it is declined but that the
+    /// whole chain differentiates: the aspheric increments, the dual run that supplies the sixth
+    /// barred member, the trivariate figuring cubics, and the tertiary that comes out of them.
+    /// Every one of those is on the path from a conic to PRMSA and none of them was ever
+    /// exercised by a derivative before.</para>
+    /// </summary>
+    [Fact]
+    public void AnalyticJacobianMatchesCentralDifferences_FiguredTriplet()
+    {
+        var vars = Spread(new[]
+        {
+            new Variable { Kind = VariableKind.Curvature, Surface = 1 },
+            new Variable { Kind = VariableKind.Curvature, Surface = 4 },
+            new Variable { Kind = VariableKind.Thickness, Surface = 2 },
+        });
+
+        var (design, merit) = Build("CookeTriplet", vars, EveryOperand(),
+                                    s => s.Surfaces[1].Conic = -0.42);
+
+        CheckJacobian(design, merit, vars);
+    }
+
+    /// <summary>
+    /// The figuring itself as the variable, which is the case the aspheric increments are
+    /// differentiated for. A conic and an r^4 term on different surfaces, so that the induced
+    /// terms carrying one into the other are live.
+    /// </summary>
+    [Fact]
+    public void AnalyticJacobianMatchesCentralDifferences_FiguringIsTheVariable()
+    {
+        var vars = Spread(new[]
+        {
+            new Variable { Kind = VariableKind.Conic, Surface = 1 },
+            new Variable { Kind = VariableKind.Asphere4, Surface = 4 },
+            new Variable { Kind = VariableKind.Curvature, Surface = 2 },
+        });
+
+        var (design, merit) = Build("CookeTriplet", vars, EveryOperand(), s =>
+        {
+            s.Surfaces[1].Conic = -0.42;
+            s.Surfaces[4].AsphericCoefficients[1] = 1.5e-6;
+        });
+
+        CheckJacobian(design, merit, vars);
+    }
+
+    /// <summary>
+    /// The r^6 and r^8 terms too, and on a surface that is otherwise a plain sphere - so the
+    /// figuring being differentiated is the whole of what makes the surface aspheric.
+    /// </summary>
+    [Fact]
+    public void AnalyticJacobianMatchesCentralDifferences_HigherAsphericTerms()
+    {
+        var vars = Spread(new[]
+        {
+            new Variable { Kind = VariableKind.Asphere4, Surface = 2 },
+            new Variable { Kind = VariableKind.Asphere6, Surface = 2 },
+            new Variable { Kind = VariableKind.Asphere8, Surface = 2 },
+        });
+
+        var (design, merit) = Build("CookeTriplet", vars, EveryOperand(), s =>
+        {
+            s.Surfaces[2].AsphericCoefficients[1] = 2.0e-6;
+            s.Surfaces[2].AsphericCoefficients[2] = -3.0e-9;
+            s.Surfaces[2].AsphericCoefficients[3] = 5.0e-12;
+        });
+
+        CheckJacobian(design, merit, vars);
+    }
+
+    /// <summary>
+    /// A spherical design is unchanged by any of this. The routing sends spheres down
+    /// Buchdahl's own published table exactly as before, so the one thing that must NOT have
+    /// moved is the answer on a lens with no figuring in it.
+    /// </summary>
+    [Fact]
+    public void ASphericalDesignStillTakesTheSphericalRoute()
     {
         var catalog = CatalogLocator.LoadBundled();
         var system = LensFile.Read(Fixtures.Lens("CookeTriplet"), catalog);
-        system.Surfaces[4].AsphericCoefficients[1] = 1.5e-6;
 
-        var ex = Assert.Throws<NotSupportedException>(
-            () => new Design(system, catalog, TripletVariables()));
-        Assert.Contains("surface 4", ex.Message);
+        var design = new Design(system, catalog, TripletVariables());
+        var merit = new MeritFunction(design);
+        merit.AddRange(EveryOperand());
+
+        var r = merit.Evaluate(true);
+        Assert.True(r.Ok, r.Failure);
+
+        // No surface acquired figuring by being looked at.
+        for (int i = 1; i <= system.LastOpticalSurface(); i++)
+            Assert.False(system.Surfaces[i].IsFigured);
     }
 
     /// <summary>

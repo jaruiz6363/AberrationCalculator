@@ -79,13 +79,13 @@ public static class TertiaryCubics
             for (int c = 0; a + b + c < 4; c++)
             {
                 Scalar xv = x.C[a, b, c];
-                if (xv == 0.0) continue;
+                if (SMath.Vanishes(xv)) continue;
                 for (int d = 0; a + d < 4; d++)
                 for (int e = 0; a + b + d + e < 4; e++)
                 for (int f = 0; a + b + c + d + e + f < 4; f++)
                 {
                     Scalar yv = y.C[d, e, f];
-                    if (yv == 0.0) continue;
+                    if (SMath.Vanishes(yv)) continue;
                     r.C[a + d, b + e, c + f] += xv * yv;
                 }
             }
@@ -526,7 +526,12 @@ public static class TertiaryCubics
         public static Figuring From(Scalar conic, Scalar a4, Scalar a6, Scalar a8,
                                     Scalar curvature, Scalar scale)
         {
-            if (SMath.Abs(conic) < 1e-14 && a4 == 0.0 && a6 == 0.0 && a8 == 0.0) return None;
+            // Vanishes rather than a magnitude test and an == 0.0, for the reason set out on
+            // Surface.IsFigured: under differentiation a figuring term of exactly zero that the
+            // optimiser is moving has a derivative, and returning None here would drop the whole
+            // tertiary figuring contribution from the gradient while leaving its value right.
+            if (SMath.Vanishes(conic, 1e-14) && SMath.Vanishes(a4)
+                && SMath.Vanishes(a6) && SMath.Vanishes(a8)) return None;
 
             Scalar cv = curvature, cv2 = cv * cv, cv3 = cv2 * cv;
             Scalar c1 = 8.0 * a4 + conic * cv3;

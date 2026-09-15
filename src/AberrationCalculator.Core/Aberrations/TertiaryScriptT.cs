@@ -114,13 +114,13 @@ public static class TertiaryScriptT
             for (int c = 0; a + b + c < 4; c++)
             {
                 Scalar xv = x.C[a, b, c];
-                if (xv == 0.0) continue;
+                if (SMath.Vanishes(xv)) continue;
                 for (int d = 0; a + d < 4; d++)
                 for (int e = 0; a + b + d + e < 4; e++)
                 for (int f = 0; a + b + c + d + e + f < 4; f++)
                 {
                     Scalar yv = y.C[d, e, f];
-                    if (yv == 0.0) continue;
+                    if (SMath.Vanishes(yv)) continue;
                     r.C[a + d, b + e, c + f] += xv * yv;
                 }
             }
@@ -239,7 +239,7 @@ public static class TertiaryScriptT
         var total = new Cubic();
         for (int m = 0; m < 6; m++)
         {
-            if (coefficients[m] == 0.0) continue;
+            if (SMath.Vanishes(coefficients[m])) continue;
             var (nx, ne, nz) = QuadMonomials[m];
             var product = Cubic.One();
             for (int t = 0; t < nx; t++) product = product * xi;
@@ -264,7 +264,7 @@ public static class TertiaryScriptT
         var total = new Cubic();
         for (int m = 0; m < 10; m++)
         {
-            if (coefficients[m] == 0.0) continue;
+            if (SMath.Vanishes(coefficients[m])) continue;
             var (nx, ne, nz) = Monomials[m];      // same exponent pattern in xi, eta, zeta
             var product = Cubic.One();
             for (int t = 0; t < nx; t++) product = product * xi;

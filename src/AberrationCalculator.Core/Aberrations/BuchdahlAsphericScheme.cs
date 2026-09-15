@@ -974,7 +974,7 @@ public static class BuchdahlAsphericScheme
 
                 var f = figured[i];
                 Scalar shift = options.HeightRatioShiftFraction * (r.Rho - t[6]);
-                if (shift == 0.0) return;
+                if (SMath.Vanishes(shift)) return;
 
                 t[25] += shift * f[15];
                 t[26] += shift * f[16];

@@ -76,12 +76,12 @@ OPTIONS
                       by carrying dual numbers through the same aberration chain that
                       computes it, so there is no step size anywhere and no
                       cancellation. Coefficients come from Buchdahl's closed-form
-                      scheme, so SPHERICAL SURFACES ONLY: a figured design, or a
-                      conic asked to be a variable, is refused before the run. Not
-                      because his aspheric seventh order is in doubt - it agrees
-                      with Forbes to 2E-10 or better - but because routing to it
-                      would put a test for figuring inside the inner loop. Analysis
-                      is unaffected.
+                      scheme. CONICS AND EVEN ASPHERES ARE CARRIED, as values
+                      and as variables - CC, A4, A6, A8 - a figured surface
+                      taking the aspheric arrangement of Sec. 85 and a
+                      spherical one Buchdahl's own table. One design is
+                      refused and named: a figured flat facing collimated
+                      light. Analysis is unaffected.
                       See docs/optimizer.md for the merit-function format.
       --optimize_basin_hopping
                       Search over BASINS rather than descending one: kick the design

@@ -225,6 +225,51 @@ public static partial class TertiaryCoefficients
     /// coefficient set of zeros is at least honestly third-and-fifth order, where a partial
     /// one would be neither.</para>
     /// </summary>
+    /// <summary>
+    /// The surfaces whose tertiary can only be reached through the Laurent-series route: a
+    /// FIGURED surface that is flat and faces collimated light. Empty for everything else,
+    /// which is almost every design.
+    ///
+    /// <para><b>Why anyone outside needs to ask.</b> There the marginal incidence is identically
+    /// zero, the incidence ratio q is infinite, and the finite coefficients arrive only after
+    /// terms carrying different powers of q cancel. <see cref="Attach"/> handles it by running
+    /// the whole chain again in Laurent series arithmetic with that surface's curvature as the
+    /// variable - but that route is implemented in Core alone. In the linked arithmetics the
+    /// call compiles away to nothing, so a caller differentiating this chain would get a value
+    /// that is right and a derivative that is not, with nothing to say so. A caller that cannot
+    /// live with that has to be able to detect the case before it runs, and this is how.</para>
+    ///
+    /// <para>The condition is read off the scheme rather than re-derived from the geometry, so
+    /// that it cannot drift from the one <see cref="Attach"/> actually branches on.</para>
+    /// </summary>
+    public static List<int> SeriesOnlySurfaces(Models.OpticalSystem system, Scalar[] indices,
+                                               RayTrace.ParaxialResult paraxial)
+    {
+        var found = new List<int>();
+        if (system == null || indices == null || paraxial == null) return found;
+
+        int stop = system.StopSurfaceIndex;
+        if (stop < 0 || stop >= system.Surfaces.Count) return found;
+
+        bool anyFigured = false;
+        int last = system.LastOpticalSurface();
+        for (int i = 1; i <= last && i < system.Surfaces.Count; i++)
+            if (system.Surfaces[i].IsFigured) { anyFigured = true; break; }
+        if (!anyFigured) return found;
+
+        var scheme = BuchdahlScheme.Compute(system.Surfaces, indices, paraxial.Efl,
+                                            system.Surfaces[stop].SemiDiameter,
+                                            IotaOf(system, paraxial));
+        var rows = BuchdahlTableI.Compute(system.Surfaces, indices, paraxial.Efl, scheme.P,
+                                          iota: IotaOf(system, paraxial));
+
+        for (int i = 1; i <= last && i < rows.Length; i++)
+            if (rows[i] != null && rows[i].FlatInCollimatedSpace && system.Surfaces[i].IsFigured)
+                found.Add(i);
+
+        return found;
+    }
+
     public static void Attach(Models.OpticalSystem system, Scalar[] indices,
                               RayTrace.ParaxialResult paraxial, BuchdahlResult coefficients,
                               Scalar maxField)

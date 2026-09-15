@@ -16,15 +16,13 @@ namespace AberrationCalculator.Tests;
 /// <summary>
 /// The conic and even-asphere variables: that they read, write, file, copy and round-trip.
 ///
-/// <para><b>What is deliberately not here.</b> The DERIVATIVE of a figuring variable - that
-/// seeding a conic into the dual-number build produces the right column of the Jacobian - is not
-/// tested in this file, because <see cref="Design"/> still refuses a design that would become
-/// figured and there is no way to reach the evaluation loop through it. That check belongs with
-/// the routing that lifts the refusal, and it has an instrument already built for it:
-/// <c>AnalyticDerivativeTests.CheckJacobian</c> compares every analytic derivative against a
-/// central difference, operand by operand and variable by variable, and a figured fixture goes
-/// through it unchanged once the guard is gone. Testing the seeding here through a narrower
-/// path would test a route the optimiser does not use.</para>
+/// <para><b>The DERIVATIVE of a figuring variable is not tested here</b>, and that is placement
+/// rather than omission. <c>AnalyticDerivativeTests</c> compares every analytic derivative
+/// against a central difference, operand by operand and variable by variable, and its figured
+/// cases go through the same harness as the spherical ones - which is where a derivative
+/// belongs, beside the others it has to agree with. This file is about the plumbing: that a
+/// conic reads, writes, folds inside a bound, survives a save and a reopen, and is not shared
+/// between two copies of a design.</para>
 /// </summary>
 public class AsphericVariableTests
 {
@@ -200,18 +198,19 @@ public class AsphericVariableTests
         Assert.Equal(0.0, system.Surfaces[1].AsphericCoefficients[1]);
         Assert.NotEqual(-3.0, system.Surfaces[1].Conic);
     }
-
     /// <summary>
-    /// Until the evaluation loop is routed to the aspheric tertiary, a figuring variable is
-    /// refused - and the refusal says what is actually missing. It is not that the number would
-    /// be wrong, and a message saying so would send a reader to the wrong place.
+
+    /// A figuring variable is ACCEPTED. It was refused until the evaluation loop was routed to
+    /// the aspheric tertiary, and this is the assertion that the routing happened - the test
+    /// that the derivative through it is exact lives in
+    /// <c>AnalyticDerivativeTests.AnalyticJacobianMatchesCentralDifferences_FiguringIsTheVariable</c>.
     /// </summary>
     [Theory]
     [InlineData(VariableKind.Conic)]
     [InlineData(VariableKind.Asphere4)]
     [InlineData(VariableKind.Asphere6)]
     [InlineData(VariableKind.Asphere8)]
-    public void AFiguringVariableIsStillRefusedAndSaysWhatIsMissing(VariableKind kind)
+    public void AFiguringVariableIsAccepted(VariableKind kind)
     {
         var catalog = CatalogLocator.LoadBundled();
         var system = Triplet();
@@ -220,10 +219,10 @@ public class AsphericVariableTests
         vars.Add(new Variable { Kind = VariableKind.Curvature, Surface = 1 });
         vars.Add(new Variable { Kind = kind, Surface = 2 });
 
-        var ex = Assert.Throws<NotSupportedException>(() => new Design(system, catalog, vars));
+        var design = new Design(system, catalog, vars);
 
-        Assert.Contains("would figure surface 2", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("routing", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, design.Variables.Count);
+        Assert.Equal(kind, design.Variables[1].Kind);
     }
 
     /// <summary>Curvature and thickness are untouched by any of this.</summary>
@@ -240,5 +239,50 @@ public class AsphericVariableTests
         Assert.Equal(2, design.Variables.Count);
         Assert.Equal("CV1", design.Variables[0].Name);
         Assert.Equal("TH2", design.Variables[1].Name);
+    }
+
+    /// <summary>
+    /// <b>The one case still refused, and it is refused for a reason that is not a doubt about
+    /// the arrangement.</b> A figured flat facing collimated light has an identically zero
+    /// marginal incidence, so the incidence ratio is infinite and the finite coefficients
+    /// arrive only after terms in different powers of it cancel. Core reaches them by running
+    /// the whole chain again in Laurent series arithmetic with that surface's curvature as the
+    /// variable - and that route is compiled into Core alone. In the differentiating build the
+    /// call has no body, so the optimiser would get a right value and a silently wrong
+    /// derivative. This is the only place that can be caught.
+    /// </summary>
+    [Fact]
+    public void AFiguredFlatInCollimatedLightIsRefusedAndSaysWhy()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(Fixtures.Lens("Ladder2_FlatFigured"), catalog);
+
+        var vars = new VariableSet();
+        vars.Add(new Variable { Kind = VariableKind.Curvature, Surface = 1 });
+
+        var ex = Assert.Throws<NotSupportedException>(() => new Design(system, catalog, vars));
+
+        Assert.Contains("FIGURED FLAT", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Laurent", ex.Message, StringComparison.Ordinal);
+        // It has to say what to do instead, not merely refuse.
+        Assert.Contains("--forbes", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The NEARLY flat twin of the design above is accepted, and that boundary is the point:
+    /// bend the surface and the singularity is gone. A refusal that caught both would be
+    /// refusing an ordinary aspheric design.
+    /// </summary>
+    [Fact]
+    public void ANearlyFlatFiguredSurfaceIsAccepted()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(Fixtures.Lens("Ladder2_FiguredNearFlatRear"), catalog);
+
+        var vars = new VariableSet();
+        vars.Add(new Variable { Kind = VariableKind.Curvature, Surface = 1 });
+
+        var design = new Design(system, catalog, vars);
+        Assert.Single(design.Variables.Items);
     }
 }

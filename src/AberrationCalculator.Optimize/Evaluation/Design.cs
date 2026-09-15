@@ -33,10 +33,7 @@ public sealed class Design
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         Variables = variables ?? throw new ArgumentNullException(nameof(variables));
 
-        // Everything that could make an evaluation ask a question about the DESIGN rather than
-        // about the numbers is settled here, once, before anything runs. Past this point the
-        // chain does arithmetic and nothing else.
-        SphericalOnly.Require(system, variables);
+        // What cannot be optimised honestly is settled here, before anything runs.
         RefuseWhatCannotBeOptimisedHonestly();
 
         // A BOUND IS AN INVARIANT, NOT A REQUEST. Bounds here are held by reflection, and
@@ -68,6 +65,11 @@ public sealed class Design
         }
 
         RefreshIndices();
+
+        // Everything that could make an evaluation ask a question about the DESIGN rather than
+        // about the numbers is settled here, once, before anything runs. It needs the indices,
+        // so it comes last in the constructor rather than first.
+        SupportedDesign.Require(this);
     }
 
     /// <summary>The working design. Variables are written straight into this.</summary>
@@ -76,7 +78,7 @@ public sealed class Design
     public VariableSet Variables { get; }
 
     /// <summary>One sentence for the report on where the coefficients came from.</summary>
-    public string RouteExplanation => SphericalOnly.Explanation;
+    public string RouteExplanation => SupportedDesign.Explanation;
 
     /// <summary>Materials that could not be resolved when the indices were last built.</summary>
     public System.Collections.Generic.List<string> Unresolved { get; } = new();

@@ -276,7 +276,7 @@ public static class BuchdahlCoefficients
             // against a shifted curvature would measure it from a sphere the surface does not
             // have, which shows up in B - primary spherical - and nowhere else.
             var vf = surf.VertexForm();
-            bool hasR2 = SMath.Abs(Coef(surf, 0)) > 0.0;
+            bool hasR2 = !SMath.Vanishes(Coef(surf, 0));
 
             // The polynomial figuring the scheme consumes: r^4, r^6, r^8. It is read whenever
             // it is PRESENT, not only when the surface carries the label for it. Every reader
@@ -287,11 +287,11 @@ public static class BuchdahlCoefficients
             // hundred per cent, in a coefficient that is in fact computed correctly. The
             // conic already behaves this way, through the branch above, and the asymmetry
             // between the two was what made it look like a real finding.
-            bool hasPolynomial = SMath.Abs(Coef(surf, 1)) > 0.0
-                              || SMath.Abs(Coef(surf, 2)) > 0.0
-                              || SMath.Abs(Coef(surf, 3)) > 0.0;
+            bool hasPolynomial = !SMath.Vanishes(Coef(surf, 1))
+                              || !SMath.Vanishes(Coef(surf, 2))
+                              || !SMath.Vanishes(Coef(surf, 3));
 
-            if (SMath.Abs(surf.Conic) > Eps)
+            if (!SMath.Vanishes(surf.Conic, Eps))
             {
                 conic = vf.Conic;
                 isAspheric = true;

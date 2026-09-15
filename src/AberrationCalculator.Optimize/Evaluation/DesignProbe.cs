@@ -109,11 +109,14 @@ public sealed class DesignProbe
     /// The thirty-seven transverse aberration coefficients at one wavelength, by Buchdahl's
     /// computing scheme.
     ///
-    /// <para>There is no route to choose here and no test for figuring, because a design that
-    /// would need either never reaches this far - <see cref="SphericalOnly"/> refuses it before
-    /// the first evaluation. That is the point of the restriction. This is the innermost loop of
-    /// the optimiser, run once per variable per iteration, and a question settled once outside it
-    /// is a question not asked tens of thousands of times inside it.</para>
+    /// <para><b>Figuring is carried here, and the route is not chosen in this file.</b>
+    /// <c>TertiaryCoefficients.Attach</c> sends a figured system to the aspheric arrangement of
+    /// Sec. 85 and a spherical one to Buchdahl's own published table, and it makes that choice
+    /// once per evaluation out of data it has already computed - not per surface, and not inside
+    /// the arithmetic. A spherical design therefore travels exactly the path it always did, bit
+    /// for bit. <see cref="SupportedDesign"/> still refuses one case before the first evaluation,
+    /// the figured flat facing collimated light, because the route that handles it exists only in
+    /// the plain-double build and would leave the derivative silently wrong here.</para>
     /// </summary>
     public AdA.BuchdahlTerms Coefficients(int wave)
     {

@@ -326,8 +326,8 @@ published number, an internal identity, or two independent routes made to agree.
   time the tolerance was retuned. Five plausible coordinates that a scan contradicts are worse
   than none, so it reports none.
 - **Seventh order** is not implemented. The tertiary rows of VI Table I are transcribed but unused.
-- **The optimiser stays spherical-only.** NAT here is analysis. The one thing it feeds the
-  optimiser is the `ASBLT` operand, which is Gu's as-built tolerance sensitivity.
+- **NAT here is analysis, and feeds the optimiser one thing.** It is the
+  `ASBLT` operand, Gu's as-built tolerance sensitivity.
 
 ## References
 

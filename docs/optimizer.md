@@ -9,7 +9,7 @@ are **analytic everywhere**, including through the predicted spot — which is a
 thirty-seven aberration coefficients reached through some five thousand lines of Buchdahl's
 computing scheme.
 
-**It works on spherical surfaces only.** That is a deliberate restriction, and the reasoning is
+**It carries conics and even aspheres**, with one exception it names. The reasoning is
 below.
 
 ## The derivatives are exact
@@ -73,7 +73,7 @@ rounding. On a plane it is total: the flat-surface starting guess is already exa
 returns on its first pass, and a plano surface being bent reports that bending it does not move
 the ray at all. The finite-difference check caught it; nothing else would have.
 
-## Spherical surfaces only
+## Figuring, and the one case still refused
 
 The coefficients come from **Buchdahl's computing scheme** — closed-form sums over the paraxial
 ray data, with no trace, no fit and no linear solve. It is the fastest route to a seventh-order
@@ -81,44 +81,87 @@ coefficient there is, and it is why the predicted spot can be evaluated tens of 
 times in a search.
 
 It handles a conic or an even asphere correctly at third and fifth order. At **seventh** order a
-figured system needs an aspheric arrangement Buchdahl never published as a table. This
-repository now has one, as a separate routine (`BuchdahlAsphericScheme`), and it agrees with
-Forbes' series trace on every figured test design to 2E-10 or better — but it is a different
-computation: members of the barred q accumulation from the identities of M Sec. 22, the last of
-them from a second, DUAL run of the whole scheme (paper XII Sec. 6), and the figuring's two
-halves carried through separate passes. Until September 2026 it was a reconstruction the rays
-rejected, by up to a factor of four on `tau20`.
+figured system needs an aspheric arrangement Buchdahl never published as a table, and this
+repository's reconstruction of it is a separate routine, `BuchdahlAsphericScheme`. Until
+September 2026 that reconstruction was one the rays rejected, by up to a factor of four on
+`tau20`, and **this optimizer refused every figured design** on that ground. It was the right
+refusal: descending a quantity wrong by a factor of four is not slow, it is aimed wrongly.
 
-A figured design is still **refused before anything runs**, and a conic or aspheric coefficient
-cannot be declared a variable at all — `VariableKind` has no such member, and the merit-function
-parser recognises `CC` and `A4` in order to *explain* the refusal rather than report them as a
-typo.
+**That arrangement is now established** — all twenty tau against Forbes' series trace to between
+2E-13 and 2E-10 on every figured design, the rays agreeing with both, and an independent
+transcription in `macros/BUCH7_ASPH.ZPL` reproducing `FORBES.ZPL` inside OpticStudio. See
+[docs/verification.md](verification.md). So the optimizer carries figuring: a conic and the r^4,
+r^6 and r^8 terms are variables like any other, spelled `CC`, `A4`, `A6` and `A8`.
 
-**Why refuse rather than route.** The aspheric routine could be differentiated too — it is
-compiled into the dual-number build alongside the spherical one — but carrying two routes means
-every evaluation asks which one it is on, and asks whether each surface is figured, in the middle
-of the arithmetic, and the figured one costs a second run of the scheme. Those questions get
-answered once, at the door, or they get answered tens of thousands of times a second. Refusing up
-front keeps the evaluation loop free of them entirely: there is not one test for figuring anywhere
-inside it. Lifting the restriction is now a decision about cost, not about correctness.
+**The route is not chosen in the inner loop**, which was the second objection and did not survive
+contact with the code. `TertiaryCoefficients.Attach` makes the choice once per evaluation, out of
+data it has already computed — not per surface, and not inside the arithmetic. A spherical design
+travels the path it always did, bit for bit.
 
-That decision also disposes of a hazard rather than merely avoiding it. Buchdahl's chain is full
-of sparse skips of the shape `if (coefficient == 0.0) continue;`, which are sound in ordinary
-arithmetic and a trap under differentiation: a quantity that is zero *because nobody has moved it
-yet* has value nothing and a derivative of something, and dropping its term leaves the value
-perfectly right while the gradient goes silently short. With figuring out of scope, every one of
-those skips is correct again exactly as written, and the fast path stays fast.
+**What is still refused is one case.** A **figured flat facing collimated light** has an
+identically zero marginal incidence, so the incidence ratio is infinite and the finite
+coefficients arrive only after terms in different powers of it cancel. Core reaches them by
+running the whole chain again in Laurent series arithmetic with that surface's curvature as the
+variable — and that route is compiled into Core alone. In the differentiating build the call has
+no body, so the optimizer would get a right value and a silently wrong derivative. `SupportedDesign`
+catches it before the first evaluation, because nothing downstream can. Bend the surface and it
+is exact again: at R = 100 the two routes agree to 1.6E-12.
 
-The hazard does not disappear entirely, because it is not only about conics. A **plane** surface
-has zero curvature, so the conic term of its sag is skipped — and if that curvature is a variable
-being bent, the term has value nothing and derivative `r^2/2`. The two places where that arises,
-`Surface.Sag` and `RealRayTrace.SagSlope`, therefore ask `SMath.Vanishes` instead of `== 0.0`,
-which is the same comparison in `double` and additionally asks about the derivative in the dual
-build. `ACurvatureVariableStartingAtExactlyZeroKeepsItsGradient` is the test.
+### The sparse-skip hazard, which figuring made real
 
-**The analysis side is unaffected.** `abcalc <lens>`, `--forbes`, `--screen` and
-`--distortion-coefficients` handle conics and even aspheres at every order they report, exactly
-as before. It is only the optimizer that is spherical.
+Buchdahl's chain is full of skips of the shape `if (coefficient == 0.0) continue;`. They are
+sound in ordinary arithmetic and a trap under differentiation: a quantity that is zero *because
+nobody has moved it yet* has value nothing and a derivative of something, and dropping its term
+leaves the value perfectly right while the gradient goes silently short.
+
+This was known and handled for one case — a **plane** surface whose curvature is being bent, in
+`Surface.Sag` and `RealRayTrace.SagSlope`, which ask `SMath.Vanishes` instead of `== 0.0`.
+`Vanishes` is the same comparison in `double` and additionally asks about the derivative in the
+dual build, so a structural zero is still skipped and the fast path stays fast.
+
+**Carrying figuring made the same hazard bite much harder, and it took a test to find it.** The
+case is the one a designer actually meets: a spherical surface, a conic declared variable, and
+the optimizer asked whether figuring it would help. The conic is 0 on the first evaluation. Every
+gate deciding whether the aspheric arrangement runs at all was a magnitude test on the VALUE —
+`SMath.Abs(conic) > Eps`, `Abs(a) > 1e-30`, `a4 == 0.0` — so the surface read as a sphere, the
+whole aspheric block was skipped, and every coefficient came back with a correct value and a zero
+derivative. **The merit function would have been right and the gradient identically zero**, and
+the optimizer would have reported that figuring the surface does not help, because it could not
+see that it would. Seven gates in four files now ask `Vanishes`:
+`BuchdahlCoefficients` (the conic and the three polynomial terms), `Surface.IsFigured`,
+`TertiaryCubics.Figuring.From` and the polynomial multiply, `TertiaryScriptT`'s two expansions,
+and one height-ratio shift in `BuchdahlAsphericScheme`.
+
+`AFiguringVariableStartingAtExactlyZeroKeepsItsGradient` and
+`HigherAsphericVariablesStartingAtZeroKeepTheirGradients` are the tests, and they failed before
+the fix in the way that matters — the gradient was not wrong by a little, it was absent.
+
+### What it costs
+
+A figured evaluation is more work than a spherical one and always will be; the aspheric scheme is
+a different and larger computation than Buchdahl's table. It is now considerably cheaper than it
+was, because removing it uncovered a whole wasted pass.
+
+`BuchdahlTableI.Compute` opened with a full recursive call to itself, assigned to a local that
+nothing ever read — left behind by an approach that differenced against the unfigured system and
+was abandoned before it was finished. It cost an entire extra pass of the scheme on every
+evaluation of every figured design. Invisible while figured designs were only analysed one at a
+time; not invisible at tens of thousands of evaluations a run. Measured, best of three runs of
+three hundred, one machine:
+
+| design | before | after |
+|---|---|---|
+| `Ladder2_A4_Both` | 0.385 ms | 0.258 ms |
+| `CookeTriplet_SPOTM_..._A4_A8` | 0.557 ms | 0.326 ms |
+| `CookeTriplet`, spherical | 0.063 ms | 0.066 ms |
+| `KingslakeDG`, spherical | 0.087 ms | 0.092 ms |
+
+A figured evaluation is 1.5 to 1.7 times faster. The spherical rows are the control: the dead
+pass never ran there, so nothing should have moved, and what small movement there is is the
+measurement's own spread.
+
+**The analysis side is unaffected**, as it always was. `abcalc <lens>`, `--forbes`, `--screen`
+and `--distortion-coefficients` handle conics and even aspheres at every order they report.
 
 ## Three files
 
@@ -314,7 +357,7 @@ VAR CV 4 MIN -0.05 MAX 0.05
 PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1  # surface 2's thickness follows surface 1's
 ```
 
-`CV` and `TH`, and nothing else — see **Spherical surfaces only** above.
+`CV`, `TH`, `CC`, `A4`, `A6` and `A8` — see **Figuring, and the one case still refused** above.
 
 **A `VAR` line merges into what is already known.** `VAR TH 2 MIN 1.0` followed by
 `VAR TH 2 MAX 25.0` leaves both limits, not the second alone. For a file this program writes the

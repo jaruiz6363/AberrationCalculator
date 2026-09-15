@@ -36,15 +36,21 @@ source**: once in `double`, which is the analysis this program has always perfor
 its tests still guard bit-for-bit, and once with the arithmetic aliased to a forward-mode dual
 number. Nothing is copied and nothing can drift, because they are the same files.
 
-**The optimizer works on spherical surfaces only.** The coefficients come from Buchdahl's
-closed-form scheme, which is the fastest route to a seventh-order coefficient there is. The
-aspheric seventh order is a separate routine - the arrangement of his Sec. 85, which he never
-published as a table, now reconstructed here and agreeing with Forbes' series trace to 2E-10 or
-better on every figured test design ([docs/verification.md](docs/verification.md)) - but it takes a second, dual run
-of the scheme, and the optimizer keeps that choice out of its inner loop by refusing a figured
-design before the run: there is not one test for figuring anywhere inside the evaluation loop.
-Reading and analysing a figured design is unaffected - the coefficient reports, `--forbes` and
-the rest handle conics and even aspheres at every order they report.
+**The optimizer carries conics and even aspheres.** The coefficients come from Buchdahl's
+closed-form scheme, which is the fastest route to a seventh-order coefficient there is; a figured
+surface takes the arrangement of his Sec. 85, which he never published as a table and which is
+reconstructed here. The optimizer refused every figured design until that reconstruction was
+established - it agrees with Forbes' series trace on all twenty tertiary coefficients to between
+2E-13 and 2E-10, and the rays agree with both ([docs/verification.md](docs/verification.md)) - and
+now a conic and the r^4, r^6 and r^8 terms are variables like any other, `CC`, `A4`, `A6`, `A8`.
+A spherical design takes Buchdahl's own published table exactly as before, bit for bit.
+
+**One case is still refused, and named**: a figured flat facing collimated light, where the
+incidence ratio is infinite and the finite coefficients arrive only after terms in different
+powers of it cancel. The analysis side reaches those through a Laurent series in that surface's
+curvature; that route is not in the differentiating build, so the optimizer would get a right
+value and a silently wrong derivative. Bend the surface and it is exact again. See
+[docs/optimizer.md](docs/optimizer.md).
 
 PSD recovers the curvature Gauss-Newton discards, from two successive **exact** Jacobians - a
 secant that is only worth taking when both ends are real measurements, which is why nothing here
@@ -420,7 +426,7 @@ Working, and validated in [docs/verification.md](docs/verification.md):
 - the re-normalised per-aberration and per-surface contributions to that spot
 - the optimizer: PSD, Hooke-Jeeves and basin hopping over analytic derivatives, with the
   Jacobian checked operand by operand and variable by variable against central differences.
-  Spherical surfaces only, on purpose ([docs/optimizer.md](docs/optimizer.md))
+  Conics and even aspheres carried; one case named and refused ([docs/optimizer.md](docs/optimizer.md))
 - **nodal aberration theory**, third and fifth order: what the aberrations do when the
   surfaces are not on a common axis, and where the nodes go. Driven by an `.align` sidecar
   that works the same for all six formats, and checked against Thompson's and Buchdahl's
@@ -453,7 +459,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 | [docs/verification.md](docs/verification.md) | **What is actually established here, by what evidence, and what is not.** The order of evidence, the standing results, and the aspheric arrangement with everything it rests on. Read this one first if you are deciding whether to trust any number this program prints. |
 | [docs/references.md](docs/references.md) | Every source the method comes from, which of them have been read, and where each piece of the implementation came from. |
 | [docs/forbes.md](docs/forbes.md) | The second, independent route to the tertiary coefficients - a Lagrangian series trace - and why a program that already had one needed another. |
-| [docs/optimizer.md](docs/optimizer.md) | The optimiser: analytic derivatives throughout, the merit-function format, and why it works on spherical surfaces only. |
+| [docs/optimizer.md](docs/optimizer.md) | The optimiser: analytic derivatives throughout, the merit-function format, how figuring is carried, and the one design it refuses. |
 | [docs/spot-prediction.md](docs/spot-prediction.md) | How well a spot predicted from coefficients matches a traced one, measured rather than asserted, and where seventh order runs out. |
 | [docs/distortion-prediction.md](docs/distortion-prediction.md) | Distortion from the coefficients against traced chief rays. The cleanest window onto a single coefficient there is, and what it found. |
 | [docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md) | What the aberrations do when the surfaces are not on a common axis, and where the nodes go. |

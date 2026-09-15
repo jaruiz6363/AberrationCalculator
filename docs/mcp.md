@@ -87,12 +87,13 @@ are out of place; and `base_path`, which says what folder bare file names are ta
 ### `optimize`
 
 Optimises a lens against a merit function given inline as text, and reports what changed.
-Every derivative it uses is analytic - see [docs/optimizer.md](optimizer.md) - including through PRMSA, the
-predicted spot. **Spherical surfaces only:** the optimiser differentiates Buchdahl's spherical
-routine and keeps figuring out of its inner loop altogether, so a figured design - or a conic
-asked to be a variable - is refused before the run. The reporting tools above are unaffected and
-handle figuring throughout, the seventh order through the separate aspheric routine, which
-agrees with Forbes' series trace on every figured test design.
+Every derivative it uses is analytic - see [docs/optimizer.md](optimizer.md) - including through
+PRMSA, the predicted spot. **Conics and even aspheres are carried**, as values and as variables
+(`CC`, `A4`, `A6`, `A8`): a figured surface takes the aspheric arrangement of Buchdahl's Sec. 85,
+which agrees with Forbes' series trace to 2E-10 or better, and a spherical one takes his own
+published table bit for bit. One design is refused and named - a figured flat facing collimated
+light, where the route that reaches the coefficients is not in the differentiating build. The
+reporting tools above are unaffected and handle figuring throughout.
 
 | argument | |
 |---|---|
