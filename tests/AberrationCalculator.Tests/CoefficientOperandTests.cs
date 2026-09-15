@@ -260,4 +260,31 @@ public class CoefficientOperandTests
             }
         }
     }
+
+    /// <summary>
+    /// <c>HELP B</c> and <c>HELP TAU15</c> answer, because a coefficient's own name is how the
+    /// operand is written and so has to be how it is asked about. Before this they threw "not a
+    /// command or an operand" - wrong and discouraging in the same breath, and exactly what a
+    /// designer would type first after reading a coefficient off the report.
+    /// </summary>
+    [Theory]
+    [InlineData("B")]
+    [InlineData("tau15")]
+    [InlineData("Pi5")]
+    [InlineData("M2")]
+    [InlineData("B7")]
+    public void HelpAnswersForACoefficientName(string name)
+    {
+        string text = SettingsCommands.Help(name);
+
+        Assert.False(string.IsNullOrWhiteSpace(text));
+        Assert.Contains("coefficient", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>And something that is neither is still refused, so a typo is still heard.</summary>
+    [Fact]
+    public void HelpStillRefusesAnUnknownName()
+    {
+        Assert.Throws<ArgumentException>(() => SettingsCommands.Help("TAU21"));
+    }
 }

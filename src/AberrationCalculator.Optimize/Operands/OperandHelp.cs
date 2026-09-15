@@ -105,6 +105,15 @@ public static class OperandHelp
         foreach (var type in All)
             if (string.Equals(type.ToString(), word, StringComparison.OrdinalIgnoreCase))
                 return type;
+
+        // A coefficient's own name is how a coefficient operand is written, so it has to be how
+        // one is asked about. Without this, HELP B and HELP TAU15 - the two things a designer is
+        // most likely to type after reading a coefficient off the report - answer that no such
+        // operand exists, which is both wrong and discouraging in the same breath.
+        foreach (string name in AberrationCalculator.Core.Aberrations.BuchdahlTerms.Names)
+            if (string.Equals(name, word, StringComparison.OrdinalIgnoreCase))
+                return OperandType.ABER;
+
         return null;
     }
 }
