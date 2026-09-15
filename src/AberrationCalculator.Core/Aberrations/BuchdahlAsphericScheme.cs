@@ -690,9 +690,10 @@ public static class BuchdahlAsphericScheme
         /// <para>Against Forbes' series trace it gives all twenty tau to between 2E-13 and 2E-10
         /// relative on every figured design in the ladder and on the three aspheric triplets,
         /// where the arrangement as built was out by 17 to 467 per cent; spheres, one-surface
-        /// designs and figured spheres stay exact. NOT covered: a figured system with a flat
-        /// surface facing collimated space, where q is infinite and every one of the four is
-        /// skipped, leaving that surface as built.</para>
+        /// designs and figured spheres stay exact. At a figured flat facing collimated light q is
+        /// infinite and the four are skipped here; <see cref="TertiaryCoefficients.Attach"/>
+        /// takes such a system through the Laurent-series build of this routine instead, which
+        /// is exact there (1.2E-9 against Forbes).</para>
         /// </summary>
         public static readonly Options Default = new()
         {

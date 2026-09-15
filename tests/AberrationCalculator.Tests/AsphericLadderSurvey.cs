@@ -1872,6 +1872,67 @@ public class AsphericLadderSurvey
     }
 
     /// <summary>
+    /// The Laurent-series route's numbers: on the figured flat through the shipping path against
+    /// Forbes, and on regular surfaces against the double route, with its self-checks.
+    /// </summary>
+    [Fact]
+    public void FlatCollimatedSeriesNumbers()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("case\tworst rel\ttau\tunderflows\tdropped\tnegative orders\ttruncation gap\tconverged");
+
+        foreach (var (name, surface, againstForbes) in new[]
+                 {
+                     ("Ladder2_FlatFigured", 2, true),
+                     ("Ladder2_A4_Both", 2, false),
+                     ("Ladder3_A4_Middle", 3, false),
+                     ("CookeTriplet_SPOTM_START_LO_ASPHERE", 1, false),
+                     ("CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8", 5, false),
+                 })
+        {
+            var catalog = CatalogLocator.LoadBundled();
+            var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+            var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+            double field = 0.0;
+            foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+            var p = ParaxialTrace.Trace(sys, n, field);
+            var b = BuchdahlCoefficients.Compute(sys, p);
+            TertiaryCoefficients.Attach(sys, n, p, b, field);
+            var shipped = new double[21];
+            for (int k = 2; k <= 20; k++)
+                shipped[k] = (double)typeof(BuchdahlTerms).GetField("Tau" + k)!.GetValue(b.Totals)!;
+
+            var series = TertiaryCoefficients.SeriesTau(sys, n, field, new[] { surface });
+            var reference = againstForbes
+                ? ForbesCoefficients.Invert(sys, n, p, field)?.Tau ?? new double[21]
+                : shipped;
+            var compared = againstForbes ? shipped : series.Tau;
+
+            double largest = 0.0;
+            for (int k = 2; k <= 20; k++) largest = Math.Max(largest, Math.Abs(reference[k]));
+            double worst = 0.0;
+            int wk = 0;
+            for (int k = 2; k <= 20; k++)
+            {
+                if (Math.Abs(reference[k]) < 1e-9 * largest) continue;
+                double rel = Math.Abs(compared[k] - reference[k]) / Math.Abs(reference[k]);
+                if (rel > worst) { worst = rel; wk = k; }
+            }
+
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "{0} ({1})\t{2:E2}\t{3}\t{4}\t{5:E1}\t{6:E1}\t{7:E1}\t{8}",
+                name, againstForbes ? "shipped vs Forbes" : $"series surf {surface} vs double",
+                worst, wk, series.Underflows, series.WorstDroppedLeading,
+                series.NegativeOrderResidue, series.TruncationDisagreement, series.Converged));
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-flat-series.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
     /// The figured flat's own inputs to the two passes - its primary, secondary and tertiary
     /// halves as the row carries them - on the exactly flat lens against the mean of c = +-h.
     /// Where the flat row holds zero and the mean does not, the flat branch has dropped that input.

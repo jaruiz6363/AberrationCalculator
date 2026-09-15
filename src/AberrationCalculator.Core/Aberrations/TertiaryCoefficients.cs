@@ -17,11 +17,24 @@ namespace AberrationCalculator.Core.Aberrations;
 /// Buchdahl's own arrangement, verified against his printed numbers. A figured system goes
 /// through <see cref="BuchdahlAsphericScheme"/> with its <see cref="BuchdahlAsphericScheme.Options.Default"/>
 /// arrangement of M Sec. 85, which agrees with Forbes' series trace to 2E-10 or better on every
-/// figured design tested except one with a flat surface facing collimated space.
-/// <see cref="Attach"/> makes the choice; <see cref="Compute"/> is the spherical routine alone.</para>
+/// figured design tested. A figured flat facing collimated light, where the incidence ratio is
+/// infinite, goes through the same routine in Laurent series arithmetic
+/// (TertiaryCoefficients.FlatCollimated.cs). <see cref="Attach"/> makes the choice;
+/// <see cref="Compute"/> is the spherical routine alone.</para>
 /// </summary>
-public static class TertiaryCoefficients
+public static partial class TertiaryCoefficients
 {
+    /// <summary>
+    /// The transverse tau2..tau20 of a figured system with a flat surface facing collimated light,
+    /// computed in Laurent series arithmetic with that surface's curvature as the series variable.
+    /// Implemented in Core alone (TertiaryCoefficients.FlatCollimated.cs); in the linked
+    /// arithmetics it has no body and the call compiles away. Leaves <paramref name="transverse"/>
+    /// null when the series route cannot vouch for its answer.
+    /// </summary>
+    static partial void FlatCollimatedTau(Models.OpticalSystem system, Scalar[] indices,
+                                          Scalar maxField, List<int> flatSurfaces,
+                                          ref Scalar[]? transverse);
+
     /// <summary>
     /// Computes tau1..tau20 for a system. The returned array is indexed 1..20; index 0 is
     /// unused, so the numbering matches the literature rather than being off by one.
@@ -286,6 +299,27 @@ public static class TertiaryCoefficients
         }
 
         var tau = ToTransverse(raw, lengthFactor, u, hmax, coefficients.Totals.B7);
+
+        // A figured flat facing collimated light makes q infinite, and every formula above that
+        // divides by its incidence has no finite form there. The same formulas in Laurent series
+        // arithmetic, with that surface's curvature as the variable, give the finite answer as
+        // their zeroth-order coefficient; where that route vouches for itself it replaces
+        // tau2..tau20. tau1 stays the fifth-order code's B7, as everywhere else.
+        if (increments != null)
+        {
+            var flat = new List<int>();
+            for (int i = 1; i < system.Surfaces.Count - 1 && i < spherical.Length; i++)
+                if (spherical[i].FlatInCollimatedSpace && i < increments.Length && increments[i] != null)
+                    flat.Add(i);
+
+            if (flat.Count > 0)
+            {
+                Scalar[]? series = null;
+                FlatCollimatedTau(system, indices, maxField, flat, ref series);
+                if (series != null)
+                    for (int k = 2; k <= 20; k++) tau[k] = series[k];
+            }
+        }
 
         var t = coefficients.Totals;
         t.Tau2 = tau[2];   t.Tau3 = tau[3];   t.Tau4 = tau[4];   t.Tau5 = tau[5];

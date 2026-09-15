@@ -342,8 +342,8 @@ the full seventh inside four per cent, and every order improving on the last at 
 
 **On a figured design the tool uses Forbes' `tau20`, and says so.** That choice was made while
 this program's reconstruction of the aspheric tertiary gave a `tau20` the rays rejected. The
-reconstruction has since been completed and now agrees with Forbes on every figured test design
-except a figured flat facing collimated light, so the choice changes nothing there — but the
+reconstruction has since been completed and now agrees with Forbes on every figured test design,
+a figured flat facing collimated light included, so the choice changes nothing there — but the
 report still names the route it used. On an unfigured design the two agree to roundoff on all
 twenty and the choice is empty.
 

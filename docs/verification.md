@@ -68,6 +68,7 @@ derived and each gated before it was adopted:
 | barred q accumulation, member 6 | the dual run, paper XII Sec. 6 (swap the rays, negate the indices) | reproduces members 1-5 from the identities to 2E-13, and all six on spheres to 6E-13 |
 | the figuring's D half in the hat pass | (60.3), (85.3) | in the secondaries AND in the M entries built from them |
 | the D half on an exactly flat surface | its curvature limit | continuous with the R = 1e10 twin |
+| a figured flat facing collimated light | the same formulas in Laurent series arithmetic, curvature as the variable | reproduces the double route on regular surfaces to 1E-10; Forbes on the flat to 1.2E-9 |
 
 Against Forbes, all twenty tau: between 2E-13 and 2E-10 relative on every figured design in the
 ladder and on the three aspheric triplets (`BuchdahlAsphericSchemeTests.TheAsphericRoutineAgreesWithForbes`),
@@ -76,10 +77,18 @@ beyond one per cent. Against real rays both routes now sit at the rays' own floo
 (`ForbesCoefficientsTests.BothRoutesAgreeWithRealRaysOnFiguredDesigns`), and `tau20` comes back
 from the traced chief rays to within the recovery's scatter.
 
-**Not covered: a figured surface that is flat AND faces collimated light** (`Ladder2_FlatFigured`,
-still 710 per cent out). There the incidence ratio q is infinite, the dual and identity pieces are
-skipped, and the surface is carried as the older arrangement had it. Use Forbes for such a
-system. The paragraphs below record how the defect looked while it was open.
+**A figured flat facing collimated light** (`Ladder2_FlatFigured`, a corrector plate in a parallel
+beam) needed one more step. There the marginal incidence is identically zero, q is infinite, and
+the finite coefficients arrive only after terms carrying different powers of q cancel - the
+arrangement was right (bend the surface to R = 100 and it agrees with Forbes to 1.6E-12) but
+the flat branch dropped the figured tertiary and a numerical limit reached only 4.5E-4. So
+`TertiaryCoefficients.Attach` runs such a system through `AberrationCalculator.Core.Series`, the
+same source files compiled in Laurent series arithmetic with that surface's curvature as the
+variable, and reads the answer at e^0. It is used only when it vouches for itself - two
+truncations agreeing, nothing below the lowest carried order, negative orders cancelled - and
+the design now agrees with Forbes to 1.2E-9, where it was 710 per cent out
+(`FlatCollimatedSeriesTests`). The paragraphs below record how the defect looked while it was
+open.
 
 Two cautions for anyone measuring this, both of which cost time here. Normalising the error by
 the largest coefficient in the set hides it almost entirely — a small coefficient wrong by five
