@@ -77,9 +77,11 @@ OPTIONS
                       computes it, so there is no step size anywhere and no
                       cancellation. Coefficients come from Buchdahl's closed-form
                       scheme, so SPHERICAL SURFACES ONLY: a figured design, or a
-                      conic asked to be a variable, is refused before the run rather
-                      than optimised against his aspheric seventh order, which is a
-                      reconstruction real rays reject. Analysis is unaffected.
+                      conic asked to be a variable, is refused before the run. Not
+                      because his aspheric seventh order is in doubt - it agrees
+                      with Forbes to 2E-10 or better - but because routing to it
+                      would put a test for figuring inside the inner loop. Analysis
+                      is unaffected.
                       See docs/optimizer.md for the merit-function format.
       --optimize_basin_hopping
                       Search over BASINS rather than descending one: kick the design

@@ -193,18 +193,21 @@ public static class VarFile
         "TH" or "THICKNESS" => VariableKind.Thickness,
 
         "CC" or "CONIC" => throw new FormatException(
-            "a conic cannot be a variable here. The coefficients come from Buchdahl's computing "
-          + "scheme, whose aspheric SEVENTH order needs an arrangement he never published - the "
-          + "reconstruction of it in this repository is one real rays reject, by up to a factor "
-          + "of four - so this optimiser works on spherical surfaces only. Vary CV and TH; "
-          + "analyse the figured design with `abcalc <lens>` or `--forbes`, which handle conics "
-          + "at every order they report"),
+            "a conic cannot be a variable here: this optimiser works on SPHERICAL surfaces only. "
+          + "That is not a doubt about the arithmetic. Buchdahl's aspheric seventh order needs an "
+          + "arrangement he never published; this repository has one, and it agrees with Forbes' "
+          + "series trace to 2E-10 or better on every figured design. What is missing is the "
+          + "ROUTING: a figured design is refused up front so that no evaluation ever has to ask "
+          + "whether a surface is figured, which keeps that question out of the inner loop. Vary "
+          + "CV and TH; analyse the figured design with `abcalc <lens>` or `--forbes`, which "
+          + "handle conics at every order they report"),
 
         _ => text.Length > 1 && text[0] == 'A' && int.TryParse(text.Substring(1), out _)
             ? throw new FormatException(
                   $"'{text}' is an aspheric term, and figuring cannot be a variable here. This "
-                + "optimiser works on spherical surfaces only, because Buchdahl's aspheric "
-                + "seventh order is a reconstruction real rays reject. Vary CV and TH instead")
+                + "optimiser works on spherical surfaces only - not because Buchdahl's aspheric "
+                + "seventh order is in doubt, but because routing to it would put a test for "
+                + "figuring inside the evaluation loop. Vary CV and TH instead")
             : throw new FormatException(
                   $"'{text}' is not a variable kind; this optimiser takes CV and TH"),
     };

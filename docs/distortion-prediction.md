@@ -33,9 +33,11 @@ the field shrinks. Each of the three is measured **individually**, against exact
 **This is not the first ray-traced check of a tertiary coefficient here, and it is worth being
 exact about what it adds.** `CoefficientInversion` already recovers all twenty from traced rays
 — by scaling ray shapes and fitting an odd polynomial in the scale — and its default shapes
-include the zero-pupil case for precisely this reason. `ForbesCoefficientsTests` already uses
-it to establish, on nine fixtures, that Forbes agrees with rays where this program's aspheric
-arrangement does not. That is the general instrument, and it came first.
+include the zero-pupil case for precisely this reason. `ForbesCoefficientsTests` uses it on
+nine fixtures, and it was that test which established, while the aspheric arrangement was still
+wrong, that Forbes agreed with the rays where the arrangement did not. The arrangement has
+since been completed and the same test now finds both agreeing with the rays. That is the
+general instrument, and it came first.
 
 What this one adds is narrowness. Three coefficients rather than twenty; no basis, no
 least-squares solve, no model of the other seventeen, and an error bar of its own from the

@@ -252,19 +252,22 @@ different changes — and which SURFACE it comes from.
 It reports both mappings, F-tan(theta) and F-theta with the exact relation between them, and
 reconciles the paraxial image plane the coefficients live at with the image surface the file
 defines, where a design program quotes. On a figured design the seventh-order term is taken
-from Forbes' series trace, because the scheme's aspheric arrangement is a reconstruction the
-rays reject; the report says which route it used.
+from Forbes' series trace and the report says which route it used - a choice made while the
+scheme's aspheric arrangement was still a reconstruction the rays rejected, and kept now that
+it is not, because the two agree there and a route the report names costs nothing.
 
 At zero pupil radius the polynomial keeps three terms — `E h^3 + E5 h^5 + tau20 h^7` — and
 they are separated by their power of the field alone, so each is measured against traced rays
 **on its own** rather than inside a sum where errors cancel. It needs no fit and no model of
 the other seventeen coefficients, and it is a check B7 cannot pass, having no field in it.
-`docs/distortion-prediction.md` has the measurement, and it corroborates what
-`CoefficientInversion` already establishes by the full twenty-coefficient inversion: on a
-**figured** design this program's own `tau20` is out by up to a factor of four and Forbes' is
-what the rays agree with — which convicts the one part of the scheme that had to be
-reconstructed here, because Buchdahl never published it. On spherical designs the two routes
-agree to roundoff and the rays back both.
+`docs/distortion-prediction.md` has the measurement. **It is what convicted the aspheric
+arrangement while that arrangement was wrong** - `tau20` out by up to a factor of four on a
+figured design, with the rays landing on Forbes every time the two disagreed - and it is worth
+recording that this was found by measurement rather than by inspection of the algebra. The
+arrangement has since been completed and now agrees with Forbes on all twenty tau to between
+2E-13 and 2E-10 on every figured design, a figured flat in collimated light included, and the
+rays agree with both (`docs/verification.md`). On spherical designs the two routes always
+agreed, and the rays back both.
 
 ## When the surfaces are not on a common axis
 
