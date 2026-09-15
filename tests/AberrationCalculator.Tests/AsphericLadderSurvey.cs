@@ -1765,6 +1765,266 @@ public class AsphericLadderSurvey
     }
 
     /// <summary>
+    /// <b>The figured flat in collimated light, approached through its curvature.</b>
+    /// <c>Ladder2_FlatFigured</c>'s surface 2 is an exactly flat r^4 asphere with the marginal ray
+    /// arriving parallel, so i_p = 0 and q is infinite; Table I stores q as zero there and takes
+    /// hand-derived limits at three sites. Bending that surface through R = 1e4 .. 1e10 and
+    /// comparing each against Forbes says whether the arrangement converges as the surface
+    /// flattens - in which case the exactly-flat branches are what fail - or does not.
+    /// </summary>
+    [Fact]
+    public void FlatFiguredCurvatureLadder()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("curvature\tq_surf2\ti_p_surf2\tflat_flag\tas-built worst\tdefault worst\tforbes largest");
+
+        foreach (double c in new[] { 0.0, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4,
+                                     3e-4, 1e-3, 3e-3, 1e-2 })
+        {
+            var catalog = CatalogLocator.LoadBundled();
+            var sys = LensFile.Read(Fixtures.Lens("Ladder2_FlatFigured"), catalog);
+            sys.Surfaces[2].Curvature = c;
+
+            var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+            double field = 0.0;
+            foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+            var p = ParaxialTrace.Trace(sys, n, field);
+            var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                                sys.Surfaces[sys.StopSurfaceIndex].SemiDiameter);
+            var rows = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P);
+            var forbes = ForbesCoefficients.Invert(sys, n, p, field)?.Tau ?? new double[21];
+
+            double largest = 0.0;
+            for (int k = 1; k <= 20; k++) largest = Math.Max(largest, Math.Abs(forbes[k]));
+
+            string Worst(double[] tau)
+            {
+                double w = 0.0;
+                int wk = 0, bad = 0;
+                for (int k = 1; k <= 20; k++)
+                {
+                    if (Math.Abs(forbes[k]) < 1e-9 * largest) continue;
+                    double rel = Math.Abs(tau[k] - forbes[k]) / Math.Abs(forbes[k]);
+                    if (rel > w) { w = rel; wk = k; }
+                    if (rel > 0.01) bad++;
+                }
+                return string.Format(CultureInfo.InvariantCulture, "{0:E3} (t{1})/{2}", w, wk, bad);
+            }
+
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "{0:E1}\t{1:E3}\t{2:E3}\t{3}\t{4}\t{5}\t{6:E3}",
+                c, rows[2].T[6], rows[2].T[3], rows[2].FlatInCollimatedSpace,
+                Worst(NewRoute(sys, BuchdahlAsphericScheme.Options.AsBuilt)),
+                Worst(NewRoute(sys, BuchdahlAsphericScheme.Options.Default)),
+                largest));
+        }
+
+        // The limit taken numerically: the default arrangement at c = +-h and +-2h on surface 2,
+        // Richardson-extrapolated to c = 0 as (4 S(h) - S(2h)) / 3 with S the symmetric mean,
+        // against Forbes on the exactly flat lens.
+        {
+            var catalog = CatalogLocator.LoadBundled();
+            var flat = LensFile.Read(Fixtures.Lens("Ladder2_FlatFigured"), catalog);
+            var n = IndexResolver.Build(flat, catalog, 0.55, new List<string>());
+            double field = 0.0;
+            foreach (var f in flat.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+            var p = ParaxialTrace.Trace(flat, n, field);
+            var forbes = ForbesCoefficients.Invert(flat, n, p, field)?.Tau ?? new double[21];
+            double largest = 0.0;
+            for (int k = 1; k <= 20; k++) largest = Math.Max(largest, Math.Abs(forbes[k]));
+
+            double[] TauAt(double c)
+            {
+                var s = LensFile.Read(Fixtures.Lens("Ladder2_FlatFigured"), catalog);
+                s.Surfaces[2].Curvature = c;
+                return NewRoute(s, BuchdahlAsphericScheme.Options.Default);
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("h\tRichardson worst vs Forbes at c = 0\tsymmetric mean at h only");
+            foreach (double h in new[] { 5e-4, 1e-3, 2e-3, 4e-3 })
+            {
+                var a = TauAt(h);
+                var b = TauAt(-h);
+                var a2 = TauAt(2 * h);
+                var b2 = TauAt(-2 * h);
+                double worstR = 0.0, worstS = 0.0;
+                int kR = 0;
+                for (int k = 1; k <= 20; k++)
+                {
+                    if (Math.Abs(forbes[k]) < 1e-9 * largest) continue;
+                    double s1 = 0.5 * (a[k] + b[k]);
+                    double s2 = 0.5 * (a2[k] + b2[k]);
+                    double ext = (4.0 * s1 - s2) / 3.0;
+                    double rel = Math.Abs(ext - forbes[k]) / Math.Abs(forbes[k]);
+                    if (rel > worstR) { worstR = rel; kR = k; }
+                    worstS = Math.Max(worstS, Math.Abs(s1 - forbes[k]) / Math.Abs(forbes[k]));
+                }
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0:E1}\t{1:E3} (t{2})\t{3:E3}", h, worstR, kR, worstS));
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-flat-collimated.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// The figured flat's own inputs to the two passes - its primary, secondary and tertiary
+    /// halves as the row carries them - on the exactly flat lens against the mean of c = +-h.
+    /// Where the flat row holds zero and the mean does not, the flat branch has dropped that input.
+    /// </summary>
+    [Fact]
+    public void FlatFiguredRowInputs()
+    {
+        const double h = 5e-4;
+        var catalog = CatalogLocator.LoadBundled();
+
+        BuchdahlTableIRow Row(double c)
+        {
+            var sys = LensFile.Read(Fixtures.Lens("Ladder2_FlatFigured"), catalog);
+            sys.Surfaces[2].Curvature = c;
+            var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+            double field = 0.0;
+            foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+            var p = ParaxialTrace.Trace(sys, n, field);
+            var macro = BuchdahlCoefficients.Compute(sys, p);
+            var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                                sys.Surfaces[sys.StopSurfaceIndex].SemiDiameter);
+            var sph = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P);
+            var inc = AsphericSchemeIncrements.Build(macro, sph, sys.LastOpticalSurface());
+            return BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, inc)[2];
+        }
+
+        var flat = Row(0.0);
+        var up = Row(h);
+        var down = Row(-h);
+        var up2 = Row(2 * h);
+        var down2 = Row(-2 * h);
+        var up4 = Row(4 * h);
+        var down4 = Row(-4 * h);
+
+        // Richardson limits at step h and at step 2h: where the two agree the quantity has a
+        // limit at c = 0 and it is that; where they do not it diverges as the surface flattens
+        // and only what it feeds can be compared.
+        var sb = new StringBuilder();
+        sb.AppendLine("quantity\tflat\tlimit(h)\tlimit(2h)\tflat vs limit(h)");
+        void Put(string label, Func<BuchdahlTableIRow, double> get)
+        {
+            double s1 = 0.5 * (get(up) + get(down));
+            double s2 = 0.5 * (get(up2) + get(down2));
+            double s4 = 0.5 * (get(up4) + get(down4));
+            double limH = (4.0 * s1 - s2) / 3.0;
+            double lim2H = (4.0 * s2 - s4) / 3.0;
+            double f = get(flat);
+            double scale = Math.Max(Math.Abs(f), Math.Abs(limH));
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "{0}\t{1:E4}\t{2:E4}\t{3:E4}\t{4}",
+                label, f, limH, lim2H,
+                scale < 1e-12 ? "-" : (Math.Abs(f - limH) / scale).ToString("E1", CultureInfo.InvariantCulture)));
+        }
+
+        Put("q (t6)", r => r.T[6]);
+        Put("i_p (t3)", r => r.T[3]);
+        Put("rho", r => r.Rho);
+        Put("ApSpherical", r => r.ApSpherical);
+        Put("ApFigured", r => r.ApFigured);
+        Put("C13Spherical", r => r.C13Spherical);
+        Put("C13Figured", r => r.C13Figured);
+        for (int m = 1; m <= 6; m++) { int mm = m; Put($"SecSph[{mm}]", r => r.SecSph[mm]); }
+        for (int m = 1; m <= 6; m++) { int mm = m; Put($"SecFig[{mm}]", r => r.SecFig[mm]); }
+        for (int m = 0; m < 6; m++) { int mm = m; Put($"SecDFigured[{mm}]", r => r.SecDFigured[mm]); }
+        for (int m = 0; m < 6; m++) { int mm = m; Put($"SecBarFig[{mm}]", r => r.SecBarFig[mm]); }
+        // The barred D term (q - rho) D: D is odd in c at a collimated flat and q goes as 1/c, so
+        // this has a finite limit the flat row, carrying q = 0, cannot form.
+        for (int m = 0; m < 6; m++)
+        {
+            int mm = m;
+            Put($"(q-rho)D[{mm}]", r => (r.T[6] - r.Rho) * r.SecDFigured[mm]);
+        }
+        for (int m = 0; m < 6; m++)
+        {
+            int mm = m;
+            Put($"SecBarFig-(q-rho)D[{mm}]",
+                r => r.SecBarFig[mm] - (r.T[6] - r.Rho) * r.SecDFigured[mm]);
+        }
+        for (int m = 1; m <= 5; m++) { int mm = m; Put($"MSph[{mm}]", r => r.MSph[mm]); }
+        for (int m = 1; m <= 5; m++) { int mm = m; Put($"MFig[{mm}]", r => r.MFig[mm]); }
+        for (int m = 1; m <= 10; m++) { int mm = m; Put($"ZHat[{mm}]", r => r.ZHat[mm]); }
+        for (int m = 1; m <= 10; m++) { int mm = m; Put($"ZCheck[{mm}]", r => r.ZCheck[mm]); }
+        Put("QT152", r => r.QT152);
+        for (int m = 1; m <= 10; m++) { int mm = m; Put($"TertiaryTotal[{mm}]", r => r.TertiaryTotal[mm]); }
+        for (int m = 1; m <= 10; m++) { int mm = m; Put($"TertiaryTotalBar[{mm}]", r => r.TertiaryTotalBar[mm]); }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-flat-row.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// <b>Which surface and which pass the exactly flat figured surface gets wrong.</b> Each
+    /// surface's hat, hat-barred, check and check-barred totals on the flat lens, against the
+    /// limit of the same quantity from c = +-h, +-2h on surface 2 (Richardson, as in
+    /// <see cref="FlatFiguredCurvatureLadder"/>, good to about 1E-4 there). The sums hat+check are
+    /// printed too, since the halves can be large and cancel as the surface flattens.
+    /// </summary>
+    [Fact]
+    public void FlatFiguredPerSurface()
+    {
+        const double h = 5e-4;
+        var catalog = CatalogLocator.LoadBundled();
+
+        Dictionary<int, double[][]> Capture(double c)
+        {
+            var s = LensFile.Read(Fixtures.Lens("Ladder2_FlatFigured"), catalog);
+            s.Surfaces[2].Curvature = c;
+            var got = new Dictionary<int, double[][]>();
+            NewRoute(s, BuchdahlAsphericScheme.Options.Default,
+                     (i, a, b, cc, d) =>
+                     {
+                         var sum = new double[11];
+                         var sumBar = new double[11];
+                         for (int k = 1; k <= 10; k++) { sum[k] = a[k] + cc[k]; sumBar[k] = b[k] + d[k]; }
+                         got[i] = new[] { a, b, cc, d, sum, sumBar };
+                     });
+            return got;
+        }
+
+        var flat = Capture(0.0);
+        var p1 = Capture(h);
+        var m1 = Capture(-h);
+        var p2 = Capture(2 * h);
+        var m2 = Capture(-2 * h);
+
+        string[] part = { "hat", "hatBar", "check", "checkBar", "T sum", "Tbar sum" };
+        var sb = new StringBuilder();
+        sb.AppendLine("surf\tpart\tk\tflat\tlimit\trel\t(mean at h, for scale)");
+        foreach (int i in flat.Keys)
+            for (int q = 0; q < 6; q++)
+                for (int k = 1; k <= 10; k++)
+                {
+                    double f = flat[i][q][k];
+                    double s1 = 0.5 * (p1[i][q][k] + m1[i][q][k]);
+                    double s2 = 0.5 * (p2[i][q][k] + m2[i][q][k]);
+                    double lim = (4.0 * s1 - s2) / 3.0;
+                    double scale = Math.Max(Math.Abs(f), Math.Abs(lim));
+                    if (scale < 1e-14) continue;
+                    double rel = Math.Abs(f - lim) / scale;
+                    if (rel < 1e-3) continue;
+                    sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                        "{0}\t{1}\t{2}\t{3:E4}\t{4:E4}\t{5:E2}\t{6:E4}", i, part[q], k, f, lim, rel, s1));
+                }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-flat-per-surface.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
     /// The spherical scheme on a design as it stands, and again on the interchanged ray data with
     /// the refractive indices negated, per XII Sec. 6(iii).
     /// </summary>
@@ -1950,9 +2210,14 @@ public class AsphericLadderSurvey
 
     /// <summary>The new routine's tau, in the transverse convention the oracles use.</summary>
     private static double[] NewRoute(string name, BuchdahlAsphericScheme.Options? options)
+        => NewRoute(LensFile.Read(Fixtures.Lens(name), CatalogLocator.LoadBundled()), options);
+
+    /// <summary>The same, on a system already in hand - so a fixture can be modified first.</summary>
+    private static double[] NewRoute(Core.Models.OpticalSystem sys,
+                                     BuchdahlAsphericScheme.Options? options,
+                                     Action<int, double[], double[], double[], double[]>? perSurface = null)
     {
         var catalog = CatalogLocator.LoadBundled();
-        var sys = LensFile.Read(Fixtures.Lens(name), catalog);
         var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
         double field = 0.0;
         foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
@@ -1988,7 +2253,7 @@ public class AsphericLadderSurvey
             : null;
 
         var raw = BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, stopParameter,
-                                             increments, iota, options, dualIncrements);
+                                             increments, iota, options, dualIncrements, perSurface);
         return TertiaryCoefficients.ToTransverse(raw, lengthFactor, u, hmax,
                                                  coefficients.Totals.B7);
     }

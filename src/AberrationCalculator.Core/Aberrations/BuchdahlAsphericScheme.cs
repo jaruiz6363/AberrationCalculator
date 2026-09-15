@@ -714,7 +714,8 @@ public static class BuchdahlAsphericScheme
         IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl,
         Scalar stopParameter, IReadOnlyList<Scalar[]>? aspheric = null,
         Scalar iota = default, Options? options = null,
-        IReadOnlyList<Scalar[]>? dualAspheric = null)
+        IReadOnlyList<Scalar[]>? dualAspheric = null,
+        Action<int, Scalar[], Scalar[], Scalar[], Scalar[]>? perSurface = null)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
         options ??= Options.Default;
@@ -738,7 +739,7 @@ public static class BuchdahlAsphericScheme
                                               iota: iota, dual: true);
         }
 
-        var totals = Totals(rows, surfaces.Count, options, dualRows);
+        var totals = Totals(rows, surfaces.Count, options, dualRows, perSurface);
 
         return TertiaryCoefficients.AssembleTau(totals.T, totals.Tbar);
     }
@@ -754,8 +755,14 @@ public static class BuchdahlAsphericScheme
     /// is that each pass is given its own half and its own family, and the two are added only
     /// at the end.</para>
     /// </summary>
+    /// <param name="perSurface">
+    /// DIAGNOSTIC: handed each surface's four pass results - hat, hat barred, check, check barred,
+    /// indexed 1..10 - as they are added into the totals. Copies; nothing done with them reaches
+    /// the result.
+    /// </param>
     public static SystemTotals Totals(BuchdahlTableIRow[] rows, int count, Options options,
-                                      BuchdahlTableIRow[]? dualRows = null)
+                                      BuchdahlTableIRow[]? dualRows = null,
+                                      Action<int, Scalar[], Scalar[], Scalar[], Scalar[]>? perSurface = null)
     {
         if (rows == null) throw new ArgumentNullException(nameof(rows));
         options ??= Options.AsBuilt;
@@ -1102,6 +1109,9 @@ public static class BuchdahlAsphericScheme
             // (85.3): the total is the sum of the two halves, and the barred entry the sum of
             // the two BARRED halves - each formed by (84.23) within its own pass, not the total
             // times a ratio, which would drop the barred intermediates entirely.
+            perSurface?.Invoke(i, (Scalar[])hat.Clone(), (Scalar[])hatBar.Clone(),
+                               (Scalar[])check.Clone(), (Scalar[])checkBar.Clone());
+
             for (int k = 1; k <= 10; k++)
             {
                 T[k] += hat[k] + check[k];
