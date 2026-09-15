@@ -13,7 +13,12 @@ namespace AberrationCalculator.Core.Aberrations;
 /// different T at once - which is why the T are computed first and converted afterwards
 /// rather than being produced in Robb's form directly.</para>
 ///
-/// <para><b>Spherical surfaces only</b>, as Buchdahl's scheme is.</para>
+/// <para><b>Two routines.</b> A system of spheres goes through <see cref="BuchdahlTableI"/>,
+/// Buchdahl's own arrangement, verified against his printed numbers. A figured system goes
+/// through <see cref="BuchdahlAsphericScheme"/> with its <see cref="BuchdahlAsphericScheme.Options.Default"/>
+/// arrangement of M Sec. 85, which agrees with Forbes' series trace to 2E-10 or better on every
+/// figured design tested except one with a flat surface facing collimated space.
+/// <see cref="Attach"/> makes the choice; <see cref="Compute"/> is the spherical routine alone.</para>
 /// </summary>
 public static class TertiaryCoefficients
 {
@@ -145,10 +150,8 @@ public static class TertiaryCoefficients
     /// with - third order alone overstates its full-field spot by a factor of two, and
     /// fifth order gets within six per cent - so the test shows the conversion is not
     /// wrong rather than showing it works hard. The designs whose full-field error
-    /// motivated this work are ASPHERIC, and this scheme handles spherical surfaces only,
-    /// so they measure something less than the whole. They are measured anyway in
-    /// `docs/verification.md`: even with spherical-only tau, their full-field errors improve
-    /// from +85% to +24% and from -34% to -1.5%.</para>
+    /// motivated this work are ASPHERIC; their tau now come from the aspheric routine, which
+    /// uses this same conversion and agrees with Forbes' transverse tau on them to 2E-10.</para>
     /// </summary>
     /// <param name="tau">Coefficients in Buchdahl's convention, indexed 1..20.</param>
     /// <param name="efl">The system's focal length.</param>
@@ -172,9 +175,8 @@ public static class TertiaryCoefficients
     /// <para>Both quantities are already transverse here, so the substitution needs no
     /// conversion and cannot introduce one. On a SPHERICAL system it changes nothing: the two
     /// routes agree exactly there, which is what makes it a substitution rather than a fudge.
-    /// It corrects tau1 ONLY. The other nineteen still come from the scheme, and their
-    /// aspheric parts inherit the same faulty cubics - tau2 most directly, since it draws on
-    /// the barred partner of the same coefficient.</para>
+    /// It replaces tau1 ONLY; the other nineteen come from the scheme - the aspheric routine,
+    /// for a figured system - and agree with Forbes there to 2E-10.</para>
     /// </param>
     public static Scalar[] ToTransverse(Scalar[] tau, Scalar efl, Scalar marginalAngle,
                                         Scalar fieldTangent, Scalar? sphericalSeventh = null)
@@ -266,9 +268,24 @@ public static class TertiaryCoefficients
             ? SMath.Tan(maxField * SMath.PI / 180.0)
             : -(paraxial.ParaxialImageHeight / paraxial.Magnification) / objectDistance;
 
-        var tau = ToTransverse(
-            Compute(system.Surfaces, indices, paraxial.Efl, stopParameter, increments, iota),
-            lengthFactor, u, hmax, coefficients.Totals.B7);
+        // The two routines. Spheres keep Buchdahl's own arrangement, bit for bit as validated; a
+        // figured system takes the Sec. 85 arrangement, which needs the dual run's increments for
+        // its sixth barred q member.
+        Scalar[] raw;
+        if (increments == null)
+        {
+            raw = Compute(system.Surfaces, indices, paraxial.Efl, stopParameter, null, iota);
+        }
+        else
+        {
+            var dualIncrements = AsphericSchemeIncrements.BuildDual(system, paraxial, indices,
+                                                                    scheme.P, iota);
+            raw = BuchdahlAsphericScheme.Tau(system.Surfaces, indices, paraxial.Efl, stopParameter,
+                                             increments, iota, BuchdahlAsphericScheme.Options.Default,
+                                             dualIncrements);
+        }
+
+        var tau = ToTransverse(raw, lengthFactor, u, hmax, coefficients.Totals.B7);
 
         var t = coefficients.Totals;
         t.Tau2 = tau[2];   t.Tau3 = tau[3];   t.Tau4 = tau[4];   t.Tau5 = tau[5];

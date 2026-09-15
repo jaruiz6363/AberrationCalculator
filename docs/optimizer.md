@@ -80,23 +80,27 @@ ray data, with no trace, no fit and no linear solve. It is the fastest route to 
 coefficient there is, and it is why the predicted spot can be evaluated tens of thousands of
 times in a search.
 
-It handles a conic or an even asphere correctly at third and fifth order. At **seventh** order it
-does not: that needs an aspheric arrangement Buchdahl never published, so this repository's is a
-reconstruction, and real rays reject it — `docs/distortion-prediction.md` measures `tau20` out by
-up to a **factor of four** on a figured design. An optimizer descending a quantity that is wrong
-by a factor of four is not slow; it is pointed in the wrong direction.
+It handles a conic or an even asphere correctly at third and fifth order. At **seventh** order a
+figured system needs an aspheric arrangement Buchdahl never published as a table. This
+repository now has one, as a separate routine (`BuchdahlAsphericScheme`), and it agrees with
+Forbes' series trace on every figured test design to 2E-10 or better — but it is a different
+computation: members of the barred q accumulation from the identities of M Sec. 22, the last of
+them from a second, DUAL run of the whole scheme (paper XII Sec. 6), and the figuring's two
+halves carried through separate passes. Until September 2026 it was a reconstruction the rays
+rejected, by up to a factor of four on `tau20`.
 
-So a figured design is **refused before anything runs**, and a conic or aspheric coefficient
+A figured design is still **refused before anything runs**, and a conic or aspheric coefficient
 cannot be declared a variable at all — `VariableKind` has no such member, and the merit-function
 parser recognises `CC` and `A4` in order to *explain* the refusal rather than report them as a
 typo.
 
-**Why refuse rather than fall back.** Forbes' series trace gets the figured tertiary right and
-could have been used instead. Carrying two routes means every evaluation asks which one it is on
-— and worse, asks whether each surface is figured, in the middle of the arithmetic. Those
-questions get answered once, at the door, or they get answered tens of thousands of times a
-second for no benefit. Refusing up front keeps the evaluation loop free of them entirely: there
-is not one test for figuring anywhere inside it.
+**Why refuse rather than route.** The aspheric routine could be differentiated too — it is
+compiled into the dual-number build alongside the spherical one — but carrying two routes means
+every evaluation asks which one it is on, and asks whether each surface is figured, in the middle
+of the arithmetic, and the figured one costs a second run of the scheme. Those questions get
+answered once, at the door, or they get answered tens of thousands of times a second. Refusing up
+front keeps the evaluation loop free of them entirely: there is not one test for figuring anywhere
+inside it. Lifting the restriction is now a decision about cost, not about correctness.
 
 That decision also disposes of a hazard rather than merely avoiding it. Buchdahl's chain is full
 of sparse skips of the shape `if (coefficient == 0.0) continue;`, which are sound in ordinary

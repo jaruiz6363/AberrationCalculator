@@ -73,7 +73,86 @@ public class BuchdahlAsphericSchemeTests
 
     private static double[] New(Case c, BuchdahlAsphericScheme.Options? o = null) =>
         BuchdahlAsphericScheme.Tau(c.Surfaces, c.Indices, c.Efl, c.StopParameter,
-                                   c.Increments, c.Iota, o);
+                                   c.Increments, c.Iota, o ?? BuchdahlAsphericScheme.Options.AsBuilt);
+
+    /// <summary>
+    /// <b>The aspheric routine as the program uses it.</b> Through <see cref="TertiaryCoefficients.Attach"/>,
+    /// which sends a figured system to <see cref="BuchdahlAsphericScheme"/> with its default
+    /// arrangement, all twenty coefficients must agree with Forbes' series trace - an independent
+    /// expansion of the same ray function - essentially to rounding. The arrangement as built was
+    /// out by 17 to 467 per cent on these designs.
+    /// </summary>
+    /// <para>The R = 1e10 near-flat twin is held to 1E-7 rather than 1E-8: a curvature that small
+    /// costs digits to cancellation in both routes, and the spherical near-limit flat shows the
+    /// same 2E-8 between Table I and Forbes (<c>docs/verification.md</c>).</para>
+    [Theory]
+    [InlineData("Ladder2_A4_First", 1e-8)]
+    [InlineData("Ladder2_A4_Second", 1e-8)]
+    [InlineData("Ladder2_A4_Both", 1e-8)]
+    [InlineData("Ladder2_FiguredSphere_Then_A4", 1e-8)]
+    [InlineData("Ladder3_A4_First", 1e-8)]
+    [InlineData("Ladder3_A4_Middle", 1e-8)]
+    [InlineData("Ladder2_FiguredFlatRear", 1e-8)]
+    [InlineData("Ladder2_FiguredNearFlatRear", 1e-7)]
+    [InlineData("CookeTriplet_PRMSA_START_LO_ASPHERE", 1e-8)]
+    [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE", 1e-8)]
+    [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8", 1e-8)]
+    public void TheAsphericRoutineAgreesWithForbes(string fixtureName, double tolerance)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(fixtureName), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+
+        var paraxial = ParaxialTrace.Trace(sys, n, field);
+        var b = BuchdahlCoefficients.Compute(sys, paraxial);
+        TertiaryCoefficients.Attach(sys, n, paraxial, b, field);
+        var forbes = Core.Forbes.ForbesCoefficients.Invert(sys, n, paraxial, field);
+        Assert.NotNull(forbes);
+
+        var mine = new double[21];
+        for (int k = 1; k <= 20; k++)
+            mine[k] = k == 1 ? b.Totals.B7
+                : (double)typeof(BuchdahlTerms).GetField("Tau" + k)!.GetValue(b.Totals)!;
+
+        double largest = 0.0;
+        for (int k = 1; k <= 20; k++) largest = Math.Max(largest, Math.Abs(forbes!.Tau[k]));
+
+        for (int k = 1; k <= 20; k++)
+        {
+            double reference = forbes!.Tau[k];
+            if (Math.Abs(reference) < 1e-9 * largest) continue;
+            double rel = Math.Abs(mine[k] - reference) / Math.Abs(reference);
+            Assert.True(rel < tolerance,
+                $"tau{k}: the aspheric routine gives {mine[k]:E12}, Forbes {reference:E12}, "
+              + $"relative {rel:E2}.");
+        }
+    }
+
+    /// <summary>
+    /// On a system of SPHERES the default aspheric arrangement must reproduce the spherical
+    /// routine. Not bit for bit - members one to five of the barred q accumulation come from the
+    /// identities rather than the recursion, and the sixth from the dual run - but to rounding.
+    /// </summary>
+    [Theory]
+    [InlineData("Ladder2_Sphere")]
+    [InlineData("Ladder3_Sphere")]
+    [InlineData("CookeTriplet")]
+    [InlineData("KingslakeDG")]
+    public void TheDefaultArrangementReproducesTheSphericalRoutineOnSpheres(string fixtureName)
+    {
+        var c = Load(fixtureName);
+        var working = Working(c);
+        var mine = BuchdahlAsphericScheme.Tau(c.Surfaces, c.Indices, c.Efl, c.StopParameter,
+                                              c.Increments, c.Iota,
+                                              BuchdahlAsphericScheme.Options.Default);
+        double largest = 0.0;
+        for (int k = 1; k <= 20; k++) largest = Math.Max(largest, Math.Abs(working[k]));
+        for (int k = 1; k <= 20; k++)
+            Assert.True(Math.Abs(working[k] - mine[k]) <= 1e-10 * largest,
+                $"tau{k}: spherical routine {working[k]:E17}, default aspheric {mine[k]:E17}.");
+    }
 
     /// <summary>
     /// <b>The gate.</b> With the arrangement as built, the new routine reproduces the working

@@ -55,20 +55,31 @@ computes the seventh-order set this program exists for, so neither could be.
 
 ## What is not established
 
-**The aspheric tertiary arrangement.** Buchdahl gives the aspheric scheme in Sec. 85 of the
-monograph but never published the arranged table for it, and that arrangement is the one part
-of this subject with no printed answer to check against. This program's version of it
-disagrees with Forbes on the small tertiary coefficients of a figured design — tau15 by a
-factor of nearly five including its sign, tau20 by half — while the large ones agree to under
-one per cent. Use Forbes for figured systems; that is what `zosapi/` exists for.
+**The aspheric tertiary arrangement — now established, with one exception.** Buchdahl gives the
+aspheric scheme in Sec. 85 of the monograph but never published the arranged table for it. This
+program's reconstruction of it is a separate routine, `BuchdahlAsphericScheme`, and
+`TertiaryCoefficients.Attach` sends every figured system there; spheres keep Buchdahl's own
+arrangement in `BuchdahlTableI`, bit for bit. Its default arrangement is four things, each
+derived and each gated before it was adopted:
 
-Measured across the ladder and the figured triplets, each coefficient against itself: the worst
-runs from 19 per cent to a factor of thirteen, with between 6 and 19 of the twenty out by more
-than one per cent. **Where the scheme is right it is exact rather than close** — every spherical
-design, every design with a single powered surface however figured, and every design whose
-figuring is a Buchdahl figured sphere (`8A4 + Kc³ = 0`, so the figuring's primary contribution
-vanishes) comes back with none of the twenty out by one per cent. So the fault is in the induced
-stage and specifically in what the figuring's PRIMARY content does there.
+| piece | source | gate |
+|---|---|---|
+| barred q accumulations, members 1-5 | identities, M Sec. 22 | (22.42) against (22.53), 1E-13 on figured systems |
+| barred q accumulation, member 6 | the dual run, paper XII Sec. 6 (swap the rays, negate the indices) | reproduces members 1-5 from the identities to 2E-13, and all six on spheres to 6E-13 |
+| the figuring's D half in the hat pass | (60.3), (85.3) | in the secondaries AND in the M entries built from them |
+| the D half on an exactly flat surface | its curvature limit | continuous with the R = 1e10 twin |
+
+Against Forbes, all twenty tau: between 2E-13 and 2E-10 relative on every figured design in the
+ladder and on the three aspheric triplets (`BuchdahlAsphericSchemeTests.TheAsphericRoutineAgreesWithForbes`),
+where the arrangement as it stood before was out by 17 to 467 per cent, with 6 to 19 of the twenty
+beyond one per cent. Against real rays both routes now sit at the rays' own floor
+(`ForbesCoefficientsTests.BothRoutesAgreeWithRealRaysOnFiguredDesigns`), and `tau20` comes back
+from the traced chief rays to within the recovery's scatter.
+
+**Not covered: a figured surface that is flat AND faces collimated light** (`Ladder2_FlatFigured`,
+still 710 per cent out). There the incidence ratio q is infinite, the dual and identity pieces are
+skipped, and the surface is carried as the older arrangement had it. Use Forbes for such a
+system. The paragraphs below record how the defect looked while it was open.
 
 Two cautions for anyone measuring this, both of which cost time here. Normalising the error by
 the largest coefficient in the set hides it almost entirely — a small coefficient wrong by five

@@ -681,6 +681,26 @@ public static class BuchdahlAsphericScheme
 
         /// <summary>The arrangement as <see cref="BuchdahlTableI"/> has it. The parity gate.</summary>
         public static readonly Options AsBuilt = new();
+
+        /// <summary>
+        /// <b>The aspheric arrangement.</b> Members one to five of the barred q accumulation from
+        /// the identities of M Sec. 22, the sixth from the dual run of XII Sec. 6, and the
+        /// figuring's D half carried in the hat pass in both the secondaries and the M entries.
+        ///
+        /// <para>Against Forbes' series trace it gives all twenty tau to between 2E-13 and 2E-10
+        /// relative on every figured design in the ladder and on the three aspheric triplets,
+        /// where the arrangement as built was out by 17 to 467 per cent; spheres, one-surface
+        /// designs and figured spheres stay exact. NOT covered: a figured system with a flat
+        /// surface facing collimated space, where q is infinite and every one of the four is
+        /// skipped, leaving that surface as built.</para>
+        /// </summary>
+        public static readonly Options Default = new()
+        {
+            BarredQAccumulationFromIdentities = true,
+            FiguredSecondarySplitByDandL = true,
+            FiguredMSplitByDandL = true,
+            SixthBarredMemberFromDuality = true,
+        };
     }
 
     /// <summary>
@@ -697,7 +717,12 @@ public static class BuchdahlAsphericScheme
         IReadOnlyList<Scalar[]>? dualAspheric = null)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
-        options ??= Options.AsBuilt;
+        options ??= Options.Default;
+        if (options.SixthBarredMemberFromDuality && aspheric != null && dualAspheric == null)
+            throw new ArgumentException(
+                "The sixth barred member by duality needs the dual figured increments - "
+              + "AsphericSchemeIncrements.BuildDual. Without them the dual run would be unfigured "
+              + "and S-bar_6q silently wrong.", nameof(dualAspheric));
 
         var rows = BuchdahlTableI.Compute(surfaces, indices, efl, stopParameter, aspheric,
                                           iota: iota);
@@ -734,6 +759,9 @@ public static class BuchdahlAsphericScheme
     {
         if (rows == null) throw new ArgumentNullException(nameof(rows));
         options ??= Options.AsBuilt;
+        if (options.SixthBarredMemberFromDuality && dualRows == null)
+            throw new ArgumentException(
+                "The sixth barred member by duality needs the dual run's rows.", nameof(dualRows));
 
         var T = new Scalar[11];
         var Tbar = new Scalar[11];

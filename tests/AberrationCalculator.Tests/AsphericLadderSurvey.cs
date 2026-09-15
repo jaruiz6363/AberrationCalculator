@@ -30,7 +30,8 @@ public class AsphericLadderSurvey
         "Ladder2_A4_First_FlatRear", "Ladder2_A4_Then_FiguredSphere",
         "Ladder2_FiguredSphere_First", "Ladder2_FiguredSphere_Second",
         "Ladder2_FiguredSphere_Both", "Ladder2_FiguredSphere_Then_A4",
-        "Ladder2_FlatFigured", "Ladder2_FiguredFlatRear",
+        "Ladder2_FlatFigured", "Ladder2_FiguredFlatRear", "Ladder2_FiguredNearFlatRear",
+        "Ladder2_FlatPlain", "Ladder2_FlatPlain_NearLimit", "Ladder2_Sphere_NearFlatRear",
         "Ladder3_Sphere", "Ladder3_A4_First", "Ladder3_A4_Middle",
         "Ladder3_FiguredSphere_Middle",
         "CookeTriplet", "CookeTriplet_PRMSA_START_LO_ASPHERE",
@@ -1980,25 +1981,11 @@ public class AsphericLadderSurvey
 
         // The dual figured increments, XII Sec. 6(iii): the fifth-order code on the interchanged
         // paraxial rays with the indices negated, bridged into the dual scheme as the direct ones.
-        IReadOnlyList<double[]>? dualIncrements = null;
-        if (options?.SixthBarredMemberFromDuality == true)
-        {
-            var negN = new double[p.N.Length];
-            for (int k = 0; k < negN.Length; k++) negN[k] = -p.N[k];
-            var pd = new ParaxialResult
-            {
-                Y = p.Ybar, U = p.Ubar, Ybar = p.Y, Ubar = p.U, N = negN,
-                Efl = p.Efl, Power = p.Power, Bfl = p.Bfl, Epd = p.Epd,
-                EntrancePupilPosition = p.EntrancePupilPosition,
-                LagrangeInvariant = p.LagrangeInvariant, InfiniteConjugate = p.InfiniteConjugate,
-            };
-            var negated = new double[n.Length];
-            for (int k = 0; k < n.Length; k++) negated[k] = -n[k];
-            var macroD = BuchdahlCoefficients.Compute(sys, pd);
-            var sphD = BuchdahlTableI.Compute(sys.Surfaces, negated, p.Efl, scheme.P,
-                                              iota: iota, dual: true);
-            dualIncrements = AsphericSchemeIncrements.Build(macroD, sphD, sys.LastOpticalSurface());
-        }
+        // In this survey a null reading means the arrangement as built, not the routine's default.
+        options ??= BuchdahlAsphericScheme.Options.AsBuilt;
+        var dualIncrements = options.SixthBarredMemberFromDuality
+            ? AsphericSchemeIncrements.BuildDual(sys, p, n, scheme.P, iota)
+            : null;
 
         var raw = BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, stopParameter,
                                              increments, iota, options, dualIncrements);

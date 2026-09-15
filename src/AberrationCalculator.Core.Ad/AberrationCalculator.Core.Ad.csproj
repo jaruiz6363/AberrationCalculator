@@ -39,6 +39,8 @@
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/BuchdahlSecondaryQ.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/BuchdahlTertiaryIdentities.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/TertiaryCoefficients.cs" />
+    <!-- The aspheric tertiary routine TertiaryCoefficients.Attach sends a figured system to. -->
+    <CoreSource Include="../AberrationCalculator.Core/Aberrations/BuchdahlAsphericScheme.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/TertiaryCubics.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/TertiaryScriptT.cs" />
     <CoreSource Include="../AberrationCalculator.Core/Aberrations/AsphericSchemeIncrements.cs" />

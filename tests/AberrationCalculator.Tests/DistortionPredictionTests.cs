@@ -161,37 +161,22 @@ public class DistortionPredictionTests
     }
 
     /// <summary>
-    /// <b>THIS PROGRAM'S aspheric tertiary arrangement is wrong, and this measures it.</b> On
-    /// the aspheric testbed the rays put tau20 at about twice what it reports, while E and E5
-    /// come back exactly - so it is the SEVENTH-order aspheric term that is at fault and not
-    /// the conversion, the field variable or the trace, all of which the other two coefficients
-    /// exercise identically.
+    /// <b>The aspheric seventh-order distortion agrees with the rays.</b> E, E5 and tau20 all
+    /// come back from the traced chief rays as the reported set has them.
     ///
-    /// <para><b>It is not a finding about Buchdahl.</b> He never published the tertiary
-    /// aspheric arrangement, so the figured coefficients here come from a reconstruction made
-    /// in this repository, and that is what the rays disagree with. On spherical systems his
-    /// scheme and Forbes' trace agree on all twenty tau to 2E-13 at both conjugates, and
-    /// <see cref="TheRaysReturnTheCoefficientsOnASphericalTriplet"/> confirms tau20 there
-    /// against rays as well - so there is no spherical case in which the two part company.</para>
-    ///
-    /// <para>That the aspheric tau are wrong is already recorded - see
-    /// <c>docs/verification.md</c> and the Forbes work - but it was established by comparison
-    /// with another series. This is rays, and it is per coefficient.</para>
-    ///
-    /// <para>The bound is deliberately loose. The point is not the value of the discrepancy,
-    /// which will move when the arrangement is fixed; it is that there IS one, and that a test
-    /// exists which will notice when it goes away.</para>
-    ///
-    /// <para><c>Ladder2_A4_Both</c> is the sharp case rather than the loud one. The two routes
-    /// differ there by 12.65 per cent, not by a factor, and the rays land on Forbes' value to
-    /// two parts in ten thousand. A factor of two could be almost any mistake; a twelve per
-    /// cent gap hit to that precision could not be a coincidence.</para>
+    /// <para>This test used to measure the opposite. The rays put tau20 at about twice what the
+    /// reconstructed aspheric arrangement reported on the testbed, and 12.65 per cent off on
+    /// <c>Ladder2_A4_Both</c> while landing on Forbes' value to two parts in ten thousand - and it
+    /// asked to be turned around once that stopped. It stopped when the Sec. 85 arrangement was
+    /// completed (see <see cref="BuchdahlAsphericScheme.Options.Default"/>): the recovered ratios
+    /// are now 0.990, 1.0006 and 1.0001. The bound allows the recovery's own scatter, which is
+    /// a per cent on the testbed, and nothing like the gap that was there.</para>
     /// </summary>
     [Theory]
     [InlineData("TertiaryTestbed_Triplet24")]
     [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE")]
     [InlineData("Ladder2_A4_Both")]
-    public void TheAsphericSeventhOrderDistortionDisagreesWithTheRays(string fixtureName)
+    public void TheAsphericSeventhOrderDistortionAgreesWithTheRays(string fixtureName)
     {
         var s = Load(fixtureName);
         var found = DistortionPrediction.Recover(s.System, s.Indices, s.Paraxial, s.Totals, s.Field);
@@ -203,10 +188,8 @@ public class DistortionPredictionTests
 
         var tau20 = found.Single(r => r.Name == "Tau20");
         Assert.True(tau20.Reliable, "tau20 could not be recovered, so nothing is being claimed");
-        Assert.True(Math.Abs(tau20.Ratio - 1.0) > 0.05,
-            $"{fixtureName}: the aspheric tau20 now agrees with the rays to {tau20.Ratio:F4}. "
-          + "If the aspheric tertiary arrangement has been fixed, this test has done its job "
-          + "and should be turned around into the agreement it now records.");
+        Assert.True(Math.Abs(tau20.Ratio - 1.0) < 0.02,
+            $"{fixtureName}: the aspheric tau20 is off the rays by {tau20.Ratio - 1.0:P2}.");
     }
 
     /// <summary>
@@ -470,10 +453,11 @@ public class DistortionPredictionTests
     }
 
     /// <summary>
-    /// <b>A figured design is predicted from FORBES' tau20, without being asked.</b> The
-    /// scheme's aspheric tertiary arrangement is a reconstruction the rays disagree with, so
-    /// there is no reason to put a number known to be wrong in front of a designer, and no
-    /// reason to make them choose between two. The report says which route it used.
+    /// <b>A figured design is predicted from FORBES' tau20, and the report says so.</b> The
+    /// choice was made while the scheme's aspheric tertiary was a reconstruction the rays
+    /// disagreed with. It no longer matters numerically - the two routes now agree on tau20 on
+    /// these designs to far better than a part in a million - but the report still names the
+    /// route it used, and that is what is held here.
     /// </summary>
     [Theory]
     [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE")]
@@ -485,17 +469,14 @@ public class DistortionPredictionTests
         var forbes = ForbesCoefficients.Invert(s.System, s.Indices, s.Paraxial, s.Field);
         Assert.NotNull(forbes);
 
-        // The fixture has to be one where the choice is visible, or the test proves nothing.
-        Assert.True(Math.Abs(forbes!.Tau[20] / s.Totals.Tau20 - 1.0) > 0.01,
-            $"{fixtureName}: the two routes now agree on tau20, so this fixture no longer "
-          + "shows which one was used");
+        Assert.True(Math.Abs(forbes!.Tau[20] / s.Totals.Tau20 - 1.0) < 1e-6,
+            $"{fixtureName}: the scheme's aspheric tau20 {s.Totals.Tau20:E10} and Forbes' "
+          + $"{forbes.Tau[20]:E10} have parted company again.");
 
         string text = Mcp.Tools.Open(Fixtures.Lens(fixtureName), null).BuildDistortionText();
 
         Assert.Contains("FORBES series trace", text);
         Assert.Contains(forbes.Tau[20].ToString("0.0000E+00", CultureInfo.InvariantCulture), text);
-        Assert.DoesNotContain(s.Totals.Tau20.ToString("0.0000E+00", CultureInfo.InvariantCulture),
-                              text);
     }
 
     /// <summary>

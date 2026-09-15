@@ -88,11 +88,11 @@ are out of place; and `base_path`, which says what folder bare file names are ta
 
 Optimises a lens against a merit function given inline as text, and reports what changed.
 Every derivative it uses is analytic - see `docs/optimizer.md` - including through PRMSA, the
-predicted spot. **Spherical surfaces only:** the coefficients come from Buchdahl's closed-form
-scheme, whose aspheric seventh order is a reconstruction real rays reject, so a figured design -
-or a conic asked to be a variable - is refused before the run rather than optimised against a
-number known to be wrong. The reporting tools above are unaffected and handle figuring
-throughout.
+predicted spot. **Spherical surfaces only:** the optimiser differentiates Buchdahl's spherical
+routine and keeps figuring out of its inner loop altogether, so a figured design - or a conic
+asked to be a variable - is refused before the run. The reporting tools above are unaffected and
+handle figuring throughout, the seventh order through the separate aspheric routine, which
+agrees with Forbes' series trace on every figured test design.
 
 | argument | |
 |---|---|

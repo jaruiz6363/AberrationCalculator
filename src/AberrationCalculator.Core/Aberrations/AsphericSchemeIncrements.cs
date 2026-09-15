@@ -108,4 +108,46 @@ public static class AsphericSchemeIncrements
         }
         return result;
     }
+
+    /// <summary>
+    /// The same increments for the DUAL run of the scheme, paper XII Sec. 6(iii): the fifth-order
+    /// code on the interchanged paraxial rays with the refractive indices negated, bridged into
+    /// the dual scheme exactly as <see cref="Build"/> bridges the direct ones. Null when nothing
+    /// is figured.
+    ///
+    /// <para>Gated in <c>AsphericLadderSurvey.DualityOnFigured</c>: the bridge constants are again
+    /// the same on every surface, and the dual run fed these reproduces the five barred q
+    /// accumulations the identities recover, to 2E-13, on every figured design without a flat
+    /// surface in collimated space. The fifth-order code's F-number, which the interchange can
+    /// make infinite, scales only its system totals and never reaches these.</para>
+    /// </summary>
+    /// <param name="schemeP">The stop parameter the direct increments were bridged at.</param>
+    public static Scalar[][]? BuildDual(Models.OpticalSystem system, RayTrace.ParaxialResult paraxial,
+                                        Scalar[] indices, Scalar schemeP, Scalar iota)
+    {
+        if (system == null) throw new ArgumentNullException(nameof(system));
+        if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
+        if (indices == null) throw new ArgumentNullException(nameof(indices));
+
+        var negatedN = new Scalar[paraxial.N.Length];
+        for (int k = 0; k < negatedN.Length; k++) negatedN[k] = -paraxial.N[k];
+        var interchanged = new RayTrace.ParaxialResult
+        {
+            Y = paraxial.Ybar, U = paraxial.Ubar, Ybar = paraxial.Y, Ubar = paraxial.U,
+            N = negatedN,
+            Efl = paraxial.Efl, Power = paraxial.Power, Bfl = paraxial.Bfl, Epd = paraxial.Epd,
+            EntrancePupilPosition = paraxial.EntrancePupilPosition,
+            // n (y ubar - ybar u): the interchange and the negation each flip it, so it stands.
+            LagrangeInvariant = paraxial.LagrangeInvariant,
+            InfiniteConjugate = paraxial.InfiniteConjugate,
+        };
+
+        var negated = new Scalar[indices.Length];
+        for (int k = 0; k < indices.Length; k++) negated[k] = -indices[k];
+
+        var macro = BuchdahlCoefficients.Compute(system, interchanged);
+        var spherical = BuchdahlTableI.Compute(system.Surfaces, negated, paraxial.Efl, schemeP,
+                                               iota: iota, dual: true);
+        return Build(macro, spherical, system.LastOpticalSurface());
+    }
 }

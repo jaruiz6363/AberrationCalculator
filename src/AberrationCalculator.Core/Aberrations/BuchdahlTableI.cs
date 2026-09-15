@@ -989,9 +989,38 @@ public static class BuchdahlTableI
             // says so is Buchdahl's own identity: solving (7.1) for the S1bar_p it requires
             // leaves a residual that is constant between figured surfaces and steps at each
             // one, and each step is exactly (q - rho) times that surface's D half.
-            if (aspheric != null && figNow.Present && SMath.Abs(cc) > 1e-12)
+            if (aspheric != null && figNow.Present)
             {
-                var dOnly = SecondaryDHalf(t, kk, cc, figNow, s1);
+                // SecondaryDHalf forms s1 (t7/c)^p dTheta / sTheta0, in which every power of c
+                // cancels - but only after it has been formed, so a flat surface gives 0/0 there.
+                // The D half itself is finite at c = 0: the R = 1e10 twin of a figured flat comes
+                // out exact against Forbes with it, which it could not with a divergent D. So a
+                // flat surface takes the limit, symmetrically, from c = +eps and c = -eps; the
+                // first-order term cancels and what is left is O(eps^2). The incidence, q and j
+                // are re-formed at each eps rather than read off the flat row, because j =
+                // c L / i_p carries the curvature as a factor: on the flat row t7 is exactly zero
+                // and t7/eps would be zero where its limit L/i_p is not.
+                Scalar[] dOnly;
+                if (SMath.Abs(cc) > 1e-12)
+                {
+                    dOnly = SecondaryDHalf(t, kk, cc, figNow, s1);
+                }
+                else
+                {
+                    Scalar[] At(Scalar e)
+                    {
+                        var near = (Scalar[])t.Clone();
+                        near[3] = e * t[1] - t[2];
+                        near[6] = SMath.Abs(near[3]) > 1e-30 ? (e * t[4] - t[5]) / near[3] : 0.0;
+                        near[7] = -t[2] * near[6] + t[5];
+                        return SecondaryDHalf(near, kk, e, figNow, s1);
+                    }
+                    const double eps = 1e-6;
+                    var above = At(eps);
+                    var below = At(-eps);
+                    dOnly = new Scalar[6];
+                    for (int m = 0; m < 6; m++) dOnly[m] = 0.5 * (above[m] + below[m]);
+                }
                 Scalar lead = t[6] - rr;
                 for (int m = 0; m < 6; m++) bF[m] += lead * dOnly[m];
                 for (int m = 0; m < 6; m++) rows[i].SecDFigured[m] = dOnly[m];

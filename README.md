@@ -37,12 +37,14 @@ its tests still guard bit-for-bit, and once with the arithmetic aliased to a for
 number. Nothing is copied and nothing can drift, because they are the same files.
 
 **The optimizer works on spherical surfaces only.** The coefficients come from Buchdahl's
-closed-form scheme, which is the fastest route to a seventh-order coefficient there is; his
-aspheric seventh order is a reconstruction real rays reject by up to a factor of four. So a
-figured design is refused before the run rather than optimized against a number known to be
-wrong, and there is not one test for figuring anywhere inside the evaluation loop. Reading and
-analysing a figured design is unaffected - `--forbes` and the rest handle conics and even
-aspheres at every order they report.
+closed-form scheme, which is the fastest route to a seventh-order coefficient there is. The
+aspheric seventh order is a separate routine - the arrangement of his Sec. 85, which he never
+published as a table, now reconstructed here and agreeing with Forbes' series trace to 2E-10 or
+better on every figured test design (`docs/verification.md`) - but it takes a second, dual run
+of the scheme, and the optimizer keeps that choice out of its inner loop by refusing a figured
+design before the run: there is not one test for figuring anywhere inside the evaluation loop.
+Reading and analysing a figured design is unaffected - the coefficient reports, `--forbes` and
+the rest handle conics and even aspheres at every order they report.
 
 PSD recovers the curvature Gauss-Newton discards, from two successive **exact** Jacobians - a
 secant that is only worth taking when both ends are real measurements, which is why nothing here

@@ -236,11 +236,17 @@ Forbes inversion produces the tertiary only, and nothing is lost: the aspheric t
 orders rest on closed-form conic surfaces — a printed answer, not a reconstruction — and the
 rays return both to a part in ten thousand on every design in the table.
 
-"This program's tau20" below means the Buchdahl route as **this repository implements it** —
-for a figured design that includes an aspheric tertiary arrangement Buchdahl never published
-and which had to be reconstructed here. Nothing in this document bears on his theory; the
-question it settles is whose arithmetic the rays back, and the two candidates are this
-repository's reconstruction and this repository's Forbes trace.
+"This program's tau20" below means the Buchdahl route as **this repository implemented it
+when the table was measured** — for a figured design that included an aspheric tertiary
+arrangement Buchdahl never published and which had to be reconstructed here. Nothing in this
+document bears on his theory; the question it settled was whose arithmetic the rays back, and the
+two candidates were this repository's reconstruction and this repository's Forbes trace.
+
+> **Since September 2026 the "this program" column is out of date for the figured rows.** The
+> reconstruction was completed (see `verification.md`, "The aspheric tertiary arrangement") and
+> the aspheric routine now gives Forbes' value on every figured row below, to 2E-10 or better;
+> the rays confirm it (`TheAsphericSeventhOrderDistortionAgreesWithTheRays`). The table is kept
+> as the evidence that located the defect.
 
 | design | figured | this program | Forbes | from the rays |
 |---|---|---|---|---|
@@ -334,11 +340,12 @@ overshoots.
 conjugate is the case: -0.57 per cent at the corner, third order out by a fifth of that,
 the full seventh inside four per cent, and every order improving on the last at every field.
 
-**On a figured design the route matters, and the tool no longer asks.** Buchdahl's scheme needs
-an aspheric tertiary arrangement he never published, and this program's reconstruction of it
-gives a `tau20` the rays reject, so a figured design is predicted from Forbes' — automatically,
-with the report saying so. On an unfigured one the two agree to roundoff on all twenty and the
-choice is empty.
+**On a figured design the tool uses Forbes' `tau20`, and says so.** That choice was made while
+this program's reconstruction of the aspheric tertiary gave a `tau20` the rays rejected. The
+reconstruction has since been completed and now agrees with Forbes on every figured test design
+except a figured flat facing collimated light, so the choice changes nothing there — but the
+report still names the route it used. On an unfigured design the two agree to roundoff on all
+twenty and the choice is empty.
 
 **Getting `tau20` right does not rescue the outer field, and that is the more useful finding.**
 On the two aspheric triplets the corrected coefficient makes the corner slightly worse, not
