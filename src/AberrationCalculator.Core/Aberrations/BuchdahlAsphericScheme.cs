@@ -638,6 +638,22 @@ public static class BuchdahlAsphericScheme
         public bool FiguredMSplitByDandL { get; init; }
 
         /// <summary>
+        /// DIAGNOSTIC reading of the sixth barred q accumulation. Adds, per surface, the pass-ratio
+        /// difference <c>(q~ - q)</c> times ONE part of the figured increment of <c>t98</c> - the
+        /// part the lift does not reach - to <c>'S-6_q</c>, in both families.
+        ///
+        /// <para>0 none; 1 figured x figured products; 2 spherical x figured products; 3 paraxial x
+        /// figured terms; 4 the bracket <c>SecBarFig - lift</c> of the linear term. The sign is
+        /// <see cref="SixthMemberExtraSign"/>. Part 1 is the selective one: it vanishes unless a
+        /// figured surface has figuring ahead of it, which is the only case still failing. None of
+        /// these is a candidate arrangement until it is derived.</para>
+        /// </summary>
+        public int SixthMemberExtraPart { get; init; }
+
+        /// <summary>The sign <see cref="SixthMemberExtraPart"/> is applied with, plus or minus one.</summary>
+        public Scalar SixthMemberExtraSign { get; init; } = 1.0;
+
+        /// <summary>
         /// DIAGNOSTIC, not a parameter. Multiply one entry by a factor in one pass only, just
         /// before that pass runs, with the entries derived from it re-formed.
         ///
@@ -702,6 +718,8 @@ public static class BuchdahlAsphericScheme
                      || options.NoFiguredCorrectionInDagger
                      || options.DaggerCorrectionOnIncrementAlone
                    ? DaggerDelta(rows, count, options) : null;
+        var sixthExtra = options.SixthMemberExtraPart != 0
+                       ? SixthMemberExtra(rows, count, options) : null;
 
         for (int i = 1; i < count - 1; i++)
         {
@@ -793,6 +811,15 @@ public static class BuchdahlAsphericScheme
                     t[120] = -ratio * t[113] + t[114];
                 }
 
+
+                // DIAGNOSTIC: the sixth barred q accumulation moved by one part of its figured
+                // increment. 'S-6q grows by the correction, so t114 = ratio t80 - 'S-6q falls by it
+                // in either family, and t120 with it.
+                if (sixthExtra != null && !r.FlatInCollimatedSpace && SMath.Abs(t[6]) < 1e6)
+                {
+                    t[114] -= sixthExtra[i];
+                    t[120] -= sixthExtra[i];
+                }
 
                 // The q-side closed forms with their products taken on the spherical halves.
                 // Both families move: each is built from the same t86..t98, differing only in
@@ -1074,6 +1101,100 @@ public static class BuchdahlAsphericScheme
                      - t23 * t82 - t19 * t23 + s[5];
 
         return new[] { q86, q89, q92, q94, q97, q98 };
+    }
+
+    /// <summary>
+    /// The running correction <see cref="Options.SixthMemberExtraPart"/> makes to 'S-6q, surface
+    /// by surface: each surface j adds <c>(q~_j - q_j)</c> times the chosen part's increment
+    /// between j and the surface after it.
+    /// </summary>
+    private static Scalar[] SixthMemberExtra(BuchdahlTableIRow[] rows, int count, Options options)
+    {
+        var figuredPrimary = AccumulatedFiguredPrimary(rows, count);
+        var figuredSecondary = AccumulatedFiguredSecondary(rows, count);
+        var part = new Scalar[count];
+        var zero = new Scalar[6];
+
+        for (int i = 1; i < count - 1; i++)
+        {
+            var t = rows[i].T;
+            var aFull = new Scalar[10];
+            var aF = new Scalar[10];
+            var aS = new Scalar[10];
+            for (int k = 0; k < 10; k++)
+            {
+                aFull[k] = t[15 + k];
+                aF[k] = figuredPrimary[i][15 + k];
+                aS[k] = aFull[k] - aF[k];
+            }
+            var sFull = new[] { t[70], t[72], t[74], t[76], t[78], t[80] };
+            var sS = new Scalar[6];
+            for (int k = 0; k < 6; k++) sS[k] = sFull[k] - figuredSecondary[i][k];
+
+            Scalar full = QSideSecondaries(t[9], t[81], t[82], aFull, sFull)[5];
+            Scalar sph = QSideSecondaries(t[9], t[81], t[82], aS, sS)[5];
+            Scalar linQuad = QSideSecondaries(t[9], t[81], t[82], aF, zero)[5];
+            Scalar quad = QSideSecondaries(0.0, 0.0, 0.0, aF, zero)[5];
+
+            part[i] = options.SixthMemberExtraPart switch
+            {
+                1 => quad,
+                2 => full - sph - figuredSecondary[i][5] - linQuad,
+                3 => linQuad - quad,
+                _ => 0.0,
+            };
+        }
+
+        var result = new Scalar[count];
+        Scalar running = 0.0;
+        for (int i = 1; i < count - 1; i++)
+        {
+            if (i > 1)
+            {
+                var prv = rows[i - 1];
+                bool singular = prv.FlatInCollimatedSpace || SMath.Abs(prv.T[6]) > 1e6
+                              || rows[i].FlatInCollimatedSpace;
+                Scalar dr = prv.Rho - prv.T[6];
+
+                // Parts 5 and 6 are surface j's OWN: the products of the q-side closed form that
+                // carry j's figured primaries, read at the surface after it. 5 pairs them with the
+                // spherical accumulations only; 6 with everything, figured ahead included.
+                Scalar own = 0.0;
+                if (options.SixthMemberExtraPart is 5 or 6)
+                {
+                    var t = rows[i].T;
+                    var aFull = new Scalar[10];
+                    var aSph = new Scalar[10];
+                    var mine = new Scalar[10];
+                    var withoutMine = new Scalar[10];
+                    var sphPlusMine = new Scalar[10];
+                    for (int k = 0; k < 10; k++)
+                    {
+                        aFull[k] = t[15 + k];
+                        aSph[k] = aFull[k] - figuredPrimary[i][15 + k];
+                        mine[k] = figuredPrimary[i][15 + k] - figuredPrimary[i - 1][15 + k];
+                        withoutMine[k] = aFull[k] - mine[k];
+                        sphPlusMine[k] = aSph[k] + mine[k];
+                    }
+                    own = options.SixthMemberExtraPart == 5
+                        ? QSideSecondaries(0.0, 0.0, 0.0, sphPlusMine, zero)[5]
+                          - QSideSecondaries(0.0, 0.0, 0.0, aSph, zero)[5]
+                          - QSideSecondaries(0.0, 0.0, 0.0, mine, zero)[5]
+                        : QSideSecondaries(0.0, 0.0, 0.0, aFull, zero)[5]
+                          - QSideSecondaries(0.0, 0.0, 0.0, withoutMine, zero)[5];
+                }
+
+                Scalar step = options.SixthMemberExtraPart switch
+                {
+                    4 => dr * (prv.SecBarFig[5] - prv.SecBarFigLift[5]),
+                    5 or 6 => dr * own,
+                    _ => dr * (part[i] - part[i - 1]),
+                };
+                if (!singular) running += options.SixthMemberExtraSign * step;
+            }
+            result[i] = running;
+        }
+        return result;
     }
 
     /// <summary>

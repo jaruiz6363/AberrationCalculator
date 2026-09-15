@@ -74,6 +74,20 @@ public class AsphericLadderSurvey
     /// rung. This is the instrument the aspheric arrangement is settled with: a reading either
     /// moves the broken rungs toward the oracle or it does not.
     /// </summary>
+    /// <summary>
+    /// The best arrangement so far: members one to five of the barred q accumulation from the
+    /// identities, the sixth by (85.1) with the split primary, and the figuring's D half out of the
+    /// check pass in both the secondaries and the M entries.
+    /// </summary>
+    private static readonly BuchdahlAsphericScheme.Options Best = new()
+    {
+        BarredQAccumulationFromIdentities = true,
+        FiguredSecondarySplitByDandL = true,
+        FiguredMSplitByDandL = true,
+        SharedQBarWithSplitPrimary = true,
+        YBarredFromSharedAccumulations = true,
+    };
+
     [Fact]
     public void Readings()
     {
@@ -158,6 +172,27 @@ public class AsphericLadderSurvey
                     SixthBarredMemberByEquation851 = true,
                     FiguredMSplitByDandL = true,
                 }),
+            // The identities overwrite members one to five, so the shared-accumulation readings
+            // act on the sixth alone: (85.1) on it, with and without the split primary.
+            ("ident + D + M + 6th-split",
+                new BuchdahlAsphericScheme.Options
+                {
+                    BarredQAccumulationFromIdentities = true,
+                    FiguredSecondarySplitByDandL = true,
+                    FiguredMSplitByDandL = true,
+                    SharedQBarWithSplitPrimary = true,
+                    YBarredFromSharedAccumulations = true,
+                }),
+            ("best + 6th quadF +", Best with { SixthMemberExtraPart = 1 }),
+            ("best + 6th quadF -", Best with { SixthMemberExtraPart = 1, SixthMemberExtraSign = -1.0 }),
+            ("best + 6th cross +", Best with { SixthMemberExtraPart = 2 }),
+            ("best + 6th cross -", Best with { SixthMemberExtraPart = 2, SixthMemberExtraSign = -1.0 }),
+            ("best + 6th lin +", Best with { SixthMemberExtraPart = 3 }),
+            ("best + 6th lin -", Best with { SixthMemberExtraPart = 3, SixthMemberExtraSign = -1.0 }),
+            ("best + 6th bracket +", Best with { SixthMemberExtraPart = 4 }),
+            ("best + 6th bracket -", Best with { SixthMemberExtraPart = 4, SixthMemberExtraSign = -1.0 }),
+            ("best + 6th own x sph", Best with { SixthMemberExtraPart = 5 }),
+            ("best + 6th own x all", Best with { SixthMemberExtraPart = 6 }),
             ("both-halves-together",
                 new BuchdahlAsphericScheme.Options
                 {
@@ -657,6 +692,12 @@ public class AsphericLadderSurvey
             ("ident+D+6th", baseline with { SixthBarredMemberByEquation851 = true }),
             ("ident+D+6th+M", baseline with
                 { SixthBarredMemberByEquation851 = true, FiguredMSplitByDandL = true }),
+            ("ident+D+M+6th-split", baseline with
+                {
+                    FiguredMSplitByDandL = true,
+                    SharedQBarWithSplitPrimary = true,
+                    YBarredFromSharedAccumulations = true,
+                }),
             ("drop own-prim x tert", baseline with
                 { DropOwnPrimaryTimesTertiaryFamilyInCheckBarred = true }),
             ("drop dagger x own-sec", baseline with
@@ -727,23 +768,31 @@ public class AsphericLadderSurvey
     [Fact]
     public void WhichSingleEntryExplainsTheRemainingTotals()
     {
+        // The best arrangement so far: members one to five from the identities, the sixth by
+        // (85.1) with the split primary, and the D half out of the check pass in both the
+        // secondaries and the M entries. What is left is on the triplets alone.
         var baseline = new BuchdahlAsphericScheme.Options
         {
             BarredQAccumulationFromIdentities = true,
             FiguredSecondarySplitByDandL = true,
-            SixthBarredMemberByEquation851 = true,
+            FiguredMSplitByDandL = true,
+            SharedQBarWithSplitPrimary = true,
+            YBarredFromSharedAccumulations = true,
         };
 
         var indices = new List<int> { 10, 13 };
-        for (int m = 25; m <= 30; m++) indices.Add(m);
+        for (int m = 15; m <= 30; m++) indices.Add(m);
         indices.AddRange(new[] { 38, 44, 45, 50, 51, 54, 55, 59, 61, 65, 66 });
+        for (int m = 69; m <= 80; m++) indices.Add(m);
         for (int m = 101; m <= 114; m++) indices.Add(m);
         for (int m = 121; m <= 130; m++) indices.Add(m);
 
         const double eps = 1e-4;
         var sb = new StringBuilder();
 
-        foreach (string name in new[] { "Ladder2_A4_Second", "Ladder2_FiguredSphere_Then_A4",
+        foreach (string name in new[] { "CookeTriplet_SPOTM_START_LO_ASPHERE",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8",
+                                        "CookeTriplet_PRMSA_START_LO_ASPHERE",
                                         "Ladder2_A4_Both" })
         {
             var d = Load(name);
@@ -1120,6 +1169,445 @@ public class AsphericLadderSurvey
             Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-qbar-identity.tsv");
         File.WriteAllText(path, sb.ToString());
         _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// <b>What per-surface correction the barred q recursion needs</b>, measured on the five
+    /// members the identities supply, so that it can be carried to the sixth, which they cannot.
+    ///
+    /// <para>Each recursion adds, per surface j, <c>q_j dS_mq</c> plus its dagger x a_q, b_q
+    /// terms to <c>'S-_mq</c>, and then the lift correction. Without the lift, that sum reaches
+    /// the identities exactly on the spherical twin, which is the gate printed first. On a figured
+    /// system the shortfall against the identities is what a correct aspheric form must supply. It
+    /// is fitted per member over every surface of every design on a few structural candidates: the
+    /// right set leaves a residual at rounding, with the same coefficients for all five.</para>
+    /// </summary>
+    [Fact]
+    public void WhatTheBarredQRecursionIsMissing()
+    {
+        int[] Q = { 86, 89, 92, 94, 97, 98 };
+        int[] P = { 70, 72, 74, 76, 78, 80 };
+        // The figured half of each increment in its parts: the linear S-bar_p term, paraxial x
+        // figured primary, figured x figured, spherical x figured; then the q-side D half and the
+        // split-primary dagger term. The hypothesis carried over from the verified p side is
+        // (1, -1, 1, 1, 1, 1), the cross term's coefficient being the open question.
+        string[] names = { "Sfig", "qD", "lin", "quadF", "cross", "split" };
+        double decompWorst = 0.0;
+        var hyp = new double[5];
+        var hypDen = new double[5];
+        var hyp2 = new double[5];
+        var hyp3 = new double[5];
+        var hyp3d = new double[5];
+        var hyp5 = new double[5];
+        var hyp6 = new double[5];
+        var hyp0 = new double[5];
+        var detail5 = new StringBuilder();
+        detail5.AppendLine("design\tj\tm\tshortfall\tlift+split_rel\tH5_own_all_rel\tH6_own_sph_rel");
+        var detail3 = new StringBuilder();
+        detail3.AppendLine("design\tj\tm\tshortfall\tH3\tH3_keepD\tH3_rel\tH3_keepD_rel");
+        var detail2 = new StringBuilder();
+        detail2.AppendLine("design\tj\tm\tq\trho\tshortfall\tqtilde_rule+split\tD_fix\tH2_resid\tH2_rel");
+        var ys = new List<double>[5];
+        var xs = new List<double[]>[5];
+        for (int m = 0; m < 5; m++) { ys[m] = new List<double>(); xs[m] = new List<double[]>(); }
+
+        var detail = new StringBuilder();
+        detail.AppendLine("design\tj\tm\tdS_identity\tshortfall\tSfig\tqD\tlin\tquadF\tcross\tsplit"
+                        + "\thyp_resid");
+        double twinWorst = 0.0;
+
+        static double[] Recursion(double[] t, double[] p)
+        {
+            double qj = p[6];
+            var d = new double[6];
+            for (int m = 0; m < 6; m++) d[m] = qj * (t[new[] { 86, 89, 92, 94, 97, 98 }[m]]
+                                                     - p[new[] { 86, 89, 92, 94, 97, 98 }[m]]);
+            d[0] += p[31] * p[99];
+            d[1] += p[31] * p[100] + p[32] * p[99];
+            d[2] += 0.5 * qj * p[100] * p[31] + p[33] * p[99];
+            d[3] += p[32] * p[100];
+            d[4] += (0.5 * qj * p[32] + p[33]) * p[100];
+            d[5] += 0.5 * qj * p[33] * p[100];
+            return d;
+        }
+
+        foreach (string name in Designs)
+        {
+            var rows = RowsFor(name, out int count, out var twin, out double n1);
+
+            for (int i = 2; i < count - 1; i++)
+            {
+                var r = rows[i];
+                var pr = rows[i - 1];
+                if (r.FlatInCollimatedSpace || pr.FlatInCollimatedSpace
+                    || Math.Abs(r.T[6]) > 1e6 || Math.Abs(pr.T[6]) > 1e6) continue;
+
+                var idI = BuchdahlSecondaryQ.At(rows, i, n1);
+                var idJ = BuchdahlSecondaryQ.At(rows, i - 1, n1);
+                var rec = Recursion(r.T, pr.T);
+
+                // The gate: the spherical twin's recursion against its own identities.
+                var twI = BuchdahlSecondaryQ.At(twin, i, n1);
+                var twJ = BuchdahlSecondaryQ.At(twin, i - 1, n1);
+                var twRec = Recursion(twin[i].T, twin[i - 1].T);
+                for (int m = 0; m < 5; m++)
+                {
+                    double dTw = twI[m + 1] - twJ[m + 1];
+                    if (Math.Abs(dTw) > 1e-14)
+                        twinWorst = Math.Max(twinWorst, Math.Abs(dTw - twRec[m]) / Math.Abs(dTw));
+                }
+
+                var t = r.T;
+                var p = pr.T;
+                double qj = p[6];
+                double dr = pr.Rho - qj;
+                double e31 = pr.Y[31] - p[31], e32 = pr.Y[32] - p[32], e33 = pr.Y[33] - p[33];
+                double f99 = p[99] - twin[i - 1].T[99], f100 = p[100] - twin[i - 1].T[100];
+                var split = new[]
+                {
+                    e31 * f99,
+                    e31 * f100 + e32 * f99,
+                    0.5 * qj * e31 * f100 + e33 * f99,
+                    e32 * f100,
+                    (0.5 * qj * e32 + e33) * f100,
+                };
+
+                var partsI = QParts(r.T, twin[i].T, P);
+                var partsJ = QParts(pr.T, twin[i - 1].T, P);
+
+                // H3: (85.2) barred on the q side - s-bar = q s + t31 a^ + Y31 a^v + (q~ - q)(check
+                // part of s). The check part is what surface j's OWN figured quantities put into
+                // the increment: its figured primaries, and the non-D half of its figured barred
+                // secondary, times whatever they multiply. Evaluated as the closed forms at i with
+                // and without them, on i's paraxial quantities.
+                var accI = new double[10];
+                var accNoOwn = new double[10];
+                for (int k = 0; k < 10; k++)
+                {
+                    accI[k] = r.T[15 + k];
+                    double ownFig = (r.T[15 + k] - twin[i].T[15 + k])
+                                  - (pr.T[15 + k] - twin[i - 1].T[15 + k]);
+                    accNoOwn[k] = accI[k] - ownFig;
+                }
+                var sI = new double[6];
+                var sNoOwn = new double[6];
+                var sNoOwnKeepD = new double[6];
+                for (int k = 0; k < 6; k++)
+                {
+                    sI[k] = r.T[P[k]];
+                    double ownFig = (r.T[P[k]] - twin[i].T[P[k]])
+                                  - (pr.T[P[k]] - twin[i - 1].T[P[k]]);
+                    sNoOwn[k] = sI[k] - (ownFig - pr.T[6] * pr.SecDFigured[k]);
+                    sNoOwnKeepD[k] = sI[k] - ownFig;
+                }
+                var qWith = QClosed(r.T[9], r.T[81], r.T[82], accI, sI);
+                var checkPart = QClosed(r.T[9], r.T[81], r.T[82], accNoOwn, sNoOwn);
+                var checkPartD = QClosed(r.T[9], r.T[81], r.T[82], accNoOwn, sNoOwnKeepD);
+                for (int k = 0; k < 6; k++)
+                {
+                    checkPart[k] = qWith[k] - checkPart[k];
+                    checkPartD[k] = qWith[k] - checkPartD[k];
+                }
+
+                // H5 / H6: the lift and split as built, plus (q~ - q) on the PRODUCTS carrying
+                // surface j's own figured primaries - all of them (H5), or only those paired with
+                // spherical accumulations (H6). Paraxial x own-figured terms get nothing.
+                var z6 = new double[6];
+                var aSph = new double[10];
+                var own = new double[10];
+                var sphPlusOwn = new double[10];
+                for (int k = 0; k < 10; k++)
+                {
+                    aSph[k] = twin[i].T[15 + k];
+                    own[k] = accI[k] - accNoOwn[k];
+                    sphPlusOwn[k] = aSph[k] + own[k];
+                }
+                var prodWith = QClosed(0.0, 0.0, 0.0, accI, z6);
+                var prodWithout = QClosed(0.0, 0.0, 0.0, accNoOwn, z6);
+                var cs1 = QClosed(0.0, 0.0, 0.0, sphPlusOwn, z6);
+                var cs2 = QClosed(0.0, 0.0, 0.0, aSph, z6);
+                var cs3 = QClosed(0.0, 0.0, 0.0, own, z6);
+
+                for (int m = 0; m < 5; m++)
+                {
+                    double dId = idI[m + 1] - idJ[m + 1];
+                    double y = dId - rec[m];
+                    double dQfig = (t[Q[m]] - twin[i].T[Q[m]]) - (p[Q[m]] - twin[i - 1].T[Q[m]]);
+
+                    double dS = partsI.S[m] - partsJ.S[m];
+                    double dLin = partsI.Lin[m] - partsJ.Lin[m];
+                    double dQuad = partsI.QuadF[m] - partsJ.QuadF[m];
+                    double dCross = partsI.Cross[m] - partsJ.Cross[m];
+                    double sum = dS + dLin + dQuad + dCross;
+                    double gate = Math.Max(Math.Abs(dQfig), 1e-14);
+                    if (Math.Abs(dQfig) > 1e-12)
+                        decompWorst = Math.Max(decompWorst, Math.Abs(sum - dQfig) / gate);
+
+                    var x = new[]
+                    {
+                        dr * dS,
+                        dr * qj * pr.SecDFigured[m],
+                        dr * dLin,
+                        dr * dQuad,
+                        dr * dCross,
+                        split[m],
+                    };
+                    if (Math.Abs(dId) < 1e-14 && Math.Abs(y) < 1e-14) continue;
+
+                    double h = y - (x[0] - x[1] + x[2] + x[3] + x[4] + x[5]);
+                    hyp[m] += h * h / (dId * dId);
+                    hypDen[m] += y * y / (dId * dId);
+
+                    // H2: the D content the IDENTITIES carry for each member - through the linear
+                    // p-side term each one's recovery uses, unbarred S_p riding no ratio and the
+                    // barred S-bar_p inside a q-side closed form riding q - against the q q~ D_m
+                    // the q~ rule gives the recursion's q dQ_m.
+                    var D = pr.SecDFigured;
+                    double truthD = m switch
+                    {
+                        0 => 0.5 * D[2],           // (om9 + 2 S3p) / 4
+                        1 => 2.0 * qj * D[2],      // om8 + 2 S3q,  S3q carries S-bar3p
+                        2 => 2.0 * D[5],           // (om15 + 4 S6p) / 2
+                        3 => qj * D[4],            // (om11 + 2 S5q) / 2, S5q carries S-bar5p
+                        _ => 4.0 * qj * D[5],      // om14 + 4 S6q,  S6q carries S-bar6p
+                    };
+                    double h2 = y - (dr * dQfig + split[m] + truthD - qj * pr.Rho * D[m]);
+                    hyp2[m] += h2 * h2 / (dId * dId);
+                    double liftM = dr * pr.SecBarFigLift[m];
+                    double h5 = y - (liftM + split[m] + dr * (prodWith[m] - prodWithout[m]));
+                    double h6 = y - (liftM + split[m] + dr * (cs1[m] - cs2[m] - cs3[m]));
+                    double h0 = y - (liftM + split[m]);
+                    hyp5[m] += h5 * h5 / (dId * dId);
+                    hyp6[m] += h6 * h6 / (dId * dId);
+                    hyp0[m] += h0 * h0 / (dId * dId);
+                    if (Math.Abs(y) > 1e-9 * Math.Abs(dId))
+                        detail5.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                            "{0}\t{1}\t{2}\t{3:E4}\t{4:E2}\t{5:E2}\t{6:E2}",
+                            name, i - 1, m + 1, y, Math.Abs(h0 / dId), Math.Abs(h5 / dId),
+                            Math.Abs(h6 / dId)));
+                    double h3 = y - (dr * checkPart[m] + split[m]);
+                    double h3d = y - (dr * checkPartD[m] + split[m]);
+                    hyp3[m] += h3 * h3 / (dId * dId);
+                    hyp3d[m] += h3d * h3d / (dId * dId);
+                    if (Math.Abs(y) > 1e-9 * Math.Abs(dId))
+                        detail3.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                            "{0}\t{1}\t{2}\t{3:E4}\t{4:E4}\t{5:E4}\t{6:E2}\t{7:E2}",
+                            name, i - 1, m + 1, y, dr * checkPart[m] + split[m],
+                            dr * checkPartD[m] + split[m], Math.Abs(h3 / dId), Math.Abs(h3d / dId)));
+                    if (Math.Abs(y) > 1e-9 * Math.Abs(dId))
+                        detail2.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                            "{0}\t{1}\t{2}\t{3:F5}\t{4:F5}\t{5:E4}\t{6:E4}\t{7:E4}\t{8:E4}\t{9:E2}",
+                            name, i - 1, m + 1, qj, pr.Rho, y, dr * dQfig + split[m],
+                            truthD - qj * pr.Rho * D[m], h2, Math.Abs(h2 / dId)));
+
+                    double w = 1.0 / Math.Max(Math.Abs(dId), 1e-14);
+                    ys[m].Add(w * y);
+                    var wx = new double[x.Length];
+                    for (int k = 0; k < x.Length; k++) wx[k] = w * x[k];
+                    xs[m].Add(wx);
+
+                    if (Math.Abs(y) > 1e-9 * Math.Abs(dId))
+                        detail.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                            "{0}\t{1}\t{2}\t{3:E4}\t{4:E4}\t{5:E4}\t{6:E4}\t{7:E4}\t{8:E4}\t{9:E4}"
+                            + "\t{10:E4}\t{11:E4}",
+                            name, i - 1, m + 1, dId, y, x[0], x[1], x[2], x[3], x[4], x[5], h));
+                }
+            }
+        }
+
+        var sets = new[]
+        {
+            new[] { 0, 1, 5 }, new[] { 0, 1, 2, 3, 5 }, new[] { 0, 2, 3, 4, 5 },
+            new[] { 0, 1, 2, 3, 4, 5 },
+        };
+
+        var sb = new StringBuilder();
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+            "#gate: spherical twin, recursion without lift vs identities, worst rel {0:E2}",
+            twinWorst));
+        sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+            "#gate: the four parts sum to the figured half of the increment, worst rel {0:E2}",
+            decompWorst));
+        for (int m = 0; m < 5; m++)
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "#hypothesis (1,-1,1,1,1,1): S{0} residual share {1:E3}",
+                m + 1, hypDen[m] < 1e-300 ? 0.0 : Math.Sqrt(hyp[m] / hypDen[m])));
+        for (int m = 0; m < 5; m++)
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "#H2 identity D content: S{0} residual share {1:E3}",
+                m + 1, hypDen[m] < 1e-300 ? 0.0 : Math.Sqrt(hyp2[m] / hypDen[m])));
+        for (int m = 0; m < 5; m++)
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "#H3 own check part: S{0} residual share {1:E3}   keeping D in it {2:E3}",
+                m + 1, hypDen[m] < 1e-300 ? 0.0 : Math.Sqrt(hyp3[m] / hypDen[m]),
+                hypDen[m] < 1e-300 ? 0.0 : Math.Sqrt(hyp3d[m] / hypDen[m])));
+        for (int m = 0; m < 5; m++)
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "#own products: S{0}  lift+split {1:E3}   H5 own x all {2:E3}   H6 own x sph {3:E3}",
+                m + 1,
+                hypDen[m] < 1e-300 ? 0.0 : Math.Sqrt(hyp0[m] / hypDen[m]),
+                hypDen[m] < 1e-300 ? 0.0 : Math.Sqrt(hyp5[m] / hypDen[m]),
+                hypDen[m] < 1e-300 ? 0.0 : Math.Sqrt(hyp6[m] / hypDen[m])));
+        sb.AppendLine();
+        sb.Append(detail5);
+        sb.AppendLine();
+        sb.Append(detail3);
+        sb.AppendLine();
+        sb.Append(detail2);
+        sb.AppendLine();
+        sb.AppendLine("set\tmember\tn\tcoefficients\tresidual_share\tworst_row_rel");
+        foreach (var set in sets)
+        {
+            string label = string.Join("+", Array.ConvertAll(set, k => names[k]));
+            for (int m = 0; m < 5; m++)
+            {
+                int n = ys[m].Count, k = set.Length;
+                var ata = new double[k, k];
+                var aty = new double[k];
+                double yy = 0.0;
+                for (int row = 0; row < n; row++)
+                {
+                    yy += ys[m][row] * ys[m][row];
+                    for (int a = 0; a < k; a++)
+                    {
+                        aty[a] += xs[m][row][set[a]] * ys[m][row];
+                        for (int b = 0; b < k; b++)
+                            ata[a, b] += xs[m][row][set[a]] * xs[m][row][set[b]];
+                    }
+                }
+                var c = Solve(ata, aty);
+                if (c == null)
+                {
+                    sb.AppendLine($"{label}\tS{m + 1}\t{n}\tsingular");
+                    continue;
+                }
+                double rr = 0.0, worst = 0.0;
+                for (int row = 0; row < n; row++)
+                {
+                    double fit = 0.0;
+                    for (int a = 0; a < k; a++) fit += c[a] * xs[m][row][set[a]];
+                    double res = ys[m][row] - fit;
+                    rr += res * res;
+                    worst = Math.Max(worst, Math.Abs(res));   // rows are already relative to dS
+                }
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\tS{1}\t{2}\t{3}\t{4:E2}\t{5:E2}",
+                    label, m + 1, n,
+                    string.Join(",", Array.ConvertAll(c, v => v.ToString("F6", CultureInfo.InvariantCulture))),
+                    yy < 1e-300 ? 0.0 : Math.Sqrt(rr / yy), worst));
+            }
+        }
+
+        sb.AppendLine();
+        sb.Append(detail);
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-qbar-missing.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    private sealed record QSplit(double[] S, double[] Lin, double[] QuadF, double[] Cross);
+
+    /// <summary>
+    /// The scheme's six q-side closed forms t86, t89, t92, t94, t97, t98, transcribed so that
+    /// they can be evaluated on parts of the accumulations. <paramref name="a"/> is t15..t24 from
+    /// zero, <paramref name="s"/> the barred p sums t70..t80.
+    /// </summary>
+    private static double[] QClosed(double t9, double t81, double t82, double[] a, double[] s)
+    {
+        double t15 = a[0], t16 = a[1], t17 = a[2], t18 = a[3], t19 = a[4];
+        double t20 = a[5], t21 = a[6], t22 = a[7], t23 = a[8], t24 = a[9];
+        double t83 = t16 - t20, t84 = t17 - t22, t85 = t19 - t23;
+
+        double q86 = -1.5 * t83 * t83 + t9 * t16 - t16 * t20 + t15 * t21 - t15 * t81 + s[0];
+        double t87 = (2.0 * t21 - t22 - t81) * t16 + t9 * t21 - t20 * t81;
+        double t88 = (2.0 * t23 - t82) * t15 - t17 * t20 + t9 * t17;
+        double q89 = -3.0 * t83 * t84 + t87 + t88 + s[1];
+        double t90 = -0.5 * t81 * t84 + t9 * t19 - t20 * t82;
+        double t91 = t18 * t21 + t15 * t24 - t16 * t23 - t19 * t20;
+        double q92 = -3.0 * t83 * t85 + s[2] + t90 + t91;
+        double t93 = 2.0 * (2.0 * t16 * t23 - t16 * t82 + t9 * t23) - t17 * t22;
+        double q94 = -1.5 * t84 * t84 + t81 * t84 + s[3] + t93;
+        double t95 = (2.0 * t18 - t17 + t81) * t23 + t19 * t81 - t22 * t82;
+        double t96 = (2.0 * t16 + t9) * t24 - t19 * t22 - t18 * t82;
+        double q97 = -3.0 * t84 * t85 + t95 + t96 + s[4];
+        double q98 = -1.5 * t85 * t85 + t24 * t81 + t18 * t24 - t23 * t82 - t19 * t23 + s[5];
+        return new[] { q86, q89, q92, q94, q97, q98 };
+    }
+
+    /// <summary>
+    /// The figured half of the q-side closed forms at one surface, in its parts: the linear
+    /// barred p sum, the paraxial x figured-primary terms, figured x figured, and the spherical x
+    /// figured cross terms. The spherical half is the twin's accumulations.
+    /// </summary>
+    private static QSplit QParts(double[] row, double[] twin, int[] pIdx)
+    {
+        var aS = new double[10];
+        var aF = new double[10];
+        var aFull = new double[10];
+        for (int k = 0; k < 10; k++)
+        {
+            aS[k] = twin[15 + k];
+            aFull[k] = row[15 + k];
+            aF[k] = aFull[k] - aS[k];
+        }
+        var sS = new double[6];
+        var sF = new double[6];
+        var sFull = new double[6];
+        for (int k = 0; k < 6; k++)
+        {
+            sS[k] = twin[pIdx[k]];
+            sFull[k] = row[pIdx[k]];
+            sF[k] = sFull[k] - sS[k];
+        }
+
+        double t9 = row[9], t81 = row[81], t82 = row[82];
+        var zero = new double[6];
+        var full = QClosed(t9, t81, t82, aFull, sFull);
+        var sph = QClosed(twin[9], twin[81], twin[82], aS, sS);
+        var linQuad = QClosed(t9, t81, t82, aF, zero);
+        var quad = QClosed(0.0, 0.0, 0.0, aF, zero);
+
+        var lin = new double[6];
+        var cross = new double[6];
+        for (int k = 0; k < 6; k++)
+        {
+            lin[k] = linQuad[k] - quad[k];
+            cross[k] = full[k] - sph[k] - sF[k] - linQuad[k];
+        }
+        return new QSplit(sF, lin, quad, cross);
+    }
+
+    /// <summary>Gaussian elimination with partial pivoting; null when the system is singular.</summary>
+    private static double[]? Solve(double[,] a, double[] b)
+    {
+        int n = b.Length;
+        var m = (double[,])a.Clone();
+        var v = (double[])b.Clone();
+        double scale = 0.0;
+        for (int i = 0; i < n; i++) scale = Math.Max(scale, Math.Abs(m[i, i]));
+        for (int col = 0; col < n; col++)
+        {
+            int piv = col;
+            for (int row = col + 1; row < n; row++)
+                if (Math.Abs(m[row, col]) > Math.Abs(m[piv, col])) piv = row;
+            if (Math.Abs(m[piv, col]) <= 1e-12 * Math.Max(scale, 1e-300)) return null;
+            if (piv != col)
+            {
+                for (int k = 0; k < n; k++) (m[col, k], m[piv, k]) = (m[piv, k], m[col, k]);
+                (v[col], v[piv]) = (v[piv], v[col]);
+            }
+            for (int row = 0; row < n; row++)
+            {
+                if (row == col) continue;
+                double f = m[row, col] / m[col, col];
+                for (int k = col; k < n; k++) m[row, k] -= f * m[col, k];
+                v[row] -= f * v[col];
+            }
+        }
+        var x = new double[n];
+        for (int i = 0; i < n; i++) x[i] = v[i] / m[i, i];
+        return x;
     }
 
     private static BuchdahlTableIRow[] RowsFor(string name, out int count,
