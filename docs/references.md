@@ -16,22 +16,30 @@ Sec. VIII identities have been located but not transcribed.
 
 ## Primary sources
 
-**[wanted] Buchdahl, H. A.**, *Optical Aberration Coefficients* (Oxford University Press,
+**[have] Buchdahl, H. A.**, *Optical Aberration Coefficients* (Oxford University Press,
 London, 1954). Dover reprint, New York, 1968.
-The origin of the coefficients this whole program computes. Never cited in this repo
-until now, which was an omission - the coefficients carry his name on every screen.
+The origin of the coefficients this whole program computes.
 
-**The Dover reprint carries the whole journal series as an appendix**, which changes what
-acquiring it is worth. Sands (1970), who cites the Dover edition as his reference 1,
-describes "the thirteen papers under the same general title and reprinted at the end of
-OAC" and cites them by number throughout - OACIII, OACVI, OACVII, OACXII. So the series
-runs to at least twelve papers and the reprint holds all of them.
+**The Dover reprint carries the whole journal series as an appendix.** Sands (1970), who
+cites the Dover edition as his reference 1, describes "the thirteen papers under the same
+general title and reprinted at the end of OAC" and cites them by number throughout -
+OACIII, OACVI, OACVII, OACXII. So holding the book holds papers I to XIII, and
+`### The rest of Buchdahl's series` below is a numbering table rather than a shopping list.
+XIV is 1969, after the reprint, and is held separately.
 
-The consequence for this file is that `### The rest of Buchdahl's series` below is not a
-shopping list of separate items. **One book discharges it, along with every monograph
-section the tertiary work needs** - Secs. 65-66, 80, 81, 84, 85, 22(b) with Eq. (22.27),
-218(a), and the Chap. 3 and Eq. (21.6) identities Sands says Table I was built on. It is
-the highest-value single acquisition on this page and it is not close.
+**This entry read `[wanted]` for far longer than it was true**, and it said the reprint was
+"the highest-value single acquisition on this page". By then the monograph had been read
+section by section and the whole aspheric tertiary result had come out of it: Secs. 84 and
+85 off the page, Sec. 22's identities, Sec. 29 proving the (68.8) misprint rather than
+inferring it, and XII Sec. 6's duality. A bibliography that says its principal source has
+not been obtained, while the work visibly rests on it, misleads a reader about what the
+results stand on - which is the one thing this file exists to prevent.
+
+The sections consulted are Secs. 12-13, 19-20, 22, 29, 59-60, 62, 63-66, 67-68, 73, 74-76,
+77-79, 80, 81, 83-85 and 218, together with Chapter V, Chapter VI's Table II, Appendix J
+and the tables at pp. 143-146. They are held outside this repository, as page images: the
+scans are not ours to redistribute and no path to them belongs in version control, for the
+same reason `ZemaxPaths.props` is not committed.
 
 **[wanted] Rimmer, M.**, M.S. Thesis, Institute of Optics, University of Rochester,
 Rochester, New York, 1963.
@@ -128,12 +136,13 @@ normally unchanged, so the book alone may not carry the tertiary computation.
 ### The rest of Buchdahl's series
 
 The series runs to at least fourteen papers, and I to XIII are reprinted at the end of the Dover
-monograph - see the note under it above. Ten are now in hand. The numbering is exact, from
+monograph - see the note under it above, so all fourteen are in hand: I to XIII through the
+reprint, and XIV, which postdates it, separately. The numbering is exact, from
 footnote 2 of XII and footnote 1 of XIV:
 
 | | citation | subject | |
 |---|---|---|---|
-| I | *J. Opt. Soc. Am.* **46**, 941 (1956) | tertiary spherical aberration - B7's origin | wanted |
+| I | *J. Opt. Soc. Am.* **46**, 941 (1956) | tertiary spherical aberration - B7's origin | have |
 | II | **48**, 563 (1958) | the tertiary intrinsic coefficients | have |
 | III | **48**, 747 (1958) | computing the tertiary - Table I, Table II | have |
 | IV | **48**, 757 (1958) | quaternary (ninth-order) spherical | have |
@@ -142,7 +151,7 @@ footnote 2 of XII and footnote 1 of XIV:
 | VII | **50**, 540 (1960) | deformation and retardation of the wave front | have |
 | VIII | **50**, 678 (1960) | spherical aberration of order eleven | have |
 | IX | **51**, 608 (1961) | theory of reversible optical systems | have |
-| X, XI, XIII | ? | ? | wanted, citations unpinned |
+| X, XI, XIII | ? | ? | have, via the reprint; citations unpinned |
 | XII | **55**, 641 (1965) | remarks relating to aberrations of any order | have |
 | XIV | **59**, 1422 (1969) | simplified computational form of the iteration equations | have |
 
@@ -178,7 +187,8 @@ And one trap, Sec. 7(a): his `e` is not unity, so the coefficients carry powers 
 `A: -1, B: 0, C: 1, S1: -1, S3,S4: 1, S5: 2, S6: 3`, barred coefficients taking an extra factor.
 A coefficient right and its power of `e` wrong reads as a plausible number rather than an error.
 
-**[wanted] Buchdahl, H. A.**, *J. Opt. Soc. Am.* **46**, 941 (1956). Paper I of the series.
+**[have] Buchdahl, H. A.**, *J. Opt. Soc. Am.* **46**, 941 (1956). Paper I of the series.
+Held through the Dover reprint's appendix, which carries I to XIII.
 
 **[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. II. The Tertiary Intrinsic
 Coefficients," *J. Opt. Soc. Am.* **48**, 563-568 (1958).
@@ -589,6 +599,48 @@ recollection, as saying the opposite - that SYNOPSYS uses aberration theory earl
 is fast against real ray tracing. Reading the paper showed that it argues close to the
 reverse. The recollection may still hold for the BOOK, or for how DSEARCH forms its first
 merit function; neither has been checked, and neither should be cited until it is.
+
+**[have] Shafer, D.**, "I Plead the 5th", *Recent Trends in Optical Systems Design II*,
+SPIE Vol. 1049 (1989), pp. 11-16.
+
+Six pages by a working designer arguing for exactly the two things this program was built to
+provide, written thirty-seven years before it. It is here because it is the only source found
+so far that states the design case for the per-surface intrinsic-and-induced split as a
+requirement rather than as a nicety.
+
+The premise is that in a design already corrected to third order the limiting monochromatic
+aberrations are fifth-order field curvature and sagittal oblique spherical aberration, and
+that these cannot be controlled from totals:
+
+> "This can only be done effectively, however, if the 5th-order aberration surface
+> contributions are broken into two components: the intrinsic component and the induced
+> component."
+
+His example is a Bouwers, where the mirror shows induced spherochromatism for a reason that
+is not the mirror's: the front lens's axial colour changes the beam diameter arriving at it.
+A surface contribution alone cannot distinguish that from a fault of the mirror, and the two
+call for opposite actions. The closing sentence asks for the printout this program produces:
+"surface by surface 5th-order aberration contributions printout, ideally with separate
+intrinsic and induced components."
+
+Two further claims bear directly on what is being built here. On merit functions: "it is much
+quicker to try out many different configurations and ideas if there are no rays in the merit
+function and you are only correcting the 3rd and 5th-order aberrations" - the performance
+limits of a design are "built in at a very early level", and "unless you can control all the
+5th-order ... you can't make the optimum higher-order balance required". On the seventh order,
+which is this program's reason for existing: "It is the 7th-order which then determines if a
+particular design is on the right track."
+
+And on aspherics he takes a position worth recording because it is not the usual one: they
+are a temporary device for design rather than a feature of the product. Separated aspheric
+singlets carrying only fourth-order deformation, corrected for the third order together with
+oblique spherical and Petzval, can afterwards be "replaced with equivalent non-aspheric
+doublets or triplets without losing the higher-order correction" - which makes an aspheric
+variable useful even to a designer who has no intention of ordering an asphere.
+
+Set against Dilworth above, the two disagree about the merit function and agree about the
+diagnosis: both want the program to say what to change, and Shafer is explicit that the
+coefficient breakdown is how it says it.
 
 ## Implementation provenance
 
