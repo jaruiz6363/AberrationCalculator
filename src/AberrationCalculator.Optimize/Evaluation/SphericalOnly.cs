@@ -82,16 +82,28 @@ public static class SphericalOnly
             throw new NotSupportedException(sb.ToString());
         }
 
-        // A design cannot acquire figuring either, because the variables that would do it do not
-        // exist - VariableKind has no conic and no aspheric member. This is belt and braces
-        // against someone adding one without reading this file.
+        // A spherical design must not be able to ACQUIRE figuring either. The kinds that would
+        // do it now exist - VariableKind carries Conic and the three even-asphere terms, and
+        // every layer under this one reads, writes, seeds, scales and files them - but the
+        // evaluation loop has not yet been routed to the aspheric tertiary, so a design that
+        // became figured mid-run would be descending the spherical arrangement on a surface
+        // that is no longer spherical. That is the one failure this file exists to prevent, and
+        // it is the last thing standing between here and a figured optimisation.
         if (variables != null)
             foreach (var v in variables.Items)
-                if (v.Kind != VariableKind.Curvature && v.Kind != VariableKind.Thickness)
+                if (v.Figures)
                     throw new NotSupportedException(
-                        $"Variable {v.Name} is of a kind this optimiser does not accept. Only "
-                      + "curvature and thickness may be varied; figuring a surface would send "
-                      + "the seventh order down a route this optimiser does not yet carry.");
+                        $"Variable {v.Name} would figure surface {v.Surface}, and this optimiser "
+                      + "is still spherical-only.\n\n"
+                      + "The variable itself is fully built - it reads and writes, it carries a "
+                      + "bound, it seeds the differentiating chain and it has a step scale of "
+                      + "its own. What is not built is the routing: the evaluation loop computes "
+                      + "the tertiary through Buchdahl's spherical table, and a surface that "
+                      + "acquired a conic mid-run would be descending the wrong arrangement "
+                      + "without anything saying so.\n\n"
+                      + "Vary CV and TH for now. Analysing a figured design is unaffected - "
+                      + "`abcalc <lens>` and `--forbes` handle conics and even aspheres at every "
+                      + "order they report.");
     }
 
     private static string Join(List<int> values)

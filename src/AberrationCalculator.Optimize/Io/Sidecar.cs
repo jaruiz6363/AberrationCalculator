@@ -184,6 +184,22 @@ public static class SurfaceVariables
                     Kind = VariableKind.Thickness, Surface = i,
                     Min = s.ThicknessMin, Max = s.ThicknessMax,
                 });
+
+            // The figuring. A .lhlt records which of these its author made variable but has
+            // nowhere to put a bound on them, so they come back unbounded; a designer who
+            // wants one states it in the .var file, which every format can carry.
+            if (s.ConicVariable)
+                set.Add(new Variable { Kind = VariableKind.Conic, Surface = i });
+
+            if (s.AsphericVariable != null)
+            {
+                if (s.AsphericVariable.Length > 1 && s.AsphericVariable[1])
+                    set.Add(new Variable { Kind = VariableKind.Asphere4, Surface = i });
+                if (s.AsphericVariable.Length > 2 && s.AsphericVariable[2])
+                    set.Add(new Variable { Kind = VariableKind.Asphere6, Surface = i });
+                if (s.AsphericVariable.Length > 3 && s.AsphericVariable[3])
+                    set.Add(new Variable { Kind = VariableKind.Asphere8, Surface = i });
+            }
         }
         return set;
     }
@@ -204,6 +220,9 @@ public static class SurfaceVariables
         {
             s.CurvatureVariable = false;
             s.ThicknessVariable = false;
+            s.ConicVariable = false;
+            if (s.AsphericVariable != null)
+                for (int k = 0; k < s.AsphericVariable.Length; k++) s.AsphericVariable[k] = false;
             s.CurvatureMin = double.NegativeInfinity;
             s.CurvatureMax = double.PositiveInfinity;
             s.ThicknessMin = double.NegativeInfinity;
@@ -226,6 +245,16 @@ public static class SurfaceVariables
                     s.ThicknessVariable = true;
                     s.ThicknessMin = v.Min;
                     s.ThicknessMax = v.Max;
+                    break;
+                case VariableKind.Conic:
+                    s.ConicVariable = true;
+                    break;
+                default:
+                    // A bound on a figuring variable is dropped here rather than silently
+                    // mangled: the format has nowhere to keep it. It survives in the .var file.
+                    int k = v.AsphericIndex;
+                    if (s.AsphericVariable != null && k >= 0 && k < s.AsphericVariable.Length)
+                        s.AsphericVariable[k] = true;
                     break;
             }
         }

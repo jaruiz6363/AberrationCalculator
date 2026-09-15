@@ -91,7 +91,7 @@ public static class VarFile
     }
 
     /// <summary>
-    /// <c>VAR CV|TH n [MIN x] [MAX x] [FREE]</c>, merged into whatever this variable already had.
+    /// <c>VAR CV|TH|CC|A4|A6|A8 n [MIN x] [MAX x] [FREE]</c>, merged into whatever this variable already had.
     /// </summary>
     private static void MergeVariable(
         List<(VariableKind Kind, int Surface, double Min, double Max)> into, string[] token)
@@ -182,34 +182,35 @@ public static class VarFile
     }
 
     /// <summary>
-    /// <c>CV</c> or <c>TH</c>. The figuring kinds are recognised in order to EXPLAIN the refusal
-    /// rather than report them as a typo - a designer asking for a variable conic has made a
-    /// reasonable request that this program declines, and the difference between a limitation and
-    /// a mistake is carried entirely by the message.
+    /// <c>CV</c>, <c>TH</c>, <c>CC</c>, <c>A4</c>, <c>A6</c> or <c>A8</c>.
+    ///
+    /// <para>The aspheric terms stop at <c>A8</c> and that is not an omission. r^10 and beyond do
+    /// not appear in the third, fifth or seventh order at all, so a variable driving one would
+    /// move the lens without moving anything the merit function can see - a variable with an
+    /// identically zero column in the Jacobian, which is worse than a refusal because it looks
+    /// like it is working.</para>
     /// </summary>
     private static VariableKind ParseKind(string text) => text switch
     {
         "CV" or "CURVATURE" => VariableKind.Curvature,
         "TH" or "THICKNESS" => VariableKind.Thickness,
+        "CC" or "CONIC" => VariableKind.Conic,
+        "A4" => VariableKind.Asphere4,
+        "A6" => VariableKind.Asphere6,
+        "A8" => VariableKind.Asphere8,
 
-        "CC" or "CONIC" => throw new FormatException(
-            "a conic cannot be a variable here: this optimiser works on SPHERICAL surfaces only. "
-          + "That is not a doubt about the arithmetic. Buchdahl's aspheric seventh order needs an "
-          + "arrangement he never published; this repository has one, and it agrees with Forbes' "
-          + "series trace to 2E-10 or better on every figured design. What is missing is the "
-          + "ROUTING: a figured design is refused up front so that no evaluation ever has to ask "
-          + "whether a surface is figured, which keeps that question out of the inner loop. Vary "
-          + "CV and TH; analyse the figured design with `abcalc <lens>` or `--forbes`, which "
-          + "handle conics at every order they report"),
-
-        _ => text.Length > 1 && text[0] == 'A' && int.TryParse(text.Substring(1), out _)
+        _ => text.Length > 1 && text[0] == 'A' && int.TryParse(text.Substring(1), out int order)
             ? throw new FormatException(
-                  $"'{text}' is an aspheric term, and figuring cannot be a variable here. This "
-                + "optimiser works on spherical surfaces only - not because Buchdahl's aspheric "
-                + "seventh order is in doubt, but because routing to it would put a test for "
-                + "figuring inside the evaluation loop. Vary CV and TH instead")
+                  order % 2 == 0 && order >= 10
+                  ? $"'{text}' is beyond r^8, and the aberration coefficients cannot see it. "
+                  + "Buchdahl's scheme reaches the seventh order, and r^10 and above contribute "
+                  + "nothing to the third, fifth or seventh order - they are not approximated "
+                  + "there, they are absent. A variable driving one would have an identically "
+                  + "zero column in the Jacobian. Vary A4, A6 or A8"
+                  : $"'{text}' is not an even-asphere term; this optimiser takes A4, A6 and A8")
             : throw new FormatException(
-                  $"'{text}' is not a variable kind; this optimiser takes CV and TH"),
+                  $"'{text}' is not a variable kind; this optimiser takes CV, TH, CC, A4, A6 "
+                + "and A8"),
     };
 
     private static int Whole(string text, string what)
@@ -256,7 +257,7 @@ public static class VarFile
         if (v == null) throw new ArgumentNullException(nameof(v));
 
         var sb = new StringBuilder();
-        sb.Append("VAR ").Append(v.Kind == VariableKind.Curvature ? "CV" : "TH")
+        sb.Append("VAR ").Append(Variable.Prefix(v.Kind))
           .Append(' ').Append(N(v.Surface));
         if (!double.IsNegativeInfinity(v.Min)) sb.Append(" MIN ").Append(N(v.Min));
         if (!double.IsPositiveInfinity(v.Max)) sb.Append(" MAX ").Append(N(v.Max));

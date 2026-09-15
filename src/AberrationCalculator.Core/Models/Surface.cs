@@ -186,6 +186,22 @@ public class Surface
     /// <summary>Whether the optimiser may change the thickness after this surface.</summary>
     public bool ThicknessVariable { get; set; }
 
+    /// <summary>Whether the optimiser may change this surface's conic constant.</summary>
+    public bool ConicVariable { get; set; }
+
+    /// <summary>
+    /// Whether the optimiser may change each even-asphere coefficient, indexed as
+    /// <see cref="AsphericCoefficients"/> is: [1] is the r^4 term, [2] r^6, [3] r^8.
+    ///
+    /// <para>Slot [0] is the r^2 term, which is folded into the vertex curvature before any
+    /// coefficient is computed and so would duplicate the curvature variable; and [4] upward
+    /// are r^10 and beyond, which do not appear in the third, fifth or seventh order at all.
+    /// Neither is offered. The array is the full length so that it lines up with the
+    /// coefficients it describes and with the .lhlt field of the same name, rather than being
+    /// three bools a reader has to map by hand.</para>
+    /// </summary>
+    public bool[] AsphericVariable { get; set; } = new bool[8];
+
     /// <summary>Lower limit on the curvature, or negative infinity for none.</summary>
     public double CurvatureMin { get; set; } = double.NegativeInfinity;
 

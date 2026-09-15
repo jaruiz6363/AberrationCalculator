@@ -87,6 +87,17 @@ public static class DesignCopy
             // appear in another's lens, which is the kind of fault that only shows up as a
             // parallel run giving a different answer from a serial one.
             AsphericCoefficients = (double[])s.AsphericCoefficients.Clone(),
+
+            // The same reasoning as the coefficients above: a shared flag array would let one
+            // chain's declaration of what may move appear in another's lens.
+            CurvatureVariable = s.CurvatureVariable,
+            ThicknessVariable = s.ThicknessVariable,
+            ConicVariable = s.ConicVariable,
+            AsphericVariable = (bool[])s.AsphericVariable.Clone(),
+            CurvatureMin = s.CurvatureMin,
+            CurvatureMax = s.CurvatureMax,
+            ThicknessMin = s.ThicknessMin,
+            ThicknessMax = s.ThicknessMax,
         };
 
         for (int k = 0; k < s.Parameters.Length; k++) d.SetParameter(k, s.Parameters[k]);
@@ -120,6 +131,14 @@ public static class DesignCopy
             for (int k = 0; k < s.AsphericCoefficients.Length
                             && k < t.AsphericCoefficients.Length; k++)
                 t.AsphericCoefficients[k] = s.AsphericCoefficients[k];
+
+            // Copied for the same reason the coefficients are: with the figuring variable, a
+            // run that ends worse than it began hands back the design it started from, and a
+            // conic left behind by the abandoned attempt would be a design nobody asked for.
+            t.ConicVariable = s.ConicVariable;
+            for (int k = 0; k < s.AsphericVariable.Length
+                            && k < t.AsphericVariable.Length; k++)
+                t.AsphericVariable[k] = s.AsphericVariable[k];
         }
     }
 }
