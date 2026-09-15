@@ -61,7 +61,14 @@
 !   the aspheric machinery is reached there, so a disagreement is a fault in this file
 !   rather than anything to do with the aspheric arrangement.
 !
-! TWO SWITCHES, both off by default and both about the lens in front of you
+! THREE SWITCHES, all off by default and all about the lens in front of you
+!
+!   srf = 1 breaks every coefficient down SURFACE BY SURFACE, and splits the third
+!   and fifth order into what the surface generates on its own, what its figuring
+!   adds, and what was INDUCED in it by the surfaces ahead. A total says a design is
+!   wrong; this says where to go and look, and whether the fault is that surface's
+!   own. Each column sums down to the system total printed above it, which is a check
+!   you can make by eye. See the note above the printout for what it does not do.
 !
 !   chk = 1 prints the bridge constants that carry the figuring into the scheme.
 !   They are measured per quantity and must come out the SAME ON EVERY SURFACE of
@@ -121,6 +128,13 @@ chk = 0
 ! single wrong entry shows as a single wrong line rather than as a wrong coefficient
 ! twenty steps downstream.
 dbg = 0
+
+! Surface by surface, with the third and fifth order split into intrinsic, figuring
+! and induced. This is the printout a designer works from rather than a diagnostic:
+! the totals say the design is wrong and this says which surface, and whether that
+! surface is generating the aberration or only reacting to what reached it. The two
+! call for opposite actions, which is the whole reason for separating them.
+srf = 0
 
 ns = NSUR()
 nsm = ns - 1
@@ -351,7 +365,7 @@ PRINT " "
 DECLARE mq, DOUBLE, 2, 2 * nsm + 4, 18
 
 ! The induced part and the printed totals are wanted for the DIRECT ray-set only.
-DECLARE fo, DOUBLE, 2, nsm + 2, 40
+DECLARE fo, DOUBLE, 2, nsm + 2, 60
 
 FOR rs = 1, 2, 1
 
@@ -467,6 +481,27 @@ FOR rs = 1, 2, 1
       FOR j = 8, 14, 1
          mq(mb, j) = 0
       NEXT
+
+      ! The figuring's own share of each printed coefficient, zeroed here so that a
+      ! spherical surface reports zero rather than whatever the last figured surface
+      ! left behind. srf = 1 prints these; nothing else reads them.
+      aBa = 0
+      aFa = 0
+      aCa = 0
+      aEa = 0
+      aB5 = 0
+      aF1 = 0
+      aF2 = 0
+      aM1 = 0
+      aM2 = 0
+      aM3 = 0
+      aN1 = 0
+      aN2 = 0
+      aN3 = 0
+      aC5 = 0
+      aP5 = 0
+      aE5 = 0
+      aB7 = 0
 
       ! ---------------------------------------------------------------------------
       ! The aspheric figuring, M Sec. 77. Every term carries c1b, c2b or c3b and so
@@ -638,6 +673,29 @@ FOR rs = 1, 2, 1
          fo(i, 21) = iE5
          fo(i, 22) = iB7
 
+         ! The figuring's share, for srf = 1. Slots 1 to 5 and 10 to 22 above are
+         ! the surface's own sphere PLUS its figuring, which is the form the induced
+         ! terms below consume; these separate the second part out again. There is no
+         ! figuring term in Pi: the Petzval sum depends on the vertex curvature and
+         ! the indices alone, and a figured surface has the same vertex sphere.
+         fo(i, 41) = aBa
+         fo(i, 42) = aFa
+         fo(i, 43) = aCa
+         fo(i, 44) = aEa
+         fo(i, 45) = aB5
+         fo(i, 46) = aF1
+         fo(i, 47) = aF2
+         fo(i, 48) = aM1
+         fo(i, 49) = aM2
+         fo(i, 50) = aM3
+         fo(i, 51) = aN1
+         fo(i, 52) = aN2
+         fo(i, 53) = aN3
+         fo(i, 54) = aC5
+         fo(i, 55) = aP5
+         fo(i, 56) = aE5
+         fo(i, 57) = aB7
+
          z = 0.5 * acb * acb * (Pz + 3 * Ca) / lag
          z = z + 3 * (acb5 - acb * aceb / lag) * Fa
          z = z + 3 * (0.5 * aceb * aceb / lag - ace5b) * Ba
@@ -794,6 +852,133 @@ PRINT "   B7 ", sB7 * fnum
 PRINT " "
 PRINT "Run FIFTHORD on this same file and these eighteen must match, asphere or not."
 PRINT " "
+
+! ---------------------------------------------------------------------------------
+! srf = 1. The third and fifth order surface by surface, each split three ways.
+!
+!   INTRINSIC  what the surface generates out of its own curvature, indices and the
+!              two paraxial rays arriving at it. Correcting this means bending THIS
+!              surface, or moving the glass either side of it.
+!   FIGURING   what its conic and its r^4, r^6, r^8 terms add. Zero on a sphere.
+!   INDUCED    what the aberration ALREADY ACCUMULATED ahead of the surface produces
+!              in it. The surface is reacting rather than offending, and a change
+!              made here to cancel it is a second wrong balancing a first. This is
+!              the part that is not visible in any per-surface total, and it is the
+!              reason the split exists.
+!
+! There is no induced term at THIRD order: a third-order contribution is built from
+! that surface's own quantities alone, which is why the third-order block has three
+! rows and the fifth-order block four.
+!
+! Every number is in transverse measure, the same as the system totals above, so the
+! columns add downward to them - a check on this printout that costs nothing to make.
+!
+! WHAT THIS DOES NOT DO. The seventh order below is printed per surface but is NOT
+! split: at seventh order the surface's own quantities and the accumulated ones enter
+! through the same Table I entries, and separating them would be a reconstruction of
+! Buchdahl rather than a reading of him. Where the seventh order has an unambiguous
+! answer - B7, tau1 - it is in the fifth-order block above, split like the rest.
+! ---------------------------------------------------------------------------------
+
+IF (srf == 1)
+   uz = 0
+   PRINT " "
+   PRINT "==============================================================================="
+   PRINT "THIRD AND FIFTH ORDER, SURFACE BY SURFACE - intrinsic, figuring, induced."
+   PRINT "Transverse measure. Each column adds down to the system total printed above."
+   PRINT "==============================================================================="
+
+   FOR i = 1, nsm, 1
+      PRINT " "
+      FORMAT 3.0
+      IF (vfm(i, 6) == 1)
+         PRINT "Surface ", i, "   (figured)"
+      ELSE
+         PRINT "Surface ", i, "   (spherical)"
+      ENDIF
+
+      PRINT "                          B              F              C             Pi              E"
+      FORMAT 15.6 EXP
+      PRINT "   intrinsic  ", (fo(i, 1) - fo(i, 41)) * fnum, (fo(i, 2) - fo(i, 42)) * fnum, (fo(i, 3) - fo(i, 43)) * fnum, fo(i, 4) * fnum, (fo(i, 5) - fo(i, 44)) * fnum
+      PRINT "   figuring   ", fo(i, 41) * fnum, fo(i, 42) * fnum, fo(i, 43) * fnum, uz, fo(i, 44) * fnum
+      PRINT "   TOTAL      ", fo(i, 1) * fnum, fo(i, 2) * fnum, fo(i, 3) * fnum, fo(i, 4) * fnum, fo(i, 5) * fnum
+
+      PRINT "                         B5             F1             F2             M1             M2"
+      FORMAT 15.6 EXP
+      PRINT "   intrinsic  ", (fo(i, 10) - fo(i, 45)) * fnum, (fo(i, 11) - fo(i, 46)) * fnum, (fo(i, 12) - fo(i, 47)) * fnum, (fo(i, 13) - fo(i, 48)) * fnum, (fo(i, 14) - fo(i, 49)) * fnum
+      PRINT "   figuring   ", fo(i, 45) * fnum, fo(i, 46) * fnum, fo(i, 47) * fnum, fo(i, 48) * fnum, fo(i, 49) * fnum
+      PRINT "   induced    ", (fo(i, 30) - fo(i, 10)) * fnum, (fo(i, 31) - fo(i, 11)) * fnum, (fo(i, 32) - fo(i, 12)) * fnum, (fo(i, 33) - fo(i, 13)) * fnum, (fo(i, 34) - fo(i, 14)) * fnum
+      PRINT "   TOTAL      ", fo(i, 30) * fnum, fo(i, 31) * fnum, fo(i, 32) * fnum, fo(i, 33) * fnum, fo(i, 34) * fnum
+
+      PRINT "                         M3             N1             N2             N3             C5"
+      FORMAT 15.6 EXP
+      PRINT "   intrinsic  ", (fo(i, 15) - fo(i, 50)) * fnum, (fo(i, 16) - fo(i, 51)) * fnum, (fo(i, 17) - fo(i, 52)) * fnum, (fo(i, 18) - fo(i, 53)) * fnum, (fo(i, 19) - fo(i, 54)) * fnum
+      PRINT "   figuring   ", fo(i, 50) * fnum, fo(i, 51) * fnum, fo(i, 52) * fnum, fo(i, 53) * fnum, fo(i, 54) * fnum
+      PRINT "   induced    ", (fo(i, 35) - fo(i, 15)) * fnum, (fo(i, 36) - fo(i, 16)) * fnum, (fo(i, 37) - fo(i, 17)) * fnum, (fo(i, 38) - fo(i, 18)) * fnum, (fo(i, 39) - fo(i, 19)) * fnum
+      PRINT "   TOTAL      ", fo(i, 35) * fnum, fo(i, 36) * fnum, fo(i, 37) * fnum, fo(i, 38) * fnum, fo(i, 39) * fnum
+
+      PRINT "                        Pi5             E5             B7"
+      FORMAT 15.6 EXP
+      PRINT "   intrinsic  ", (fo(i, 20) - fo(i, 55)) * fnum, (fo(i, 21) - fo(i, 56)) * fnum, (fo(i, 22) - fo(i, 57)) * fnum
+      PRINT "   figuring   ", fo(i, 55) * fnum, fo(i, 56) * fnum, fo(i, 57) * fnum
+      PRINT "   induced    ", (fo(i, 40) - fo(i, 20)) * fnum, (fo(i, 23) - fo(i, 21)) * fnum, (fo(i, 24) - fo(i, 22)) * fnum
+      PRINT "   TOTAL      ", fo(i, 40) * fnum, fo(i, 23) * fnum, fo(i, 24) * fnum
+   NEXT
+
+   ! ------------------------------------------------------------------------------
+   ! One number per surface, to be read before the tables above rather than after
+   ! them. It is the induced share of the fifth-order magnitude the surface carries,
+   ! summed over the thirteen coefficients so that no one of them decides it.
+   !
+   ! Near zero, the surface is on its own and what it contributes is its own doing.
+   ! Near one, almost everything it carries was handed to it, and a change made here
+   ! is a correction applied at the wrong place - the fix is upstream.
+   !
+   ! IT IS NOT BOUNDED BY ONE, and a value above one is the reading worth having. It
+   ! says the induced part is LARGER than the total, so the intrinsic and the induced
+   ! are opposing each other and what the surface reports is the residue left after
+   ! they cancel. Such a surface looks quiet in any per-surface total and is not: two
+   ! large terms are standing against each other there, and anything that disturbs
+   ! either - a bend, a thickness, a melt - moves the residue by far more than its own
+   ! size suggests. Reported separately rather than folded in with "mostly induced",
+   ! which is a different situation calling for a different response.
+   !
+   ! It is a ratio of sums of magnitudes and not of signed quantities, deliberately:
+   ! two induced terms of opposite sign are still two induced terms.
+   ! ------------------------------------------------------------------------------
+   PRINT " "
+   PRINT "Induced share of the fifth order carried by each surface."
+   PRINT " "
+   PRINT " Surf    induced/total   what it means"
+   FOR i = 1, nsm, 1
+      uin = 0
+      utt = 0
+      FOR uj = 10, 22, 1
+         umt = fo(i, uj + 20)
+         IF (uj == 21) THEN umt = fo(i, 23)
+         IF (uj == 22) THEN umt = fo(i, 24)
+         uin = uin + ABSO(umt - fo(i, uj))
+         utt = utt + ABSO(umt)
+      NEXT
+      ufr = 0
+      IF (utt > 0) THEN ufr = uin / utt
+      unot$ = "   mixed"
+      IF (ufr < 0.1)
+         unot$ = "   its own doing - the fault, if there is one, is here"
+      ENDIF
+      IF (ufr > 0.9)
+         unot$ = "   mostly induced - look upstream"
+      ENDIF
+      IF (ufr > 1.1)
+         unot$ = "   induced exceeds the total - the two are cancelling here"
+      ENDIF
+      FORMAT 5.0
+      PRINT i,
+      FORMAT 12.4
+      PRINT ufr, unot$
+   NEXT
+   PRINT " "
+ENDIF
 
 
 ! =================================================================================
@@ -1091,12 +1276,6 @@ FOR i = 1, 4 * nsm + 14, 1
    NEXT
 NEXT
 
-! STAGE C IS BEING WRITTEN. Until its subroutines are all in place this is 0, so the
-! macro stops after stage B rather than calling a subroutine that is not there yet.
-! Set it to 1 when tablei below is complete.
-stagec = 1
-IF (stagec == 0) THEN GOTO 890
-
 ! A system of spheres needs the first pass only.
 nruns = 1
 IF (anyfig == 1) THEN nruns = 4
@@ -1173,6 +1352,12 @@ ENDIF
 DECLARE po, DOUBLE, 2, 12, 12
 DECLARE sv, DOUBLE, 2, 5, 32
 
+! The ten totals and their barred partners for ONE surface, kept so that the twenty
+! tau can be formed surface by surface as well as for the system. The conversion of
+! Table II is linear, so a per-surface tau is the conversion applied to that
+! surface's own ten - which is why these columns add down to the totals exactly.
+DECLARE pt, DOUBLE, 2, nsm + 2, 22
+
 FOR k = 1, 10, 1
    po(9, k) = 0
    po(10, k) = 0
@@ -1187,6 +1372,8 @@ IF (anyfig == 0)
       FOR k = 1, 10, 1
          po(9, k) = po(9, k) + po(1, k)
          po(10, k) = po(10, k) + po(2, k)
+         pt(i, k) = po(1, k)
+         pt(i, 10 + k) = po(2, k)
       NEXT
    NEXT
 ELSE
@@ -1310,6 +1497,8 @@ ELSE
       FOR k = 1, 10, 1
          po(9, k) = po(9, k) + po(5, k) + po(1, k) - po(3, k)
          po(10, k) = po(10, k) + po(6, k) + po(2, k) - po(4, k)
+         pt(i, k) = po(5, k) + po(1, k) - po(3, k)
+         pt(i, 10 + k) = po(6, k) + po(2, k) - po(4, k)
       NEXT
 
       ! The two halves surface by surface. A total is a sum over surfaces of four
@@ -1521,7 +1710,103 @@ PRINT "FORBES.ZPL in this same folder reaches all twenty by order doubling and s
 PRINT "no arithmetic with the scheme above. Run it on this file and the two must"
 PRINT "agree - that is the check this macro exists to pass."
 
-LABEL 890
+! ---------------------------------------------------------------------------------
+! srf = 1. The twenty tau surface by surface.
+!
+! Table II is a linear re-expression of the ten totals and their barred partners, so
+! applying it to ONE surface's ten gives that surface's share of each tau, and the
+! shares add to the system value. The sum row under each table is that check, made
+! where a reader can see it rather than asserted in a comment.
+!
+! tau1 is the exception and is taken from B7, the fifth-order working's route to the
+! same quantity, because that is what the system total above is: the two agree exactly
+! on a lens of spheres and to the accuracy of the arrangement on a figured one, and
+! mixing the two routes between the total and its parts would make the column fail to
+! add for a reason that has nothing to do with the lens.
+!
+! There is no intrinsic and induced split here; the note above the fifth-order tables
+! says why.
+! ---------------------------------------------------------------------------------
+
+DECLARE tw, DOUBLE, 2, nsm + 2, 22
+
+IF (srf == 1)
+   FOR i = 1, nsm, 1
+      tw(i, 1) = pt(i, 1)
+      tw(i, 2) = pt(i, 11) + pt(i, 2) / 2
+      tw(i, 3) = pt(i, 2) / 2
+      tw(i, 4) = pt(i, 12) + pt(i, 3)
+      tw(i, 5) = pt(i, 3)
+      tw(i, 6) = pt(i, 4)
+      tw(i, 7) = pt(i, 13) + pt(i, 14) / 2 + pt(i, 5) / 2 + 3 * pt(i, 7) / 8
+      tw(i, 8) = (pt(i, 14) + pt(i, 5) + pt(i, 7)) / 2
+      tw(i, 9) = pt(i, 5) / 2 + pt(i, 7) / 4
+      tw(i, 10) = pt(i, 7) / 8
+      tw(i, 11) = pt(i, 15) + pt(i, 6)
+      tw(i, 12) = pt(i, 17) + pt(i, 8)
+      tw(i, 13) = pt(i, 6)
+      tw(i, 14) = pt(i, 8)
+      tw(i, 15) = pt(i, 16) + pt(i, 18) / 2 + pt(i, 9) / 2
+      tw(i, 16) = (pt(i, 18) + pt(i, 9)) / 2
+      tw(i, 17) = pt(i, 9) / 2
+      tw(i, 18) = pt(i, 19) + pt(i, 10)
+      tw(i, 19) = pt(i, 10)
+      tw(i, 20) = pt(i, 20)
+      FOR k = 1, 20, 1
+         tw(i, k) = tw(i, k) * VEC4(20 + k)
+      NEXT
+      ! The B7 route, to match the total printed above.
+      tw(i, 1) = fo(i, 24) * fnum
+   NEXT
+
+   PRINT " "
+   PRINT "==============================================================================="
+   PRINT "SEVENTH ORDER, SURFACE BY SURFACE - the twenty tau, transverse measure."
+   PRINT "==============================================================================="
+
+   FOR kg = 0, 3, 1
+      k1 = 5 * kg + 1
+      PRINT " "
+      IF (kg == 0)
+         PRINT " Surf           tau1           tau2           tau3           tau4           tau5"
+      ENDIF
+      IF (kg == 1)
+         PRINT " Surf           tau6           tau7           tau8           tau9          tau10"
+      ENDIF
+      IF (kg == 2)
+         PRINT " Surf          tau11          tau12          tau13          tau14          tau15"
+      ENDIF
+      IF (kg == 3)
+         PRINT " Surf          tau16          tau17          tau18          tau19          tau20"
+      ENDIF
+      ws1 = 0
+      ws2 = 0
+      ws3 = 0
+      ws4 = 0
+      ws5 = 0
+      FOR i = 1, nsm, 1
+         ws1 = ws1 + tw(i, k1)
+         ws2 = ws2 + tw(i, k1 + 1)
+         ws3 = ws3 + tw(i, k1 + 2)
+         ws4 = ws4 + tw(i, k1 + 3)
+         ws5 = ws5 + tw(i, k1 + 4)
+         FORMAT 5.0
+         PRINT i,
+         FORMAT 15.6 EXP
+         PRINT tw(i, k1), tw(i, k1 + 1), tw(i, k1 + 2), tw(i, k1 + 3), tw(i, k1 + 4)
+      NEXT
+      FORMAT 5.0
+      PRINT "  SUM",
+      FORMAT 15.6 EXP
+      PRINT ws1, ws2, ws3, ws4, ws5
+   NEXT
+   PRINT " "
+   PRINT "The SUM rows are the twenty totals printed above. They are computed here by a"
+   PRINT "different route - summed after conversion rather than before it - so a"
+   PRINT "disagreement between them is a fault in this macro and not in your lens."
+   PRINT " "
+ENDIF
+
 GOTO 900
 
 ! =================================================================================

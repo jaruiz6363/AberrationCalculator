@@ -428,7 +428,52 @@ hide in the induced part.
 
 It is slow: four passes of the scheme, and a polynomial algebra under them.
 
-### Two switches, both off by default
+### Three switches, all off by default
+
+`srf = 1` **breaks every coefficient down surface by surface**, and splits the third and
+fifth order three ways: what the surface generates on its own, what its figuring adds,
+and what was **induced** in it by the surfaces ahead of it. It is the printout a
+designer works from rather than a diagnostic, and it is the answer to a question a
+total cannot be asked - not "is this design wrong" but "which surface, and is it that
+surface's own fault". The two readings call for opposite actions: an intrinsic
+aberration is corrected where it is generated, an induced one is a reaction to
+something upstream and correcting it *here* is a second wrong balancing a first.
+
+Shafer put the case for it in 1989 and this is what he asked for: "This can only be
+done effectively, however, if the 5th-order aberration surface contributions are broken
+into two components: the intrinsic component and the induced component" - his example
+being a Bouwers whose mirror shows induced spherochromatism because the front lens's
+axial colour changes the beam diameter reaching it. See `docs/references.md`.
+
+Three things to know about the printout:
+
+- Every number is in transverse measure, the same as the system totals, and **each
+  column adds down to the total printed above it**. That is a check on the macro you
+  can make by eye, and the seventh-order tables print their sum row so you can.
+- There is **no induced term at third order**. A third-order contribution is built from
+  that surface's own quantities alone, so that block has three rows where the
+  fifth-order block has four. Nor is there a figuring term in `Pi`: the Petzval sum
+  depends on the vertex curvature and the indices, and a figured surface has the same
+  vertex sphere as the sphere it was figured from.
+- The seventh order is printed per surface but is **not split**. At seventh order the
+  surface's own quantities and the accumulated ones enter through the same Table I
+  entries, and separating them would be a reconstruction of Buchdahl rather than a
+  reading of him. Where the seventh order does have an unambiguous answer - `B7`, which
+  is `tau1` - it is in the fifth-order block and split like the rest.
+
+Under the tables is one number per surface: the induced share of the fifth-order
+magnitude it carries, summed over the thirteen coefficients so that no single one of
+them decides it. Near zero the surface is on its own; near one, almost everything it
+carries was handed to it and the fix is upstream.
+
+**It is not bounded by one, and a value above one is the reading worth having.** It says
+the induced part is larger than the total, so the intrinsic and the induced are opposing
+each other and what the surface reports is the residue left after they cancel. On the
+F6 triplet two surfaces come out at 1.45 and 2.41 - surface 3's `N2` is intrinsic
+`3.64E-02` against induced `-9.17E-02`, and the `-5.53E-02` it reports is what survives.
+Such a surface looks quiet in any per-surface total and is not: two large terms are
+standing against each other there, and anything that disturbs either - a bend, a
+thickness, a melt - moves the residue by far more than its own size suggests.
 
 `chk = 1` prints the bridge constants that carry the figuring into the scheme, and the
 ten tertiary totals with their barred partners before Table II mixes them. The bridge
