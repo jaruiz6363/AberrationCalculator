@@ -638,6 +638,20 @@ public static class BuchdahlAsphericScheme
         public bool FiguredMSplitByDandL { get; init; }
 
         /// <summary>
+        /// Whether the sixth barred q accumulation <c>'S-6_q</c> is taken from the DUAL run of the
+        /// scheme, paper XII Sec. 6 - the same scheme on the interchanged ray data with the indices
+        /// negated, whose accumulated s_1p is <c>-'S-6_q</c> by (6.2). Both families then carry
+        /// <c>t114 = ratio t80 - 'S-6_q</c>.
+        ///
+        /// <para>The identities cannot supply this member (M Sec. 19). Duality can, and it is
+        /// gated: on every spherical system the dual run reproduces the recursion's S-bar_q, all
+        /// six, to 6E-13; on every figured system with a figured dual input it reproduces the five
+        /// barred q accumulations the identities recover, to 2E-13. Requires the dual figured
+        /// increments, passed to <see cref="Tau"/>.</para>
+        /// </summary>
+        public bool SixthBarredMemberFromDuality { get; init; }
+
+        /// <summary>
         /// DIAGNOSTIC reading of the sixth barred q accumulation. Adds, per surface, the pass-ratio
         /// difference <c>(q~ - q)</c> times ONE part of the figured increment of <c>t98</c> - the
         /// part the lift does not reach - to <c>'S-6_q</c>, in both families.
@@ -679,13 +693,27 @@ public static class BuchdahlAsphericScheme
     public static Scalar[] Tau(
         IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl,
         Scalar stopParameter, IReadOnlyList<Scalar[]>? aspheric = null,
-        Scalar iota = default, Options? options = null)
+        Scalar iota = default, Options? options = null,
+        IReadOnlyList<Scalar[]>? dualAspheric = null)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
+        options ??= Options.AsBuilt;
 
         var rows = BuchdahlTableI.Compute(surfaces, indices, efl, stopParameter, aspheric,
                                           iota: iota);
-        var totals = Totals(rows, surfaces.Count, options ?? Options.AsBuilt);
+
+        // XII Sec. 6(iii): the interchanged ray data, the indices negated, and the figuring as
+        // the fifth-order code gives it for those rays.
+        BuchdahlTableIRow[]? dualRows = null;
+        if (options.SixthBarredMemberFromDuality)
+        {
+            var negated = new Scalar[indices.Length];
+            for (int k = 0; k < indices.Length; k++) negated[k] = -indices[k];
+            dualRows = BuchdahlTableI.Compute(surfaces, negated, efl, stopParameter, dualAspheric,
+                                              iota: iota, dual: true);
+        }
+
+        var totals = Totals(rows, surfaces.Count, options, dualRows);
 
         return TertiaryCoefficients.AssembleTau(totals.T, totals.Tbar);
     }
@@ -701,7 +729,8 @@ public static class BuchdahlAsphericScheme
     /// is that each pass is given its own half and its own family, and the two are added only
     /// at the end.</para>
     /// </summary>
-    public static SystemTotals Totals(BuchdahlTableIRow[] rows, int count, Options options)
+    public static SystemTotals Totals(BuchdahlTableIRow[] rows, int count, Options options,
+                                      BuchdahlTableIRow[]? dualRows = null)
     {
         if (rows == null) throw new ArgumentNullException(nameof(rows));
         options ??= Options.AsBuilt;
@@ -877,6 +906,17 @@ public static class BuchdahlAsphericScheme
                     t[117] = -ratio * t[105] + t[107];
                     t[118] = -ratio * t[108] + t[109];
                     t[119] = -ratio * t[110] + t[112];
+                }
+
+                // The sixth member from the dual run: its accumulated s_1p is -'S-6q, XII (6.2).
+                // Where either run meets an infinite ratio the member is left as built.
+                if (options.SixthBarredMemberFromDuality && dualRows != null
+                    && !r.FlatInCollimatedSpace && !dualRows[i].FlatInCollimatedSpace
+                    && SMath.Abs(t[6]) < 1e6 && SMath.Abs(dualRows[i].T[6]) < 1e6)
+                {
+                    Scalar ratio = checkHalf ? r.Rho : t[6];
+                    t[114] = ratio * t[80] + dualRows[i].T[69];
+                    t[120] = -ratio * t[113] + t[114];
                 }
 
                 // The sixth member, which the identities cannot supply: the (I) recursion's

@@ -183,6 +183,14 @@ public class AsphericLadderSurvey
                     SharedQBarWithSplitPrimary = true,
                     YBarredFromSharedAccumulations = true,
                 }),
+            ("ident + D + M + 6th-dual",
+                new BuchdahlAsphericScheme.Options
+                {
+                    BarredQAccumulationFromIdentities = true,
+                    FiguredSecondarySplitByDandL = true,
+                    FiguredMSplitByDandL = true,
+                    SixthBarredMemberFromDuality = true,
+                }),
             ("best + 6th quadF +", Best with { SixthMemberExtraPart = 1 }),
             ("best + 6th quadF -", Best with { SixthMemberExtraPart = 1, SixthMemberExtraSign = -1.0 }),
             ("best + 6th cross +", Best with { SixthMemberExtraPart = 2 }),
@@ -698,6 +706,11 @@ public class AsphericLadderSurvey
                     SharedQBarWithSplitPrimary = true,
                     YBarredFromSharedAccumulations = true,
                 }),
+            ("ident+D+M+6th-dual", baseline with
+                {
+                    FiguredMSplitByDandL = true,
+                    SixthBarredMemberFromDuality = true,
+                }),
             ("drop own-prim x tert", baseline with
                 { DropOwnPrimaryTimesTertiaryFamilyInCheckBarred = true }),
             ("drop dagger x own-sec", baseline with
@@ -709,10 +722,33 @@ public class AsphericLadderSurvey
         var sb = new StringBuilder();
         foreach (string name in new[] { "Ladder2_A4_Second", "Ladder2_FiguredSphere_Then_A4",
                                         "Ladder2_A4_Both", "Ladder3_A4_Middle",
-                                        "CookeTriplet_SPOTM_START_LO_ASPHERE" })
+                                        "Ladder2_A4_First", "Ladder3_A4_First",
+                                        "CookeTriplet_PRMSA_START_LO_ASPHERE",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE",
+                                        "CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8" })
         {
             var d = Load(name);
             var (fT, fB) = TotalsFromTau(d.Forbes);
+
+            // The dual arrangement against Forbes at full precision, tau by tau, so that "0.0"
+            // in the readings table is a number and not a rounding.
+            var dualTau = NewRoute(name, baseline with
+                { FiguredMSplitByDandL = true, SixthBarredMemberFromDuality = true });
+            var asBuiltTau = NewRoute(name, null);
+            double worstDual = 0.0, worstAsBuilt = 0.0;
+            int kDual = 0;
+            for (int k = 1; k <= 20; k++)
+            {
+                if (Math.Abs(d.Forbes[k]) < 1e-9 * d.Largest) continue;
+                double rd = Math.Abs(dualTau[k] - d.Forbes[k]) / Math.Abs(d.Forbes[k]);
+                double ra = Math.Abs(asBuiltTau[k] - d.Forbes[k]) / Math.Abs(d.Forbes[k]);
+                if (rd > worstDual) { worstDual = rd; kDual = k; }
+                worstAsBuilt = Math.Max(worstAsBuilt, ra);
+            }
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "#tau {0}: dual worst {1:E3} (tau{2}), as-built worst {3:E3}, forbes vs rays {4:E3}",
+                name, worstDual, kDual, worstAsBuilt, RaysAgreement(d)));
+
             var got = new (double[] T, double[] B)[probes.Length];
             for (int i = 0; i < probes.Length; i++)
                 got[i] = TotalsFromTau(NewRoute(name, probes[i].O));
@@ -907,6 +943,18 @@ public class AsphericLadderSurvey
             Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-per-total.tsv");
         File.WriteAllText(path, sb.ToString());
         _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// Worst disagreement between Forbes and the ray inversion, over the coefficients the ray
+    /// inversion states well, as a share of the largest - the oracle's own floor on a design.
+    /// </summary>
+    private static double RaysAgreement(Loaded d)
+    {
+        double worst = 0.0;
+        for (int k = 1; k <= 20; k++)
+            worst = Math.Max(worst, Math.Abs(d.Forbes[k] - d.Rays[k]) / d.Largest);
+        return worst;
     }
 
     /// <summary>One coefficient's relative error, or a dash where there is nothing to divide by.</summary>
@@ -1506,6 +1554,244 @@ public class AsphericLadderSurvey
         _out.WriteLine(sb.ToString());
     }
 
+    /// <summary>
+    /// <b>Paper XII's Principle of Duality, gated on spheres.</b> The scheme run on the
+    /// interchanged ray data (6.9) with the refractive indices negated should give every
+    /// coefficient's dual with its sign reversed: <c>k_(mu nu)p# = kbar_(n-nu,n-mu)q</c> (6.2).
+    /// For the primaries (a, b, c) = (00, 10, 11) and the secondaries s1..s6 = (00, 10, 11, 20,
+    /// 21, 22), so the dual partners run 6, 5, 3, 4, 2, 1 - the dual run's entry s_1p is
+    /// sbar_6q, which is the one coefficient the identities cannot supply.
+    ///
+    /// <para>On a spherical system the recursion's sbar_6q is exact, so this is the gate the
+    /// figured case is built on. Printed as the worst relative residual of <c>orig + dual</c>
+    /// per comparison, with the ratio at the first surface that has anything accumulated.</para>
+    /// </summary>
+    [Fact]
+    public void DualityOnSpheres()
+    {
+        int[] sp = { 69, 71, 73, 75, 77, 79 };
+        int[] sbp = { 70, 72, 74, 76, 78, 80 };
+        int[] sq = { 86, 89, 92, 94, 97, 98 };
+        int[] member = { 102, 104, 107, 109, 112, 114 };
+        int[] partner = { 5, 4, 2, 3, 1, 0 };
+
+        // (label, dual entry, original entry) for the primaries.
+        var primaries = new (string, int, int)[]
+        {
+            ("A_p~-Cbar_q", 15, 24), ("Abar_p~-C_q", 16, 23), ("Bbar_p~-B_q", 17, 22),
+            ("C_p~-Abar_q", 18, 21), ("Cbar_p~-A_q", 19, 20),
+        };
+
+        var sb = new StringBuilder();
+        sb.AppendLine("design\tcomparison\tworst_rel\tratio_orig/dual_first");
+
+        foreach (string name in Designs)
+        {
+            var (orig, dual, count) = DualPair(name);
+
+            void Compare(string label, Func<BuchdahlTableIRow, double> o, Func<BuchdahlTableIRow, double> dd)
+            {
+                double worst = 0.0;
+                double ratio = double.NaN;
+                for (int i = 1; i < count - 1; i++)
+                {
+                    if (orig[i].FlatInCollimatedSpace || dual[i].FlatInCollimatedSpace
+                        || Math.Abs(orig[i].T[6]) > 1e6 || Math.Abs(dual[i].T[6]) > 1e6) continue;
+                    double a = o(orig[i]), b = dd(dual[i]);
+                    double scale = Math.Max(Math.Abs(a), Math.Abs(b));
+                    if (scale < 1e-12) continue;
+                    worst = Math.Max(worst, Math.Abs(a + b) / scale);
+                    if (double.IsNaN(ratio) && Math.Abs(b) > 1e-12) ratio = a / b;
+                }
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\t{1}\t{2:E2}\t{3:F6}", name, label, worst, ratio));
+            }
+
+            foreach (var (label, d, o) in primaries)
+                Compare(label, r => r.T[o], r => r.T[d]);
+            for (int m = 0; m < 6; m++)
+            {
+                int mm = m, mp = partner[m];
+                Compare($"S{mm + 1}p~-Sbar{mp + 1}q",
+                    r => r.T[6] * r.T[sbp[mp]] - r.T[member[mp]], r => r.T[sp[mm]]);
+                Compare($"Sbar{mm + 1}p~-S{mp + 1}q", r => r.T[sq[mp]], r => r.T[sbp[mm]]);
+            }
+        }
+
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-duality-spheres.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// <b>The Principle of Duality on FIGURED systems</b>, which XII Sec. 6(iii) says holds
+    /// "whether the surfaces of the optical system are spherical or not".
+    ///
+    /// <para>The dual run needs dual figured inputs, so the fifth-order code is run on the
+    /// interchanged paraxial rays with the indices negated, and its increments are bridged into
+    /// the dual scheme exactly as the direct ones are. Gates, in order: the bridge constants must
+    /// again be the same on every surface; the dual primaries must be the negated q-side
+    /// accumulations; the dual S-bar_p must be the negated q-side closed forms; and the dual S_p
+    /// must be the negated barred q accumulations the IDENTITIES recover, five of the six. The
+    /// sixth, dual S_1p, is then S-bar_6q, printed against the recursion's value.</para>
+    /// </summary>
+    [Fact]
+    public void DualityOnFigured()
+    {
+        int[] sp = { 69, 71, 73, 75, 77, 79 };
+        int[] sbp = { 70, 72, 74, 76, 78, 80 };
+        int[] sq = { 86, 89, 92, 94, 97, 98 };
+        int[] partner = { 5, 4, 2, 3, 1, 0 };
+        int[] schemeSeven = { 10, 38, 44, 50, 54, 59, 65 };
+
+        var sb = new StringBuilder();
+        var sixth = new StringBuilder();
+        sixth.AppendLine("design\tsurf\tSbar6q_dual\tSbar6q_recursion\trel_diff");
+        sb.AppendLine("design\tcomparison\tworst_rel");
+
+        foreach (string name in Designs)
+        {
+            var catalog = CatalogLocator.LoadBundled();
+            var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+            var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+            double field = 0.0;
+            foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+            var p = ParaxialTrace.Trace(sys, n, field);
+            double objectDistance = sys.Surfaces[0].Thickness;
+            bool infinite = double.IsInfinity(objectDistance);
+            double iota = infinite ? 0.0 : -p.Efl / objectDistance;
+            int stop = sys.StopSurfaceIndex;
+            var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                                sys.Surfaces[stop].SemiDiameter, iota);
+            double stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
+            int last = sys.LastOpticalSurface();
+            int count = sys.Surfaces.Count;
+            double n1 = n[0];
+
+            var macro = BuchdahlCoefficients.Compute(sys, p);
+            var sph = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+            var inc = AsphericSchemeIncrements.Build(macro, sph, last);
+            var orig = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, stopParameter, inc,
+                                              iota: iota);
+
+            var negN = new double[p.N.Length];
+            for (int k = 0; k < negN.Length; k++) negN[k] = -p.N[k];
+            var pd = new ParaxialResult
+            {
+                Y = p.Ybar, U = p.Ubar, Ybar = p.Y, Ubar = p.U, N = negN,
+                Efl = p.Efl, Power = p.Power, Bfl = p.Bfl, Epd = p.Epd,
+                EntrancePupilPosition = p.EntrancePupilPosition,
+                LagrangeInvariant = p.LagrangeInvariant, InfiniteConjugate = p.InfiniteConjugate,
+            };
+            var negated = new double[n.Length];
+            for (int k = 0; k < n.Length; k++) negated[k] = -n[k];
+
+            var macroD = BuchdahlCoefficients.Compute(sys, pd);
+            var sphD = BuchdahlTableI.Compute(sys.Surfaces, negated, p.Efl, scheme.P,
+                                              iota: iota, dual: true);
+            var incD = AsphericSchemeIncrements.Build(macroD, sphD, last);
+            var dual = BuchdahlTableI.Compute(sys.Surfaces, negated, p.Efl, stopParameter, incD,
+                                              iota: iota, dual: true);
+
+            // Gate 0: the bridge constants, dual run, must not vary from surface to surface.
+            double bridgeSpread = 0.0;
+            for (int q = 0; q < 7; q++)
+            {
+                double r0 = double.NaN;
+                for (int i = 1; i <= last && i < count - 1; i++)
+                {
+                    var t = macroD.Intrinsic[i];
+                    double m = q switch
+                    {
+                        0 => t.B, 1 => t.B5, 2 => t.F2, 3 => t.M2, 4 => t.M3, 5 => t.N3,
+                        _ => t.Pi5 + t.C5,
+                    };
+                    double s = sphD[i].T[schemeSeven[q]];
+                    if (Math.Abs(m) < 1e-12 || Math.Abs(s) < 1e-12) continue;
+                    double ratio = s / m;
+                    if (double.IsNaN(r0)) r0 = ratio;
+                    else bridgeSpread = Math.Max(bridgeSpread, Math.Abs(ratio / r0 - 1.0));
+                }
+            }
+            sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "{0}\tbridge constants spread (dual)\t{1:E2}", name, bridgeSpread));
+
+            var worst = new Dictionary<string, double>();
+            void Note(string label, double a, double b)
+            {
+                double scale = Math.Max(Math.Abs(a), Math.Abs(b));
+                if (scale < 1e-12) return;
+                double rel = Math.Abs(a + b) / scale;
+                worst[label] = Math.Max(worst.TryGetValue(label, out var w) ? w : 0.0, rel);
+            }
+
+            for (int i = 2; i < count - 1; i++)
+            {
+                var o = orig[i];
+                var d = dual[i];
+                if (o.FlatInCollimatedSpace || d.FlatInCollimatedSpace
+                    || Math.Abs(o.T[6]) > 1e6 || Math.Abs(d.T[6]) > 1e6) continue;
+
+                int[] qPrim = { 24, 23, 22, 21, 20 };
+                for (int k = 0; k < 5; k++) Note("primaries", o.T[qPrim[k]], d.T[15 + k]);
+                for (int m = 0; m < 6; m++) Note("Sbar_p vs S_q", o.T[sq[partner[m]]], d.T[sbp[m]]);
+
+                var id = BuchdahlSecondaryQ.At(orig, i, n1);
+                for (int m = 1; m < 6; m++)
+                    Note("S_p vs identity Sbar_q", id[partner[m] + 1], d.T[sp[m]]);
+
+                double recursion = o.T[6] * o.T[80] - o.T[114];
+                double viaDual = -d.T[69];
+                double scale6 = Math.Max(Math.Abs(recursion), Math.Abs(viaDual));
+                if (scale6 > 1e-12)
+                    sixth.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                        "{0}\t{1}\t{2:E6}\t{3:E6}\t{4:E2}",
+                        name, i, viaDual, recursion, Math.Abs(viaDual - recursion) / scale6));
+            }
+
+            foreach (var kv in worst)
+                sb.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "{0}\t{1}\t{2:E2}", name, kv.Key, kv.Value));
+        }
+
+        sb.AppendLine();
+        sb.Append(sixth);
+        string path = Path.Combine(
+            Environment.GetEnvironmentVariable("TEMP") ?? ".", "aspheric-duality-figured.tsv");
+        File.WriteAllText(path, sb.ToString());
+        _out.WriteLine(sb.ToString());
+    }
+
+    /// <summary>
+    /// The spherical scheme on a design as it stands, and again on the interchanged ray data with
+    /// the refractive indices negated, per XII Sec. 6(iii).
+    /// </summary>
+    private static (BuchdahlTableIRow[] Orig, BuchdahlTableIRow[] Dual, int Count) DualPair(string name)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(name), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+        var p = ParaxialTrace.Trace(sys, n, field);
+        double objectDistance = sys.Surfaces[0].Thickness;
+        bool infinite = double.IsInfinity(objectDistance);
+        double iota = infinite ? 0.0 : -p.Efl / objectDistance;
+        int stop = sys.StopSurfaceIndex;
+        var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                            sys.Surfaces[stop].SemiDiameter, iota);
+        double stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
+
+        var negated = new double[n.Length];
+        for (int k = 0; k < n.Length; k++) negated[k] = -n[k];
+
+        var orig = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, stopParameter, iota: iota);
+        var dual = BuchdahlTableI.Compute(sys.Surfaces, negated, p.Efl, stopParameter,
+                                          iota: iota, dual: true);
+        return (orig, dual, sys.Surfaces.Count);
+    }
+
     private sealed record QSplit(double[] S, double[] Lin, double[] QuadF, double[] Cross);
 
     /// <summary>
@@ -1692,8 +1978,30 @@ public class AsphericLadderSurvey
             ? Math.Tan(field * Math.PI / 180.0)
             : -(p.ParaxialImageHeight / p.Magnification) / objectDistance;
 
+        // The dual figured increments, XII Sec. 6(iii): the fifth-order code on the interchanged
+        // paraxial rays with the indices negated, bridged into the dual scheme as the direct ones.
+        IReadOnlyList<double[]>? dualIncrements = null;
+        if (options?.SixthBarredMemberFromDuality == true)
+        {
+            var negN = new double[p.N.Length];
+            for (int k = 0; k < negN.Length; k++) negN[k] = -p.N[k];
+            var pd = new ParaxialResult
+            {
+                Y = p.Ybar, U = p.Ubar, Ybar = p.Y, Ubar = p.U, N = negN,
+                Efl = p.Efl, Power = p.Power, Bfl = p.Bfl, Epd = p.Epd,
+                EntrancePupilPosition = p.EntrancePupilPosition,
+                LagrangeInvariant = p.LagrangeInvariant, InfiniteConjugate = p.InfiniteConjugate,
+            };
+            var negated = new double[n.Length];
+            for (int k = 0; k < n.Length; k++) negated[k] = -n[k];
+            var macroD = BuchdahlCoefficients.Compute(sys, pd);
+            var sphD = BuchdahlTableI.Compute(sys.Surfaces, negated, p.Efl, scheme.P,
+                                              iota: iota, dual: true);
+            dualIncrements = AsphericSchemeIncrements.Build(macroD, sphD, sys.LastOpticalSurface());
+        }
+
         var raw = BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, stopParameter,
-                                             increments, iota, options);
+                                             increments, iota, options, dualIncrements);
         return TertiaryCoefficients.ToTransverse(raw, lengthFactor, u, hmax,
                                                  coefficients.Totals.B7);
     }

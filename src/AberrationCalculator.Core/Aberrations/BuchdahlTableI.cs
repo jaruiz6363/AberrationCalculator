@@ -261,10 +261,19 @@ public static class BuchdahlTableI
     /// coordinates, and the fifth-order aberration coefficients differ between the two systems
     /// by up to six per cent (VI Table II). The primary coefficients do not differ at all.</para>
     /// </param>
+    /// <param name="dual">
+    /// Start the two paraxial rays with their data INTERCHANGED, (y_p1, v_p1) and (y_q1, v_q1),
+    /// which is paper XII (6.9). By the Principle of Duality XII (6.8) the same scheme then yields
+    /// the dual of every coefficient, <c>k_(mu nu)p# = kbar_(n-nu, n-mu)q</c> by XII (6.2) - its
+    /// entry nominally s_1p is sbar_6q. XII Sec. 6(iii) requires the refractive indices to be
+    /// passed NEGATED as well, so that g/N1 keeps the value unity the scheme is built on; every
+    /// coefficient then comes out as its dual with the sign reversed. The caller does both.
+    /// </param>
     public static BuchdahlTableIRow[] Compute(
         IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl,
         Scalar stopParameter, IReadOnlyList<Scalar[]>? aspheric = null,
-        bool tertiaryHatOnly = false, Scalar iota = default, bool wCoordinates = false)
+        bool tertiaryHatOnly = false, Scalar iota = default, bool wCoordinates = false,
+        bool dual = false)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -294,7 +303,7 @@ public static class BuchdahlTableI
         BuchdahlTableIRow[]? bare =
             aspheric != null && !tertiaryHatOnly
                 ? Compute(surfaces, indices, efl, stopParameter, aspheric,
-                          tertiaryHatOnly: true, iota: iota)
+                          tertiaryHatOnly: true, iota: iota, dual: dual)
                 : null;
 
         // Carried between surfaces: the primed angles, which are what the ray transfer
@@ -333,6 +342,11 @@ public static class BuchdahlTableI
                 t[2] = iota;                      // v_p: the object is at 1/iota
                 t[4] = stopParameter / gOE;       // y_q at the entrance pupil, rescaled
                 t[5] = 1.0 / gOE;                 // v_q normalised on the same factor
+                if (dual)
+                {
+                    (t[1], t[4]) = (t[4], t[1]);
+                    (t[2], t[5]) = (t[5], t[2]);
+                }
             }
             else
             {
