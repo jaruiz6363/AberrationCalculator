@@ -64,6 +64,11 @@ public static class OperandHelp
             "Real distortion, per cent: real chief-ray height against the paraxial height it "
           + "should have had.",
 
+        OperandType.ABER =>
+            "One named aberration coefficient, in transverse measure - written as the "
+          + "coefficient's own name, which is how the report spells it: B, F, C, Pi, E; B5, F1, "
+          + "F2, M1, M2, M3, N1, N2, N3, C5, Pi5, E5; B7 and Tau2 to Tau20.",
+
         OperandType.ASBLT =>
             "RMS wavefront error a decentre and tilt tolerance would induce, averaged over the "
           + "field. Nodal aberration theory: what survives being BUILT, not what was drawn.",
@@ -89,6 +94,7 @@ public static class OperandHelp
         OperandType.EGT => "EGT, 10, MIN 1, 2, 4",
         OperandType.EAT => "EAT, 10, MIN 0.5, 2, 4",
         OperandType.DTRGT => "DTRGT, 10, MIN 1.5, MAX 12, 2, 4",
+        OperandType.ABER => "Tau15, 1, TAR 0        # or B, F, C, Pi, E, B5 ... see the list",
         OperandType.ASBLT => "ASBLT, 10, TAR 0, 0.04, 0.15",
         _ => type + ", 1, TAR 0, 7, 1, 1, 0, 1",
     };

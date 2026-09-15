@@ -244,6 +244,7 @@ so `RY, 1, TAR 0, 7` is surface seven at the reference colour, the full field an
 | `PX PY PZ PL PM PN` | paraxial ray position and direction cosines | `surface, wave, hy, px, py` |
 | `RX RY RZ RL RM RN` | the same for a real ray | `surface, wave, hy, px, py` |
 | `ASBLT` | wavefront error a build tolerance would induce | `decentre, tilt, wave` |
+| a coefficient name | one named aberration coefficient (`ABER` internally) | `wave` |
 
 `hy` is a **fraction of the maximum field**, 0 on axis and 1 at the corner — not an index into the
 field list, so a merit function can ask for seven tenths of the field whether or not the design
@@ -259,6 +260,49 @@ not at the semi-diameter the file declared: a declared semi-diameter is a consta
 the optimizer that thinning a lens costs nothing at its edge when the beam is still the size it
 was.
 
+
+### Targeting a named aberration coefficient
+
+The thirty-seven coefficients this program computes can be targeted individually, and **an
+operand is written as the coefficient's own name** — the same name the report prints, so there is
+no table between what a designer reads and what they type:
+
+```
+B,     1, TAR 0                 # third-order spherical to zero
+Pi5,   2, TAR 0                 # fifth-order field curvature
+M2,    5, TAR 0                 # sagittal oblique spherical - Shafer's limiting aberration
+Tau15, 1, MIN -1e-3, MAX 1e-3   # and a seventh-order term held inside a band
+```
+
+Internally that is the `ABER` operand with the coefficient carried beside it; `ABER` on its own is
+refused, because it does not say which. The names are `B F C Pi E` at third order,
+`B5 F1 F2 M1 M2 M3 N1 N2 N3 C5 Pi5 E5` at fifth, and `B7` with `Tau2` to `Tau20` at seventh.
+Case does not matter. `B7` and `Tau1` are the same quantity by two routes and only `B7` is
+spelled.
+
+**Why this is worth having beside `PRMSA`.** A predicted spot mixes eighteen coefficients into one
+number, and it is a poor instrument for asking about any single one: two designs whose `tau15`
+differs by a factor of five predict the same spot to one part in ten thousand, which is measured
+in [verification.md](verification.md) and not assumed. A designer flattening a field or balancing
+oblique spherical against fifth-order astigmatism is asking about the coefficient, and `PRMSA`
+cannot hear that question.
+
+It is also what makes a merit function with no rays in it practical. Shafer's case for that —
+*"it is much quicker to try out many different configurations and ideas if there are no rays in
+the merit function and you are only correcting the 3rd and 5th-order aberrations"* — needs the
+coefficients targetable individually, not only their weighted sum. See
+[references.md](references.md).
+
+**They are free in bulk.** Every coefficient comes out of one run of Buchdahl's scheme, which the
+probe computes once per wavelength and caches, so a merit function of twenty coefficient operands
+costs what one costs. That is what makes a coefficient-only merit function a practical way to
+work rather than merely a possible one.
+
+**System totals, in transverse measure** — the numbers the report prints, so a target and a
+reading cannot disagree. Per-surface contributions are reported by the analysis side and are not
+targetable: the probe caches the system totals alone, and lifting the per-surface arrays into the
+differentiating build is work that has not been done. It is the obvious next step for anyone who
+wants to say "surface 5 should contribute no coma".
 ### What the predicted spot cannot see
 
 `PRMSA` is the obvious thing to ask for and it is not sufficient on its own. Robb's spot is the

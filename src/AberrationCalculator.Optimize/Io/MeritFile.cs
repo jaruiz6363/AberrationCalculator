@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
+using AberrationCalculator.Core.Aberrations;
 using AberrationCalculator.Optimize.Operands;
 
 namespace AberrationCalculator.Optimize.Io;
@@ -89,6 +90,22 @@ public static class MeritFile
         return hash >= 0 ? line.Substring(0, hash) : line;
     }
 
+    /// <summary>
+    /// The canonical spelling of an aberration coefficient, or null if the text is not one.
+    ///
+    /// <para>Case-insensitive, and it returns the name as <c>BuchdahlTerms.Names</c> spells it
+    /// rather than as the user typed it, so that everything downstream - the indexer, the label,
+    /// the file the merit function is written back to - sees one spelling. A user may type
+    /// <c>tau15</c>, <c>TAU15</c> or <c>Tau15</c>; only <c>Tau15</c> travels.</para>
+    /// </summary>
+    internal static string? CoefficientNamed(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        foreach (string name in BuchdahlTerms.Names)
+            if (string.Equals(name, text, StringComparison.OrdinalIgnoreCase)) return name;
+        return null;
+    }
+
     private static Operand ParseOperand(string line)
     {
         var field = new List<string>();
@@ -98,10 +115,30 @@ public static class MeritFile
             throw new FormatException(
                 "an operand needs at least a type and a weight, separated by a comma");
 
+        // The type, or the name of an aberration coefficient. A coefficient is written as
+        // itself - `TAU15, 1, TAR 0` - so that the name in the report and the name in the merit
+        // function are one name with no table between them. ABER is accepted too, for anything
+        // generating these mechanically, but then the coefficient has nowhere to come from.
+        string? coefficient = null;
         if (!Enum.TryParse<OperandType>(field[0], true, out var type))
+        {
+            coefficient = CoefficientNamed(field[0]);
+            if (coefficient == null)
+                throw new FormatException(
+                    $"'{field[0]}' is not an operand and not an aberration coefficient.\n"
+                  + "  The operands are: "
+                  + string.Join(", ", Enum.GetNames(typeof(OperandType))) + "\n"
+                  + "  The coefficients are: "
+                  + string.Join(", ", BuchdahlTerms.Names));
+            type = OperandType.ABER;
+        }
+        else if (type == OperandType.ABER)
+        {
             throw new FormatException(
-                $"'{field[0]}' is not an operand. The types are: "
-              + string.Join(", ", Enum.GetNames(typeof(OperandType))));
+                "ABER does not say WHICH coefficient. Write the coefficient's own name as the "
+              + "operand instead - `B, 1, TAR 0` or `TAU15, 1, TAR 0` - which is how the report "
+              + "spells it. The coefficients are: " + string.Join(", ", BuchdahlTerms.Names));
+        }
 
         if (!TryNumber(field[1], out double weight))
             throw new FormatException($"'{field[1]}' is not a weight");
@@ -186,6 +223,7 @@ public static class MeritFile
         return new Operand
         {
             Type = type,
+            Coefficient = coefficient,
             Surface = surface,
             Surface2 = surface2,
             Wave = wave,
@@ -261,7 +299,14 @@ public static class MeritFile
         if (op == null) throw new ArgumentNullException(nameof(op));
 
         var sb = new StringBuilder();
-        sb.Append(op.Type.ToString()).Append(", ").Append(N(op.Weight));
+
+        // A coefficient operand writes as its coefficient, which is how it was read. Writing
+        // ABER would produce a file this parser refuses, by its own rule that ABER does not say
+        // which coefficient - the round trip is the test that keeps the two honest.
+        sb.Append(op.Type == OperandType.ABER && !string.IsNullOrEmpty(op.Coefficient)
+                  ? op.Coefficient!
+                  : op.Type.ToString())
+          .Append(", ").Append(N(op.Weight));
 
         if (op.IsBoundary)
         {

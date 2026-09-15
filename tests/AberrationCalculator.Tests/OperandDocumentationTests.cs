@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using AberrationCalculator.Optimize.Io;
 using AberrationCalculator.Optimize.Operands;
 using Xunit;
 
@@ -68,8 +69,18 @@ public class OperandDocumentationTests
             Assert.False(string.IsNullOrWhiteSpace(what), $"{type} has no description");
             Assert.DoesNotContain("TODO", what, StringComparison.OrdinalIgnoreCase);
 
+            // The example must PARSE, and parse to this operand. That used to be a check that
+            // the text began with the operand's name, which is weaker in both directions: it
+            // passed an example whose inputs were wrong, and it failed ABER, whose name in a
+            // merit file is deliberately not its name in the enum - a coefficient operand is
+            // written as its coefficient, `Tau15, 1, TAR 0`, because that is how the report
+            // spells it. Parsing the example says the thing actually worth saying, which is that
+            // a user who copies it gets what the help promised.
             string example = OperandHelp.Example(type);
-            Assert.StartsWith(type.ToString(), example, StringComparison.Ordinal);
+            var parsed = MeritFile.Parse(new[] { example });
+
+            Assert.True(parsed.Count == 1, $"{type}'s example does not parse to one operand: {example}");
+            Assert.Equal(type, parsed[0].Type);
         }
     }
 }
