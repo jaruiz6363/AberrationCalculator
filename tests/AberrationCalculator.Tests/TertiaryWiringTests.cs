@@ -89,9 +89,15 @@ public class TertiaryWiringTests
         double hmax = Math.Tan(field * Math.PI / 180.0);
         var spherical = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P);
         var increments = AsphericSchemeIncrements.Build(b, spherical, sys.LastOpticalSurface());
-        var expected = TertiaryCoefficients.ToTransverse(
-            TertiaryCoefficients.Compute(sys.Surfaces, n, p.Efl, scheme.P, increments),
-            p.Efl, u, hmax, b.Totals.B7);
+
+        // The two routines: spheres through Table I, a figured system through the aspheric one
+        // with the dual increments its sixth barred member needs.
+        var raw = increments == null
+            ? TertiaryCoefficients.Compute(sys.Surfaces, n, p.Efl, scheme.P, null)
+            : BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, scheme.P, increments, 0.0,
+                  BuchdahlAsphericScheme.Options.Default,
+                  AsphericSchemeIncrements.BuildDual(sys, p, n, scheme.P, 0.0));
+        var expected = TertiaryCoefficients.ToTransverse(raw, p.Efl, u, hmax, b.Totals.B7);
 
         var shipped = Shipped(design);
         for (int i = 2; i <= 20; i++)

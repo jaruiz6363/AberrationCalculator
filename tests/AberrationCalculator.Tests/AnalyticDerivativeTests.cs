@@ -141,10 +141,12 @@ public class AnalyticDerivativeTests
     /// <summary>
     /// A figured design is refused, and told why.
     ///
-    /// <para>The coefficients come from Buchdahl's scheme, whose aspheric seventh order is a
-    /// reconstruction real rays reject by up to a factor of four. Optimising against that would
-    /// not be slow, it would be aimed wrongly - so the run stops before it starts rather than
-    /// producing a design that looks reasonable and is not.</para>
+    /// <para>Not because the number would be wrong. Buchdahl's aspheric seventh order needs an
+    /// arrangement he never published and this repository has one that agrees with Forbes to
+    /// 2E-10 or better - the refusal is that routing to it would put a test for figuring inside
+    /// the evaluation loop and cost a second run of the scheme, and that route has not been
+    /// wired through and Jacobian-checked. The run stops before it starts rather than taking a
+    /// path nothing here has measured.</para>
     /// </summary>
     [Fact]
     public void AFiguredDesignIsRefusedBeforeAnythingRuns()

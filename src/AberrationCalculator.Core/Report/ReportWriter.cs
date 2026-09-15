@@ -729,10 +729,11 @@ public sealed class ReportWriter
         var forbes = Forbes.ForbesCoefficients.Invert(_sys, PrimaryIndices, p, field);
         if (forbes == null)
         {
-            route = "This design is FIGURED, so tau20 should be the Forbes series trace's - but the\n"
-                  + "trace does not close on it, and the scheme's value is used instead. Its aspheric\n"
-                  + "arrangement is a reconstruction that rays reject on some designs, so the\n"
-                  + "seventh-order column is unreliable here.";
+            route = "This design is FIGURED, so tau20 would ordinarily be the Forbes series trace's -\n"
+                  + "but the trace does not close on it, and the scheme's own value is used instead.\n"
+                  + "That value is the aspheric arrangement of M Sec. 85, which agrees with Forbes to\n"
+                  + "2E-10 or better wherever the two can both be formed; here there is nothing to\n"
+                  + "compare it against, which is the whole of what this note is saying.";
             return totals;
         }
 

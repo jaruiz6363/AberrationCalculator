@@ -52,6 +52,19 @@ public sealed class BuchdahlTableIRow
     public readonly Scalar[] SecBarFigLift = new Scalar[6];
 
     /// <summary>
+    /// The D half of the figured secondary increment, which the barred entry carries on the
+    /// INCIDENCE ratio while the L half goes on the height ratio - (60.3) giving the figuring
+    /// two halves like everything else.
+    ///
+    /// <para>Recorded, not used: it is already added into <see cref="SecBarFig"/> where it is
+    /// formed, and nothing here reads it back. It is kept so that the identity it completes can
+    /// be checked - <c>s-_1p^fig = q D + q~ L + alpha(2q~ A_(Y) + A-_(Y))</c> - which is M
+    /// (68.8) written out, and which cannot be tested from the row without it. On a spherical
+    /// system it is never even computed.</para>
+    /// </summary>
+    public readonly Scalar[] SecDFigured = new Scalar[6];
+
+    /// <summary>
     /// The surface's OWN quantities split into the two halves of M (65.7), which the Sec. 85
     /// two-pass needs: the hat half rides i_p, the check half y_p. Spherical content is
     /// entirely hat, a sphere having no check half at all.
@@ -248,10 +261,19 @@ public static class BuchdahlTableI
     /// coordinates, and the fifth-order aberration coefficients differ between the two systems
     /// by up to six per cent (VI Table II). The primary coefficients do not differ at all.</para>
     /// </param>
+    /// <param name="dual">
+    /// Start the two paraxial rays with their data INTERCHANGED, (y_p1, v_p1) and (y_q1, v_q1),
+    /// which is paper XII (6.9). By the Principle of Duality XII (6.8) the same scheme then yields
+    /// the dual of every coefficient, <c>k_(mu nu)p# = kbar_(n-nu, n-mu)q</c> by XII (6.2) - its
+    /// entry nominally s_1p is sbar_6q. XII Sec. 6(iii) requires the refractive indices to be
+    /// passed NEGATED as well, so that g/N1 keeps the value unity the scheme is built on; every
+    /// coefficient then comes out as its dual with the sign reversed. The caller does both.
+    /// </param>
     public static BuchdahlTableIRow[] Compute(
         IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl,
         Scalar stopParameter, IReadOnlyList<Scalar[]>? aspheric = null,
-        bool tertiaryHatOnly = false, Scalar iota = default, bool wCoordinates = false)
+        bool tertiaryHatOnly = false, Scalar iota = default, bool wCoordinates = false,
+        bool dual = false)
     {
         if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -281,7 +303,7 @@ public static class BuchdahlTableI
         BuchdahlTableIRow[]? bare =
             aspheric != null && !tertiaryHatOnly
                 ? Compute(surfaces, indices, efl, stopParameter, aspheric,
-                          tertiaryHatOnly: true, iota: iota)
+                          tertiaryHatOnly: true, iota: iota, dual: dual)
                 : null;
 
         // Carried between surfaces: the primed angles, which are what the ray transfer
@@ -320,6 +342,11 @@ public static class BuchdahlTableI
                 t[2] = iota;                      // v_p: the object is at 1/iota
                 t[4] = stopParameter / gOE;       // y_q at the entrance pupil, rescaled
                 t[5] = 1.0 / gOE;                 // v_q normalised on the same factor
+                if (dual)
+                {
+                    (t[1], t[4]) = (t[4], t[1]);
+                    (t[2], t[5]) = (t[5], t[2]);
+                }
             }
             else
             {
@@ -962,11 +989,41 @@ public static class BuchdahlTableI
             // says so is Buchdahl's own identity: solving (7.1) for the S1bar_p it requires
             // leaves a residual that is constant between figured surfaces and steps at each
             // one, and each step is exactly (q - rho) times that surface's D half.
-            if (aspheric != null && figNow.Present && SMath.Abs(cc) > 1e-12)
+            if (aspheric != null && figNow.Present)
             {
-                var dOnly = SecondaryDHalf(t, kk, cc, figNow, s1);
+                // SecondaryDHalf forms s1 (t7/c)^p dTheta / sTheta0, in which every power of c
+                // cancels - but only after it has been formed, so a flat surface gives 0/0 there.
+                // The D half itself is finite at c = 0: the R = 1e10 twin of a figured flat comes
+                // out exact against Forbes with it, which it could not with a divergent D. So a
+                // flat surface takes the limit, symmetrically, from c = +eps and c = -eps; the
+                // first-order term cancels and what is left is O(eps^2). The incidence, q and j
+                // are re-formed at each eps rather than read off the flat row, because j =
+                // c L / i_p carries the curvature as a factor: on the flat row t7 is exactly zero
+                // and t7/eps would be zero where its limit L/i_p is not.
+                Scalar[] dOnly;
+                if (SMath.Abs(cc) > 1e-12)
+                {
+                    dOnly = SecondaryDHalf(t, kk, cc, figNow, s1);
+                }
+                else
+                {
+                    Scalar[] At(Scalar e)
+                    {
+                        var near = (Scalar[])t.Clone();
+                        near[3] = e * t[1] - t[2];
+                        near[6] = SMath.Abs(near[3]) > 1e-30 ? (e * t[4] - t[5]) / near[3] : 0.0;
+                        near[7] = -t[2] * near[6] + t[5];
+                        return SecondaryDHalf(near, kk, e, figNow, s1);
+                    }
+                    const double eps = 1e-6;
+                    var above = At(eps);
+                    var below = At(-eps);
+                    dOnly = new Scalar[6];
+                    for (int m = 0; m < 6; m++) dOnly[m] = 0.5 * (above[m] + below[m]);
+                }
                 Scalar lead = t[6] - rr;
                 for (int m = 0; m < 6; m++) bF[m] += lead * dOnly[m];
+                for (int m = 0; m < 6; m++) rows[i].SecDFigured[m] = dOnly[m];
             }
 
             for (int q = 1; q <= 5; q++) { rows[i].MSph[q] = mS[q]; rows[i].MFig[q] = mF[q]; }

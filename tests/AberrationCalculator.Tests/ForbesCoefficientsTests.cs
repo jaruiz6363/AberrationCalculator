@@ -118,27 +118,29 @@ public class ForbesCoefficientsTests
     }
 
     /// <summary>
-    /// Where the aspheric arrangement of Table I is known to be wrong, Forbes' route agrees with
-    /// real rays instead.
+    /// On the figured designs the reported set now agrees with real rays exactly as Forbes' route
+    /// does, read off by the same instrument.
     ///
-    /// <para>These are the fixtures three sessions of work on the aspheric tertiary could not
-    /// bring in. The bound below is deliberately loose - a fortieth of a per cent, where the
-    /// measured figures are between two thousandths and three hundredths - because the point is
-    /// not the exact value but that it is two to three orders of magnitude below what the other
-    /// route gives on the same design, read off by the same instrument.</para>
+    /// <para>These are the fixtures the aspheric tertiary could not bring in for a long time:
+    /// this test used to assert that the scheme missed the rays by at least one to six per cent
+    /// on each, and it failed, as it asked to, when the Sec. 85 arrangement was completed -
+    /// members one to five of the barred q accumulation from the identities, the sixth by
+    /// paper XII's duality, and the figuring's D half in the hat pass. It now records the
+    /// agreement: both routes within a fortieth of a per cent of the largest coefficient, where
+    /// the measured figures are between two thousandths and three hundredths, the rays' own
+    /// floor.</para>
     /// </summary>
     [Theory]
-    [InlineData("Ladder2_A4_Second", 6.0)]
-    [InlineData("Ladder2_FiguredSphere_Then_A4", 6.0)]
-    [InlineData("Ladder2_A4_Both", 6.0)]
-    [InlineData("Ladder2_A4_First", 1.0)]
-    [InlineData("Ladder2_A4_Then_FiguredSphere", 1.0)]
-    [InlineData("TertiaryTestbed_Triplet24", 1.0)]
-    [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE", 1.0)]
-    [InlineData("CookeTriplet_PRMSA_START_LO_ASPHERE", 1.0)]
-    [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8", 1.0)]
-    public void ForbesAgreesWithRealRaysWhereTheAsphericTableDoesNot(
-        string fixtureName, double tableIsAtLeastPercent)
+    [InlineData("Ladder2_A4_Second")]
+    [InlineData("Ladder2_FiguredSphere_Then_A4")]
+    [InlineData("Ladder2_A4_Both")]
+    [InlineData("Ladder2_A4_First")]
+    [InlineData("Ladder2_A4_Then_FiguredSphere")]
+    [InlineData("TertiaryTestbed_Triplet24")]
+    [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE")]
+    [InlineData("CookeTriplet_PRMSA_START_LO_ASPHERE")]
+    [InlineData("CookeTriplet_SPOTM_START_LO_ASPHERE_A4_A8")]
+    public void BothRoutesAgreeWithRealRaysOnFiguredDesigns(string fixtureName)
     {
         var r = Load(fixtureName);
         double forbes = Worst(r.Forbes, r.Rays, r.Largest);
@@ -148,10 +150,9 @@ public class ForbesCoefficientsTests
             $"{fixtureName}: Forbes disagrees with real rays by {100 * forbes:F4} per cent, " +
             "which is far more than the hundredths of a per cent it manages elsewhere.");
 
-        Assert.True(table > tableIsAtLeastPercent / 100.0,
-            $"{fixtureName}: Table I now agrees with rays to {100 * table:F4} per cent, better " +
-            $"than the {tableIsAtLeastPercent} per cent this test was written against. If the " +
-            "aspheric arrangement has been fixed, retire this expectation rather than loosening it.");
+        Assert.True(table < 5e-4,
+            $"{fixtureName}: the reported set disagrees with real rays by {100 * table:F4} per " +
+            "cent, where Forbes' route manages hundredths. The aspheric arrangement has regressed.");
     }
 
     /// <summary>

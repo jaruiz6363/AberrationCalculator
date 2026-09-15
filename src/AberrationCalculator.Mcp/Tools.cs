@@ -171,8 +171,9 @@ internal static class Tools
           + "image plane the coefficients live at reconciled with the image surface the file "
           + "defines, where a design program quotes; and E, E5 and tau20 read back out of the "
           + "rays with an error bar, which is a check the predicted RMS spot cannot make. On a "
-          + "FIGURED design the seventh-order term comes from the Forbes series trace, since "
-          + "the scheme's aspheric arrangement is a reconstruction the rays reject. Readable "
+          + "FIGURED design the seventh-order term comes from the Forbes series trace, a choice "
+          + "made while the scheme's aspheric arrangement was still one the rays rejected and "
+          + "kept now that the two agree, because the report names the route it used. Readable "
           + "text.",
             w => w.BuildDistortionText()),
 

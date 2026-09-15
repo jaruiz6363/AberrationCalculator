@@ -13,10 +13,28 @@ namespace AberrationCalculator.Core.Aberrations;
 /// different T at once - which is why the T are computed first and converted afterwards
 /// rather than being produced in Robb's form directly.</para>
 ///
-/// <para><b>Spherical surfaces only</b>, as Buchdahl's scheme is.</para>
+/// <para><b>Two routines.</b> A system of spheres goes through <see cref="BuchdahlTableI"/>,
+/// Buchdahl's own arrangement, verified against his printed numbers. A figured system goes
+/// through <see cref="BuchdahlAsphericScheme"/> with its <see cref="BuchdahlAsphericScheme.Options.Default"/>
+/// arrangement of M Sec. 85, which agrees with Forbes' series trace to 2E-10 or better on every
+/// figured design tested. A figured flat facing collimated light, where the incidence ratio is
+/// infinite, goes through the same routine in Laurent series arithmetic
+/// (TertiaryCoefficients.FlatCollimated.cs). <see cref="Attach"/> makes the choice;
+/// <see cref="Compute"/> is the spherical routine alone.</para>
 /// </summary>
-public static class TertiaryCoefficients
+public static partial class TertiaryCoefficients
 {
+    /// <summary>
+    /// The transverse tau2..tau20 of a figured system with a flat surface facing collimated light,
+    /// computed in Laurent series arithmetic with that surface's curvature as the series variable.
+    /// Implemented in Core alone (TertiaryCoefficients.FlatCollimated.cs); in the linked
+    /// arithmetics it has no body and the call compiles away. Leaves <paramref name="transverse"/>
+    /// null when the series route cannot vouch for its answer.
+    /// </summary>
+    static partial void FlatCollimatedTau(Models.OpticalSystem system, Scalar[] indices,
+                                          Scalar maxField, List<int> flatSurfaces,
+                                          ref Scalar[]? transverse);
+
     /// <summary>
     /// Computes tau1..tau20 for a system. The returned array is indexed 1..20; index 0 is
     /// unused, so the numbering matches the literature rather than being off by one.
@@ -37,6 +55,20 @@ public static class TertiaryCoefficients
                 Tb[m] += rows[i].TertiaryTotalBar[m];
             }
 
+        return AssembleTau(T, Tb);
+    }
+
+    /// <summary>
+    /// Buchdahl's ten tertiary coefficients and their barred partners, read as Robb's twenty
+    /// tau. Paper III Table II, and nothing else.
+    ///
+    /// <para>Split out so that <see cref="BuchdahlAsphericScheme"/> can reach the same tau from
+    /// its own totals. The table is a fact about the two notations rather than about how the
+    /// totals were arrived at, so two routes that disagree about a figured surface must still
+    /// agree about this.</para>
+    /// </summary>
+    internal static Scalar[] AssembleTau(Scalar[] T, Scalar[] Tb)
+    {
         var tau = new Scalar[21];
         tau[1] = T[1];
         tau[2] = Tb[1] + T[2] / 2.0;
@@ -131,10 +163,8 @@ public static class TertiaryCoefficients
     /// with - third order alone overstates its full-field spot by a factor of two, and
     /// fifth order gets within six per cent - so the test shows the conversion is not
     /// wrong rather than showing it works hard. The designs whose full-field error
-    /// motivated this work are ASPHERIC, and this scheme handles spherical surfaces only,
-    /// so they measure something less than the whole. They are measured anyway in
-    /// `docs/verification.md`: even with spherical-only tau, their full-field errors improve
-    /// from +85% to +24% and from -34% to -1.5%.</para>
+    /// motivated this work are ASPHERIC; their tau now come from the aspheric routine, which
+    /// uses this same conversion and agrees with Forbes' transverse tau on them to 2E-10.</para>
     /// </summary>
     /// <param name="tau">Coefficients in Buchdahl's convention, indexed 1..20.</param>
     /// <param name="efl">The system's focal length.</param>
@@ -158,9 +188,8 @@ public static class TertiaryCoefficients
     /// <para>Both quantities are already transverse here, so the substitution needs no
     /// conversion and cannot introduce one. On a SPHERICAL system it changes nothing: the two
     /// routes agree exactly there, which is what makes it a substitution rather than a fudge.
-    /// It corrects tau1 ONLY. The other nineteen still come from the scheme, and their
-    /// aspheric parts inherit the same faulty cubics - tau2 most directly, since it draws on
-    /// the barred partner of the same coefficient.</para>
+    /// It replaces tau1 ONLY; the other nineteen come from the scheme - the aspheric routine,
+    /// for a figured system - and agree with Forbes there to 2E-10.</para>
     /// </param>
     public static Scalar[] ToTransverse(Scalar[] tau, Scalar efl, Scalar marginalAngle,
                                         Scalar fieldTangent, Scalar? sphericalSeventh = null)
@@ -252,9 +281,45 @@ public static class TertiaryCoefficients
             ? SMath.Tan(maxField * SMath.PI / 180.0)
             : -(paraxial.ParaxialImageHeight / paraxial.Magnification) / objectDistance;
 
-        var tau = ToTransverse(
-            Compute(system.Surfaces, indices, paraxial.Efl, stopParameter, increments, iota),
-            lengthFactor, u, hmax, coefficients.Totals.B7);
+        // The two routines. Spheres keep Buchdahl's own arrangement, bit for bit as validated; a
+        // figured system takes the Sec. 85 arrangement, which needs the dual run's increments for
+        // its sixth barred q member.
+        Scalar[] raw;
+        if (increments == null)
+        {
+            raw = Compute(system.Surfaces, indices, paraxial.Efl, stopParameter, null, iota);
+        }
+        else
+        {
+            var dualIncrements = AsphericSchemeIncrements.BuildDual(system, paraxial, indices,
+                                                                    scheme.P, iota);
+            raw = BuchdahlAsphericScheme.Tau(system.Surfaces, indices, paraxial.Efl, stopParameter,
+                                             increments, iota, BuchdahlAsphericScheme.Options.Default,
+                                             dualIncrements);
+        }
+
+        var tau = ToTransverse(raw, lengthFactor, u, hmax, coefficients.Totals.B7);
+
+        // A figured flat facing collimated light makes q infinite, and every formula above that
+        // divides by its incidence has no finite form there. The same formulas in Laurent series
+        // arithmetic, with that surface's curvature as the variable, give the finite answer as
+        // their zeroth-order coefficient; where that route vouches for itself it replaces
+        // tau2..tau20. tau1 stays the fifth-order code's B7, as everywhere else.
+        if (increments != null)
+        {
+            var flat = new List<int>();
+            for (int i = 1; i < system.Surfaces.Count - 1 && i < spherical.Length; i++)
+                if (spherical[i].FlatInCollimatedSpace && i < increments.Length && increments[i] != null)
+                    flat.Add(i);
+
+            if (flat.Count > 0)
+            {
+                Scalar[]? series = null;
+                FlatCollimatedTau(system, indices, maxField, flat, ref series);
+                if (series != null)
+                    for (int k = 2; k <= 20; k++) tau[k] = series[k];
+            }
+        }
 
         var t = coefficients.Totals;
         t.Tau2 = tau[2];   t.Tau3 = tau[3];   t.Tau4 = tau[4];   t.Tau5 = tau[5];

@@ -13,7 +13,7 @@ field, so each can be measured on its own.
 What the coefficients give a designer that a trace cannot is which ORDER the distortion is,
 and which SURFACE it comes from. This document is about whether they can be trusted to say so.
 
-It is the counterpart of `spot-prediction.md`, and it answers a question that document
+It is the counterpart of [spot-prediction.md](spot-prediction.md), and it answers a question that document
 cannot. A predicted RMS spot mixes eighteen coefficients into one number, so errors that
 cancel pass unnoticed — that is measured there, not assumed. Distortion is the opposite case.
 
@@ -33,9 +33,11 @@ the field shrinks. Each of the three is measured **individually**, against exact
 **This is not the first ray-traced check of a tertiary coefficient here, and it is worth being
 exact about what it adds.** `CoefficientInversion` already recovers all twenty from traced rays
 — by scaling ray shapes and fitting an odd polynomial in the scale — and its default shapes
-include the zero-pupil case for precisely this reason. `ForbesCoefficientsTests` already uses
-it to establish, on nine fixtures, that Forbes agrees with rays where this program's aspheric
-arrangement does not. That is the general instrument, and it came first.
+include the zero-pupil case for precisely this reason. `ForbesCoefficientsTests` uses it on
+nine fixtures, and it was that test which established, while the aspheric arrangement was still
+wrong, that Forbes agreed with the rays where the arrangement did not. The arrangement has
+since been completed and the same test now finds both agreeing with the rays. That is the
+general instrument, and it came first.
 
 What this one adds is narrowness. Three coefficients rather than twenty; no basis, no
 least-squares solve, no model of the other seventeen, and an error bar of its own from the
@@ -236,11 +238,17 @@ Forbes inversion produces the tertiary only, and nothing is lost: the aspheric t
 orders rest on closed-form conic surfaces — a printed answer, not a reconstruction — and the
 rays return both to a part in ten thousand on every design in the table.
 
-"This program's tau20" below means the Buchdahl route as **this repository implements it** —
-for a figured design that includes an aspheric tertiary arrangement Buchdahl never published
-and which had to be reconstructed here. Nothing in this document bears on his theory; the
-question it settles is whose arithmetic the rays back, and the two candidates are this
-repository's reconstruction and this repository's Forbes trace.
+"This program's tau20" below means the Buchdahl route as **this repository implemented it
+when the table was measured** — for a figured design that included an aspheric tertiary
+arrangement Buchdahl never published and which had to be reconstructed here. Nothing in this
+document bears on his theory; the question it settled was whose arithmetic the rays back, and the
+two candidates were this repository's reconstruction and this repository's Forbes trace.
+
+> **Since September 2026 the "this program" column is out of date for the figured rows.** The
+> reconstruction was completed (see [verification.md](verification.md), "The aspheric tertiary arrangement") and
+> the aspheric routine now gives Forbes' value on every figured row below, to 2E-10 or better;
+> the rays confirm it (`TheAsphericSeventhOrderDistortionAgreesWithTheRays`). The table is kept
+> as the evidence that located the defect.
 
 | design | figured | this program | Forbes | from the rays |
 |---|---|---|---|---|
@@ -288,7 +296,7 @@ reference are shared by all three coefficients and are exercised identically by 
 agree. What is left is the seventh-order **aspheric** arrangement, and nothing else.
 
 That this program's aspheric tertiary arrangement is wrong is already recorded —
-`verification.md` says so under "what is not established", and it was established there by
+[verification.md](verification.md) says so under "what is not established", and it was established there by
 disagreement with Forbes. This is the same conclusion reached from rays, per coefficient, with
 no series on the other side of the comparison. It also settles which of the two routes is the
 wrong one, which a disagreement between them could not.
@@ -298,7 +306,9 @@ wrong one, which a disagreement between them could not.
 *Nothing about Buchdahl's theory.* He never published the tertiary aspheric arrangement — the
 scheme is in Sec. 85 of the monograph, the arranged table for it is not anywhere — so the
 figured coefficients here come from a reconstruction made in this repository. That
-reconstruction is what the rays disagree with. Where he DID publish, this program reproduces
+reconstruction is what the rays disagreed with, and it has since been completed; the
+disagreement is gone and the arrangement now agrees with Forbes and with the rays
+([verification.md](verification.md)). Where he DID publish, this program reproduces
 him entry by entry, `BuchdahlPublishedTableTests` does it every run, and on spherical systems
 his scheme and Forbes' trace agree to 2E-13 on all twenty at both conjugates with the rays
 confirming both. A defect in a reconstruction of an unpublished arrangement is a defect in the
@@ -334,11 +344,12 @@ overshoots.
 conjugate is the case: -0.57 per cent at the corner, third order out by a fifth of that,
 the full seventh inside four per cent, and every order improving on the last at every field.
 
-**On a figured design the route matters, and the tool no longer asks.** Buchdahl's scheme needs
-an aspheric tertiary arrangement he never published, and this program's reconstruction of it
-gives a `tau20` the rays reject, so a figured design is predicted from Forbes' — automatically,
-with the report saying so. On an unfigured one the two agree to roundoff on all twenty and the
-choice is empty.
+**On a figured design the tool uses Forbes' `tau20`, and says so.** That choice was made while
+this program's reconstruction of the aspheric tertiary gave a `tau20` the rays rejected. The
+reconstruction has since been completed and now agrees with Forbes on every figured test design,
+a figured flat facing collimated light included, so the choice changes nothing there — but the
+report still names the route it used. On an unfigured design the two agree to roundoff on all
+twenty and the choice is empty.
 
 **Getting `tau20` right does not rescue the outer field, and that is the more useful finding.**
 On the two aspheric triplets the corrected coefficient makes the corner slightly worse, not

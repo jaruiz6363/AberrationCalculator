@@ -102,10 +102,12 @@ series, and both give 1.681450E-03 on the Cooke triplet at infinite conjugate an
 ### Limits, which the macro enforces rather than documents
 
 Spherical surfaces only. A conic or an even-asphere term makes it stop with an
-explanation instead of returning a plausible number. Buchdahl gives the aspheric scheme -
-§65-66 and (85.2)-(85.5) - but never published the arranged table for it, and that
-arrangement is the one part of this work with no printed answer to check against. The
-aspheric case is handled by a different method entirely; see `docs/forbes.md`.
+explanation instead of returning a plausible number, and names its companion. Buchdahl
+gives the aspheric scheme - §65-66 and (85.2)-(85.5) - but never published the arranged
+table for it. That arrangement has since been reconstructed: it is `BUCH7_ASPH.ZPL`,
+which carries conics and even aspheres and agrees with `FORBES.ZPL` on all twenty
+seventh-order coefficients. This macro is left as the spherical routine, the one checked
+against Buchdahl's own printed numbers.
 
 Object at infinity, rotationally symmetric, sequential, no mirrors.
 
@@ -308,6 +310,179 @@ physically scaled chief ray. Stage A now works from the marginal and chief rays 
 traced, with the surface factors written as the C# writes them.
 
 ---
+
+## BUCH7_ASPH.ZPL
+
+The same three orders as `BUCH7.ZPL`, for a system that **may carry conics and even
+aspheres**. Buchdahl's computing scheme throughout, with the aspheric arrangement of
+his Sec. 85.
+
+### Why, given BUCH7 already exists
+
+BUCH7 declines a figured surface, and says why: Buchdahl gives the aspheric scheme in
+the monograph but never published the arranged table for it. That is the one part of
+this subject with no printed answer to check against, and guessing at it would have
+been worse than declining.
+
+The arrangement has since been reconstructed. This macro is it, and BUCH7 is left
+exactly as it was — the spherical routine is the one checked against Buchdahl's own
+printed numbers, and it is not disturbed by any of this. On a lens of spheres the two
+macros agree entry for entry, which is the first thing to check and costs nothing.
+
+### The arrangement, in one paragraph
+
+Sec. 85 splits every tertiary total into a hat pass carried on the incidence ratio `q`
+and a check pass carried on the height ratio `rho`. Three things that are not in the
+printed scheme are needed to make it come out:
+
+1. Members one to five of the barred q-side secondary accumulation come from the
+   identities of M Sec. 22, not from the dagger recursion.
+2. The sixth member, which the identities cannot supply (M Sec. 19 says so outright),
+   comes from a **dual run** of the whole scheme — the two rays interchanged and the
+   refractive indices negated, paper XII Sec. 6 — in which the accumulated `s_1p` is
+   `-S-bar_6q`. The negation is not optional: Table I is built on `g/N1 = 1`, and
+   `1/g = y_p v_q - y_q v_p` changes sign under the swap. Without it the dual agrees
+   at ratio -1.00 on one surface and -0.30 on the next.
+3. The figuring's D half of (60.3) rides the incidence ratio, so it belongs in the hat
+   pass — in the intrinsic secondaries **and** in the five M entries, each of which
+   carries the intrinsic secondary it follows from with coefficient one.
+
+### Status
+
+**Done, and checked against two independent routes.** The macro runs four passes of the
+scheme — direct and dual, each unfigured then figured — and a trivariate polynomial
+algebra for the figuring cubics of Secs. 77-79. A lens of spheres takes the first pass
+alone, which is the routing that keeps the spherical result bit-for-bit what BUCH7
+gives.
+
+| checked on | against | result |
+|---|---|---|
+| Kingslake double Gauss, 9 spheres | BUCH7, all four stages | identical at every printed digit |
+| the same, Table I entry by entry | BUCH7's table | 155 entries x 9 surfaces, 1170 numbers identical |
+| F4, a parabolic mirror | FIFTHORD | eighteen identical, B, B5 and B7 all zero |
+| F3, a conic with r^4, r^6 and r^8 | FIFTHORD | eighteen identical |
+| F3 | **FORBES.ZPL, seventh order** | **all twenty tau identical** |
+| F6, a triplet with two figured surfaces | FIFTHORD | eighteen identical |
+| F6 | **FORBES.ZPL, seventh order** | **all twenty tau identical** |
+
+The FORBES comparison is the one this macro exists to pass. The two share no arithmetic
+past the paraxial trace — Buchdahl's arranged tables against an order-doubling series
+trace — so agreement to the printed digits on a figured lens is worth a great deal more
+than either macro agreeing with itself.
+
+`tau1` is printed twice, once as `B7` out of the fifth-order working and once as what
+the scheme reaches through Table I. On a lens of spheres those agree exactly; on the
+figured designs above they also agree exactly, which is a check needing no second macro
+at all.
+
+### Four faults found on the way, and what each one teaches
+
+**A stale workspace slot.** `X3 = beta1 S2 + beta2 S1 + beta3`, and beta3 sets only four
+of its twenty coefficients. It was being built in the workspace slot that had just held
+S3's second product, so those four overwrote the stale product and the other sixteen
+kept it — visible only in X3's fifth and sixth cubic coefficients, `xi eta zeta` and
+`xi zeta^2`, the two of the first six beta3 does not write. Because the stale product
+carried `tau2` and `sigma2`, which carry `c1`, it made nu-prime depend on the figuring
+where it must not. Eighteen of the twenty totals were already exact; only `T5` and its
+barred partner moved. **Any polynomial built by naming a few coefficients must be zeroed
+first unless the whole workspace is known clean.**
+
+**A case collision, the trap this folder already documents.** `aCb`, the aspheric
+contribution to C-bar, and `acb`, the accumulated third order B, are the same variable:
+ZPL names are case-insensitive. At a figured surface the first destroyed the second, so
+every induced term containing it — `B5`, `F1`, `F2`, `M1`, `M2` and `B7` — came out
+wrong while the seven that do not contain it stayed exact. There is now a scan over the
+whole file for identifiers differing only by case.
+
+**Why the one-surface fixtures could not find it.** On F3 and F4 the stop sits *on* the
+figured surface, so the chief-ray height there is zero, the corrupting term is
+identically zero, and the collision wrote a harmless zero. It took a six-surface lens
+with the stop elsewhere to expose it. A ladder of fixtures is not padding.
+
+**Two more ZPL traps**, which join the five already recorded here. The bound of a `FOR`
+may not contain a bracketed index — ZPL splits the arguments on commas before it looks
+at them, so `mon(6, m)` is torn in half and reported as a missing index, an improper
+format, and then an infinite loop. And `VEC1` to `VEC4` are all there are: writing
+`VEC6(i) = x` does not fail as an out-of-range vector but as *"Variable must be followed
+by = sign"* on a line that plainly has one, because `VEC6` is read as an ordinary
+variable name and the bracket after it is unexpected. Everything else here is a
+`DECLARE`d array, and a declaration that comes after its first use produces that same
+misleading message.
+
+### Limits, which the macro enforces rather than documents
+
+`STANDARD` and `EVENASPH` surfaces only, declined by name, and only `PARM` 1 to 4 —
+r^2 to r^8. An r^10 term or above cannot reach the seventh order; it is not being
+ignored, it genuinely does not appear, and the macro says so when it meets one.
+
+**A figured flat facing collimated light is declined.** There the marginal incidence is
+zero, `q` is infinite, and the finite coefficients arrive only after terms carrying
+different powers of `q` cancel. Bending the surface makes it exact again. The macro says
+so rather than returning a number that looks like an answer; the third and fifth orders
+are unaffected and still stand.
+
+One optical surface is enough — and that is not a relaxation for its own sake. A single
+figured surface is the sharpest test the aspheric block has, because nothing is
+accumulated ahead of it and every induced term is identically zero, so a fault cannot
+hide in the induced part.
+
+It is slow: four passes of the scheme, and a polynomial algebra under them.
+
+### Three switches, all off by default
+
+`srf = 1` **breaks every coefficient down surface by surface**, and splits the third and
+fifth order three ways: what the surface generates on its own, what its figuring adds,
+and what was **induced** in it by the surfaces ahead of it. It is the printout a
+designer works from rather than a diagnostic, and it is the answer to a question a
+total cannot be asked - not "is this design wrong" but "which surface, and is it that
+surface's own fault". The two readings call for opposite actions: an intrinsic
+aberration is corrected where it is generated, an induced one is a reaction to
+something upstream and correcting it *here* is a second wrong balancing a first.
+
+Shafer put the case for it in 1989 and this is what he asked for: "This can only be
+done effectively, however, if the 5th-order aberration surface contributions are broken
+into two components: the intrinsic component and the induced component" - his example
+being a Bouwers whose mirror shows induced spherochromatism because the front lens's
+axial colour changes the beam diameter reaching it. See [docs/references.md](../docs/references.md).
+
+Three things to know about the printout:
+
+- Every number is in transverse measure, the same as the system totals, and **each
+  column adds down to the total printed above it**. That is a check on the macro you
+  can make by eye, and the seventh-order tables print their sum row so you can.
+- There is **no induced term at third order**. A third-order contribution is built from
+  that surface's own quantities alone, so that block has three rows where the
+  fifth-order block has four. Nor is there a figuring term in `Pi`: the Petzval sum
+  depends on the vertex curvature and the indices, and a figured surface has the same
+  vertex sphere as the sphere it was figured from.
+- The seventh order is printed per surface but is **not split**. At seventh order the
+  surface's own quantities and the accumulated ones enter through the same Table I
+  entries, and separating them would be a reconstruction of Buchdahl rather than a
+  reading of him. Where the seventh order does have an unambiguous answer - `B7`, which
+  is `tau1` - it is in the fifth-order block and split like the rest.
+
+Under the tables is one number per surface: the induced share of the fifth-order
+magnitude it carries, summed over the thirteen coefficients so that no single one of
+them decides it. Near zero the surface is on its own; near one, almost everything it
+carries was handed to it and the fix is upstream.
+
+**It is not bounded by one, and a value above one is the reading worth having.** It says
+the induced part is larger than the total, so the intrinsic and the induced are opposing
+each other and what the surface reports is the residue left after they cancel. On the
+F6 triplet two surfaces come out at 1.45 and 2.41 - surface 3's `N2` is intrinsic
+`3.64E-02` against induced `-9.17E-02`, and the `-5.53E-02` it reports is what survives.
+Such a surface looks quiet in any per-surface total and is not: two large terms are
+standing against each other there, and anything that disturbs either - a bend, a
+thickness, a melt - moves the residue by far more than its own size suggests.
+
+`chk = 1` prints the bridge constants that carry the figuring into the scheme, and the
+ten tertiary totals with their barred partners before Table II mixes them. The bridge
+constants are measured per quantity and **must come out the same on every surface**; if
+they do not, the coefficients for that lens are not to be trusted.
+
+`dbg = 1` prints Table I entry by entry, the two passes surface by surface, and the
+figuring cubics. It is verbose — 155 rows per surface — and it is what to turn on when a
+coefficient looks wrong and you want to see which entry it came from.
 
 ## STRESS.ZPL
 
@@ -687,7 +862,7 @@ and 21.72 do not make 27.25. The only honest comparison is to move the plane.
 
 ### How good the prediction is, measured rather than asserted
 
-`docs/spot-prediction.md` compares it against traced rays on five lenses at both
+[docs/spot-prediction.md](../docs/spot-prediction.md) compares it against traced rays on five lenses at both
 conjugates. The table below is consistent with it to the digit: at `H = 0` the full seventh
 order gives 1.378753E-02 against a traced 0.013698, which is the +0.7 per cent that
 document records, and at `H = 1` it gives 2.061997E-02 against a traced 0.023604, the -12.6
@@ -721,7 +896,7 @@ a way that still looks plausible.
 
 The kth ring sits at `rho = sqrt((k - 1/2)/n)`, the equal-area midpoint rather than the
 outer edge. Sampling at the edge weights the pupil outward and converges from above;
-`docs/spot-prediction.md` has the numbers.
+[docs/spot-prediction.md](../docs/spot-prediction.md) has the numbers.
 
 ### Expected output, CookeTriplet
 
@@ -782,10 +957,17 @@ Am.* **73**(6), 782 (1983), Sec. 3(a).
 
 ### Why, given BUCH7 already exists
 
-BUCH7 refuses a conic or an aspheric term, and the refusal is honest: Buchdahl gives the
+BUCH7 refuses a conic or an aspheric term, and the refusal was honest: Buchdahl gives the
 aspheric scheme in the monograph but never published an **arranged table** for it the way
-Table I arranges the spherical case, so a transcription would have no printed answer to
-check against.
+Table I arranges the spherical case, so a transcription would have had no printed answer
+to check against.
+
+That arrangement has since been reconstructed, as `BUCH7_ASPH.ZPL`, and the two macros now
+agree on all twenty seventh-order coefficients on every figured design tried. Which makes
+this route MORE valuable rather than less: the agreement is between Buchdahl's arranged
+tables and an order-doubling series trace sharing no arithmetic past the paraxial ray, so
+each is now the other's strongest check. Before, there was nothing to check the aspheric
+arrangement against at all.
 
 Forbes removes the difficulty rather than solving it. He writes the ith surface as
 

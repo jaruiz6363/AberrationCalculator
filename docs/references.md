@@ -16,22 +16,30 @@ Sec. VIII identities have been located but not transcribed.
 
 ## Primary sources
 
-**[wanted] Buchdahl, H. A.**, *Optical Aberration Coefficients* (Oxford University Press,
+**[have] Buchdahl, H. A.**, *Optical Aberration Coefficients* (Oxford University Press,
 London, 1954). Dover reprint, New York, 1968.
-The origin of the coefficients this whole program computes. Never cited in this repo
-until now, which was an omission - the coefficients carry his name on every screen.
+The origin of the coefficients this whole program computes.
 
-**The Dover reprint carries the whole journal series as an appendix**, which changes what
-acquiring it is worth. Sands (1970), who cites the Dover edition as his reference 1,
-describes "the thirteen papers under the same general title and reprinted at the end of
-OAC" and cites them by number throughout - OACIII, OACVI, OACVII, OACXII. So the series
-runs to at least twelve papers and the reprint holds all of them.
+**The Dover reprint carries the whole journal series as an appendix.** Sands (1970), who
+cites the Dover edition as his reference 1, describes "the thirteen papers under the same
+general title and reprinted at the end of OAC" and cites them by number throughout -
+OACIII, OACVI, OACVII, OACXII. So holding the book holds papers I to XIII, and
+`### The rest of Buchdahl's series` below is a numbering table rather than a shopping list.
+XIV is 1969, after the reprint, and is held separately.
 
-The consequence for this file is that `### The rest of Buchdahl's series` below is not a
-shopping list of separate items. **One book discharges it, along with every monograph
-section the tertiary work needs** - Secs. 65-66, 80, 81, 84, 85, 22(b) with Eq. (22.27),
-218(a), and the Chap. 3 and Eq. (21.6) identities Sands says Table I was built on. It is
-the highest-value single acquisition on this page and it is not close.
+**This entry read `[wanted]` for far longer than it was true**, and it said the reprint was
+"the highest-value single acquisition on this page". By then the monograph had been read
+section by section and the whole aspheric tertiary result had come out of it: Secs. 84 and
+85 off the page, Sec. 22's identities, Sec. 29 proving the (68.8) misprint rather than
+inferring it, and XII Sec. 6's duality. A bibliography that says its principal source has
+not been obtained, while the work visibly rests on it, misleads a reader about what the
+results stand on - which is the one thing this file exists to prevent.
+
+The sections consulted are Secs. 12-13, 19-20, 22, 29, 59-60, 62, 63-66, 67-68, 73, 74-76,
+77-79, 80, 81, 83-85 and 218, together with Chapter V, Chapter VI's Table II, Appendix J
+and the tables at pp. 143-146. They are held outside this repository, as page images: the
+scans are not ours to redistribute and no path to them belongs in version control, for the
+same reason `ZemaxPaths.props` is not committed.
 
 **[wanted] Rimmer, M.**, M.S. Thesis, Institute of Optics, University of Rochester,
 Rochester, New York, 1963.
@@ -128,12 +136,13 @@ normally unchanged, so the book alone may not carry the tertiary computation.
 ### The rest of Buchdahl's series
 
 The series runs to at least fourteen papers, and I to XIII are reprinted at the end of the Dover
-monograph - see the note under it above. Ten are now in hand. The numbering is exact, from
+monograph - see the note under it above, so all fourteen are in hand: I to XIII through the
+reprint, and XIV, which postdates it, separately. The numbering is exact, from
 footnote 2 of XII and footnote 1 of XIV:
 
 | | citation | subject | |
 |---|---|---|---|
-| I | *J. Opt. Soc. Am.* **46**, 941 (1956) | tertiary spherical aberration - B7's origin | wanted |
+| I | *J. Opt. Soc. Am.* **46**, 941 (1956) | tertiary spherical aberration - B7's origin | have |
 | II | **48**, 563 (1958) | the tertiary intrinsic coefficients | have |
 | III | **48**, 747 (1958) | computing the tertiary - Table I, Table II | have |
 | IV | **48**, 757 (1958) | quaternary (ninth-order) spherical | have |
@@ -142,7 +151,7 @@ footnote 2 of XII and footnote 1 of XIV:
 | VII | **50**, 540 (1960) | deformation and retardation of the wave front | have |
 | VIII | **50**, 678 (1960) | spherical aberration of order eleven | have |
 | IX | **51**, 608 (1961) | theory of reversible optical systems | have |
-| X, XI, XIII | ? | ? | wanted, citations unpinned |
+| X, XI, XIII | ? | ? | have, via the reprint; citations unpinned |
 | XII | **55**, 641 (1965) | remarks relating to aberrations of any order | have |
 | XIV | **59**, 1422 (1969) | simplified computational form of the iteration equations | have |
 
@@ -158,7 +167,7 @@ Eq. (6.5) the five primary, Eq. (6.6) the nine secondary, Eq. (6.7) fourteen ter
 
 This page is why the note at the top of this file matters. Its OCR is noise, and the paper sat
 here looking like a curiosity until it was rendered as a page image - see
-`reading-scanned-pdfs.md` in the working notes. `nat-development.md` records what it
+`reading-scanned-pdfs.md` in the working notes. [nat-development.md](nat-development.md) records what it
 established and what it did not.
 
 Three things it supplies beyond the relations themselves:
@@ -178,7 +187,8 @@ And one trap, Sec. 7(a): his `e` is not unity, so the coefficients carry powers 
 `A: -1, B: 0, C: 1, S1: -1, S3,S4: 1, S5: 2, S6: 3`, barred coefficients taking an extra factor.
 A coefficient right and its power of `e` wrong reads as a plausible number rather than an error.
 
-**[wanted] Buchdahl, H. A.**, *J. Opt. Soc. Am.* **46**, 941 (1956). Paper I of the series.
+**[have] Buchdahl, H. A.**, *J. Opt. Soc. Am.* **46**, 941 (1956). Paper I of the series.
+Held through the Dover reprint's appendix, which carries I to XIII.
 
 **[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. II. The Tertiary Intrinsic
 Coefficients," *J. Opt. Soc. Am.* **48**, 563-568 (1958).
@@ -233,7 +243,7 @@ almost 45, and the difference was not field, aperture or figuring:
 > large, whereas for systems in which the predictions were good over an extended range of
 > field angles, the pupil aberrations were quite small."
 
-`spot-prediction.md` reports the same behaviour from the other end - "the order a design
+[spot-prediction.md](spot-prediction.md) reports the same behaviour from the other end - "the order a design
 needs is a property of that design, not a general rule", with one of five lenses not
 described at seventh order at all. Sands says which property. That makes it a testable
 prediction rather than an observation: compute the pupil aberration of those five lenses
@@ -349,7 +359,7 @@ re-normalisation is ever implemented here.
 ## Nodal aberration theory
 
 **None of this is implemented.** These are the sources for the proposal in
-`nat-development.md`, and they are listed here so the reading is not lost and so the
+[nat-development.md](nat-development.md), and they are listed here so the reading is not lost and so the
 gap between what is in hand and what the work needs is on the record.
 
 NAT is a different axis of generalisation from the rest of this file. Everything above extends
@@ -371,7 +381,7 @@ What it settled here:
   for the product, (A6) for the conjugate, (A7) for the product with a conjugate, (A10) for the
   squared vector, and identities (A11) to (A13). `NatTests` checks all of them against the
   implementation rather than against a restatement of it. An earlier draft of
-  `nat-development.md` had the product written with `x` as the real axis, which
+  [nat-development.md](nat-development.md) had the product written with `x` as the real axis, which
   contradicted the conjugate rule three lines above it; the appendix settles it.
 - **The third-order node structure**, which had been assembled here from Schmid and reasoning:
   coma (4.7)-(4.9), astigmatism (4.15)-(4.22), medial field curvature (4.27)-(4.31). The last
@@ -399,7 +409,7 @@ informing one.
   measures exactly that quantity from traced rays.
 - **Table 5 shows the two routes agreeing** to four or five figures, so they are not different
   quantities - which established that this repository's disagreement between them was a fault
-  and not a convention. The fault is diagnosed in `nat-development.md`: Gu's expression
+  and not a convention. The fault is diagnosed in [nat-development.md](nat-development.md): Gu's expression
   is derived for ONE perturbed surface and superposing it over several drops the term that
   makes a rigid translation come out zero.
 - **Tables 1 to 5 are a published oracle** - a Ritchey-Chretien prescription, the perturbations
@@ -489,7 +499,7 @@ The access point by which a non-symmetric surface enters NAT at all: a Zernike Z
 stop is added as a field-constant `B222^2`, and everything follows. Gives the binodal solution
 `H = +/- i sqrt(B222^2 / W222)` and the diagnostic that matters - figure error keeps the node
 midpoint at the field centre, secondary-mirror misalignment does not. Its Eqs. (12)-(16) are the
-node algebra transcribed into `nat-development.md`.
+node algebra transcribed into [nat-development.md](nat-development.md).
 
 **[have] Fuerschbach, K., Rolland, J. P. and Thompson, K. P.**, "Extending Nodal Aberration
 Theory to include mount-induced aberrations with application to freeform surfaces,"
@@ -590,6 +600,48 @@ is fast against real ray tracing. Reading the paper showed that it argues close 
 reverse. The recollection may still hold for the BOOK, or for how DSEARCH forms its first
 merit function; neither has been checked, and neither should be cited until it is.
 
+**[have] Shafer, D.**, "I Plead the 5th", *Recent Trends in Optical Systems Design II*,
+SPIE Vol. 1049 (1989), pp. 11-16.
+
+Six pages by a working designer arguing for exactly the two things this program was built to
+provide, written thirty-seven years before it. It is here because it is the only source found
+so far that states the design case for the per-surface intrinsic-and-induced split as a
+requirement rather than as a nicety.
+
+The premise is that in a design already corrected to third order the limiting monochromatic
+aberrations are fifth-order field curvature and sagittal oblique spherical aberration, and
+that these cannot be controlled from totals:
+
+> "This can only be done effectively, however, if the 5th-order aberration surface
+> contributions are broken into two components: the intrinsic component and the induced
+> component."
+
+His example is a Bouwers, where the mirror shows induced spherochromatism for a reason that
+is not the mirror's: the front lens's axial colour changes the beam diameter arriving at it.
+A surface contribution alone cannot distinguish that from a fault of the mirror, and the two
+call for opposite actions. The closing sentence asks for the printout this program produces:
+"surface by surface 5th-order aberration contributions printout, ideally with separate
+intrinsic and induced components."
+
+Two further claims bear directly on what is being built here. On merit functions: "it is much
+quicker to try out many different configurations and ideas if there are no rays in the merit
+function and you are only correcting the 3rd and 5th-order aberrations" - the performance
+limits of a design are "built in at a very early level", and "unless you can control all the
+5th-order ... you can't make the optimum higher-order balance required". On the seventh order,
+which is this program's reason for existing: "It is the 7th-order which then determines if a
+particular design is on the right track."
+
+And on aspherics he takes a position worth recording because it is not the usual one: they
+are a temporary device for design rather than a feature of the product. Separated aspheric
+singlets carrying only fourth-order deformation, corrected for the third order together with
+oblique spherical and Petzval, can afterwards be "replaced with equivalent non-aspheric
+doublets or triplets without losing the higher-order correction" - which makes an aspheric
+variable useful even to a designer who has no intention of ordering an asphere.
+
+Set against Dilworth above, the two disagree about the merit function and agree about the
+diagnosis: both want the program to say what to change, and Shafer is explicit that the
+coefficient breakdown is how it says it.
+
 ## Implementation provenance
 
 The published sources above are the authority for the method. What establishes that this
@@ -629,7 +681,7 @@ to image exactly like the nominal one moved over. No third-party program is invo
 point.
 
 **5. Forbes' series trace** for the seventh order, from a separate published paper with no
-shared code. See `forbes.md`.
+shared code. See [forbes.md](forbes.md).
 
 ### On FIFTHORD
 
@@ -655,7 +707,7 @@ But it could have corroborated them, and saying it could not was a misstatement.
 
 The macro is not redistributed here and no part of it is included in this repository. Where
 this program departs from it - the aspheric r^8 handling, the F/number sign convention, the
-analytic pupil integration in place of a table of constants - `verification.md` says so.
+analytic pupil integration in place of a table of constants - [verification.md](verification.md) says so.
 
 ### Independent cross-check available
 

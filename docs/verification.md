@@ -53,14 +53,68 @@ computes the seventh-order set this program exists for, so neither could be.
 | E, E5 and tau20 against traced chief rays | each to under one per cent wherever the two routes agree, at both conjugates |
 | the suite | 597 tests, and everything they read is in this repository |
 
-## What is not established
+## The aspheric arrangement, and how it was established
 
-**The aspheric tertiary arrangement.** Buchdahl gives the aspheric scheme in Sec. 85 of the
-monograph but never published the arranged table for it, and that arrangement is the one part
-of this subject with no printed answer to check against. This program's version of it
-disagrees with Forbes on the small tertiary coefficients of a figured design — tau15 by a
-factor of nearly five including its sign, tau20 by half — while the large ones agree to under
-one per cent. Use Forbes for figured systems; that is what `zosapi/` exists for.
+This section used to live under **What is not established** below, and it is worth saying why it
+no longer does. Buchdahl gives the aspheric **scheme** — Secs. 65-66 for the D and L split,
+(85.2)-(85.5) for the two passes — so the method was never in question and nothing about it was
+guessed. What he never published is the arranged **table** for it, the way Table I arranges the
+spherical case, and that arrangement had to be re-derived. It has been, and what follows is what
+that rests on.
+
+**The arrangement is established, and the exception that used to qualify this is closed too.** The
+reconstruction is a separate routine, `BuchdahlAsphericScheme`, and
+`TertiaryCoefficients.Attach` sends every figured system there; spheres keep Buchdahl's own
+arrangement in `BuchdahlTableI`, bit for bit. Its default arrangement is four things, each
+derived and each gated before it was adopted:
+
+| piece | source | gate |
+|---|---|---|
+| barred q accumulations, members 1-5 | identities, M Sec. 22 | (22.42) against (22.53), 1E-13 on figured systems |
+| barred q accumulation, member 6 | the dual run, paper XII Sec. 6 (swap the rays, negate the indices) | reproduces members 1-5 from the identities to 2E-13, and all six on spheres to 6E-13 |
+| the figuring's D half in the hat pass | (60.3), (85.3) | in the secondaries AND in the M entries built from them |
+| the D half on an exactly flat surface | its curvature limit | continuous with the R = 1e10 twin |
+| a figured flat facing collimated light | the same formulas in Laurent series arithmetic, curvature as the variable | reproduces the double route on regular surfaces to 1E-10; Forbes on the flat to 1.2E-9 |
+
+**Corroborated a second time, outside this program.** The same arrangement is transcribed into
+`macros/BUCH7_ASPH.ZPL`, which runs inside OpticStudio and shares nothing with this code but the
+published equations. On a lens of spheres it reproduces `BUCH7.ZPL` entry for entry — 155 Table I
+entries over 9 surfaces, 1170 numbers, and all twenty tau. On figured designs it reproduces
+`FORBES.ZPL` on all twenty tau, and the recorded FIFTHORD reference on all eighteen third- and
+fifth-order totals, on a conic singlet, a conic carrying r⁴, r⁶ and r⁸ together, and a triplet
+with two figured surfaces where one induces on the other. A transcription agreeing to the
+printed digits is not proof of the arrangement, but it does exclude a whole class of
+implementation error in this code, since a shared bug would have to have been made twice in two
+languages.
+
+Against Forbes, all twenty tau: between 2E-13 and 2E-10 relative on every figured design in the
+ladder and on the three aspheric triplets (`BuchdahlAsphericSchemeTests.TheAsphericRoutineAgreesWithForbes`),
+where the arrangement as it stood before was out by 17 to 467 per cent, with 6 to 19 of the twenty
+beyond one per cent. Against real rays both routes now sit at the rays' own floor
+(`ForbesCoefficientsTests.BothRoutesAgreeWithRealRaysOnFiguredDesigns`), and `tau20` comes back
+from the traced chief rays to within the recovery's scatter.
+
+**A figured flat facing collimated light** (`Ladder2_FlatFigured`, a corrector plate in a parallel
+beam) needed one more step. There the marginal incidence is identically zero, q is infinite, and
+the finite coefficients arrive only after terms carrying different powers of q cancel - the
+arrangement was right (bend the surface to R = 100 and it agrees with Forbes to 1.6E-12) but
+the flat branch dropped the figured tertiary and a numerical limit reached only 4.5E-4. So
+`TertiaryCoefficients.Attach` runs such a system through `AberrationCalculator.Core.Series`, the
+same source files compiled in Laurent series arithmetic with that surface's curvature as the
+variable, and reads the answer at e^0. It is used only when it vouches for itself - two
+truncations agreeing, nothing below the lowest carried order, negative orders cancelled - and
+the design now agrees with Forbes to 1.2E-9, where it was 710 per cent out
+(`FlatCollimatedSeriesTests`). That was the one exception, and it is closed: there is no figured
+case left that this program declines to compute or computes differently from Forbes.
+
+**The rest of this section records how the defect looked while it was open**, and is kept rather
+than deleted because how an error was found is worth more than the fact that it was. Everything
+in it is in the past tense as a matter of fact, whatever tense it is written in.
+
+Two cautions for anyone measuring this, both of which cost time here. Normalising the error by
+the largest coefficient in the set hides it almost entirely — a small coefficient wrong by five
+times is nothing beside the largest, and the design that does exactly that reports as 1.7 per
+cent. And a predicted spot cannot see it at all; see below.
 
 **A second ray route says the same thing about `tau20`.** The inversion above (evidence 3) is
 the general one. This is a narrower instrument over the same rays: at zero pupil radius the
@@ -89,6 +143,8 @@ coefficients as above, because the disagreement sits in the smallest terms and a
 weights them. Predicted-versus-traced spot agreement would have certified a tau15 that is
 wrong by five times and points the wrong way. It is not used as a correctness metric here,
 and `spot-prediction.md` says what it is used for instead.
+
+## What is not established
 
 **How far the seventh order reaches.** It is a property of the lens and not a number. Of five
 designs measured, one is described by third order alone, two need the full seventh to reach a

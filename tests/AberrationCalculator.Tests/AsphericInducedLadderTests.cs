@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AberrationCalculator.Core.Aberrations;
+using AberrationCalculator.Core.Forbes;
 using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.IO;
 using AberrationCalculator.Core.RayTrace;
@@ -24,32 +25,39 @@ namespace AberrationCalculator.Tests;
 /// where intrinsic and induced content are inseparable. On the ladder they separate completely.
 /// </para>
 ///
-/// <para><b>What it found</b>, measured at the commit that added this file, as the worst
-/// disagreement with the ray-inversion oracle expressed as a share of the LARGEST coefficient
-/// in the set - relative error is meaningless on a coefficient three orders below the rest,
-/// which is where the inversion noise floor sits:</para>
+/// <para><b>What it finds</b>, as the worst relative error over the twenty coefficients, each
+/// against itself, with Forbes' series as the reference:</para>
 ///
 /// <code>
-///   one powered surface, spherical        no induced      0.032%
-///   one powered surface, r^4 figured      no induced      0.026%
-///   one powered surface, conic figured    no induced      0.112%
-///   two powered surfaces, spherical       induced         0.005%
-///   two powered surfaces, r^4 on first    induced          1.716%
-///   two powered surfaces, r^4 on second   induced         12.282%
+///   one powered surface, spherical        no induced      none out by 1%
+///   one powered surface, r^4 figured      no induced      none
+///   one powered surface, conic figured    no induced      none
+///   two powered surfaces, spherical       induced         none
+///   two powered surfaces, figured SPHERE  induced         none
+///   two powered surfaces, r^4 on first    induced         31%,  8 of 20 out by 1%
+///   two powered surfaces, r^4 on second   induced         40%, 19 of 20
+///   three surfaces, r^4 in the middle     induced         19%, 12 of 20
 /// </code>
 ///
-/// <para>So the INTRINSIC aspheric tertiary is right - a figured surface with no induced terms
-/// is as accurate as a spherical one - and the whole error is in the induced stage. The two
-/// failing cases decompose without ambiguity, because the spherical ladder is clean and the
-/// one-surface figured cases are clean: in the first, a SPHERICAL surface's induced terms are
-/// built from accumulated FIGURED content; in the second, a FIGURED surface's induced terms are
-/// built from accumulated SPHERICAL content. Both are wrong.</para>
+/// <para>So the INTRINSIC aspheric tertiary is not merely as good as a spherical one, it is
+/// EXACT - none of the twenty out by one per cent - and the whole error is in the induced stage.
+/// The failing cases decompose without ambiguity, because the spherical rungs are clean and the
+/// one-surface figured ones are clean: with the figuring first, a SPHERICAL surface's induced
+/// terms are built from accumulated FIGURED content; with it second, a FIGURED surface's are
+/// built from accumulated SPHERICAL content.</para>
 ///
-/// <para>The second figure was 38.896 per cent when this file was written. It came down to
-/// 16.542 when the check pass was given the (Y) family at secondary order, and to 12.282 when
-/// it was given the (Y) family at tertiary order too. The FIRST is untouched by both, its
-/// figured surface being the first powered one, with nothing accumulated ahead of it for
-/// either family to carry - so that rung is now the whole of what is left.</para>
+/// <para><b>A figured SPHERE is the control that names the mechanism.</b> Buchdahl's Sec. 66a
+/// figuring has <c>8A4 + Kc^3 = 0</c>, so the figuring's PRIMARY contribution vanishes while its
+/// sixth-order content does not; those rungs push as much figuring through the induced stage as
+/// the r^4 ones and come out exact. The induced stage does not fail on figuring - it fails on
+/// the figuring's primary content.</para>
+///
+/// <para><b>These figures are not the ones this file was written with.</b> It originally scored
+/// each error as a share of the LARGEST coefficient in the set, which is blind to exactly the
+/// failures this arrangement has: <c>docs/verification.md</c> records tau15 out by a factor of
+/// nearly five and tau20 by half while the large ones agree to one per cent, and under that
+/// normalisation the design that does it reported as 1.7 per cent. The rungs above read 0.026,
+/// 0.112 and 12.282 per cent then. Nothing about the scheme changed; the instrument did.</para>
 ///
 /// <para>The two failing cases are deliberately NOT pinned to a number here. Freezing today's
 /// wrong values would bless them, and whoever fixes the induced stage would have to rewrite the
@@ -75,7 +83,26 @@ public class AsphericInducedLadderTests
                   : (double)typeof(BuchdahlTerms).GetField("Tau" + k)!.GetValue(t)!;
     }
 
-    private static (double WorstShare, double Residual) Score(string fixtureName)
+    /// <summary>
+    /// The worst RELATIVE error over the twenty coefficients, each against itself, and the
+    /// ray-inversion residual that says whether the rung means anything at all.
+    ///
+    /// <para><b>This used to divide every error by the largest coefficient in the set, and that
+    /// was wrong.</b> <c>docs/verification.md</c> records this arrangement getting tau15 out by a
+    /// factor of nearly five including its sign and tau20 by half, while the large ones agree to
+    /// one per cent - and divided by the largest coefficient, a small one wrong by five times is
+    /// nothing. The instrument reported the design that does exactly that as 1.7 per cent. A gate
+    /// built on it can pass while a coefficient is out by a factor of ten.</para>
+    ///
+    /// <para>The reference is FORBES rather than the ray inversion, for the same reason. Relative
+    /// error is meaningless at the inversion's noise floor, which is what the old normalisation
+    /// was working around; Forbes' series is an expansion rather than a least-squares recovery
+    /// from traced landings, so it has no floor of its own and tracks the rays to between 0.001
+    /// and 0.13 per cent on every design here. The inversion is still run, because its RESIDUAL
+    /// is what says the traced data is representable in the tau basis at all - without that, a
+    /// disagreement on this rung could not be blamed on the scheme.</para>
+    /// </summary>
+    private static (double WorstRelative, double Residual) Score(string fixtureName)
     {
         var catalog = CatalogLocator.LoadBundled();
         var sys = LensFile.Read(Fixtures.Lens(fixtureName), catalog);
@@ -94,13 +121,24 @@ public class AsphericInducedLadderTests
         double Scheme(int k) => k == 1 ? t.B7
             : (double)typeof(BuchdahlTerms).GetField("Tau" + k)!.GetValue(t)!;
 
+        var forbes = ForbesCoefficients.Invert(sys, n, p, field);
+        Assert.NotNull(forbes);
+
         double big = 0.0;
         for (int k = 1; k <= 20; k++) big = Math.Max(big, Math.Abs(Scheme(k)));
         Assert.True(big > 0.0, $"{fixtureName}: every coefficient is zero");
 
         double worst = 0.0;
         for (int k = 1; k <= 20; k++)
-            worst = Math.Max(worst, Math.Abs(Scheme(k) - inv!.Tau[k]) / big);
+        {
+            double reference = forbes!.Tau[k];
+
+            // A coefficient that is zero to within a billionth of the largest has no signal to
+            // take a relative error against, and dividing by it would manufacture one.
+            if (Math.Abs(reference) < 1e-9 * big) continue;
+
+            worst = Math.Max(worst, Math.Abs(Scheme(k) - reference) / Math.Abs(reference));
+        }
 
         return (worst, inv!.Residual);
     }
@@ -113,6 +151,7 @@ public class AsphericInducedLadderTests
     [Theory]
     [InlineData("Ladder1_Sphere")]
     [InlineData("Ladder2_Sphere")]
+    [InlineData("Ladder3_Sphere")]
     public void TheSphericalRungsAreCorrect(string fixtureName)
     {
         var (worst, residual) = Score(fixtureName);
@@ -121,9 +160,9 @@ public class AsphericInducedLadderTests
             $"{fixtureName}: the least-squares fit did not close, residual {residual:E2}. " +
             "Nothing read off this rung means anything.");
         Assert.True(worst < 0.005,
-            $"{fixtureName}: worst disagreement with the rays is {100 * worst:F3} per cent of " +
-            "the largest coefficient, on a system of SPHERES where the scheme is known right. " +
-            "The ladder or the oracle has broken, not the aspheric tertiary.");
+            $"{fixtureName}: worst RELATIVE error over the twenty is {100 * worst:F3} per cent, " +
+            "on a system of SPHERES where the scheme is known right - it agrees with Forbes to " +
+            "roundoff there. The ladder or the oracle has broken, not the aspheric tertiary.");
     }
 
     /// <summary>
@@ -144,10 +183,10 @@ public class AsphericInducedLadderTests
         Assert.True(residual < 1e-3,
             $"{fixtureName}: the fit did not close, residual {residual:E2}");
         Assert.True(worst < 0.005,
-            $"{fixtureName}: worst disagreement with the rays is {100 * worst:F3} per cent of " +
-            "the largest coefficient. On a single powered surface there are NO induced terms, " +
-            "so this is the intrinsic aspheric tertiary alone, and it was 0.026 per cent (r^4) " +
-            "and 0.112 per cent (conic) when this test was written.");
+            $"{fixtureName}: worst RELATIVE error over the twenty is {100 * worst:F3} per cent. " +
+            "On a single powered surface there are NO induced terms, so this is the intrinsic " +
+            "aspheric tertiary alone, and NONE of the twenty was out by one per cent when this " +
+            "was measured - it is exact, not merely close.");
     }
 
     /// <summary>
@@ -178,12 +217,167 @@ public class AsphericInducedLadderTests
     }
 
     /// <summary>
+    /// THE THIRD RUNG: a figured surface with a powered surface on BOTH sides of it.
+    ///
+    /// <para>Ladder2 cannot produce this. Figure its first powered surface and nothing has
+    /// accumulated ahead for the induced terms to be built from; figure its second and nothing
+    /// downstream ever reads what it accumulates. Several terms of the arrangement - M (68.8)'s
+    /// bracket among them, which is built from the accumulations ahead of a figured surface and
+    /// read by the surface after it - are therefore identically zero on every rung of it, and a
+    /// reading of them cannot be tested at all. The triplets do exercise those terms, but a
+    /// six-surface triplet mixes intrinsic and induced content in exactly the way the ladder was
+    /// built to avoid.</para>
+    ///
+    /// <para><b>These fixtures were built in a lens design program rather than generated.</b>
+    /// A generated fixture and the code under test can share an assumption, and then the fixture
+    /// is shaped by the very error it is meant to expose. Ladder3 is a cemented doublet - three
+    /// powered surfaces, no flats among them, the same remote plano stop, aperture, field and
+    /// wavelength as the rest of the family, and its first two surfaces identical to Ladder2's
+    /// so that the two compare directly.</para>
+    ///
+    /// <para>What it is: surfaces 2 and 3 as Ladder2 has them, +50 in SK16 and -83.3333, but the
+    /// second is now a cemented interface into SF10 with a third powered surface at -60 behind
+    /// it. The figuring goes on the MIDDLE one.</para>
+    /// </summary>
+    [Fact]
+    public void TheMiddleRungIsSoundAndItsSphericalTwinIsCorrect()
+    {
+        var (worstSpherical, residualSpherical) = Score("Ladder3_Sphere");
+        Assert.True(residualSpherical < 1e-3,
+            $"Ladder3_Sphere: the fit did not close, residual {residualSpherical:E2}");
+        Assert.True(worstSpherical < 0.005,
+            $"Ladder3_Sphere: worst disagreement with the rays is {100 * worstSpherical:F3} per "
+          + "cent on a system of SPHERES. The fixture is at fault, not the theory - it was "
+          + "exact - none of the twenty out by one per cent - when it was built.");
+
+        var (_, residualFigured) = Score("Ladder3_A4_Middle");
+        Assert.True(residualFigured < 1e-3,
+            $"Ladder3_A4_Middle: the fit did not close, residual {residualFigured:E2}. Nothing "
+          + "read off this rung means anything.");
+    }
+
+    /// <summary>
+    /// The control that goes with it. A figured SPHERE in Buchdahl's sense (Sec. 66a) has
+    /// <c>8A4 + Kc^3 = 0</c>, so <c>alpha = c-_1 y_p^4</c> of M (67.1) vanishes and with it every
+    /// term that carries the figuring's primary. It must therefore stay at the ray oracle's
+    /// floor whatever reading of Sec. 85 is in force, on the middle rung as on the others.
+    ///
+    /// <para>If this ever fails, a reading has moved something that carries no figured primary,
+    /// and it is refuted without reference to whether it improved anything else.</para>
+    ///
+    /// <para><b>But this particular rung is a WEAK control, and nothing much should be read into
+    /// its passing.</b> Measured against its own r^4 twin, it drives the figured secondary to
+    /// 1.6E-3 against 3.0E-2 and the figured tertiary to 2.3E-3 against 2.1E-2 - about a
+    /// twentieth and a ninth - and the figuring moves the coefficients by 0.08 per cent against
+    /// 5.1. Two reasons: the middle surface is a cemented interface, where the index step is
+    /// 0.108 against an air-glass 0.62, and a conic of -0.6 puts very little into the r^6 term
+    /// that is all a figured sphere has left. Its alpha is not exactly zero either - -5.3E-6,
+    /// from the A4 in the fixture being 0.12 per cent off the exact 8A4 + Kc^3 = 0.</para>
+    ///
+    /// <para>The control that the localisation actually rests on is
+    /// <c>TheFiguredSphereRungsAreStrongControls</c> below, on Ladder1 and Ladder2, where the
+    /// figured secondary and tertiary reach 88 and 87 per cent of their r^4 twins with alpha
+    /// exactly zero. To make this rung comparable it wants a deeper conic with the matching A4 -
+    /// for R = -83.3333, K = -3 and A4 = -6.4800078E-7.</para>
+    /// </summary>
+    [Fact]
+    public void TheFiguredSphereOnTheMiddleRungStaysAtTheFloor()
+    {
+        var (worst, residual) = Score("Ladder3_FiguredSphere_Middle");
+
+        Assert.True(residual < 1e-3,
+            $"Ladder3_FiguredSphere_Middle: the fit did not close, residual {residual:E2}");
+        Assert.True(worst < 0.005,
+            $"Ladder3_FiguredSphere_Middle: worst disagreement with the rays is "
+          + $"{100 * worst:F3} per cent. Its figuring has no primary content, so the induced "
+          + "stage has nothing to get wrong, and it was exact when this was written.");
+    }
+
+    /// <summary>
+    /// <b>The figured-sphere control is a real control, and this is what says so.</b>
+    ///
+    /// <para>The whole localisation turns on one comparison: figured spheres come out exact and
+    /// r^4 figuring does not, so the defect is in the figuring's PRIMARY content. That inference
+    /// is worth exactly as much as the control is. A figured sphere is a sphere to fourth order
+    /// in sag - the conic's r^4 term is <c>(1+K)c^3/8</c> and Buchdahl's <c>A4 = -Kc^3/8</c>
+    /// leaves <c>c^3/8</c>, which is the sphere's - so it CANNOT have a figured primary. The
+    /// question is whether anything else survives, or whether it is a null test.</para>
+    ///
+    /// <para>It is not. On these rungs the figured secondary and the figured tertiary reach most
+    /// of what their r^4 twins reach, with alpha exactly zero:</para>
+    ///
+    /// <code>
+    ///                                  alpha   figured sec   figured tert
+    ///   Ladder1_FiguredSphere          0.000       2.096         16.79
+    ///   Ladder1_A4                     1.290       2.368         19.19
+    ///   Ladder2_FiguredSphere_First    0.000       0.212          3.62
+    ///   Ladder2_A4_First               0.326       0.378          4.85
+    /// </code>
+    ///
+    /// <para>So the same code paths run at 56 to 88 per cent of full strength with one input
+    /// switched off, which is what a single-variable experiment is supposed to look like.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("Ladder1_FiguredSphere", "Ladder1_A4")]
+    [InlineData("Ladder2_FiguredSphere_First", "Ladder2_A4_First")]
+    public void TheFiguredSphereRungsAreStrongControls(string control, string twin)
+    {
+        var (alpha, sec, tert) = Figuring(control);
+        var (_, secTwin, tertTwin) = Figuring(twin);
+
+        Assert.True(alpha == 0.0,
+            $"{control}: a figured sphere has no figured primary by construction - its r^4 sag "
+          + $"is a sphere's - yet alpha is {alpha:E3}. The fixture does not satisfy "
+          + "8A4 + Kc^3 = 0, and the control is not the one it claims to be.");
+
+        Assert.True(sec > 0.4 * secTwin,
+            $"{control}: the figured secondary is {sec:E3} against {secTwin:E3} on {twin}. Too "
+          + "little of the aspheric path is being exercised for this to be a control at all.");
+
+        Assert.True(tert > 0.4 * tertTwin,
+            $"{control}: the figured tertiary is {tert:E3} against {tertTwin:E3} on {twin}. "
+          + "Same objection.");
+    }
+
+    /// <summary>The three things the scheme carries for a figured surface, at its strongest.</summary>
+    private static (double Alpha, double Secondary, double Tertiary) Figuring(string fixtureName)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Fixtures.Lens(fixtureName), catalog);
+        var n = IndexResolver.Build(sys, catalog, 0.55, new List<string>());
+        double field = 0.0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+
+        var p = ParaxialTrace.Trace(sys, n, field);
+        var b = BuchdahlCoefficients.Compute(sys, p);
+        double objectDistance = sys.Surfaces[0].Thickness;
+        double iota = double.IsInfinity(objectDistance) ? 0.0 : -p.Efl / objectDistance;
+        var scheme = BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
+                                            sys.Surfaces[sys.StopSurfaceIndex].SemiDiameter,
+                                            iota);
+        var spherical = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+        var increments = AsphericSchemeIncrements.Build(b, spherical, sys.LastOpticalSurface());
+        var rows = BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, increments,
+                                          iota: iota);
+
+        double alpha = 0.0, sec = 0.0, tert = 0.0;
+        for (int i = 1; i < sys.Surfaces.Count - 1; i++)
+        {
+            alpha = Math.Max(alpha, Math.Abs(rows[i].ApFigured));
+            for (int m = 1; m <= 6; m++) sec = Math.Max(sec, Math.Abs(rows[i].SecFig[m]));
+            for (int m = 1; m <= 10; m++) tert = Math.Max(tert, Math.Abs(rows[i].ZCheck[m]));
+        }
+        return (alpha, sec, tert);
+    }
+
+    /// <summary>
     /// The two rungs where the scheme is known to be wrong. Only the soundness of the oracle is
     /// asserted - see the class remarks for why the disagreement itself is left unpinned.
     /// </summary>
     [Theory]
     [InlineData("Ladder2_A4_First")]
     [InlineData("Ladder2_A4_Second")]
+    [InlineData("Ladder3_A4_First")]
     public void TheOracleIsSoundOnTheRungsWhereTheInducedStageFails(string fixtureName)
     {
         var (_, residual) = Score(fixtureName);
