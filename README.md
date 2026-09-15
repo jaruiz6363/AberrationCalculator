@@ -40,7 +40,7 @@ number. Nothing is copied and nothing can drift, because they are the same files
 closed-form scheme, which is the fastest route to a seventh-order coefficient there is. The
 aspheric seventh order is a separate routine - the arrangement of his Sec. 85, which he never
 published as a table, now reconstructed here and agreeing with Forbes' series trace to 2E-10 or
-better on every figured test design (`docs/verification.md`) - but it takes a second, dual run
+better on every figured test design ([docs/verification.md](docs/verification.md)) - but it takes a second, dual run
 of the scheme, and the optimizer keeps that choice out of its inner loop by refusing a figured
 design before the run: there is not one test for figuring anywhere inside the evaluation loop.
 Reading and analysing a figured design is unaffected - the coefficient reports, `--forbes` and
@@ -210,7 +210,7 @@ did not arrive with.
 A format still outside the list says so plainly rather than producing a file that looks like the
 design and is not; the optimized prescription is in the report, and the settings in the sidecar.
 
-`docs/optimizer.md` has the merit-function format, every operand, and - at the end - what this
+[docs/optimizer.md](docs/optimizer.md) has the merit-function format, every operand, and - at the end - what this
 does not do.
 
 ## How far the coefficients get you
@@ -218,7 +218,7 @@ does not do.
 Predicting a spot from coefficients costs a small fraction of tracing rays for one, which is
 what makes it attractive early in a design, before the shape is settled enough to be worth a
 full evaluation. The question is where the prediction stops being worth quoting.
-`docs/spot-prediction.md` measures that on five lenses, at both conjugates, against rays this
+[docs/spot-prediction.md](docs/spot-prediction.md) measures that on five lenses, at both conjugates, against rays this
 program traces itself.
 
 Cooke triplet, f/5, 20° half-field, as error in the predicted RMS spot radius:
@@ -260,13 +260,13 @@ At zero pupil radius the polynomial keeps three terms — `E h^3 + E5 h^5 + tau2
 they are separated by their power of the field alone, so each is measured against traced rays
 **on its own** rather than inside a sum where errors cancel. It needs no fit and no model of
 the other seventeen coefficients, and it is a check B7 cannot pass, having no field in it.
-`docs/distortion-prediction.md` has the measurement. **It is what convicted the aspheric
+[docs/distortion-prediction.md](docs/distortion-prediction.md) has the measurement. **It is what convicted the aspheric
 arrangement while that arrangement was wrong** - `tau20` out by up to a factor of four on a
 figured design, with the rays landing on Forbes every time the two disagreed - and it is worth
 recording that this was found by measurement rather than by inspection of the algebra. The
 arrangement has since been completed and now agrees with Forbes on all twenty tau to between
 2E-13 and 2E-10 on every figured design, a figured flat in collimated light included, and the
-rays agree with both (`docs/verification.md`). On spherical designs the two routes always
+rays agree with both ([docs/verification.md](docs/verification.md)). On spherical designs the two routes always
 agreed, and the rays back both.
 
 ## When the surfaces are not on a common axis
@@ -318,11 +318,11 @@ program already has - no rays traced, and analytic on the dual-number compile li
 derivative here. It exists because a design can always be driven to a smaller predicted spot by
 making it more sensitive to the tolerances it will be built to, and nothing else in the merit
 function objects: `PRMSA` is measured on a perfectly centred lens and does not know the lens will
-be assembled by somebody. `docs/optimizer.md` has it.
+be assembled by somebody. [docs/optimizer.md](docs/optimizer.md) has it.
 
-`docs/nodal-aberration-theory.md` is the documentation - how to read every line of the report and
+[docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md) is the documentation - how to read every line of the report and
 every column of the TSV, what is verified and against what, and what it does not do.
-`docs/nat-development.md` is the working log, kept because several of its conclusions are only
+[docs/nat-development.md](docs/nat-development.md) is the working log, kept because several of its conclusions are only
 defensible with the reasoning attached.
 
 ## Two things for OpticStudio users
@@ -363,7 +363,7 @@ and the MCP server offers the same as `seventh_order`, so an assistant can ask f
 directly. All three print the identical report from one formatter.
 
 What either of them buys over the orders already available is the section above, and
-`docs/spot-prediction.md` in full.
+[docs/spot-prediction.md](docs/spot-prediction.md) in full.
 
 See `macros/README.md` and `zosapi/README.md`. Note the repository holds **two solution
 files**: `AberrationCalculator.sln` is .NET 8, and `ForbesAberrationCalculatorZOSAPI.sln`
@@ -406,7 +406,7 @@ as air.
 
 ## Status
 
-Working, and validated in `docs/verification.md`:
+Working, and validated in [docs/verification.md](docs/verification.md):
 
 - `abcalc`, the command-line tool, and the six file readers
 - bundled glass catalogs and index resolution - nothing to point at, nothing to install
@@ -420,11 +420,11 @@ Working, and validated in `docs/verification.md`:
 - the re-normalised per-aberration and per-surface contributions to that spot
 - the optimizer: PSD, Hooke-Jeeves and basin hopping over analytic derivatives, with the
   Jacobian checked operand by operand and variable by variable against central differences.
-  Spherical surfaces only, on purpose (`docs/optimizer.md`)
+  Spherical surfaces only, on purpose ([docs/optimizer.md](docs/optimizer.md))
 - **nodal aberration theory**, third and fifth order: what the aberrations do when the
   surfaces are not on a common axis, and where the nodes go. Driven by an `.align` sidecar
   that works the same for all six formats, and checked against Thompson's and Buchdahl's
-  own published tables rather than against another program (`docs/nodal-aberration-theory.md`)
+  own published tables rather than against another program ([docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md))
 
 There is no GUI. The tool writes plain text and TSV files that you can read, diff and
 feed to something else.
@@ -438,15 +438,34 @@ src/AberrationCalculator.Optimize variables, operands, PSD, Hooke-Jeeves, basin 
 src/AberrationCalculator.IO     one reader per format, and the .lhlt writer
 src/AberrationCalculator.Cli    abcalc - the command-line tool
 catalogs/Glass                  bundled AGF glass catalogs
+docs/                           what is established and how - see the table below
+macros/                         ZPL macros that run inside OpticStudio, and their README
 tests/                          unit tests
 tools/smoke                     command-line harness used during development
 ```
 
+### The documents
+
+Each answers one question, and they are meant to be read on their own rather than in order.
+
+| | what it answers |
+|---|---|
+| [docs/verification.md](docs/verification.md) | **What is actually established here, by what evidence, and what is not.** The order of evidence, the standing results, and the aspheric arrangement with everything it rests on. Read this one first if you are deciding whether to trust any number this program prints. |
+| [docs/references.md](docs/references.md) | Every source the method comes from, which of them have been read, and where each piece of the implementation came from. |
+| [docs/forbes.md](docs/forbes.md) | The second, independent route to the tertiary coefficients - a Lagrangian series trace - and why a program that already had one needed another. |
+| [docs/optimizer.md](docs/optimizer.md) | The optimiser: analytic derivatives throughout, the merit-function format, and why it works on spherical surfaces only. |
+| [docs/spot-prediction.md](docs/spot-prediction.md) | How well a spot predicted from coefficients matches a traced one, measured rather than asserted, and where seventh order runs out. |
+| [docs/distortion-prediction.md](docs/distortion-prediction.md) | Distortion from the coefficients against traced chief rays. The cleanest window onto a single coefficient there is, and what it found. |
+| [docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md) | What the aberrations do when the surfaces are not on a common axis, and where the nodes go. |
+| [docs/nat-development.md](docs/nat-development.md) | How that was built and what each stage was checked against. |
+| [docs/mcp.md](docs/mcp.md) | The MCP server: what each tool exposes and what it returns. |
+| [macros/README.md](macros/README.md) | The ZPL macros - what each computes, what it refuses, and the ZPL traps they had to respect. |
+
 The method is not original work: it is Buchdahl's aberration coefficients in Rimmer's
 notation, Robb's analytic integration of them into a spot size, and Rosete-Aguilar and
-Rayces's re-normalisation of them into comparable quantities. `docs/references.md` gives
-the full chain, says which papers have actually been read, and records where the
-implementation came from.
+Rayces's re-normalisation of them into comparable quantities.
+[docs/references.md](docs/references.md) gives the full chain, says which papers have
+actually been read, and records where the implementation came from.
 
 ## Using it
 

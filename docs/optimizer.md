@@ -619,7 +619,7 @@ assistant can compose one without writing a file. It writes nothing unless given
   Constrain the pair with operands instead.
 - **Glass moves only in the hopping.** Model glass `nd`/`Vd` are not continuous variables.
 - **PRMSA is the *predicted* spot**, and inherits the accuracy of the prediction —
-  `docs/spot-prediction.md` measures that at a few per cent on the spherical designs this
+  [docs/spot-prediction.md](spot-prediction.md) measures that at a few per cent on the spherical designs this
   optimizer accepts. On a design the series does not describe well, the optimizer will faithfully
   minimise a quantity that is not quite the spot.
 - **Semi-diameters are not re-solved.** The clear aperture used by the edge and ratio operands is

@@ -7,11 +7,29 @@ G. W. Forbes, *Order doubling in the computation of aberration coefficients*, JO
 
 Buchdahl's scheme is the only one in Focke's 1965 survey that reaches seventh order, and this
 program's implementation of it agrees with real ray tracing to 0.003 per cent on spherical
-systems. Buchdahl also gives the aspheric scheme — §65–66 for the D and L split and (85.2)–(85.5)
-for the two passes — so nothing about the method has been guessed. What he never published is an
-*arranged table* for the aspheric case, the way Table I arranges the spherical one, and that
-arrangement is what has had to be re-derived. It is the one part of the work with no printed
-answer to check against, and it is where the remaining error lives.
+systems. **Buchdahl also gives the aspheric scheme** — §65–66 for the D and L split and
+(85.2)–(85.5) for the two passes — so nothing about the method was ever guessed. What he never
+published is an *arranged table* for the aspheric case, the way Table I arranges the spherical
+one, and that arrangement is what had to be re-derived: the one part of the work with no printed
+answer to check against.
+
+**It has been re-derived, and it is right.** `BuchdahlAsphericScheme` carries it, and it agrees
+with the route described in this document on all twenty tertiary coefficients to between 2E-13
+and 2E-10 on every figured design tested, a figured flat facing collimated light included. The
+real rays agree with both. The same arrangement has since been transcribed independently into
+`macros/BUCH7_ASPH.ZPL`, in a different language and inside OpticStudio, where it reproduces
+`FORBES.ZPL` to every digit either macro prints. See [docs/verification.md](verification.md) for what each of
+those checks is worth. The aspheric case is not an open problem here, and neither this document
+nor its title should be read as saying it is.
+
+**What that leaves this route doing** is the more interesting question, and the answer is that it
+is what settled the matter. A reconstruction cannot be checked against itself. Buchdahl's aspheric
+arrangement needed a judge sharing none of its arithmetic, and the reason to build this one was to
+have that judge before the reconstruction was trusted rather than after — which is what happened.
+While the arrangement was still wrong, this route and the real rays said so together, and the
+errors they found, 17 to 467 per cent across the ladder, were not ones that reading the algebra
+had turned up. It stays in the program as the standing second opinion, and it is what the aspheric
+numbers are checked against.
 
 Forbes' formulation removes the difficulty rather than solving it. He writes the *i*th surface as
 
@@ -19,8 +37,9 @@ Forbes' formulation removes the difficulty rather than solving it. He writes the
 
 with `f_i` a power series. A sphere, a conic and an even asphere differ only in the coefficients
 of `f_i`, and are traced by identical code. There is no D and L split, no hat and check pass, and
-no carrying ratio — the entire class of fault this project has been chasing cannot be expressed in
-his formulation. That is the reason to build it, not speed.
+no carrying ratio — the entire class of fault that had to be chased through the arranged tables
+cannot be expressed in his formulation at all. That is what makes it a fit judge, and it is the
+reason it was built. Speed was never the reason.
 
 ## Why not order doubling
 
@@ -86,10 +105,16 @@ check on the general path.
 
 ## What this does not replace
 
-Buchdahl's route stays. It is validated, it is fast, and it reports per-surface contributions,
-which is what makes the tool useful for design rather than only for checking. Forbes is a second
-opinion on the aspheric increment and, if it proves out, the thing the aspheric numbers are
-computed from.
+Buchdahl's route stays, and on a figured design it is still the one the coefficients come from.
+It is validated at both conjugates, it is fast, and it reports **per-surface** contributions split
+into intrinsic, figuring and induced - which is what makes the tool useful for designing rather
+than only for checking, and which Forbes' route does not give at all: a series trace through the
+whole system produces system totals, and the question "which surface, and is it that surface's
+own fault" cannot be put to it.
+
+Forbes is the second opinion, and that is a permanent job rather than a probationary one. It
+adjudicated the aspheric arrangement once; it stands ready to adjudicate the next change to it,
+and `ForbesCoefficientsTests` puts the question on every build.
 
 ## The extraction, and why the inversion is gone
 

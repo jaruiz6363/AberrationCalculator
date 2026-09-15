@@ -87,7 +87,7 @@ are out of place; and `base_path`, which says what folder bare file names are ta
 ### `optimize`
 
 Optimises a lens against a merit function given inline as text, and reports what changed.
-Every derivative it uses is analytic - see `docs/optimizer.md` - including through PRMSA, the
+Every derivative it uses is analytic - see [docs/optimizer.md](optimizer.md) - including through PRMSA, the
 predicted spot. **Spherical surfaces only:** the optimiser differentiates Buchdahl's spherical
 routine and keeps figuring out of its inner loop altogether, so a figured design - or a conic
 asked to be a variable - is refused before the run. The reporting tools above are unaffected and
@@ -117,7 +117,7 @@ Formats are taken from the extension: `.zmx`, `.seq`, `.otx`, `.opt`, `.len`, `.
 What the aberrations do when the surfaces are **not on a common axis**: where each surface's
 aberration field has been displaced to, where the **nodes** of the system's field are, and what
 the fifth order does to the third. Third and fifth order, both in the design's own units. This
-is the command line's `--nat`, and `docs/nodal-aberration-theory.md` is the long form.
+is the command line's `--nat`, and [docs/nodal-aberration-theory.md](nodal-aberration-theory.md) is the long form.
 
 | argument | |
 |---|---|

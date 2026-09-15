@@ -443,7 +443,7 @@ Shafer put the case for it in 1989 and this is what he asked for: "This can only
 done effectively, however, if the 5th-order aberration surface contributions are broken
 into two components: the intrinsic component and the induced component" - his example
 being a Bouwers whose mirror shows induced spherochromatism because the front lens's
-axial colour changes the beam diameter reaching it. See `docs/references.md`.
+axial colour changes the beam diameter reaching it. See [docs/references.md](../docs/references.md).
 
 Three things to know about the printout:
 
@@ -862,7 +862,7 @@ and 21.72 do not make 27.25. The only honest comparison is to move the plane.
 
 ### How good the prediction is, measured rather than asserted
 
-`docs/spot-prediction.md` compares it against traced rays on five lenses at both
+[docs/spot-prediction.md](../docs/spot-prediction.md) compares it against traced rays on five lenses at both
 conjugates. The table below is consistent with it to the digit: at `H = 0` the full seventh
 order gives 1.378753E-02 against a traced 0.013698, which is the +0.7 per cent that
 document records, and at `H = 1` it gives 2.061997E-02 against a traced 0.023604, the -12.6
@@ -896,7 +896,7 @@ a way that still looks plausible.
 
 The kth ring sits at `rho = sqrt((k - 1/2)/n)`, the equal-area midpoint rather than the
 outer edge. Sampling at the edge weights the pupil outward and converges from above;
-`docs/spot-prediction.md` has the numbers.
+[docs/spot-prediction.md](../docs/spot-prediction.md) has the numbers.
 
 ### Expected output, CookeTriplet
 

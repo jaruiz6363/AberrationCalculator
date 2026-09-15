@@ -16,3 +16,7 @@ logs/
 # Machine-specific: it names where this user's OpticStudio macro folder is, which is
 # the same reason ZemaxPaths.props is not committed.
 .claude/settings.local.json
+
+# Office lock files. Opening a document in Word or Excel drops a ~$name beside it;
+# it is a few hundred bytes of session state and it vanishes when the file is closed.
+~$*

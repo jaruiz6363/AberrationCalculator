@@ -13,7 +13,7 @@ Where they sit says what moved. A binodal astigmatism whose midpoint stays at th
 figure error at the stop; a displaced midpoint is misalignment. Nothing in a spot diagram
 distinguishes those.
 
-`docs/nat-development.md` is the working log — what was read, what went wrong, how it was caught.
+[docs/nat-development.md](nat-development.md) is the working log — what was read, what went wrong, how it was caught.
 This file is what the program does and how to drive it.
 
 ## What this program computes
@@ -69,7 +69,7 @@ correctly rather than declining the case, and it is worth seeing once.
 sidecar or as `alignment` text in the grammar below — through the same parser, so the two cannot
 disagree — and returns the field grid instead of the report when asked for `full_field`. Every
 other tool on that server reads `<lens>.align` too, so a perturbed lens reads the same way there
-as it does here. `docs/mcp.md` has the arguments.
+as it does here. [docs/mcp.md](mcp.md) has the arguments.
 
 ## The `.align` file
 
@@ -331,7 +331,7 @@ published number, an internal identity, or two independent routes made to agree.
 
 ## References
 
-`references.md` has the full list under **Nodal aberration theory**. The load-bearing ones:
+[references.md](references.md) has the full list under **Nodal aberration theory**. The load-bearing ones:
 
 - **Thompson, K. P.**, "Description of the third-order optical aberrations of near-circular pupil
   optical systems without symmetry," *J. Opt. Soc. Am. A* **22**, 1389 (2005) — the vector algebra

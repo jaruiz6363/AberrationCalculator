@@ -10,13 +10,13 @@ quite differently, at both conjugates.
 so rather than a caution. On the aspheric design below, Buchdahl's coefficients and Forbes'
 disagree on tau15 by a factor of nearly five including its sign, and on tau20 by half - while
 the spot they predict differs by one part in ten thousand. The disagreement sits in the
-smallest coefficients, which a spot barely weights. See `verification.md`.
+smallest coefficients, which a spot barely weights. See [verification.md](verification.md).
 
 A spot is one number standing in for twenty, and errors that cancel or that land in terms the
 sum hardly reaches would pass unnoticed. The coefficients are
 established elsewhere and by other means — Buchdahl's own printed table, closed-form conic
 surfaces, inverse ray tracing, an independent implementation, and Forbes' series trace; see
-`references.md`.
+[references.md](references.md).
 
 This answers a different question, and the one a designer actually asks: **how far into the
 field is a prediction from these coefficients still worth quoting?**
@@ -236,7 +236,7 @@ for fifth order and 22 for seventh. A design corrected hard enough to be interes
 design whose residual is higher-order, and that is the case his rule does not cover.
 
 The aspheric case, and the reference-plane check that rules out defocus as its cause,
-are summarised in `verification.md`.
+are summarised in [verification.md](verification.md).
 
 **The turnover at the very edge is real and is not a fault.** On the plain triplet the
 seventh-order prediction is the best of the three everywhere until H = 0.9 and then the worst
@@ -270,9 +270,12 @@ what does not exist is the extraction of it into named coefficients, and a spot 
 would consume them.
 
 **So "seventh order is not enough for hard-corrected aspherics" is a statement about the
-reading, not about the method.** Buchdahl's scheme could not go further: he never published
-the tertiary aspheric arrangement, and the quaternary does not exist at all. Forbes has no
-such wall — the order is a parameter.
+reading, not about the method.** Buchdahl's scheme stops here: the tertiary is the last order
+he arranged, and the quaternary aspheric arrangement does not exist at all — paper IV reaches
+quaternary spherical aberration and no further. The tertiary aspheric arrangement he also left
+unpublished, but that one has been reconstructed and checked ([verification.md](verification.md)), so it is the
+NINTH order and not the seventh that is the wall. Forbes has no such wall — the order is a
+parameter.
 
 **What would be needed, concretely.** The ninth order has more than twenty coefficients, so
 it is not a matter of extending an array: it needs the polynomial written out, the extraction

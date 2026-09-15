@@ -167,7 +167,7 @@ Eq. (6.5) the five primary, Eq. (6.6) the nine secondary, Eq. (6.7) fourteen ter
 
 This page is why the note at the top of this file matters. Its OCR is noise, and the paper sat
 here looking like a curiosity until it was rendered as a page image - see
-`reading-scanned-pdfs.md` in the working notes. `nat-development.md` records what it
+`reading-scanned-pdfs.md` in the working notes. [nat-development.md](nat-development.md) records what it
 established and what it did not.
 
 Three things it supplies beyond the relations themselves:
@@ -243,7 +243,7 @@ almost 45, and the difference was not field, aperture or figuring:
 > large, whereas for systems in which the predictions were good over an extended range of
 > field angles, the pupil aberrations were quite small."
 
-`spot-prediction.md` reports the same behaviour from the other end - "the order a design
+[spot-prediction.md](spot-prediction.md) reports the same behaviour from the other end - "the order a design
 needs is a property of that design, not a general rule", with one of five lenses not
 described at seventh order at all. Sands says which property. That makes it a testable
 prediction rather than an observation: compute the pupil aberration of those five lenses
@@ -359,7 +359,7 @@ re-normalisation is ever implemented here.
 ## Nodal aberration theory
 
 **None of this is implemented.** These are the sources for the proposal in
-`nat-development.md`, and they are listed here so the reading is not lost and so the
+[nat-development.md](nat-development.md), and they are listed here so the reading is not lost and so the
 gap between what is in hand and what the work needs is on the record.
 
 NAT is a different axis of generalisation from the rest of this file. Everything above extends
@@ -381,7 +381,7 @@ What it settled here:
   for the product, (A6) for the conjugate, (A7) for the product with a conjugate, (A10) for the
   squared vector, and identities (A11) to (A13). `NatTests` checks all of them against the
   implementation rather than against a restatement of it. An earlier draft of
-  `nat-development.md` had the product written with `x` as the real axis, which
+  [nat-development.md](nat-development.md) had the product written with `x` as the real axis, which
   contradicted the conjugate rule three lines above it; the appendix settles it.
 - **The third-order node structure**, which had been assembled here from Schmid and reasoning:
   coma (4.7)-(4.9), astigmatism (4.15)-(4.22), medial field curvature (4.27)-(4.31). The last
@@ -409,7 +409,7 @@ informing one.
   measures exactly that quantity from traced rays.
 - **Table 5 shows the two routes agreeing** to four or five figures, so they are not different
   quantities - which established that this repository's disagreement between them was a fault
-  and not a convention. The fault is diagnosed in `nat-development.md`: Gu's expression
+  and not a convention. The fault is diagnosed in [nat-development.md](nat-development.md): Gu's expression
   is derived for ONE perturbed surface and superposing it over several drops the term that
   makes a rigid translation come out zero.
 - **Tables 1 to 5 are a published oracle** - a Ritchey-Chretien prescription, the perturbations
@@ -499,7 +499,7 @@ The access point by which a non-symmetric surface enters NAT at all: a Zernike Z
 stop is added as a field-constant `B222^2`, and everything follows. Gives the binodal solution
 `H = +/- i sqrt(B222^2 / W222)` and the diagnostic that matters - figure error keeps the node
 midpoint at the field centre, secondary-mirror misalignment does not. Its Eqs. (12)-(16) are the
-node algebra transcribed into `nat-development.md`.
+node algebra transcribed into [nat-development.md](nat-development.md).
 
 **[have] Fuerschbach, K., Rolland, J. P. and Thompson, K. P.**, "Extending Nodal Aberration
 Theory to include mount-induced aberrations with application to freeform surfaces,"
@@ -681,7 +681,7 @@ to image exactly like the nominal one moved over. No third-party program is invo
 point.
 
 **5. Forbes' series trace** for the seventh order, from a separate published paper with no
-shared code. See `forbes.md`.
+shared code. See [forbes.md](forbes.md).
 
 ### On FIFTHORD
 
@@ -707,7 +707,7 @@ But it could have corroborated them, and saying it could not was a misstatement.
 
 The macro is not redistributed here and no part of it is included in this repository. Where
 this program departs from it - the aspheric r^8 handling, the F/number sign convention, the
-analytic pupil integration in place of a table of constants - `verification.md` says so.
+analytic pupil integration in place of a table of constants - [verification.md](verification.md) says so.
 
 ### Independent cross-check available
 

@@ -53,11 +53,17 @@ computes the seventh-order set this program exists for, so neither could be.
 | E, E5 and tau20 against traced chief rays | each to under one per cent wherever the two routes agree, at both conjugates |
 | the suite | 597 tests, and everything they read is in this repository |
 
-## What is not established
+## The aspheric arrangement, and how it was established
 
-**The aspheric tertiary arrangement — now established, with one exception.** Buchdahl gives the
-aspheric scheme in Sec. 85 of the monograph but never published the arranged table for it. This
-program's reconstruction of it is a separate routine, `BuchdahlAsphericScheme`, and
+This section used to live under **What is not established** below, and it is worth saying why it
+no longer does. Buchdahl gives the aspheric **scheme** — Secs. 65-66 for the D and L split,
+(85.2)-(85.5) for the two passes — so the method was never in question and nothing about it was
+guessed. What he never published is the arranged **table** for it, the way Table I arranges the
+spherical case, and that arrangement had to be re-derived. It has been, and what follows is what
+that rests on.
+
+**The arrangement is established, and the exception that used to qualify this is closed too.** The
+reconstruction is a separate routine, `BuchdahlAsphericScheme`, and
 `TertiaryCoefficients.Attach` sends every figured system there; spheres keep Buchdahl's own
 arrangement in `BuchdahlTableI`, bit for bit. Its default arrangement is four things, each
 derived and each gated before it was adopted:
@@ -98,8 +104,12 @@ same source files compiled in Laurent series arithmetic with that surface's curv
 variable, and reads the answer at e^0. It is used only when it vouches for itself - two
 truncations agreeing, nothing below the lowest carried order, negative orders cancelled - and
 the design now agrees with Forbes to 1.2E-9, where it was 710 per cent out
-(`FlatCollimatedSeriesTests`). The paragraphs below record how the defect looked while it was
-open.
+(`FlatCollimatedSeriesTests`). That was the one exception, and it is closed: there is no figured
+case left that this program declines to compute or computes differently from Forbes.
+
+**The rest of this section records how the defect looked while it was open**, and is kept rather
+than deleted because how an error was found is worth more than the fact that it was. Everything
+in it is in the past tense as a matter of fact, whatever tense it is written in.
 
 Two cautions for anyone measuring this, both of which cost time here. Normalising the error by
 the largest coefficient in the set hides it almost entirely — a small coefficient wrong by five
@@ -133,6 +143,8 @@ coefficients as above, because the disagreement sits in the smallest terms and a
 weights them. Predicted-versus-traced spot agreement would have certified a tau15 that is
 wrong by five times and points the wrong way. It is not used as a correctness metric here,
 and `spot-prediction.md` says what it is used for instead.
+
+## What is not established
 
 **How far the seventh order reaches.** It is a property of the lens and not a number. Of five
 designs measured, one is described by third order alone, two need the full seventh to reach a

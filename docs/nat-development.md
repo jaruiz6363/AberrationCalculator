@@ -1,7 +1,7 @@
 # Nodal aberration theory: the development record
 
 **This is the working log, not the documentation.** For what nodal aberration theory does here
-and how to drive it, see `nodal-aberration-theory.md`. This file is what was read, what was
+and how to drive it, see [nodal-aberration-theory.md](nodal-aberration-theory.md). This file is what was read, what was
 tried, what went wrong and how it was caught, in the order it happened - kept because several of
 the conclusions are only defensible with the reasoning attached, and because two of the errors
 recorded here were the kind that produce a plausible wrong number rather than an obvious one.
@@ -1649,7 +1649,7 @@ it: at the stop the other four or six rows do not move at all, and away from it 
 ## Papers
 
 The six PDFs read for this proposal, and the four that would be needed to finish it, are listed
-in `references.md` under **Nodal aberration theory**. The short version: the folder holds the
+in [references.md](references.md) under **Nodal aberration theory**. The short version: the folder holds the
 application layer - figure error, mount error, freeform surfaces, tolerancing - and Gu's appendix
 happens to reproduce the paraxial sigma derivation in full, which is what makes Stages 1 to 3
 implementable today. What it does not hold is Thompson's foundational 2005 paper, whose
