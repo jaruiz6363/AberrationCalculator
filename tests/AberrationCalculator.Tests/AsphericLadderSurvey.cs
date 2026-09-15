@@ -135,6 +135,29 @@ public class AsphericLadderSurvey
                     FiguredSecondarySplitByDandL = true,
                     SixthBarredMemberByEquation851 = true,
                 }),
+            ("D-half + M + 85.1",
+                new BuchdahlAsphericScheme.Options
+                {
+                    FiguredSecondarySplitByDandL = true,
+                    FiguredMSplitByDandL = true,
+                    SharedQBarWithSplitPrimary = true,
+                    YBarredFromSharedAccumulations = true,
+                }),
+            ("identities + D-half + M",
+                new BuchdahlAsphericScheme.Options
+                {
+                    BarredQAccumulationFromIdentities = true,
+                    FiguredSecondarySplitByDandL = true,
+                    FiguredMSplitByDandL = true,
+                }),
+            ("identities + D-half + 6th + M",
+                new BuchdahlAsphericScheme.Options
+                {
+                    BarredQAccumulationFromIdentities = true,
+                    FiguredSecondarySplitByDandL = true,
+                    SixthBarredMemberByEquation851 = true,
+                    FiguredMSplitByDandL = true,
+                }),
             ("both-halves-together",
                 new BuchdahlAsphericScheme.Options
                 {
@@ -632,6 +655,8 @@ public class AsphericLadderSurvey
             ("as-built", null),
             ("ident+D", baseline),
             ("ident+D+6th", baseline with { SixthBarredMemberByEquation851 = true }),
+            ("ident+D+6th+M", baseline with
+                { SixthBarredMemberByEquation851 = true, FiguredMSplitByDandL = true }),
             ("drop own-prim x tert", baseline with
                 { DropOwnPrimaryTimesTertiaryFamilyInCheckBarred = true }),
             ("drop dagger x own-sec", baseline with

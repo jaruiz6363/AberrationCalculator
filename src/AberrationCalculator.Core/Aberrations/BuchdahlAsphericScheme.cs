@@ -616,6 +616,28 @@ public static class BuchdahlAsphericScheme
         public bool SixthBarredMemberByEquation851 { get; init; }
 
         /// <summary>
+        /// Whether the D half of the figured secondary is moved into the hat pass in the M
+        /// entries - t45, t51, t55, t61, t66 - as well as in the six secondaries themselves.
+        ///
+        /// <para><b>Why the D split is incomplete without it.</b>
+        /// <see cref="FiguredSecondarySplitByDandL"/> moves <c>D_m</c> from the check half of
+        /// t38..t65 to the hat half. But the M entries are the <c>mid</c> outputs of the figured
+        /// <c>Secondary()</c> pass, and each carries the intrinsic secondary it follows from with
+        /// coefficient one - <c>s2mid = ... + s[1]</c>, and likewise down to
+        /// <c>s4mid = 2(s3mid - s[2]) + s[3]</c>, where s[2] cancels - so every one of them still
+        /// holds <c>D_m</c> in the check pass. A pass whose s entries and M partners disagree about
+        /// where D lives is the half-split hybrid Sec. 85 rules out.</para>
+        ///
+        /// <para><b>What it predicts.</b> The move is exactly <c>D_m</c>, so a product
+        /// <c>G x M_m</c> summed over the two passes shifts by <c>(G_(I) - G_(Y)) D_m</c> - a
+        /// multiple of <c>(q - q~)</c> times an accumulation. It is zero on a figured sphere,
+        /// D being proportional to c1, and wherever nothing is accumulated ahead; it is live on
+        /// the rungs that figure their last powered surface. Every total still wrong there - T5,
+        /// T-bar5, T-bar8, T9, T-bar9 - carries t61.</para>
+        /// </summary>
+        public bool FiguredMSplitByDandL { get; init; }
+
+        /// <summary>
         /// DIAGNOSTIC, not a parameter. Multiply one entry by a factor in one pass only, just
         /// before that pass runs, with the entries derived from it re-formed.
         ///
@@ -913,6 +935,25 @@ public static class BuchdahlAsphericScheme
                 checkSec = c;
             }
 
+            // The same D half inside the M entries, each of which carries its intrinsic secondary
+            // with coefficient one. SecDFigured is zero on a spherical surface, so this is inert
+            // there.
+            var hatM = r.MSph;
+            var checkM = r.MFig;
+            if (options.FiguredMSplitByDandL)
+            {
+                var h = new Scalar[6];
+                var c = new Scalar[6];
+                for (int m = 1; m <= 5; m++)
+                {
+                    Scalar d = r.SecDFigured[m];
+                    h[m] = r.MSph[m] + d;
+                    c[m] = r.MFig[m] - d;
+                }
+                hatM = h;
+                checkM = c;
+            }
+
             // DIAGNOSTIC: one entry scaled in one pass, its derived entries re-formed on that
             // pass's ratio. The row is put back below exactly as for every other swap.
             void ScaleOne(bool checkHalf, Scalar ratio)
@@ -940,12 +981,12 @@ public static class BuchdahlAsphericScheme
                 t[40] = t[38] + 2.0 * t[10] * t[25];
             }
 
-            Load(r.ApSpherical, r.C13Spherical, hatSec, r.MSph, r.ZHat);
+            Load(r.ApSpherical, r.C13Spherical, hatSec, hatM, r.ZHat);
             ScaleOne(checkHalf: false, t[6]);
             Pass(t, t[6], hat, hatBar, options, r.FlatInCollimatedSpace, r.QT152);
 
             Family(checkHalf: true);
-            Load(r.ApFigured, r.C13Figured, checkSec, r.MFig, r.ZCheck);
+            Load(r.ApFigured, r.C13Figured, checkSec, checkM, r.ZCheck);
             ScaleOne(checkHalf: true, r.Rho);
             Pass(t, r.Rho, check, checkBar, options, checkHalf: true);
             for (int k = 1; k <= 10; k++)
