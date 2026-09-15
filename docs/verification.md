@@ -70,6 +70,17 @@ derived and each gated before it was adopted:
 | the D half on an exactly flat surface | its curvature limit | continuous with the R = 1e10 twin |
 | a figured flat facing collimated light | the same formulas in Laurent series arithmetic, curvature as the variable | reproduces the double route on regular surfaces to 1E-10; Forbes on the flat to 1.2E-9 |
 
+**Corroborated a second time, outside this program.** The same arrangement is transcribed into
+`macros/BUCH7_ASPH.ZPL`, which runs inside OpticStudio and shares nothing with this code but the
+published equations. On a lens of spheres it reproduces `BUCH7.ZPL` entry for entry — 155 Table I
+entries over 9 surfaces, 1170 numbers, and all twenty tau. On figured designs it reproduces
+`FORBES.ZPL` on all twenty tau, and the recorded FIFTHORD reference on all eighteen third- and
+fifth-order totals, on a conic singlet, a conic carrying r⁴, r⁶ and r⁸ together, and a triplet
+with two figured surfaces where one induces on the other. A transcription agreeing to the
+printed digits is not proof of the arrangement, but it does exclude a whole class of
+implementation error in this code, since a shared bug would have to have been made twice in two
+languages.
+
 Against Forbes, all twenty tau: between 2E-13 and 2E-10 relative on every figured design in the
 ladder and on the three aspheric triplets (`BuchdahlAsphericSchemeTests.TheAsphericRoutineAgreesWithForbes`),
 where the arrangement as it stood before was out by 17 to 467 per cent, with 6 to 19 of the twenty

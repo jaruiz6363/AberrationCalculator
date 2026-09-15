@@ -329,19 +329,27 @@ and seventh-order aberration coefficients **per surface**, split into what each 
 generates on its own and what it generates by acting on the aberration already present when
 light reaches it. A table of totals cannot say which surface to change; that split can.
 
-| | `macros/BUCH7.ZPL` | `zosapi/` FORBES7 |
-|---|---|---|
-| method | Buchdahl's computing scheme | Forbes' series trace, JOSA 73, 782 (1983) |
-| form | one ZPL macro | C# driving OpticStudio through the ZOS-API |
-| to install | nothing | build one solution, run FixBinaries once |
-| spherical surfaces | yes | yes |
-| conics and even aspheres | third and fifth order only | all three orders, with the figuring separated |
-| object at infinity or finite | either | either |
+| | `macros/BUCH7.ZPL` | `macros/BUCH7_ASPH.ZPL` | `zosapi/` FORBES7 |
+|---|---|---|---|
+| method | Buchdahl's computing scheme | the same, with the aspheric arrangement of his Sec. 85 | Forbes' series trace, JOSA 73, 782 (1983) |
+| form | one ZPL macro | one ZPL macro | C# driving OpticStudio through the ZOS-API |
+| to install | nothing | nothing | build one solution, run FixBinaries once |
+| spherical surfaces | yes | yes, reproducing BUCH7 entry for entry | yes |
+| conics and even aspheres | declined by name | all three orders | all three orders, with the figuring separated |
+| object at infinity or finite | either | either | either |
 
 They share no code and agree: seventh-order spherical aberration is reached through
 Buchdahl's fifth-order working in one and through a power series in the other, and both
 give 1.681450E-03 on a Cooke triplet at infinite conjugate, 2.305287E-03 with the object
 at 250 mm. FORBES7 prints that comparison itself, every run.
+
+**On a figured lens the agreement now runs to all twenty seventh-order coefficients.**
+`BUCH7_ASPH.ZPL` and `FORBES.ZPL` reproduce each other to every digit either prints on a
+conic singlet, on a conic carrying r⁴, r⁶ and r⁸ together, and on a triplet with two
+figured surfaces where one induces on the other — Buchdahl's arranged tables against an
+order-doubling series trace, sharing no arithmetic past the paraxial ray. That is worth
+rather more than either agreeing with itself, and until the aspheric arrangement was
+reconstructed there was nothing to check it against at all.
 
 The seventh order is also reachable without OpticStudio at all. It needs no ray tracer and
 no other program - only the lens file:

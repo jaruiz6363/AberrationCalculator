@@ -73,6 +73,14 @@ check on the general path.
    which the Buchdahl route already gets right, before going to the ones it does not —
    `Ladder2_A4_Second` at 6.85 per cent, `Ladder2_FiguredSphere_Then_A4` at 7.75.
 
+   **Those two figures are the state this plan was written in, and they no longer hold.** The
+   aspheric arrangement has since been reconstructed and agrees with this route to between
+   2E-13 and 2E-10 on every figured design in the ladder and on the three aspheric triplets;
+   the same arrangement is in `macros/BUCH7_ASPH.ZPL`, where the two agree on all twenty
+   coefficients to every digit either macro prints. The staging above is left as written
+   because it is what the work was planned against, and because step 4 is the reason the
+   disagreement could be adjudicated at all rather than argued about.
+
 4. **Adjudication.** Where the two routes disagree, the ray inversion decides. It recovers all
    twenty coefficients separately from real traced rays and is independent of both.
 

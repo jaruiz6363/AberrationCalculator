@@ -150,24 +150,28 @@
 !     working, which is why BUCH7 arrives at it twice over and gets the same number
 !     both ways. Compare it with confidence.
 !
-!     tau2 TO tau20 ARE NOT RIGHT there. Buchdahl gives the aspheric scheme in the
-!     monograph but never published an ARRANGED TABLE for it, and this project could
-!     not resolve his instructions into one. Those nineteen therefore rest on an
-!     arrangement re-derived here, and that is the only part of the work with no
-!     printed answer to check against.
+!     tau2 TO tau20 WERE NOT RIGHT there, and that is no longer so. Buchdahl gives
+!     the aspheric scheme in the monograph but never published an ARRANGED TABLE for
+!     it, and for a long time this project could not resolve his instructions into
+!     one - which is the difficulty this route was written to get round, Forbes
+!     having no aspheric table to arrange because a sphere, a conic and an asphere
+!     are the same code with different coefficients in f.
 !
-!     HOW WRONG, AND AGAINST WHAT. The judge is neither scheme: it is a ray
-!     inversion, which recovers all twenty coefficients from REAL TRACED RAYS.
-!     Measured against it, the Buchdahl route gets the aspheric fixtures
-!     Ladder1_A4, Ladder1_Conic and Ladder1_FiguredSphere right, and two others
-!     wrong - Ladder2_A4_Second by 6.85 per cent, Ladder2_FiguredSphere_Then_A4 by
-!     7.75. So it is not wrong on every asphere. It is wrong on some, and there is
-!     no way to tell in advance which, which is what makes it unusable rather than
-!     merely imprecise.
+!     BUCH7_ASPH.ZPL, in this same folder, is that arrangement: members one to five
+!     of the barred q accumulation from the identities of M Sec. 22, the sixth from
+!     the dual run of XII Sec. 6, and the figuring's D half carried in the hat pass.
+!     Run on the same file it reproduces all twenty of the coefficients printed
+!     below to every digit either macro prints, on a conic singlet, on a conic with
+!     r^4, r^6 and r^8 together, and on a triplet with two figured surfaces where
+!     one induces on the other.
 !
-!     Removing exactly that difficulty is why this route exists: Forbes has no
-!     aspheric table to arrange, because a sphere, a conic and an asphere are the
-!     same code with different coefficients in f.
+!     So the two routes now agree on a figured lens as well as a spherical one, and
+!     they still share no arithmetic - Buchdahl's arranged tables against an
+!     order-doubling series trace. THAT is what makes the agreement worth having,
+!     and it is the strongest check either macro has.
+!
+!     BUCH7.ZPL itself still declines a figured lens. It is the SPHERICAL routine,
+!     checked against Buchdahl's own printed numbers, and it is left undisturbed.
 !
 !   The third and fifth orders are not affected either way.
 !
@@ -2535,24 +2539,24 @@ SUB showco
    PRINT "   the fifth-order working, which is why BUCH7 arrives at it twice over and"
    PRINT "   gets the same number both ways. Compare it with confidence."
    PRINT " "
-   PRINT "   tau2 TO tau20 ARE NOT RIGHT there. Buchdahl gives the aspheric scheme in"
-   PRINT "   the monograph but never published an ARRANGED TABLE for it, and this"
-   PRINT "   project could not resolve his instructions into one. Those nineteen rest"
-   PRINT "   on an arrangement re-derived with no printed answer to check against."
+   PRINT "   tau2 TO tau20 were NOT right there for a long time, and now they are."
+   PRINT "   Buchdahl gives the aspheric scheme in the monograph but never published"
+   PRINT "   an ARRANGED TABLE for it. BUCH7_ASPH.ZPL, in this same folder, is that"
+   PRINT "   arrangement - the identities of M Sec. 22 for members one to five of the"
+   PRINT "   barred q accumulation, the dual run of XII Sec. 6 for the sixth, and the"
+   PRINT "   figuring's D half carried in the hat pass."
    PRINT " "
-   PRINT "   How wrong, and against what: the judge is neither scheme but a ray"
-   PRINT "   inversion, which recovers the coefficients from REAL TRACED RAYS. By"
-   PRINT "   that measure the Buchdahl route gets the fixtures Ladder1_A4,"
-   PRINT "   Ladder1_Conic and Ladder1_FiguredSphere right, and two others wrong -"
-   PRINT "   Ladder2_A4_Second by 6.85 per cent and Ladder2_FiguredSphere_Then_A4 by"
-   PRINT "   7.75. So it is not wrong on every asphere; it is wrong on some, with no"
-   PRINT "   way to tell in advance which."
+   PRINT "   Run BUCH7_ASPH on this same file: it reproduces all twenty printed above"
+   PRINT "   to every digit either macro prints. That has been done on a conic"
+   PRINT "   singlet, on a conic carrying r^4, r^6 and r^8 together, and on a triplet"
+   PRINT "   with two figured surfaces where one induces on the other."
    PRINT " "
-   PRINT "So on a figured lens a disagreement in tau2 to tau20 is not this macro"
-   PRINT "being wrong. Removing that difficulty is why this route exists: Forbes has"
-   PRINT "no aspheric table to arrange, because a sphere, a conic and an asphere are"
-   PRINT "the same code with different coefficients in f. The third and fifth orders"
-   PRINT "are not affected either way."
+   PRINT "So the two routes agree on a figured lens as well as a spherical one, and"
+   PRINT "they still share no arithmetic - Buchdahl's arranged tables against an"
+   PRINT "order-doubling series trace. That is what makes the agreement worth having."
+   PRINT " "
+   PRINT "BUCH7.ZPL itself still declines a figured lens: it is the SPHERICAL"
+   PRINT "routine, checked against Buchdahl's own printed numbers, left undisturbed."
    PRINT " "
    PRINT "THE CHECK THAT NEEDS NOTHING FROM THIS REPOSITORY, AND WORKS ON ASPHERES:"
    PRINT " "

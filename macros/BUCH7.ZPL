@@ -25,8 +25,11 @@
 !
 !   Spherical surfaces only. A conic or an even-asphere term makes the macro stop with
 !   an explanation rather than return a number that looks like an answer. Buchdahl
-!   gives the aspheric scheme but never published the arranged table for it, and
-!   guessing at one would be worse than declining.
+!   gives the aspheric scheme but never published the arranged table for it, so this
+!   file does not guess at one. BUCH7_ASPH.ZPL, beside this one, IS that arrangement
+!   reconstructed, and it carries conics and even aspheres; it agrees with FORBES.ZPL
+!   on all twenty seventh-order coefficients on every figured design tried. This macro
+!   is left as the spherical routine, checked against Buchdahl's own printed numbers.
 !
 !   Rotationally symmetric and sequential. Either conjugate: the object position
 !   enters only through M (13.4)'s four starting values, and is carried.
@@ -85,6 +88,8 @@ IF (asph == 1)
    PRINT "BUCH7 handles spherical surfaces only, and this system carries a conic or"
    PRINT "an aspheric term. Buchdahl gives the aspheric scheme but never published the"
    PRINT "arranged table for it, so this macro declines rather than guess."
+   PRINT "BUCH7_ASPH.ZPL, in this same folder, is that arrangement reconstructed and"
+   PRINT "carries conics and even aspheres. Run it on this file instead."
    GOTO 999
 ENDIF
 
