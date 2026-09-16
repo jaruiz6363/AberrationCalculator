@@ -95,8 +95,10 @@ published table bit for bit, and a figured flat in collimated light takes the sa
 Laurent series arithmetic, differentiated. A design is refused only when that series route cannot
 vouch for its answer. The reporting tools above are unaffected and handle figuring throughout.
 
-**Any of the thirty-seven aberration coefficients can be targeted**, written as its own name -
-`B, 1, TAR 0`, `Tau15, 2, TAR 0` - which is how the report prints it. They are free in bulk,
+**Any of the thirty-seven aberration coefficients can be targeted**, for the system or for one
+surface, written as its own name -
+`B, 1, TAR 0`, `Tau15, 2, TAR 0`, `M2, 1, TAR 0, 5` for surface 5 alone - which is how the
+report prints them. The shares add to the total exactly. They are free in bulk,
 because all thirty-seven come out of one run of the scheme.
 
 The tool's own description carries the full merit-function and variables syntax, generated from

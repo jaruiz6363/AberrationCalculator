@@ -63,6 +63,9 @@ public static class OperandInputs
 
     private static readonly OperandInput[] WaveOnly = { OperandInput.Wave };
 
+    private static readonly OperandInput[] CoefficientInputs =
+        { OperandInput.Surface1, OperandInput.Wave };
+
     private static readonly OperandInput[] HyOnly = { OperandInput.Hy };
 
     private static readonly OperandInput[] Span =
@@ -89,9 +92,12 @@ public static class OperandInputs
 
         OperandType.EFL => WaveOnly,
 
-        // A coefficient is a property of the whole system in one colour. There is no field to
-        // give it - the coefficient IS the field dependence - and no pupil, for the same reason.
-        OperandType.ABER => WaveOnly,
+        // A coefficient is either the system's or one surface's share of it. Surface FIRST, as in
+        // every other signature that takes one - a trailing input may be left off and a leading
+        // one may not, and the surface is the thing a coefficient operand is most often given.
+        // Surface 0 is the object surface and contributes to nothing, so it is free to mean
+        // "the whole system", which is also what leaving it off gives.
+        OperandType.ABER => CoefficientInputs,
 
         // Lateral colour is a difference between the extreme wavelengths, so it needs no colour
         // of its own - only the field to measure it at. Distortion is quoted in the reference

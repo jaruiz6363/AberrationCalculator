@@ -114,7 +114,9 @@ public sealed class Operand
                 switch (input)
                 {
                     case OperandInput.Surface1:
-                        s += " s" + N(Surface);
+                        // Surface 0 on a coefficient means the whole system, and labelling that
+                        // " s0" would read as the object surface rather than as the totals.
+                        if (Type != OperandType.ABER || Surface != 0) s += " s" + N(Surface);
                         break;
                     case OperandInput.Surface2:
                         if (Surface2 != Surface) s += ".." + N(Surface2);

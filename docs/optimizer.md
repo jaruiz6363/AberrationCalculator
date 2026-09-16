@@ -346,16 +346,44 @@ the merit function and you are only correcting the 3rd and 5th-order aberrations
 coefficients targetable individually, not only their weighted sum. See
 [references.md](references.md).
 
+**System totals, or ONE SURFACE'S SHARE.** A surface number after the target picks out that
+surface's contribution:
+
+```
+B,   1, TAR 0            # the system's third-order spherical
+B,   1, TAR 0, 5         # surface 5's share of it
+M2,  2, TAR 0, 5         # and its sagittal oblique spherical
+Pi5, 3, TAR 0, 5, 2      # surface 5, in wavelength 2
+```
+
+Surface 0 is the object surface and contributes to nothing, so it means the whole system - which
+is also what leaving the input off gives.
+
+**The shares add to the total, exactly**, and that is the property worth having rather than an
+incidental one: a designer comparing surface 5 with surface 3, or with the system, needs the
+three to be the same kind of number. The chain keeps per-surface contributions unscaled and
+multiplies only the totals by the F/number, so the scaling is applied on the way out;
+`ThePerSurfaceContributionsSumToTheSystemTotal` holds all eighteen to it on a spherical design
+and a figured one.
+
+**`Tau2` to `Tau20` have no per-surface value and asking for one is refused.** Buchdahl's scheme
+reaches the twenty from totals summed over the surfaces rather than surface by surface, so the
+per-surface contributions run `B` to `B7`. Left alone the answer would have been a silent zero,
+which reads exactly like a surface that contributes nothing.
+
+**What this makes possible** is the question Shafer says a design is decided by and a total
+cannot be asked: not *is this design wrong* but *which surface, and is it that surface's own
+fault*. "Surface 5 should contribute no coma" is now an operand. The intrinsic, figuring and
+induced SPLIT of each contribution is reported by the analysis side but is not targetable - the
+split is a diagnosis, and only the total is a thing a surface can be asked to change.
+
 **They are free in bulk.** Every coefficient comes out of one run of Buchdahl's scheme, which the
 probe computes once per wavelength and caches, so a merit function of twenty coefficient operands
 costs what one costs. That is what makes a coefficient-only merit function a practical way to
 work rather than merely a possible one.
 
-**System totals, in transverse measure** — the numbers the report prints, so a target and a
-reading cannot disagree. Per-surface contributions are reported by the analysis side and are not
-targetable: the probe caches the system totals alone, and lifting the per-surface arrays into the
-differentiating build is work that has not been done. It is the obvious next step for anyone who
-wants to say "surface 5 should contribute no coma".
+**In transverse measure throughout** — the numbers the report prints, whether the system's or a
+surface's, so a target and a reading cannot disagree about either.
 
 #### Which coefficient is which aberration
 

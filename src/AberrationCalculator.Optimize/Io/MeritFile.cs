@@ -220,6 +220,19 @@ public static class MeritFile
         // A span given only its first surface is that surface alone.
         if (surface2 == 0) surface2 = surface;
 
+        // A tertiary coefficient has no per-surface value to give. Buchdahl's scheme reaches the
+        // twenty from totals summed over the surfaces rather than surface by surface, so the
+        // per-surface terms stop at B7 - and asking for Tau5 on surface 3 would otherwise return
+        // a silent zero, which reads exactly like a surface that contributes nothing.
+        if (type == OperandType.ABER && surface != 0 && coefficient != null
+            && coefficient.StartsWith("Tau", StringComparison.Ordinal))
+            throw new FormatException(
+                $"{coefficient} is a SYSTEM coefficient and has no per-surface value, so it "
+              + $"cannot be asked for on surface {surface}. Buchdahl's scheme reaches the twenty "
+              + "tertiary coefficients from totals summed over the surfaces, not surface by "
+              + "surface; the per-surface contributions run B to B7. Drop the surface to target "
+              + $"the system's {coefficient}, or name one of the eighteen for a surface.");
+
         return new Operand
         {
             Type = type,
