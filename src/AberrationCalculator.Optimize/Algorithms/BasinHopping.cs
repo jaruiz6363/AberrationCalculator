@@ -2,12 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.Models;
 using AberrationCalculator.Optimize.Evaluation;
 using AberrationCalculator.Optimize.Operands;
 using AberrationCalculator.Optimize.Variables;
+
+// PerturbScale is internal so that the scale a hop gives each KIND of variable can be asserted
+// directly. It was wrong for the figuring kinds by a factor of three thousand and nothing said so,
+// because the local optimisation after each hop hid it - the search wasted its hops rather than
+// breaking. A defect that only costs work needs a test that reads the work.
+[assembly: InternalsVisibleTo("AberrationCalculator.Tests")]
 
 namespace AberrationCalculator.Optimize.Algorithms;
 
@@ -573,14 +580,40 @@ public sealed class BasinHopping
     /// ninety a step proportional to itself while leaving a curvature near 0.04 at unit scale.
     /// A flat step in the variables' own units is either nothing to the thickness or enough to
     /// turn the lens inside out.</para>
+    /// <summary>
+    /// How far a kick of one sigma moves a variable, in its own physical units.
+    ///
+    /// <para><b>A bounded variable is kicked across its own interval</b>, which is the only scale
+    /// it can have that means anything.</para>
+    ///
+    /// <para><b>An unbounded curvature or thickness is kicked against its own size, floored at
+    /// one.</b> The floor is what lets a variable sitting at exactly zero move at all, and for
+    /// these two it is harmless: a curvature near 0.01 is kicked by a tenth of a per cent of one,
+    /// which is a tenth of the curvature - meaningful and survivable.</para>
+    ///
+    /// <para><b>For the FIGURING kinds that floor is catastrophic, and this is why they get their
+    /// own rule.</b> An r^4 coefficient lives near 1E-6 and an r^8 one near 1E-12. Floored at one
+    /// they are kicked by 1E-3 - a MILLION times the value for r^4 and a billion for r^8 - which
+    /// puts a sag of ten lens units on the surface. It does not crash: the local optimisation
+    /// after each hop hauls the design back and the Metropolis test rejects it. That is the
+    /// damage. Every hop on a figuring variable is spent climbing out of somewhere absurd rather
+    /// than exploring, which is exactly what this file says about large kicks - "a large kick
+    /// lands the design somewhere unrelated, the per-hop minimisation cannot recover it, and the
+    /// acceptance test then compares two unfinished designs".</para>
+    ///
+    /// <para>So figuring is kicked against the scale <see cref="Scaling.PhysicalCeilings"/>
+    /// computes for it, which puts every kind on one footing - how far a step moves the glass at
+    /// the edge of the aperture - and is the same scale the local optimiser steps by.</para>
     /// </summary>
-    private static double PerturbScale(Variable v, double value)
+    internal static double PerturbScale(Variable v, double value, double[] ceilings, int i)
     {
         if (v.IsBounded && !double.IsNegativeInfinity(v.Min) && !double.IsPositiveInfinity(v.Max))
             return 0.5 * (v.Max - v.Min);
+
+        if (v.Figures && i < ceilings.Length && ceilings[i] > 0.0) return ceilings[i];
+
         return Math.Max(Math.Abs(value), 1.0);
     }
-
     /// <summary>
     /// A Gaussian kick in PHYSICAL units, reflected back inside the bounds rather than clamped.
     ///
@@ -590,9 +623,10 @@ public sealed class BasinHopping
     private static void Randomize(Design design, double sigma, Random rng)
     {
         var x = design.Read();
+        var ceilings = Scaling.PhysicalCeilings(design);
         var items = design.Variables.Items;
         for (int i = 0; i < x.Length && i < items.Count; i++)
-            x[i] += sigma * PerturbScale(items[i], x[i]) * Gaussian(rng);
+            x[i] += sigma * PerturbScale(items[i], x[i], ceilings, i) * Gaussian(rng);
         design.Apply(x);                       // Apply folds each variable inside its bounds
     }
 
@@ -614,7 +648,8 @@ public sealed class BasinHopping
 
         var baseX = design.Read();
         var scale = new double[n];
-        for (int i = 0; i < n; i++) scale[i] = PerturbScale(items[i], baseX[i]);
+        var ceilings = Scaling.PhysicalCeilings(design);
+        for (int i = 0; i < n; i++) scale[i] = PerturbScale(items[i], baseX[i], ceilings, i);
 
         double baseF = Evaluate(merit);
 

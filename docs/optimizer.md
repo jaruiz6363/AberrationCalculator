@@ -688,6 +688,29 @@ a Metropolis walk goes tens of hops between records while working perfectly well
 stall alone collapses every chain onto the leader and throws away the independence that made
 running several worth it.
 
+
+**The kick has to be in each variable's own units, and for the figuring kinds it was not.** An
+unbounded variable is kicked against its own size floored at one — the floor being what lets a
+variable sitting at exactly zero move at all. For a curvature near 0.01 that is a tenth of the
+curvature: meaningful and survivable. For an r⁴ coefficient near 1E-6 it was a kick of 1E-3,
+three thousand times the value, putting several lens units of sag on the surface; for r⁸ it was
+worse by a further six orders.
+
+**It broke nothing, which is why it lasted.** The local minimisation after each hop hauled the
+design back and the Metropolis test rejected it, so a run still converged — it simply spent every
+figuring hop climbing out of somewhere absurd instead of exploring, which is the precise failure
+this section already warns about for kicks that are too large. Figuring is now kicked against the
+scale `Scaling.PhysicalCeilings` gives it, the same one the local optimiser steps by, which puts
+every kind on one footing: how far a step moves the glass at the edge of the aperture. Curvature
+and thickness keep the rule they had, because the default kick size was measured against it and
+the figuring fix is not a reason to disturb it.
+
+**An honest note on what that bought.** On the design it was found with, the fix does not change
+the answer: same merit to every printed digit and the same r⁴ value to five, across several seeds
+and up to thirty hops, because the local optimisation recovers either way. What it removes is
+wasted work, and no design has yet been found where it removes more than that. It is made because
+a kick three thousand times a quantity's own size is indefensible on its face, not because a
+measurement demanded it — and saying so is better than implying a benefit that was not observed.
 Steps are in units of each variable's **natural scale**, computed from the Jacobian as the step
 that moves the merit by a set amount, capped by what the parameter can plausibly do on this design
 (curvatures against the focal length, thicknesses against the total track). A search that stepped
