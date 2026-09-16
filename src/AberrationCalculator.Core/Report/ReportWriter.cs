@@ -608,6 +608,73 @@ public sealed class ReportWriter
         => AsphericDiagnostic.Screen(_sys, PrimaryIndices, MaxField(), h).ToString();
 
     /// <summary>
+    /// The coefficient of QUATERNARY - ninth-order - spherical aberration, per surface, with the
+    /// intermediate rows Buchdahl's own table prints beside it.
+    ///
+    /// <para>Its own output rather than a section of the main report, for the reason the aspheric
+    /// screen and the distortion check are: it answers one question, it runs the tertiary scheme
+    /// a second time to do it, and it is refused outright on designs the rest of the report
+    /// handles perfectly well. A section that is usually an apology is better as a mode.</para>
+    ///
+    /// <para><b>Why the ninth order is worth asking for at all.</b> Everything else this program
+    /// reports stops at the seventh, and where a prediction and a traced ray part company on axis
+    /// the residual has had to be ATTRIBUTED to the ninth order rather than measured - see the
+    /// threshold in <see cref="AsphericDiagnostic"/>, which says in as many words that near or
+    /// above one "a residual is as likely the missing ninth order" as a fault in the seventh.
+    /// This makes that an arithmetic question.</para>
+    /// </summary>
+    public string BuildQuaternaryText()
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("QUATERNARY (NINTH-ORDER) SPHERICAL ABERRATION");
+        sb.AppendLine("----------------------------------------------------------------");
+
+        string? why = QuaternarySpherical.Unsupported(_sys);
+        if (why != null)
+        {
+            sb.AppendLine("Not computed: " + why + ".");
+            sb.AppendLine();
+            sb.AppendLine("Buchdahl, Optical Aberration Coefficients IV, J. Opt. Soc. Am. 48, 757");
+            sb.AppendLine("(1958). The refusal is deliberate - the scheme would return a number on");
+            sb.AppendLine("a figured surface, and it would be neither the spherical coefficient nor");
+            sb.AppendLine("the aspheric one.");
+            return sb.ToString();
+        }
+
+        var p = ParaxialTrace.Trace(_sys, PrimaryIndices, MaxField());
+        var q = QuaternarySpherical.FromSystem(_sys, PrimaryIndices, p);
+        if (q == null) { sb.AppendLine("Not computed."); return sb.ToString(); }
+
+        sb.AppendLine("Buchdahl's q1p, in the units of his paper IV Table I: the scheme runs at unit");
+        sb.AppendLine("focal length and nothing here rescales. INTRINSIC is what the surface makes on");
+        sb.AppendLine("its own; TOTAL adds what it makes by acting on the aberration already reaching");
+        sb.AppendLine("it. The system figure is the sum of the TOTAL column.");
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv, "{0,-6} {1,16} {2,16} {3,16}",
+                                    "Surf", "intrinsic", "total", "T1-dagger"));
+
+        int last = _sys.LastOpticalSurface();
+        for (int i = 1; i <= last && i < q.Rows.Length; i++)
+        {
+            var r = q.Rows[i];
+            if (r == null) continue;
+            sb.AppendLine(string.Format(Inv, "{0,-6} {1,16} {2,16} {3,16}",
+                                        i, Sci(r.Intrinsic), Sci(r.Total), Sci(r.T1Dagger)));
+        }
+
+        sb.AppendLine(new string('-', 57));
+        sb.AppendLine(string.Format(Inv, "{0,-6} {1,16} {2,16}", "TOTAL", "", Sci(q.Total)));
+        sb.AppendLine();
+        sb.AppendLine("Buchdahl's rule of thumb, from the closing paragraph of paper IV: a system");
+        sb.AppendLine("intended to work at f/2 should aim at individual contributions of at most");
+        sb.AppendLine("order 1000 at unit focal length. His own triplet runs to six figures, which");
+        sb.AppendLine("is why he chose it - it is a poorly corrected system and the table shows it.");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Distortion predicted from the coefficients against distortion traced, at each of a
     /// ladder of field fractions and at three truncations of the same set. See
     /// <see cref="DistortionPrediction"/> for what is predicted and what is traced.

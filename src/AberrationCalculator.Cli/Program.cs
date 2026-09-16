@@ -52,6 +52,16 @@ OPTIONS
                       field fractions, both mappings, and E, E5 and tau20 read back
                       out of the rays with an error bar. Write nothing else.
                       Abbreviates to --distortion.
+      --quaternary-spherical
+                      The coefficient of QUATERNARY - ninth-order - spherical
+                      aberration, per surface, by Buchdahl paper IV (JOSA 48, 757).
+                      Everything else this program reports stops at the seventh, so
+                      an on-axis residual has had to be ATTRIBUTED to the ninth order
+                      rather than measured; this makes it arithmetic. SPHERICAL
+                      SURFACES ONLY - a figured design is refused, because Buchdahl
+                      published no aspheric arrangement at this order and the scheme
+                      would return a number that is neither one thing nor the other.
+                      Writes nothing else. Abbreviates to --quaternary.
       --optimize [mf] Optimise the design and write the result.
 
                       SETTINGS. Without <mf>, the settings come from the sidecar
@@ -251,7 +261,7 @@ EXIT CODES
     {
         string? lensPath = null, outDir = null, glassDir = null, baseDir = null;
         bool writeFiles = true, quiet = false, screen = false, forbes = false, distortion = false;
-        bool nat = false;
+        bool nat = false, quaternary = false;
         double screenH = 1.0;
         int forbesDegree = 3;
 
@@ -290,6 +300,7 @@ EXIT CODES
                     }
                     break;
                 case "--distortion-coefficients": case "--distortion": distortion = true; break;
+                case "--quaternary-spherical": case "--quaternary": quaternary = true; break;
                 case "--nat": case "--nodal": nat = true; break;
 
                 case "--optimize": case "--optimise":
@@ -506,6 +517,10 @@ EXIT CODES
         // And so does the distortion check, which is a measurement rather than a report and
         // is the only one of these that traces rays.
         if (distortion) { Console.Write(writer.BuildDistortionText()); return writer.Unresolved.Count > 0 ? 2 : 0; }
+
+        // And the ninth order, which is its own mode for the same reason and is additionally
+        // REFUSED on a figured design, so it would be an apology in the middle of a report.
+        if (quaternary) { Console.Write(writer.BuildQuaternaryText()); return writer.Unresolved.Count > 0 ? 2 : 0; }
 
         // The nodal report answers a question about a MISALIGNED lens, which none of the others
         // can be asked at all, so it is its own mode rather than a section of the main report.

@@ -79,6 +79,7 @@ are out of place; and `base_path`, which says what folder bare file names are ta
 | `rms_spot` | predicted RMS spot per field and wavelength, and PRMSA |
 | `contributions` | which aberration is costing the design its performance |
 | `surface_breakdown` | intrinsic, aspheric and induced, per surface |
+| `quaternary_spherical` | the coefficient of **quaternary - ninth-order - spherical aberration**, per surface, with the intermediate rows Buchdahl prints beside it. Everything else here stops at the seventh order, so an on-axis residual has had to be *attributed* to the ninth rather than measured; this makes it arithmetic. Buchdahl IV, *J. Opt. Soc. Am.* **48**, 757 (1958). **Spherical surfaces only** - a figured design is refused with its reason, because he published no aspheric arrangement at this order |
 | `surface_share` | each surface's share of the spot, and how much of it is induced |
 | `seventh_order` | third, fifth and seventh order per surface, intrinsic and induced, the seventh by the Forbes series trace - the one that handles aspheres. Takes an optional `degree`, 3 to 8: three is the seventh order and higher carries the orders ABOVE it, which is how to find out whether a design's residual is seventh order at all (*text*) |
 | `aspheric_screen` | whether a design would exercise the aspheric seventh-order path hard enough to test it (*text*) |
