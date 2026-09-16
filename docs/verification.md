@@ -40,6 +40,36 @@ and 30 of 30 third-order values at a finite conjugate. That is recorded because 
 such a program can confirm it without trusting anything here. It is not the authority: neither
 computes the seventh-order set this program exists for, so neither could be.
 
+**FIFTHORD confirms the per-surface SPLIT, not only the totals.** This was not noticed for a long
+time, because the macro's header is a table of totals and the per-surface block above it reads
+like a convenience. It is not: on a figured design FIFTHORD prints, per surface, the coefficients
+that surface generates ON ITS OWN, and then a separate block headed *Aspheric contributions at
+surface N*. Those are the intrinsic and the figuring parts, and they are the first two thirds of
+the split this program reports and now lets a merit function target - checked by something that
+shares no code with it and ships with OpticStudio.
+
+On `F6_triplet_two_aspheres`, at the primary wavelength, FIFTHORD's numbers multiplied by the
+F/number against this program's per-surface printout:
+
+| | worst relative difference |
+|---|---|
+| intrinsic, both figured surfaces, all eighteen | 3E-5 |
+| figuring, both figured surfaces, all eighteen | 2E-5 |
+| induced, recovered by difference | 1.5E-4 |
+
+**3E-5 is FIFTHORD's own precision**, not a disagreement: it prints five significant figures, so
+1E-5 relative is the quantisation and a handful of units in the last place is what agreement looks
+like. The induced figure is larger because it is not printed at all and has to be recovered - the
+macro's totals are NOT the sum of the surface rows it prints, and the gap between them is exactly
+what the scheme induces. Summing six rounded rows and differencing against a rounded total
+accumulates six roundings, and 1.5E-4 is what that costs.
+
+**Two details of the agreement are worth more than the tolerance.** FIFTHORD leaves the Petzval
+column BLANK in every aspheric block, which is the same statement this program makes by reporting
+zero there: the Petzval sum depends on the vertex curvature and the indices, and a figured surface
+has the same vertex sphere as the sphere it was figured from. And the induced part recovered by
+difference is not a quantity either program computes as such - FIFTHORD never names it, and this
+program never obtains it by subtraction - so the two arrive at it by different routes entirely.
 ## Standing results
 
 | what | result |
@@ -49,7 +79,7 @@ computes the seventh-order set this program exists for, so neither could be.
 | seventh-order spherical aberration, two routes | identical to every printed digit |
 | third order against an independent Seidel analysis, finite conjugate | 30 of 30 |
 | fifth order against FIFTHORD, finite conjugate | 18 of 18 totals |
-| the per-surface split | intrinsic + figuring + induced = total, to 1.8E-14 |
+| the per-surface split | intrinsic and figuring confirmed against FIFTHORD to 3E-5, its printed precision; induced by difference to 1.5E-4; and internally, intrinsic + figuring + induced = total to 1.8E-14 |
 | E, E5 and tau20 against traced chief rays | each to under one per cent wherever the two routes agree, at both conjugates |
 | the suite | over a thousand tests, and everything they read is in this repository |
 
