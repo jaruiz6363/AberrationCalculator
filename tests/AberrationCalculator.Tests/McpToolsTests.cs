@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Nodes;
 
 using AberrationCalculator.Optimize.Io;
 using AberrationCalculator.Mcp;
@@ -33,7 +34,7 @@ public class McpToolsTests
         Assert.NotEmpty(Tools.All);
         foreach (var tool in Tools.All)
         {
-            string text = tool.Run(writer);
+            string text = tool.Run(writer, null);
             Assert.False(string.IsNullOrWhiteSpace(text),
                 $"tool '{tool.Name}' returned nothing");
             Assert.False(string.IsNullOrWhiteSpace(tool.Description),
@@ -66,7 +67,7 @@ public class McpToolsTests
             // reads far better ruled than flattened into one row per cell.
             if (tool.Name is "analyse_lens" or "aspheric_screen" or "seventh_order"
                           or "distortion_from_coefficients") continue;
-            Assert.Contains('\t', tool.Run(writer));
+            Assert.Contains('\t', tool.Run(writer, null));
         }
     }
 
@@ -234,5 +235,63 @@ public class McpToolsTests
 
         Assert.Contains("VAR CC 3", optimize.Description, StringComparison.Ordinal);
         Assert.Contains("A4", optimize.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>The Forbes degree reaches the report.</b> The CLI has taken `--forbes 3..8` for a long
+    /// time and the MCP tool was fixed at 3, so a model could not ask the question
+    /// `docs/distortion-prediction.md` answers - whether a design's residual is seventh order at
+    /// all, which is found by carrying the series further and watching the prediction move.
+    /// </summary>
+    [Fact]
+    public void TheSeventhOrderToolTakesADegreeAndUsesIt()
+    {
+        var writer = Tools.Open(Lens, null);
+        var tool = Tools.All.Single(t => t.Name == "seventh_order");
+
+        Assert.NotNull(tool.Extra);
+        Assert.Contains(tool.Extra!, s => s.Name == "degree");
+
+        string atThree = tool.Run(writer, new JsonObject { ["degree"] = 3 });
+        string atFive = tool.Run(Tools.Open(Lens, null), new JsonObject { ["degree"] = 5 });
+
+        Assert.False(string.IsNullOrWhiteSpace(atThree));
+        Assert.NotEqual(atThree, atFive);          // the argument changed the answer
+
+        // And the default is still three, so nothing that omits it moves.
+        Assert.Equal(atThree, tool.Run(Tools.Open(Lens, null), null));
+    }
+
+    /// <summary>A degree outside 3 to 8 is refused rather than clamped.</summary>
+    [Theory]
+    [InlineData(2)]
+    [InlineData(12)]
+    public void AnImpossibleForbesDegreeIsRefused(int degree)
+    {
+        var writer = Tools.Open(Lens, null);
+        var tool = Tools.All.Single(t => t.Name == "seventh_order");
+
+        var ex = Assert.Throws<ArgumentException>(
+            () => tool.Run(writer, new JsonObject { ["degree"] = degree }));
+        Assert.Contains("between 3 and 8", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>Every optimiser setting the CLI exposes has an MCP argument.</b> The MCP must be able to
+    /// do everything the CLI can: a caller should not have to discover that the answer to their
+    /// question exists but only through the other door. `hop_sigma` was the one that had been
+    /// missed, and this is the check that would have said so.
+    /// </summary>
+    [Fact]
+    public void TheOptimizeToolExposesEveryOptimiserSetting()
+    {
+        var optimize = ActionTools.All.Single(t => t.Name == "optimize");
+        var offered = optimize.Arguments.Select(x => x.Name).ToList();
+
+        foreach (string expected in new[]
+                 { "method", "iterations", "hops", "chains", "seed", "hop_sigma",
+                   "glass_substitution" })
+            Assert.True(offered.Contains(expected),
+                $"the optimize tool does not offer '{expected}', which the CLI does");
     }
 }

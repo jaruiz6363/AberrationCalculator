@@ -163,6 +163,15 @@ internal static class ActionTools
                 new ArgumentSpec("chains", "integer",
                     "Independent hopping chains. Default 0 = one per processor."),
                 new ArgumentSpec("seed", "integer", "Random seed for the hopping. Default 1234."),
+                new ArgumentSpec("hop_sigma", "number",
+                    "The per-hop kick, in units of each variable's natural scale. Default 0.001, "
+                  + "and A WHISPER RATHER THAN A SHOVE ON PURPOSE. The instinct that a hop should "
+                  + "be large enough to leave the basin is wrong and was measured to be wrong: a "
+                  + "large kick lands the design somewhere unrelated, the per-hop minimisation "
+                  + "cannot recover it, and the acceptance test then compares two unfinished "
+                  + "designs. Escape is not the kick's job - it belongs to the Metropolis walk "
+                  + "and to the long jump after a chain stalls. Raise this only with a reason. "
+                  + "Needs hops > 0."),
                 new ArgumentSpec("glass_substitution", "string",
                     "Name of a substitution catalogue the hopping may take glasses from, e.g. "
                   + "CoreSet28. Glass is discrete - there is no gradient from one glass to the "
@@ -337,6 +346,7 @@ internal static class ActionTools
         {
             Iterations = Integer(a, "iterations") ?? 200,
             Hops = Integer(a, "hops") ?? 0,
+            HopSigma = Number(a, "hop_sigma") ?? 0.001,
             Chains = Integer(a, "chains") ?? 0,
             Seed = Integer(a, "seed") ?? 1234,
             GlassSubstitution = !string.IsNullOrWhiteSpace(substitution),
@@ -462,6 +472,22 @@ internal static class ActionTools
     {
         var v = a?[name];
         return v == null ? null : v.GetValue<string>();
+    }
+
+    /// <summary>A floating-point argument, accepted as a JSON number or as a string.</summary>
+    private static double? Number(JsonNode? a, string name)
+    {
+        var v = a?[name];
+        if (v == null) return null;
+        try { return v.GetValue<double>(); }
+        catch (Exception)
+        {
+            string? text = v.GetValue<string>();
+            return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture,
+                                   out double d)
+                 ? d
+                 : throw new ArgumentException($"{name} must be a number, not '{text}'");
+        }
     }
 
     private static int? Integer(JsonNode? a, string name)

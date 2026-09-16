@@ -258,7 +258,7 @@ public class BasePathTests : IDisposable
 
         // Reporting tools now take a bare name.
         var analyse = Assert.Single(Tools.All, t => t.Name == "first_order");
-        Assert.NotEmpty(analyse.Run(Tools.Open("L.lhlt", null)));
+        Assert.NotEmpty(analyse.Run(Tools.Open("L.lhlt", null), null));
 
         tool.Run(new JsonObject { ["clear"] = true });
         Assert.Null(BasePath.Stored());

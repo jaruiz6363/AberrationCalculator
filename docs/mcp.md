@@ -80,7 +80,7 @@ are out of place; and `base_path`, which says what folder bare file names are ta
 | `contributions` | which aberration is costing the design its performance |
 | `surface_breakdown` | intrinsic, aspheric and induced, per surface |
 | `surface_share` | each surface's share of the spot, and how much of it is induced |
-| `seventh_order` | third, fifth and seventh order per surface, intrinsic and induced, the seventh by the Forbes series trace - the one that handles aspheres (*text*) |
+| `seventh_order` | third, fifth and seventh order per surface, intrinsic and induced, the seventh by the Forbes series trace - the one that handles aspheres. Takes an optional `degree`, 3 to 8: three is the seventh order and higher carries the orders ABOVE it, which is how to find out whether a design's residual is seventh order at all (*text*) |
 | `aspheric_screen` | whether a design would exercise the aspheric seventh-order path hard enough to test it (*text*) |
 | `distortion_from_coefficients` | how far the coefficients can be trusted for distortion, against rays - NOT the way to get a distortion figure, for which the traced column beside them is the answer (*text*) |
 
@@ -111,7 +111,7 @@ the caller has no way to check it.
 | `variables` | variables and pickups as text, in the `.var` format. A `.lhlt` carries its own |
 | `method` | `lm`, `psd2`, `psd3` (default) or `hj` |
 | `iterations` | local iterations, or iterations per hop |
-| `hops`, `chains`, `seed` | basin hopping, off by default |
+| `hops`, `chains`, `seed`, `hop_sigma` | basin hopping, off by default. `hop_sigma` is the per-hop kick in units of each variable's own scale, default 0.001 - a whisper rather than a shove, and measured to be right: a large kick lands the design somewhere unrelated and the acceptance test then compares two unfinished designs |
 | `glass_substitution` | name of a substitution catalogue the hopping may take glasses from, e.g. `CoreSet28` |
 | `save_to` | where to write the result. Under hopping this is a **folder**, and one design per chain goes into it. **Nothing is written without it** |
 
