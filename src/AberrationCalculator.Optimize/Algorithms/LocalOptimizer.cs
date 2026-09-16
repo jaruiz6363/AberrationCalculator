@@ -181,7 +181,6 @@ public sealed class LocalOptimizer
         double psdScale = _options.PsdInitialScale;
         int evaluations = 1, iteration = 0;
         string stop = "iteration limit";
-        bool converged = false;
 
         // PSD state. The curvature estimate differences two Jacobians, so it needs the previous
         // one and the x it was taken at. Both ends are analytic here, so the secant carries no
@@ -302,7 +301,7 @@ public sealed class LocalOptimizer
             }
             gradientNorm = Math.Sqrt(gradientNorm);
             stepNorm = Math.Sqrt(stepNorm);
-            if (gradientNorm <= 1e-16) { stop = "gradient is zero"; converged = true; break; }
+            if (gradientNorm <= 1e-16) { stop = "gradient is zero"; break; }
 
             var trial = new double[n];
             for (int a = 0; a < n; a++) trial[a] = x[a] + delta[a];
@@ -344,7 +343,6 @@ public sealed class LocalOptimizer
                 if (relative || absolute)
                 {
                     stop = "converged";
-                    converged = true;
                     break;
                 }
             }
@@ -379,7 +377,6 @@ public sealed class LocalOptimizer
                 if (ramped && tiny && (relative || absolute))
                 {
                     stop = "converged";
-                    converged = true;
                     break;
                 }
 
@@ -398,7 +395,7 @@ public sealed class LocalOptimizer
                     // conditioning, or a Jacobian inconsistent with its residuals - and keeps
                     // the failure wording. The signal that says "minimum" is the vanished step,
                     // not the miss.
-                    if (tiny) { stop = "converged"; converged = true; }
+                    if (tiny) stop = "converged";
                     else stop = "no descent at any damping; ill-conditioned rather than minimal";
                     break;
                 }
