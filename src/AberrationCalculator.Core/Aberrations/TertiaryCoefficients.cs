@@ -108,6 +108,18 @@ public static partial class TertiaryCoefficients
     private static readonly int[] AperturePower =
         { 0, 7, 6, 6, 5, 5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 1, 1, 0 };
 
+
+    /// <summary>
+    /// The aperture power of <c>tau[n]</c> in Robb's polynomial, for n from 1 to 20; the field
+    /// power is always seven minus it. Zero outside that range.
+    ///
+    /// <para>Exposed because <see cref="AberrationNames"/> works out what a tertiary coefficient
+    /// IS from its monomial, there being no classical name to look up, and two copies of this
+    /// table would be two chances to get it wrong.</para>
+    /// </summary>
+    public static int AperturePowerOf(int tau) =>
+        tau >= 1 && tau <= 20 ? AperturePower[tau] : 0;
+
     /// <summary>
     /// Converts Buchdahl's coefficients into the convention the rest of this program uses.
     ///

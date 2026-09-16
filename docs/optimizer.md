@@ -388,23 +388,33 @@ transverse polynomial, ρ the pupil radius and H the field.
 | | `Pi5` | Petzval / field curvature — with `C5` | ρH⁴ |
 | | `E5` | distortion | H⁵ |
 | **7th** | `B7` | spherical. Robb's `tau1`, and the only tertiary term FIFTHORD and this program's own fifth-order working both reach | ρ⁷ |
-| | `Tau2` `Tau3` | the seventh-order coma family | ρ⁶H |
-| | `Tau4` `Tau5` `Tau6` | the seventh-order oblique spherical family | ρ⁵H² |
-| | `Tau7` `Tau8` `Tau9` `Tau10` | the seventh-order elliptical coma family | ρ⁴H³ |
-| | `Tau11` `Tau12` `Tau13` `Tau14` | | ρ³H⁴ |
-| | `Tau15` `Tau16` `Tau17` | the seventh-order astigmatism and field-curvature family | ρ²H⁵ |
-| | `Tau18` `Tau19` | | ρH⁶ |
+| | `Tau2` `Tau3` | coma | ρ⁶H |
+| | `Tau4` `Tau5` `Tau6` | oblique spherical | ρ⁵H² |
+| | `Tau7` `Tau8` `Tau9` `Tau10` | *no classical counterpart* | ρ⁴H³ |
+| | `Tau11` `Tau12` `Tau13` `Tau14` | *no classical counterpart* | ρ³H⁴ |
+| | `Tau15` `Tau16` `Tau17` | elliptical coma | ρ²H⁵ |
+| | `Tau18` `Tau19` | astigmatism / field curvature | ρH⁶ |
 | | `Tau20` | distortion | H⁷ |
 
-**The seventh-order rows are deliberately vaguer, and the vagueness is the honest part.**
-`AberrationNames` names the third and fifth orders because Johnson tabulates them; it does not
-name `Tau2` to `Tau20`, because the classical vocabulary was built for a set that stops at the
-fifth. What IS exact for them is the monomial - the aperture and field powers come from
-`TertiaryCoefficients.AperturePower` and the azimuthal form from `Prms` - so a tertiary
-coefficient is identified here by what it multiplies and by which fifth-order family it is the
-next member of, rather than by a name invented for the table. Two rows carry no family name at
-all, for the same reason: ρ³H⁴ and ρH⁶ have no fifth-order analogue to be named after.
+**The seventh-order rows name a family rather than an aberration, and two name nothing.**
+`AberrationNames` gives the third and fifth orders the names Johnson tabulates. For the tertiary
+there is nothing to look up — the classical vocabulary was built for a set that stops at the
+fifth, where there are six monomials against the seventh's eight — so the family is *derived*
+from the monomial by the rule the named orders already follow: no field is spherical, one power
+of field coma, two oblique spherical; no aperture is distortion, one power of aperture
+astigmatism and field curvature, two elliptical coma. All eleven named coefficients come out of
+that rule, which is what makes applying it at seventh order reading the pattern rather than
+inventing one. `TheFamilyRuleReproducesTheNamedOrders` is the anchor.
 
+ρ⁴H³ and ρ³H⁴ get nothing, and that is the honest answer rather than a gap: they have no third-
+or fifth-order counterpart to be named after. They are described by what they multiply, which is
+exact.
+
+**This table was wrong when first written**, and the rule above is what fixed it. Elliptical coma
+and astigmatism were put two rows too high — elliptical coma is two powers of APERTURE, not two
+of field — because the rows were typed out by hand against no rule at all. That is the argument
+for deriving them: a hand-written table has no way to be checked against the pattern it is
+supposed to follow.
 **Shafer's two limiting aberrations, in this notation**, since they are the ones he argues a
 design is decided by: *fifth-order field curvature* is `Pi5` (with `C5`), and *sagittal oblique
 spherical* is `M2`. See [references.md](references.md).
