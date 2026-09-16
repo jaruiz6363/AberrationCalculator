@@ -30,20 +30,6 @@
       -->
       <PrivateAssets>all</PrivateAssets>
     </ProjectReference>
-    <!--
-      Core.Series.Ad is not used by any code in this project. The reference exists so that the
-      assembly REACHES THE EXECUTABLE: Core.Ad needs it at runtime for a figured flat facing
-      collimated light, but it sits two hops from the entry point, and at that distance the dll is
-      copied to the output directory without being registered in the deps manifest - so the
-      runtime never learns of it and the program dies on first use with a FileNotFoundException
-      for a file that is plainly sitting there. One hop, exactly as Core.Ad is, and it resolves.
-      Aliased for the same reason as the others: every name it shares with Core would otherwise
-      be ambiguous here.
-    -->
-    <ProjectReference Include="..\AberrationCalculator.Core.Series.Ad\AberrationCalculator.Core.Series.Ad.csproj">
-      <Aliases>SeriesAd</Aliases>
-      <PrivateAssets>all</PrivateAssets>
-    </ProjectReference>
   </ItemGroup>
 
 </Project>
