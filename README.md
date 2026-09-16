@@ -45,11 +45,13 @@ established - it agrees with Forbes' series trace on all twenty tertiary coeffic
 now a conic and the r^4, r^6 and r^8 terms are variables like any other, `CC`, `A4`, `A6`, `A8`.
 A spherical design takes Buchdahl's own published table exactly as before, bit for bit.
 
-**One case is still refused, and named**: a figured flat facing collimated light, where the
-incidence ratio is infinite and the finite coefficients arrive only after terms in different
-powers of it cancel. The analysis side reaches those through a Laurent series in that surface's
-curvature; that route is not in the differentiating build, so the optimizer would get a right
-value and a silently wrong derivative. Bend the surface and it is exact again. See
+**The figured flat in collimated light is carried too**, which was the last design the optimizer
+refused. There the incidence ratio is infinite and the finite coefficients arrive only after
+terms in different powers of it cancel; the analysis side reaches them through a Laurent series
+in that surface's curvature, and the optimizer now does the same in `DualSeries` - a dual number
+whose value and derivative are each such a series - so a Schmidt corrector plate optimises like
+anything else. What is still refused is not a class of design but a failure to converge: the
+series route vouches for itself or it is not used. See
 [docs/optimizer.md](docs/optimizer.md).
 
 PSD recovers the curvature Gauss-Newton discards, from two successive **exact** Jacobians - a
@@ -440,6 +442,8 @@ feed to something else.
 ```
 src/AberrationCalculator.Core   models, glass, ray trace, coefficients
 src/AberrationCalculator.Core.Ad  the same source, compiled against a dual number
+src/AberrationCalculator.Core.Series    the same source, in Laurent series arithmetic
+src/AberrationCalculator.Core.Series.Ad the same source, in both at once
 src/AberrationCalculator.Optimize variables, operands, PSD, Hooke-Jeeves, basin hopping
 src/AberrationCalculator.IO     one reader per format, and the .lhlt writer
 src/AberrationCalculator.Cli    abcalc - the command-line tool

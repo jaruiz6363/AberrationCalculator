@@ -242,36 +242,11 @@ public class AsphericVariableTests
     }
 
     /// <summary>
-    /// <b>The one case still refused, and it is refused for a reason that is not a doubt about
-    /// the arrangement.</b> A figured flat facing collimated light has an identically zero
-    /// marginal incidence, so the incidence ratio is infinite and the finite coefficients
-    /// arrive only after terms in different powers of it cancel. Core reaches them by running
-    /// the whole chain again in Laurent series arithmetic with that surface's curvature as the
-    /// variable - and that route is compiled into Core alone. In the differentiating build the
-    /// call has no body, so the optimiser would get a right value and a silently wrong
-    /// derivative. This is the only place that can be caught.
-    /// </summary>
-    [Fact]
-    public void AFiguredFlatInCollimatedLightIsRefusedAndSaysWhy()
-    {
-        var catalog = CatalogLocator.LoadBundled();
-        var system = LensFile.Read(Fixtures.Lens("Ladder2_FlatFigured"), catalog);
-
-        var vars = new VariableSet();
-        vars.Add(new Variable { Kind = VariableKind.Curvature, Surface = 1 });
-
-        var ex = Assert.Throws<NotSupportedException>(() => new Design(system, catalog, vars));
-
-        Assert.Contains("FIGURED FLAT", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("Laurent", ex.Message, StringComparison.Ordinal);
-        // It has to say what to do instead, not merely refuse.
-        Assert.Contains("--forbes", ex.Message, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The NEARLY flat twin of the design above is accepted, and that boundary is the point:
-    /// bend the surface and the singularity is gone. A refusal that caught both would be
-    /// refusing an ordinary aspheric design.
+    /// A figured flat facing collimated light used to be refused here, and is not any more: the
+    /// series route that reaches its coefficients now exists in the differentiating build too.
+    /// That design's acceptance, the value it produces and the derivatives through it are tested
+    /// in <see cref="FlatCollimatedDerivativeTests"/>, beside the arithmetic that made it
+    /// possible. What remains in this file is the ordinary aspheric case.
     /// </summary>
     [Fact]
     public void ANearlyFlatFiguredSurfaceIsAccepted()

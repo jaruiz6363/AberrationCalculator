@@ -9,8 +9,8 @@ are **analytic everywhere**, including through the predicted spot — which is a
 thirty-seven aberration coefficients reached through some five thousand lines of Buchdahl's
 computing scheme.
 
-**It carries conics and even aspheres**, with one exception it names. The reasoning is
-below.
+**It carries conics and even aspheres**, and the figured flat in collimated light too. The
+reasoning is below.
 
 ## The derivatives are exact
 
@@ -73,7 +73,7 @@ rounding. On a plane it is total: the flat-surface starting guess is already exa
 returns on its first pass, and a plano surface being bent reports that bending it does not move
 the ray at all. The finite-difference check caught it; nothing else would have.
 
-## Figuring, and the one case still refused
+## Figuring, and what is carried
 
 The coefficients come from **Buchdahl's computing scheme** — closed-form sums over the paraxial
 ray data, with no trace, no fit and no linear solve. It is the fastest route to a seventh-order
@@ -98,14 +98,67 @@ contact with the code. `TertiaryCoefficients.Attach` makes the choice once per e
 data it has already computed — not per surface, and not inside the arithmetic. A spherical design
 travels the path it always did, bit for bit.
 
-**What is still refused is one case.** A **figured flat facing collimated light** has an
-identically zero marginal incidence, so the incidence ratio is infinite and the finite
-coefficients arrive only after terms in different powers of it cancel. Core reaches them by
-running the whole chain again in Laurent series arithmetic with that surface's curvature as the
-variable — and that route is compiled into Core alone. In the differentiating build the call has
-no body, so the optimizer would get a right value and a silently wrong derivative. `SupportedDesign`
-catches it before the first evaluation, because nothing downstream can. Bend the surface and it
-is exact again: at R = 100 the two routes agree to 1.6E-12.
+**What is still refused is not a class of design.** The figured flat facing collimated light was
+the last one, and it is carried now — see below. What remains is a failure to CONVERGE: the
+series route vouches for itself or it is not used, and on a design where it cannot, the run is
+refused rather than allowed to keep values that are not finite in any useful sense. That is a
+measurement on the design in front of it rather than a rule about a shape.
+
+### The figured flat in collimated light, differentiated
+
+A Schmidt corrector plate — a flat with r⁴ figuring in a collimated beam — has an identically
+zero marginal incidence. The incidence ratio is infinite, and the finite coefficients arrive
+only after terms carrying different powers of it cancel. The analysis side has reached them for
+a long time by running the whole chain in Laurent series arithmetic with that surface's curvature
+as the series variable and reading the answer at e⁰.
+
+**The optimizer could not, and refused the design.** That route was compiled into Core alone; in
+the differentiating build the call had no body and compiled away, so the optimizer would have had
+a right value beside a silently wrong derivative. Refusing was the only honest option, because
+nothing downstream could tell the difference.
+
+**It is carried now, by a fifth arithmetic.** `DualSeries` is a dual number whose value and
+derivative are each a `LaurentSeries`, and `AberrationCalculator.Core.Series.Ad` compiles the same
+Core sources against it:
+
+    Core             Scalar = double          the analysis
+    Core.Ad          Scalar = Dual            the optimizer's derivatives
+    Core.Series      Scalar = LaurentSeries   the flat in collimated light
+    Core.Series.Ad   Scalar = DualSeries      both at once
+
+**Why a dual OF series and not a series OF duals.** Both compute the same thing. The other way
+round means making `LaurentSeries` generic over its coefficient type — some three hundred lines
+of delicate, already-verified arithmetic edited for a case it was not written for, with the
+sparse-skip hazard waiting at every `== 0.0` inside it. This way `LaurentSeries` is not touched at
+all: every operation is the ordinary dual rule with the existing series arithmetic underneath, so
+the half that was validated against Forbes stays exactly the code that was validated, and what is
+new is one small struct whose rules are in every textbook.
+
+**Why reading the two off independently is legitimate.** The answer wanted is the e⁰ coefficient,
+and extracting a coefficient is linear — so the e⁰ term of the derivative series IS the derivative
+of the e⁰ term. Nothing has to be re-derived to justify it.
+
+**The one duplication, and the test that guards it.** The formulas are not duplicated; both builds
+compile the same Core sources. What is written twice is about thirty lines of orchestration —
+trace, coefficients, scheme, Table I, increments, tau, convert — because the double file carries a
+diagnostic apparatus this build has no use for. If the two drifted, the derivative would belong to
+a different calculation from the value, and the Jacobian check could not see it: that compares the
+derivative against differences of the SAME route, so it would pass while the value came from
+somewhere else. `TheDifferentiatedSeriesRouteAgreesWithTheDoubleOneOnValue` is the guard, and it
+requires the two routes to agree on all thirty-seven coefficients.
+
+**Measured**, on `Ladder2_FlatFigured`: the value agrees with the double route on all
+thirty-seven, and the derivatives of `tau2` through `tau20` match central differences with respect
+to a curvature, a thickness and the corrector's own r⁴ term. The tolerance there is looser than
+the ordinary Jacobian check and deliberately so — the quantity being differenced is itself the
+e⁰ term of a truncated series, so the central difference carries the series' truncation error on
+top of its own. It is the less accurate of the two instruments, not the more.
+
+One further case is worth recording because it looks like the bug and is not. Figuring a DUMMY
+surface — air on both sides — changes nothing, because every figuring term in the scheme carries
+`n' - n`. The derivative is zero and so is the central difference, and
+`FiguringASurfaceThatCannotRefractHasNoEffectEitherWay` pins both halves, so a legitimate zero
+column can be told apart from the one the broken route used to produce.
 
 ### The sparse-skip hazard, which figuring made real
 

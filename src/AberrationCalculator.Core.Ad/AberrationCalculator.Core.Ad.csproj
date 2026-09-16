@@ -65,4 +65,25 @@
     <Compile Include="@(CoreSource)" Link="linked/%(Filename)%(Extension)" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <!--
+      The series arithmetic, differentiated: Scalar = DualSeries. It is what makes a figured flat
+      facing collimated light reachable HERE and not only in the plain-double build - see
+      TertiaryCoefficients.FlatCollimated.Ad.cs. Aliased for the same reason Core.Optimize aliases
+      this assembly: every name the two share would otherwise be ambiguous.
+    -->
+    <ProjectReference Include="../AberrationCalculator.Core.Series.Ad/AberrationCalculator.Core.Series.Ad.csproj">
+      <Aliases>SeriesAd</Aliases>
+      <!--
+        COMPILE, not ALL. "all" hides the reference from consumers - which is what is wanted, so
+        that Optimize does not pick these types up un-aliased and make every name they share with
+        Core ambiguous - but it also stops the RUNTIME asset flowing, and this assembly is two
+        hops from the executable. The dll then sits in the output directory while the runtime
+        never learns of it, and the program dies on first use with a FileNotFoundException for an
+        assembly that is plainly there. "compile" hides the reference and keeps the file.
+      -->
+      <PrivateAssets>compile</PrivateAssets>
+    </ProjectReference>
+  </ItemGroup>
 </Project>
