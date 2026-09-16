@@ -58,9 +58,17 @@ public sealed class BasinHoppingOptions
     public double LmTolerance { get; set; } = 1e-10;
 
     /// <summary>
-    /// A small kick applied once before the first minimisation, in units of each variable's
-    /// natural scale. It exists to break exact symmetry - a design sitting on a stationary point
-    /// has nowhere to go otherwise.
+    /// The kick on the FIRST hop, before the design has ever been minimised, in units of each
+    /// variable's natural scale. Separate from <see cref="HopSigma"/> because the first kick has
+    /// a different job: it breaks exact symmetry, since a design sitting on a stationary point
+    /// has nowhere to go otherwise, whereas every later kick is asking to be moved somewhere new.
+    ///
+    /// <para>Default 0.001, the same as <see cref="HopSigma"/>, so leaving it alone is exactly
+    /// the behaviour that was there before it was connected. Raise it to start the search from a
+    /// design deliberately disturbed - useful off a skeleton, where the starting point is a guess
+    /// rather than a design - without making every subsequent hop that violent.</para>
+    ///
+    /// <para>It obeys <see cref="HopFiguring"/> like any other kick: the first hop is still a hop.</para>
     /// </summary>
     public double InitialPerturbSigma { get; set; } = 0.001;
 
@@ -443,7 +451,11 @@ public sealed class BasinHopping
                 swapsThisHop = SwapGlasses(design, rng);
 
             // ── The kick ──────────────────────────────────────────────────────────────────
-            if (!restartHop) Randomize(design, sigma, rng, _options.HopFiguring);
+            // Hop 1 is the symmetry-breaker and takes its own sigma; see InitialPerturbSigma.
+            // The two default to the same 0.001, so this is a knob rather than a change.
+            if (!restartHop)
+                Randomize(design, hop == 1 ? _options.InitialPerturbSigma : sigma, rng,
+                          _options.HopFiguring);
 
             // ── Pattern search, then least squares ────────────────────────────────────────
             var hjClock = System.Diagnostics.Stopwatch.StartNew();

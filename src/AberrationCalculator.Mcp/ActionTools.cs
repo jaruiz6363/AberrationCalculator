@@ -184,6 +184,13 @@ internal static class ActionTools
                   + "designs. Escape is not the kick's job - it belongs to the Metropolis walk "
                   + "and to the long jump after a chain stalls. Raise this only with a reason. "
                   + "Needs hops > 0."),
+                new ArgumentSpec("initial_perturb_sigma", "number",
+                    "The kick on the FIRST hop only, before the design has ever been minimised. "
+                  + "Default 0.001, the same as hop_sigma. Its job is different: it breaks exact "
+                  + "symmetry, since a design sitting on a stationary point has nowhere to go. "
+                  + "Raise it to start the search from a deliberately disturbed design - useful "
+                  + "off a skeleton, where the starting point is a guess rather than a design - "
+                  + "without making every later hop that violent. Needs hops > 0."),
                 new ArgumentSpec("hop_figuring", "boolean",
                     "Whether a hop also kicks the FIGURING variables - conic and the aspheric "
                   + "terms. Default false, matching LensHH-LT. They are still OPTIMISED at "
@@ -370,6 +377,7 @@ internal static class ActionTools
             Hops = Integer(a, "hops") ?? 0,
             HopSigma = Number(a, "hop_sigma") ?? 0.001,
             HopFiguring = Flag(a, "hop_figuring") ?? false,
+            InitialPerturbSigma = Number(a, "initial_perturb_sigma") ?? 0.001,
             Chains = Integer(a, "chains") ?? 0,
             Seed = Integer(a, "seed") ?? 1234,
             GlassSubstitution = !string.IsNullOrWhiteSpace(substitution),

@@ -735,6 +735,21 @@ disappointment. Seeds 7 and 23 over thirty hops give the same merit to every pri
 the same r⁴ to five, kicked or not. What the default buys is that the kick is spent where it can
 choose a basin instead of where it cannot.
 
+**The first hop takes its own sigma, which until now it did not.** `--initial-sigma`
+(`initial_perturb_sigma` over MCP) sizes the kick applied before the design has ever been
+minimised. That kick has a different job from the ones after it: it breaks exact symmetry, since
+a design sitting on a stationary point has nowhere to go, while every later kick is asking to be
+moved somewhere new. Raise it to start from a deliberately disturbed design — useful off a
+skeleton, where the starting point is a guess rather than a design — without making every
+subsequent hop that violent.
+
+The option existed from the first optimizer commit, `01fa6a4`, with exactly that reasoning
+written on it, and was **never connected to anything**. The first hop was kicked at `HopSigma`
+like all the others. The two default to the same 0.001, so no run and no test could tell the
+difference, and nothing said so: a knob that is documented, exported and inert is the quietest
+kind of defect, because reading the code confirms the feature and only grepping for the reference
+refutes it. Connecting it changes no default behaviour, which is asserted rather than assumed.
+
 Steps are in units of each variable's **natural scale**, computed from the Jacobian as the step
 that moves the merit by a set amount, capped by what the parameter can plausibly do on this design
 (curvatures against the focal length, thicknesses against the total track). A search that stepped
@@ -860,6 +875,7 @@ in the base folder, not beside the shell.
 | `--chains <n>` | default 0 = one per processor |
 | `--seed <n>` | default 1234 |
 | `--hop-sigma <s>` | size of a hop, in natural steps |
+| `--initial-sigma <s>` | size of the first hop only; default 0.001, the same as `--hop-sigma` |
 | `--hop-figuring` | kick the conic and aspheric terms too; off by default, and they are optimised either way |
 | `--glass_substitution <catalogue>` | let the hopping try glasses from that catalogue |
 | `--dir <path>` | take bare names against this folder, for this run only |
