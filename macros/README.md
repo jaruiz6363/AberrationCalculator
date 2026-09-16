@@ -34,9 +34,12 @@ in OpticStudio - see below.
 
 ### Stage F, the ninth order
 
-Off by default (`q9 = 0`, near the top of the file). Set it to 1 and the macro adds the
-coefficient of **quaternary — ninth-order — spherical aberration**, per surface, with the
-six intermediate `r` rows Buchdahl prints beside it.
+The coefficient is ALWAYS computed and always published to the call buffer; `q9 = 0`, near
+the top of the file, gates only whether BUCH7 PRINTS it. That is because `ROBB.ZPL` reads it
+out of the buffer and cannot set a variable in BUCH7 to ask for it - ZPL does not document
+whether a child macro shares the parent's variables, which is why the buffer exists. Set
+`q9 = 1` and the per-surface table appears, with the six intermediate `r` rows Buchdahl
+prints beside the answer.
 
 Source: Buchdahl, *Optical Aberration Coefficients IV: The Coefficient of Quaternary
 Spherical Aberration*, **J. Opt. Soc. Am. 48**, 757 (1958).
@@ -61,6 +64,14 @@ ninth order, as he published none at the seventh.
 
 Results land in `tt` columns 241–248, which were free: stage D ends at 240 and the array
 is declared with 250.
+
+**The conversion to transverse measure is the one step here without a second route.** Stage D
+puts each tau into transverse measure by `efac * um^a * hmax^b`; that rule is confirmed at
+twenty points, and at `a = 7, b = 0` it agrees with `sB7 * fnum`, which arrives by a different
+path. Ninth-order spherical is `a = 9, b = 0`, so it extends to `efac * um^9` — the natural
+continuation, but every point confirming the rule has total degree SEVEN and this has degree
+nine. BUCH7 prints the unconverted value beside the converted one so that a wrong scale is
+diagnosable rather than merely suspected.
 
 **What is checked and what is not.** The twelve formulas were diffed mechanically against
 `QuaternarySpherical.cs`, which reproduces Buchdahl's printed Sigma1 table to a few parts
@@ -737,6 +748,39 @@ what they imply about the spot.
 The call goes in one direction only. BUCH7 publishes its totals into the call buffer and
 calls nothing; ROBB calls BUCH7 and reads them back. Were both to call each other the pair
 would recurse until OpticStudio gave up, so the call lives in exactly one of them.
+
+
+### The `+B9` column, and why it stands apart
+
+ROBB prints five truncations, not four. The first four are nested cuts of **one** series —
+third, third plus fifth, plus B7, full seventh. The fifth adds **ninth-order spherical
+alone**, read from call-buffer slot 47.
+
+Adding it cost almost nothing, which is the point worth recording: the macro has no table of
+constants. Every term is stored as four numbers — coefficient, ρ power `a`, field power `b`,
+θ-function id — and the pupil average of any product is closed form. B9 is `a = 9, b = 0` with
+**the same θ functions B and B7 already use** (2 in `eps_y`, 5 in `eps_z`), so none of the
+eleven surviving θ pairings changed and no integral was re-derived. It is four lines in each
+component.
+
+**On axis the column is exact and completes the order.** Every other ninth-order term carries
+a power of the field, so at `H = 0` spherical *is* the whole ninth order, and the gap between
+the last two columns there is a real measurement.
+
+**Off axis it is a fragment of that order** — some twenty terms absent — and a partial order
+carries no guarantee of improvement, because terms of one order routinely cancel against each
+other. This repository has measured that even *complete* orders are not monotone: on the worst
+design in [../docs/spot-prediction.md](../docs/spot-prediction.md) the seventh-order truncation
+misses by 134 µm, the ninth by 11, and the eleventh by 11.8 — worse than the ninth. The macro
+prints that caveat above the table rather than leaving it here.
+
+It is kept as a separate column, not folded into `full 7th`, for exactly that reason. Column
+three is already `+B7 only` — the previous order plus spherical alone — so the shape is one the
+file established before this.
+
+**Neither column has been run in OpticStudio.** See the stage F note above: the arithmetic is
+checked against the C#, the transverse conversion of B9 is not checked at all, and nothing here
+has met a live `nsm`.
 
 It was written the other way round first - BUCH7 as the parent calling ROBB - which works
 equally well, because the call buffer carries data in both directions: the shipped

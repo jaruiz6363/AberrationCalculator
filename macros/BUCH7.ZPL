@@ -1509,57 +1509,87 @@ PRINT "Analyze > Aberrations > Seidel Coefficients and the fifth against FIFTHOR
 ! length, and his triplet runs to six figures, which is why he chose it.
 ! =================================================================================
 
+! THE COMPUTATION BELOW IS UNCONDITIONAL; q9 gates only the PRINTING further down.
+! ROBB.ZPL reads the transverse total out of the call buffer, and it cannot set a
+! variable in this macro to ask for it - ZPL does not document whether a child macro
+! shares the parent's variables, which is exactly why the call buffer exists. So the
+! coefficient is always formed and always published, and q9 decides only whether this
+! macro prints it. That costs fourteen entries per surface on a table of two hundred
+! and forty, which is nothing.
+
+FOR i = 1, nsm, 1
+
+   q9v2 = tt(i, 156)
+   q9v9 = q9v2 * q9v2
+
+   ! r1 and r2 - sums over the surfaces BEFORE this one, the convention t69 to
+   ! t80 follow for the secondary and t15 to t19 for the primary. Guarded the way
+   ! the t69 block above is, rather than trusting FOR m = 1, 0, 1 to do nothing.
+   tt(i, 241) = 0
+   tt(i, 242) = 0
+   IF (i > 1)
+      FOR m = 1, i - 1, 1
+         tt(i, 241) = tt(i, 241) + tt(m, 132)
+         tt(i, 242) = tt(i, 242) + tt(m, 133)
+      NEXT
+   ENDIF
+
+   ! The three rows feeding r3, which are M (21.7) written out.
+   q9a = ((tt(i, 83) - tt(i, 9) - tt(i, 20)) * tt(i, 15) + tt(i, 69)) * tt(i, 81) + tt(i, 6) * tt(i, 241) - tt(i, 242)
+   q9b = ((0.5 * tt(i, 20) + tt(i, 9) - tt(i, 83)) * tt(i, 20) + tt(i, 9) * tt(i, 83) - tt(i, 86)) * tt(i, 9)
+   q9c = (0.5 * tt(i, 15) * tt(i, 82) - tt(i, 6) * tt(i, 70) + tt(i, 102)) * tt(i, 15) + tt(i, 16) * tt(i, 86) - tt(i, 21) * tt(i, 69)
+
+   ! r3 = T1-dagger. The sum here is the THREE rows above and nothing else.
+   tt(i, 243) = (2.5 * tt(i, 83) - 3.0 * tt(i, 9)) * tt(i, 83) * tt(i, 83) + tt(i, 20) * tt(i, 70) + q9a + q9b + q9c
+
+   ! The intrinsic coefficient, Eq. (2.15). t34 is Buchdahl's w and t10 his a_p,
+   ! so the 280/8 below is the 35 that equation carries.
+   tt(i, 244) = 0.25 * (q9v9 - tt(i, 9)) * tt(i, 10)
+   tt(i, 245) = (17.0 * tt(i, 2) - 9.0 * q9v2) * tt(i, 7) * tt(i, 244)
+   tt(i, 246) = (41.0 * q9v2 - 87.0 * tt(i, 2)) * tt(i, 7) * tt(i, 38) / 3.0
+
+   tt(i, 247) = (280.0 * tt(i, 34) * tt(i, 34) * tt(i, 34) + tt(i, 245) + tt(i, 246)) * tt(i, 10) / 8.0
+
+   ! The induced rows of Eq. (3.1). t8 is omega-tilde, t25 is A-dagger, t101 is
+   ! S1-dagger, t121 is the intrinsic tertiary spherical t1p, and t122 is z2 -
+   ! the one mu = 2 entry the paper keeps, every other one being irrelevant here.
+   q9d = ((-0.5 * tt(i, 8) * tt(i, 25) - tt(i, 48) + tt(i, 49)) * tt(i, 15) - tt(i, 8) * tt(i, 69) + tt(i, 122)) * tt(i, 15)
+   q9e = ((tt(i, 25) * tt(i, 25) + 6.0 * tt(i, 101)) * tt(i, 25) + 3.0 * tt(i, 243)) * tt(i, 10)
+   q9f = (4.0 * tt(i, 15) * tt(i, 43) + 7.0 * tt(i, 121)) * tt(i, 25) + tt(i, 43) * tt(i, 69)
+
+   ! And the last row, whose sum is the FOUR above it - the intrinsic included.
+   tt(i, 248) = (2.0 * tt(i, 25) * tt(i, 25) + tt(i, 101)) * 5.0 * tt(i, 38) + tt(i, 247) + q9d + q9e + q9f
+
+NEXT
+
+q9sum = 0
+FOR i = 1, nsm, 1
+   q9sum = q9sum + tt(i, 248)
+NEXT
+
+! ---------------------------------------------------------------------------------
+! INTO TRANSVERSE MEASURE, AND THIS IS THE ONE STEP HERE THAT IS NOT CHECKED.
+!
+! Stage D puts each tau into transverse measure by efac * um^a * hmax^b, where a is
+! its aperture degree and b its field degree - VEC1(1) to VEC1(20) above. That rule is
+! confirmed at twenty points, a running from seven down to zero, and at a = 7, b = 0 it
+! agrees with sB7 * fnum, which reaches the same number by a different route.
+!
+! Ninth-order spherical is a = 9, b = 0, so the rule extends to efac * um^9. It is the
+! natural continuation and nothing here contradicts it - but every point that confirms
+! the rule has total degree SEVEN, and this has degree nine. Whether Buchdahl's
+! quaternary coefficient is augmented in the same sense that M (31.11)'s single factor
+! 1/(N_k' v_pk') assumes is not something this file can settle.
+!
+! So the unconverted value is printed beside the converted one. If the spot ROBB builds
+! from it ever looks wrong by a clean factor, this line is the first place to look, and
+! the raw number is there to check it against.
+! ---------------------------------------------------------------------------------
+
+up9 = up7 * um * um
+q9t = q9sum * efac * up9
+
 IF (q9 == 1)
-
-   FOR i = 1, nsm, 1
-
-      q9v2 = tt(i, 156)
-      q9v9 = q9v2 * q9v2
-
-      ! r1 and r2 - sums over the surfaces BEFORE this one, the convention t69 to
-      ! t80 follow for the secondary and t15 to t19 for the primary. Guarded the way
-      ! the t69 block above is, rather than trusting FOR m = 1, 0, 1 to do nothing.
-      tt(i, 241) = 0
-      tt(i, 242) = 0
-      IF (i > 1)
-         FOR m = 1, i - 1, 1
-            tt(i, 241) = tt(i, 241) + tt(m, 132)
-            tt(i, 242) = tt(i, 242) + tt(m, 133)
-         NEXT
-      ENDIF
-
-      ! The three rows feeding r3, which are M (21.7) written out.
-      q9a = ((tt(i, 83) - tt(i, 9) - tt(i, 20)) * tt(i, 15) + tt(i, 69)) * tt(i, 81) + tt(i, 6) * tt(i, 241) - tt(i, 242)
-      q9b = ((0.5 * tt(i, 20) + tt(i, 9) - tt(i, 83)) * tt(i, 20) + tt(i, 9) * tt(i, 83) - tt(i, 86)) * tt(i, 9)
-      q9c = (0.5 * tt(i, 15) * tt(i, 82) - tt(i, 6) * tt(i, 70) + tt(i, 102)) * tt(i, 15) + tt(i, 16) * tt(i, 86) - tt(i, 21) * tt(i, 69)
-
-      ! r3 = T1-dagger. The sum here is the THREE rows above and nothing else.
-      tt(i, 243) = (2.5 * tt(i, 83) - 3.0 * tt(i, 9)) * tt(i, 83) * tt(i, 83) + tt(i, 20) * tt(i, 70) + q9a + q9b + q9c
-
-      ! The intrinsic coefficient, Eq. (2.15). t34 is Buchdahl's w and t10 his a_p,
-      ! so the 280/8 below is the 35 that equation carries.
-      tt(i, 244) = 0.25 * (q9v9 - tt(i, 9)) * tt(i, 10)
-      tt(i, 245) = (17.0 * tt(i, 2) - 9.0 * q9v2) * tt(i, 7) * tt(i, 244)
-      tt(i, 246) = (41.0 * q9v2 - 87.0 * tt(i, 2)) * tt(i, 7) * tt(i, 38) / 3.0
-
-      tt(i, 247) = (280.0 * tt(i, 34) * tt(i, 34) * tt(i, 34) + tt(i, 245) + tt(i, 246)) * tt(i, 10) / 8.0
-
-      ! The induced rows of Eq. (3.1). t8 is omega-tilde, t25 is A-dagger, t101 is
-      ! S1-dagger, t121 is the intrinsic tertiary spherical t1p, and t122 is z2 -
-      ! the one mu = 2 entry the paper keeps, every other one being irrelevant here.
-      q9d = ((-0.5 * tt(i, 8) * tt(i, 25) - tt(i, 48) + tt(i, 49)) * tt(i, 15) - tt(i, 8) * tt(i, 69) + tt(i, 122)) * tt(i, 15)
-      q9e = ((tt(i, 25) * tt(i, 25) + 6.0 * tt(i, 101)) * tt(i, 25) + 3.0 * tt(i, 243)) * tt(i, 10)
-      q9f = (4.0 * tt(i, 15) * tt(i, 43) + 7.0 * tt(i, 121)) * tt(i, 25) + tt(i, 43) * tt(i, 69)
-
-      ! And the last row, whose sum is the FOUR above it - the intrinsic included.
-      tt(i, 248) = (2.0 * tt(i, 25) * tt(i, 25) + tt(i, 101)) * 5.0 * tt(i, 38) + tt(i, 247) + q9d + q9e + q9f
-
-   NEXT
-
-   q9sum = 0
-   FOR i = 1, nsm, 1
-      q9sum = q9sum + tt(i, 248)
-   NEXT
 
    PRINT " "
    PRINT "Ninth order - quaternary spherical aberration, per surface"
@@ -1577,7 +1607,11 @@ IF (q9 == 1)
 
    PRINT " "
    FORMAT 15.6 EXP
-   PRINT "Ninth-order spherical, system total", q9sum
+   PRINT "Ninth-order spherical, unconverted     ", q9sum
+   PRINT "Ninth-order spherical, transverse (B9) ", q9t
+   PRINT " "
+   PRINT "The transverse value carries efac * um^9, which extends a rule confirmed only"
+   PRINT "at total degree seven. It is the one conversion here without a second route."
 
    PRINT " "
    PRINT "Buchdahl's rule of thumb, from the closing paragraph of paper IV: a system"
@@ -1612,10 +1646,12 @@ ENDIF
 ! which stage D already converted per tau. Sending the unconverted per-surface
 ! quantities instead would give a spot in no units at all.
 !
-! The call buffer holds fifty-one numeric slots and thirty-four are needed, so the
-! whole coefficient set fits with room for the two control values. Slot 45 carries a
-! handshake, so that a caller can tell the difference between coefficients that are
-! genuinely zero and a run of this macro that never got here.
+! The call buffer holds fifty-one numeric slots. Thirty-four carry the third, fifth
+! and seventh orders, slot 47 the ninth, and slots 45, 46 and 48 are control values -
+! so the whole set fits with room to spare. Slot 45 carries a handshake, so that a
+! caller can tell the difference between coefficients that are genuinely zero and a run
+! of this macro that never got here; 46 and 48 say whether the seventh and the ninth
+! order are present at all.
 !
 ! This stage is reached only if stage D completed. The earlier GOTO 999 exits -
 ! an afocal system, a chief ray with no field - skip it, and slot 45 is then never
@@ -1648,6 +1684,14 @@ CALLSETDBL 16, VEC1(21)
 FOR rbk = 2, 19, 1
    CALLSETDBL rbk + 15, VEC1(20 + rbk)
 NEXT
+
+! The ninth order, which stage F formed unconditionally. Slot 48 mirrors slot 46:
+! it lets a caller tell a genuine zero from a run that never reached stage F.
+!
+! SLOT 47 CARRIES THE ONE CONVERSION IN THIS FILE WITHOUT A SECOND ROUTE - see stage F
+! for what efac * um^9 rests on. Everything else published here is confirmed twice.
+CALLSETDBL 47, q9t
+CALLSETDBL 48, 1
 
 ! Written last, so that it is set only if everything above it was.
 CALLSETDBL 45, 761976
