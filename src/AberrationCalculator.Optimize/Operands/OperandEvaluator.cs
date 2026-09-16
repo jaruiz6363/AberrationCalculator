@@ -129,11 +129,13 @@ public static class OperandEvaluator
 
         int wave = ctx.WaveIndex(op.Wave);
 
-        // Surface 0 is the object surface and contributes to nothing, so it means the system
-        // total - which is also what leaving the input off gives.
-        return op.Surface == 0
+        // Surface 0 is the object surface and contributes to nothing, so it means the system -
+        // which is also what leaving the input off gives. For a PART, the system's value is that
+        // part summed over the surfaces, which is the decomposition a designer asking "how much
+        // of this is induced" wants.
+        return op.Surface == 0 && op.Part == CoefficientPart.Total
              ? probe.Coefficients(wave)[name]
-             : probe.SurfaceCoefficients(wave, op.Surface)[name];
+             : probe.SurfaceCoefficients(wave, op.Surface, op.Part)[name];
     }
     /// </summary>
     private static Dual AsBuilt(Operand op, DesignProbe probe, OperandContext ctx)

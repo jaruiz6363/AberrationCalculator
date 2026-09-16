@@ -64,30 +64,47 @@ internal static class DoubleToDual
         InvariantDrift = p.InvariantDrift,
         InfiniteConjugate = p.InfiniteConjugate,
     };
-
     /// <summary>
-    /// A whole coefficient result, totals and per-surface contributions alike.
+    /// A whole coefficient result: the totals, and the per-surface contributions with their
+    /// intrinsic, figuring and induced parts.
     ///
-    /// <para>Only the two a merit function can reach are carried: the totals, and the per-surface
-    /// TOTAL contribution. The intrinsic, aspheric and induced arrays are diagnostics the report
-    /// prints and no operand targets, and lifting three more arrays per wavelength on a path
-    /// chosen because it is ten times cheaper would give that saving back for nothing. If an
-    /// operand ever wants them, this is the one place to add them - and a test that the sum of
-    /// the parts is the whole will say at once whether they arrived.</para>
+    /// <para>All four arrays are carried because all four are targetable. They were not, while
+    /// only the totals were - lifting arrays nothing reads would have given back the saving this
+    /// path exists for - and the cost of carrying them was measured before they were added rather
+    /// than assumed to be small.</para>
+    ///
+    /// <para><b>A null aspheric entry stays null.</b> It means a SPHERICAL surface, which has no
+    /// figuring rather than figuring of zero, and the difference matters where the two are summed:
+    /// an absent term contributes nothing and a zero-valued one would too, but only the first is
+    /// honest about a surface having no figuring to speak of.</para>
     /// </summary>
     public static AdA.BuchdahlResult Result(BuchdahlResult r)
     {
-        var perSurface = new AdA.BuchdahlTerms[r.PerSurface.Length];
-        for (int i = 0; i < perSurface.Length; i++)
-            perSurface[i] = Coefficients(r.PerSurface[i]);
-
         return new AdA.BuchdahlResult
         {
             Totals = Coefficients(r.Totals),
-            PerSurface = perSurface,
+            PerSurface = Many(r.PerSurface),
+            Intrinsic = Many(r.Intrinsic),
+            Induced = Many(r.Induced),
+            Aspheric = ManyOrNull(r.Aspheric),
             FNumber = r.FNumber,
             Lagrange = r.Lagrange,
         };
+    }
+
+    private static AdA.BuchdahlTerms[] Many(BuchdahlTerms[] source)
+    {
+        var d = new AdA.BuchdahlTerms[source.Length];
+        for (int i = 0; i < d.Length; i++) d[i] = Coefficients(source[i]);
+        return d;
+    }
+
+    private static AdA.BuchdahlTerms?[] ManyOrNull(BuchdahlTerms?[] source)
+    {
+        var d = new AdA.BuchdahlTerms?[source.Length];
+        for (int i = 0; i < d.Length; i++)
+            d[i] = source[i] == null ? null : Coefficients(source[i]!);
+        return d;
     }
 
     public static AdA.BuchdahlTerms Coefficients(BuchdahlTerms t)

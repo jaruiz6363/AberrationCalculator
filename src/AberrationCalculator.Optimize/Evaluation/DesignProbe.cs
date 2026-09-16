@@ -120,43 +120,86 @@ public sealed class DesignProbe
     /// </summary>
     public AdA.BuchdahlTerms Coefficients(int wave) => Whole(Clamp(wave)).Totals;
 
+    public AdA.BuchdahlTerms SurfaceCoefficients(int wave, int surface) =>
+        SurfaceCoefficients(wave, surface, Operands.CoefficientPart.Total);
+
     /// <summary>
-    /// One SURFACE's contribution to the thirty-seven coefficients, in the same transverse
-    /// measure as the system totals.
+    /// One surface's contribution, or one PART of it, in the same transverse measure as the
+    /// system totals. Surface 0 means the whole system: for the total that is
+    /// <see cref="Coefficients(int)"/>, and for a part it is that part summed over the surfaces.
     ///
-    /// <para><b>The scaling is the whole of why this is not just an array lookup.</b> The chain
-    /// keeps per-surface contributions unscaled and multiplies only the totals by the F/number.
-    /// Handing a designer the raw array would give them a number in different units from the
-    /// system value printed beside it, agreeing with nothing and summing to nothing. Scaled here,
-    /// the surfaces add to the total exactly, which is the property that makes a per-surface
-    /// operand worth having at all.</para>
+    /// <para><b>The scaling is the whole of why this is not an array lookup.</b> The chain keeps
+    /// per-surface contributions unscaled and multiplies only the totals by the F/number. Handing
+    /// the raw array out would give a number in different units from the system value printed
+    /// beside it, agreeing with nothing and summing to nothing. Scaled here, the surfaces add to
+    /// the total and the three parts add to the contribution.</para>
     ///
-    /// <para><b>Tau2 to Tau20 are not here and are zero if asked for.</b> Buchdahl's scheme
-    /// reaches the twenty from totals summed over the surfaces, not surface by surface, so the
-    /// per-surface terms carry the eighteen through B7 and nothing above. The merit-function
-    /// parser refuses a tertiary coefficient with a surface for that reason - a silent zero is
-    /// the one answer worse than a refusal.</para>
+    /// <para><b>Tau2 to Tau20 are not here.</b> The scheme reaches the twenty from totals summed
+    /// over the surfaces rather than surface by surface, so the per-surface terms carry the
+    /// eighteen through B7 and nothing above; the parser refuses a tertiary coefficient with a
+    /// surface or a part for that reason, a silent zero being the one answer worse than a
+    /// refusal.</para>
     /// </summary>
-    public AdA.BuchdahlTerms SurfaceCoefficients(int wave, int surface)
+    public AdA.BuchdahlTerms SurfaceCoefficients(int wave, int surface,
+                                                 Operands.CoefficientPart part)
     {
         var whole = Whole(Clamp(wave));
+
+        if (part == Operands.CoefficientPart.Total && surface == 0) return whole.Totals;
+
+        int last = _sys.LastOpticalSurface();
         if (surface < 0 || surface >= whole.PerSurface.Length)
             throw new ArgumentOutOfRangeException(
                 nameof(surface), surface,
                 $"surface {surface} is not one this design has a contribution for");
 
-        var terms = whole.PerSurface[surface];
-        var scaled = new AdA.BuchdahlTerms();
-        Dual f = whole.FNumber;
+        var sum = new AdA.BuchdahlTerms();
+        if (surface == 0)
+            for (int i = 1; i <= last && i < whole.PerSurface.Length; i++) Add(sum, Pick(whole, i, part));
+        else
+            Add(sum, Pick(whole, surface, part));
 
-        scaled.B = terms.B * f;     scaled.F = terms.F * f;   scaled.C = terms.C * f;
-        scaled.Pi = terms.Pi * f;   scaled.E = terms.E * f;
-        scaled.B5 = terms.B5 * f;   scaled.F1 = terms.F1 * f; scaled.F2 = terms.F2 * f;
-        scaled.M1 = terms.M1 * f;   scaled.M2 = terms.M2 * f; scaled.M3 = terms.M3 * f;
-        scaled.N1 = terms.N1 * f;   scaled.N2 = terms.N2 * f; scaled.N3 = terms.N3 * f;
-        scaled.C5 = terms.C5 * f;   scaled.Pi5 = terms.Pi5 * f;
-        scaled.E5 = terms.E5 * f;   scaled.B7 = terms.B7 * f;
-        return scaled;
+        return Scale(sum, whole.FNumber);
+    }
+
+    /// <summary>The array a part comes from. A spherical surface has no aspheric entry at all.</summary>
+    private static AdA.BuchdahlTerms? Pick(AdA.BuchdahlResult r, int i, Operands.CoefficientPart part)
+        => part switch
+        {
+            Operands.CoefficientPart.Intrinsic => i < r.Intrinsic.Length ? r.Intrinsic[i] : null,
+            Operands.CoefficientPart.Figuring => i < r.Aspheric.Length ? r.Aspheric[i] : null,
+            Operands.CoefficientPart.Induced => i < r.Induced.Length ? r.Induced[i] : null,
+            _ => i < r.PerSurface.Length ? r.PerSurface[i] : null,
+        };
+
+    /// <summary>
+    /// Adds one set of terms into another. Only the eighteen that HAVE a per-surface value are
+    /// carried; tau2 to tau20 are system quantities and are refused before they reach here.
+    /// </summary>
+    private static void Add(AdA.BuchdahlTerms into, AdA.BuchdahlTerms? t)
+    {
+        if (t == null) return;         // a spherical surface's figuring: absent, not zero-valued
+
+        into.B += t.B;     into.F += t.F;     into.C += t.C;
+        into.Pi += t.Pi;   into.E += t.E;
+        into.B5 += t.B5;   into.F1 += t.F1;   into.F2 += t.F2;
+        into.M1 += t.M1;   into.M2 += t.M2;   into.M3 += t.M3;
+        into.N1 += t.N1;   into.N2 += t.N2;   into.N3 += t.N3;
+        into.C5 += t.C5;   into.Pi5 += t.Pi5; into.E5 += t.E5;
+        into.B7 += t.B7;
+    }
+
+    private static AdA.BuchdahlTerms Scale(AdA.BuchdahlTerms t, Dual f)
+    {
+        var s = new AdA.BuchdahlTerms();
+        s.B = t.B * f;     s.F = t.F * f;     s.C = t.C * f;
+        s.Pi = t.Pi * f;   s.E = t.E * f;
+        s.B5 = t.B5 * f;   s.F1 = t.F1 * f;   s.F2 = t.F2 * f;
+        s.M1 = t.M1 * f;   s.M2 = t.M2 * f;   s.M3 = t.M3 * f;
+        s.N1 = t.N1 * f;   s.N2 = t.N2 * f;   s.N3 = t.N3 * f;
+        s.C5 = t.C5 * f;   s.Pi5 = t.Pi5 * f; s.E5 = t.E5 * f;
+        s.B7 = t.B7 * f;
+        return s;
     }
 
     /// <summary>

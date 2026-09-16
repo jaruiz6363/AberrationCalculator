@@ -18,6 +18,7 @@ thirty-seven coefficients is an operand, written as the name the report prints i
     Pi5,   2, TAR 0          # fifth-order field curvature
     M2,    5, TAR 0          # sagittal oblique spherical
     M2,    5, TAR 0, 5       # ...and SURFACE 5's share of it alone
+    M2.IND, 5, MAX 1e-3, 5   # ...or a bound on what is INDUCED in surface 5
     Tau15, 1, TAR 0          # the seventh order too
 
 They cost almost nothing together, because all thirty-seven come out of one run of the scheme,
@@ -25,9 +26,13 @@ and they answer a question a predicted spot cannot: a spot mixes eighteen coeffi
 number, and two designs whose `tau15` differs by a factor of five predict the same spot to one
 part in ten thousand.
 
-A surface number after the target takes **that surface's share** instead of the system's, and the
-shares add to the total exactly. That is the question a table of totals cannot be asked - not
-whether the design is wrong but *which surface, and is it that surface's own doing*.
+A surface number after the target takes **that surface's share** instead of the system's, and a
+`.INT`, `.FIG` or `.IND` suffix takes one part of it - what the surface generates itself, what its
+figuring adds, or what was induced in it by everything ahead. The parts add to the contribution
+and the contributions add to the total, exactly. That is the question a table of totals cannot be
+asked - not whether the design is wrong but *which surface, and is it that surface's own doing*.
+The two readings call for opposite actions: an intrinsic aberration is corrected where it is
+generated, an induced one is a reaction to something upstream.
 
 **There are two optimizers**, and which you want depends on whether you are improving a design or
 looking for a different one.

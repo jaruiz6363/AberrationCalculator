@@ -14,6 +14,43 @@ namespace AberrationCalculator.Optimize.Operands;
 /// contributes exactly zero to the merit function and exactly zero to the Jacobian while it is
 /// satisfied, which is what lets a design carry twenty manufacturability constraints without
 /// any of them pulling on the solution until one is actually threatened.</para>
+
+/// <summary>
+/// Which PART of a coefficient an <see cref="OperandType.ABER"/> operand measures.
+///
+/// <para>A surface's contribution is three things, and a designer needs them apart because they
+/// answer to different actions. What the surface generates out of its own curvature and the rays
+/// reaching it is corrected by bending THIS surface. What its figuring adds is corrected by
+/// changing the figuring. What was INDUCED in it by the aberration already accumulated ahead of
+/// it is not the surface's doing at all, and correcting it here is a second wrong balancing a
+/// first - the fix is upstream.</para>
+///
+/// <para>Shafer's case for the split is that the limiting aberrations of a corrected design
+/// cannot be controlled without it: "This can only be done effectively, however, if the 5th-order
+/// aberration surface contributions are broken into two components: the intrinsic component and
+/// the induced component." See <c>docs/references.md</c>.</para>
+///
+/// <para><b>There is no induced part at third order</b>, and that is arithmetic rather than an
+/// omission: a third-order contribution is built from the surface's own quantities alone, so
+/// there is nothing for an earlier surface to act on. <c>B.IND</c> is legitimately zero
+/// everywhere, and the parser says so rather than letting it be mistaken for a corrected
+/// design.</para>
+/// </summary>
+public enum CoefficientPart
+{
+    /// <summary>Intrinsic plus figuring plus induced. The default, written by naming no part.</summary>
+    Total = 0,
+
+    /// <summary>What the surface generates on its own, before figuring and before anything induced.</summary>
+    Intrinsic = 1,
+
+    /// <summary>What its conic and r^4, r^6, r^8 terms add. Zero on a sphere.</summary>
+    Figuring = 2,
+
+    /// <summary>What the aberration already reaching the surface generates in it.</summary>
+    Induced = 3,
+}
+
 /// </summary>
 public sealed class Operand
 {
@@ -73,6 +110,12 @@ public sealed class Operand
     public string? Coefficient { get; init; }
 
     /// <summary>
+    /// Which part of that coefficient: the whole contribution, or the intrinsic, figuring or
+    /// induced share of it. <see cref="CoefficientPart.Total"/> for every other operand type.
+    /// </summary>
+    public CoefficientPart Part { get; init; }
+
+    /// <summary>
     /// Whether the quantity this operand DIFFERENTIATES is the reciprocal of the one it is
     /// declared and reported in.
     ///
@@ -107,7 +150,7 @@ public sealed class Operand
             // into the report beside the value, and "ABER" in a column of thirty-seven of them
             // would tell a reader nothing at all.
             var s = Type == OperandType.ABER && !string.IsNullOrEmpty(Coefficient)
-                  ? Coefficient!
+                  ? Coefficient! + Io.MeritFile.PartSuffix(Part)
                   : Type.ToString();
             foreach (var input in OperandInputs.For(Type))
             {

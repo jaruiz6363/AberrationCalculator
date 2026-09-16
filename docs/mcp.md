@@ -97,7 +97,8 @@ vouch for its answer. The reporting tools above are unaffected and handle figuri
 
 **Any of the thirty-seven aberration coefficients can be targeted**, for the system or for one
 surface, written as its own name -
-`B, 1, TAR 0`, `Tau15, 2, TAR 0`, `M2, 1, TAR 0, 5` for surface 5 alone - which is how the
+`B, 1, TAR 0`, `Tau15, 2, TAR 0`, `M2, 1, TAR 0, 5` for surface 5 alone, `M2.IND, 1, MAX 1e-3, 5`
+for the part of it induced there - which is how the
 report prints them. The shares add to the total exactly. They are free in bulk,
 because all thirty-seven come out of one run of the scheme.
 
