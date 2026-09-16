@@ -57,10 +57,10 @@ OPTIONS
                       SETTINGS. Without <mf>, the settings come from the sidecar
                       file beside the lens (<lensfile>.mf) and, for a .lhlt, from
                       the lens itself - a .lhlt states which surfaces have variable
-                      curvatures and thicknesses, with what bounds, and its pickups,
-                      and all of that is read and honoured. Its own MERIT FUNCTION is
-                      NOT read: this tool optimises a different one, and leaves the
-                      original untouched in the file.
+                      curvatures, thicknesses, conics and aspheric terms, with what
+                      bounds, and its pickups, and all of that is read and honoured.
+                      Its own MERIT FUNCTION is NOT read: this tool optimises a
+                      different one, and leaves the original untouched in the file.
 
                       SAVING. The optimised design goes back in the format it came
                       from, editing that file rather than regenerating it, so that
