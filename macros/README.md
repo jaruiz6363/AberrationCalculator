@@ -19,7 +19,9 @@ for that is upstream of the surface the total blames, and a table of totals cann
 
 ### Status
 
-All five stages are written and all five pass, at either conjugate.
+Stages A to E are written and all five pass, at either conjugate. Stage F, the ninth
+order, is written and its arithmetic is checked against the C#, but it has not been run
+in OpticStudio - see below.
 
 | stage | contents | agrees with | result |
 |---|---|---|---|
@@ -28,6 +30,46 @@ All five stages are written and all five pass, at either conjugate.
 | C | Buchdahl's Table I, t1 to t155, per surface | `reference/CookeTriplet_TableI.txt` | 155 of 155 to 7e-16 |
 | D | the twenty tau, intrinsic and induced per surface | that file's tau block, and a Forbes series trace at 250 mm | 420 of 420; 20 of 20 to every printed digit |
 | E | publishes the coefficients into the call buffer for `ROBB.ZPL` to read and turn into an RMS spot radius | `Prms.cs`, and the `rms_spot` tool, on the same lens | 33 of 33 to every printed digit |
+| F | the NINTH order - quaternary spherical aberration, per surface, `q9 = 1` | Buchdahl's own Table I in paper IV, through `QuaternarySpherical.cs` | formulas identical to the C# by mechanical diff; **not yet run in OpticStudio** |
+
+### Stage F, the ninth order
+
+Off by default (`q9 = 0`, near the top of the file). Set it to 1 and the macro adds the
+coefficient of **quaternary — ninth-order — spherical aberration**, per surface, with the
+six intermediate `r` rows Buchdahl prints beside it.
+
+Source: Buchdahl, *Optical Aberration Coefficients IV: The Coefficient of Quaternary
+Spherical Aberration*, **J. Opt. Soc. Am. 48**, 757 (1958).
+
+**Why it is only fourteen lines of arithmetic.** Paper IV builds the quaternary as "an
+appendix to that for the set of tertiary coefficients", so every quantity it needs is
+already an entry of Table I that stages A to D computed. Buchdahl: "the computing scheme
+is quite brief, viz. only 14 entries of the usual kind per surface."
+
+**It needs no dual run**, though Sec. 3 sounds as if it does — it says obtaining
+`T1-dagger` "requires `T1q`" via identity M (21.7), and then performs that reduction
+himself: the three rows feeding `r3` *are* M (21.7) written out in p-side quantities.
+
+**Two different sums, and Buchdahl flags it himself** because confusing them gives a
+plausible wrong number: the sum in the `r3` row "exceptionally indicates the sum of the
+entries in the three preceding rows", while the sum in the last row takes the **four**
+above it, the intrinsic row included.
+
+**Spherical surfaces only**, which is this macro's limit anyway — a conic or an even
+asphere stops BUCH7 long before stage F. Buchdahl published no aspheric arrangement at the
+ninth order, as he published none at the seventh.
+
+Results land in `tt` columns 241–248, which were free: stage D ends at 240 and the array
+is declared with 250.
+
+**What is checked and what is not.** The twelve formulas were diffed mechanically against
+`QuaternarySpherical.cs`, which reproduces Buchdahl's printed Sigma1 table to a few parts
+in a million against a system figure of −172968. That makes the *transcription* checked.
+The macro itself has **not been run in OpticStudio** — nobody here has one — so its
+paraxial inputs, its `tt` indices under a live `nsm`, and its printing are unverified.
+Running it on a Cooke triplet and comparing with `abcalc --quaternary` is the outstanding
+check, and it is worth doing precisely because the two reach the same fourteen rows through
+different paraxial data.
 
 ### Where the numbers come from, and what merely agrees with them
 

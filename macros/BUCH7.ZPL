@@ -67,6 +67,24 @@
 paraxmode = PMOD()
 PARAXIAL ON
 eps = 1E-10
+
+! Set to 1 to add stage F, the coefficient of QUATERNARY - ninth-order - spherical
+! aberration, by Buchdahl paper IV (J. Opt. Soc. Am. 48, 757, 1958). Off by default
+! because it is a fifteenth column on a report that is already wide, and because
+! almost nobody needs it: everything else here stops at the seventh order and that
+! is enough for most designs. It is worth switching on when a predicted spot and a
+! traced one part company ON AXIS, because the residual there has otherwise to be
+! ATTRIBUTED to the ninth order rather than measured.
+!
+! It costs nothing to leave on. Paper IV builds the quaternary as an appendix to the
+! tertiary scheme, so every quantity the fourteen rows need is an entry of Table I
+! that stages A to D have already computed - fourteen more entries per surface on a
+! table of two hundred and forty.
+!
+! SPHERICAL SURFACES ONLY, which is this macro's own limit anyway: a conic or an
+! even-asphere term stops BUCH7 before it reaches here. Buchdahl published no
+! aspheric arrangement at the ninth order, as he published none at the seventh.
+q9 = 0
 wl = PWAV()
 
 ns = NSUR()
@@ -1439,6 +1457,135 @@ PRINT "The third and fifth orders above are unconverted per surface - multiply b
 PRINT "the F/number, which is done for their totals. Check the third order against"
 PRINT "Analyze > Aberrations > Seidel Coefficients and the fifth against FIFTHORD."
 
+
+
+! =================================================================================
+! STAGE F - the coefficient of QUATERNARY (ninth-order) spherical aberration.
+!
+! Buchdahl, "Optical Aberration Coefficients. IV. The Coefficient of Quaternary
+! Spherical Aberration", J. Opt. Soc. Am. 48, 757 (1958). Its Table I is the
+! fourteen rows below, and he says of them that "the computing scheme is quite
+! brief, viz. only 14 entries of the usual kind per surface. It is constructed
+! along the usual lines, and no further comment is required."
+!
+! WHY IT IS SO SHORT. Paper IV builds the quaternary as "an appendix to that for
+! the set of tertiary coefficients", so every quantity it needs is already an entry
+! of Table I. Stages A to D computed all of them; this stage only reads tt.
+!
+! IT NEEDS NO DUAL RUN, though Sec. 3 sounds as if it does. Sec. 3 says the one
+! quantity in its Eq. (3.1) not explicit in the tertiary scheme is T1-dagger, and
+! that obtaining it "requires T1q", through the identity M (21.7). Buchdahl then
+! performs that reduction himself - the three rows feeding r3 below ARE M (21.7)
+! written out, in p-side quantities alone. Reading Sec. 3 without the table sends
+! an implementer looking for a second pass that is not wanted.
+!
+! THE TWO SIGMA CONVENTIONS DIFFER, and Buchdahl flags it because confusing them
+! gives a plausible wrong number rather than an obvious one: the sum in the r3 row
+! "exceptionally indicates the sum of the entries in the three preceding rows",
+! while the sum in the last row follows the usual convention and takes the FOUR
+! above it, the intrinsic row included. Both are written out here as explicit
+! additions rather than as a running total, so neither can quietly gain a row.
+!
+! WHERE THE RESULTS GO. tt columns 241 to 248, which are free - stage D ends at
+! 240 and the array is declared with 250.
+!
+!    241 r1, the accumulated tertiary spherical    244 r4
+!    242 r2, its barred partner                    245 r5
+!    243 r3, T1-dagger                             246 r6
+!                                                  247 intrinsic q1p
+!                                                  248 total q1p
+!
+! CHECKED AGAINST HIS OWN PRINTED TABLE. Paper IV computes all of this for the
+! triplet Sigma1 and prints the six r rows beside the answer, so a wrong
+! transcription shows up at a named row rather than at a total. The C# in this
+! repository reproduces that table to a few parts in a million, against a system
+! figure of -172968; this macro is the same fourteen rows reached through
+! OpticStudio's paraxial data instead, so agreement between the two is a check
+! across implementations rather than a repeat of one.
+!
+! UNITS. Buchdahl's, unconverted, as the per-surface third and fifth orders above
+! are. His own rule of thumb from the closing paragraph: a system meant to work at
+! f/2 should aim at individual contributions of at most order 1000 at unit focal
+! length, and his triplet runs to six figures, which is why he chose it.
+! =================================================================================
+
+IF (q9 == 1)
+
+   FOR i = 1, nsm, 1
+
+      q9v2 = tt(i, 156)
+      q9v9 = q9v2 * q9v2
+
+      ! r1 and r2 - sums over the surfaces BEFORE this one, the convention t69 to
+      ! t80 follow for the secondary and t15 to t19 for the primary. Guarded the way
+      ! the t69 block above is, rather than trusting FOR m = 1, 0, 1 to do nothing.
+      tt(i, 241) = 0
+      tt(i, 242) = 0
+      IF (i > 1)
+         FOR m = 1, i - 1, 1
+            tt(i, 241) = tt(i, 241) + tt(m, 132)
+            tt(i, 242) = tt(i, 242) + tt(m, 133)
+         NEXT
+      ENDIF
+
+      ! The three rows feeding r3, which are M (21.7) written out.
+      q9a = ((tt(i, 83) - tt(i, 9) - tt(i, 20)) * tt(i, 15) + tt(i, 69)) * tt(i, 81) + tt(i, 6) * tt(i, 241) - tt(i, 242)
+      q9b = ((0.5 * tt(i, 20) + tt(i, 9) - tt(i, 83)) * tt(i, 20) + tt(i, 9) * tt(i, 83) - tt(i, 86)) * tt(i, 9)
+      q9c = (0.5 * tt(i, 15) * tt(i, 82) - tt(i, 6) * tt(i, 70) + tt(i, 102)) * tt(i, 15) + tt(i, 16) * tt(i, 86) - tt(i, 21) * tt(i, 69)
+
+      ! r3 = T1-dagger. The sum here is the THREE rows above and nothing else.
+      tt(i, 243) = (2.5 * tt(i, 83) - 3.0 * tt(i, 9)) * tt(i, 83) * tt(i, 83) + tt(i, 20) * tt(i, 70) + q9a + q9b + q9c
+
+      ! The intrinsic coefficient, Eq. (2.15). t34 is Buchdahl's w and t10 his a_p,
+      ! so the 280/8 below is the 35 that equation carries.
+      tt(i, 244) = 0.25 * (q9v9 - tt(i, 9)) * tt(i, 10)
+      tt(i, 245) = (17.0 * tt(i, 2) - 9.0 * q9v2) * tt(i, 7) * tt(i, 244)
+      tt(i, 246) = (41.0 * q9v2 - 87.0 * tt(i, 2)) * tt(i, 7) * tt(i, 38) / 3.0
+
+      tt(i, 247) = (280.0 * tt(i, 34) * tt(i, 34) * tt(i, 34) + tt(i, 245) + tt(i, 246)) * tt(i, 10) / 8.0
+
+      ! The induced rows of Eq. (3.1). t8 is omega-tilde, t25 is A-dagger, t101 is
+      ! S1-dagger, t121 is the intrinsic tertiary spherical t1p, and t122 is z2 -
+      ! the one mu = 2 entry the paper keeps, every other one being irrelevant here.
+      q9d = ((-0.5 * tt(i, 8) * tt(i, 25) - tt(i, 48) + tt(i, 49)) * tt(i, 15) - tt(i, 8) * tt(i, 69) + tt(i, 122)) * tt(i, 15)
+      q9e = ((tt(i, 25) * tt(i, 25) + 6.0 * tt(i, 101)) * tt(i, 25) + 3.0 * tt(i, 243)) * tt(i, 10)
+      q9f = (4.0 * tt(i, 15) * tt(i, 43) + 7.0 * tt(i, 121)) * tt(i, 25) + tt(i, 43) * tt(i, 69)
+
+      ! And the last row, whose sum is the FOUR above it - the intrinsic included.
+      tt(i, 248) = (2.0 * tt(i, 25) * tt(i, 25) + tt(i, 101)) * 5.0 * tt(i, 38) + tt(i, 247) + q9d + q9e + q9f
+
+   NEXT
+
+   q9sum = 0
+   FOR i = 1, nsm, 1
+      q9sum = q9sum + tt(i, 248)
+   NEXT
+
+   PRINT " "
+   PRINT "Ninth order - quaternary spherical aberration, per surface"
+   PRINT "Buchdahl IV, J. Opt. Soc. Am. 48, 757 (1958), Table I. Unconverted, as the"
+   PRINT "third and fifth orders above are. INTRINSIC is what the surface makes on its"
+   PRINT "own; TOTAL adds what it makes by acting on the aberration already reaching it."
+   FORMAT 15.6 EXP
+   PRINT "  surf      intrinsic          total      T1-dagger             r1             r2"
+   FOR i = 1, nsm, 1
+      FORMAT 5.0 INT
+      PRINT i,
+      FORMAT 15.6 EXP
+      PRINT tt(i, 247), tt(i, 248), tt(i, 243), tt(i, 241), tt(i, 242)
+   NEXT
+
+   PRINT " "
+   FORMAT 15.6 EXP
+   PRINT "Ninth-order spherical, system total", q9sum
+
+   PRINT " "
+   PRINT "Buchdahl's rule of thumb, from the closing paragraph of paper IV: a system"
+   PRINT "intended to work at f/2 should aim at individual contributions of at most"
+   PRINT "order 1000 at unit focal length. His own triplet runs to six figures, which"
+   PRINT "is why he chose it - it is a poorly corrected system and the table shows it."
+
+ENDIF
 
 ! =================================================================================
 ! STAGE E - publish the coefficients into the call buffer, so that a parent macro
