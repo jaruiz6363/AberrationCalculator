@@ -80,19 +80,29 @@ are out of place; and `base_path`, which says what folder bare file names are ta
 | `contributions` | which aberration is costing the design its performance |
 | `surface_breakdown` | intrinsic, aspheric and induced, per surface |
 | `surface_share` | each surface's share of the spot, and how much of it is induced |
-| `seventh_order` | third, fifth and seventh order per surface, intrinsic and induced, the seventh by the Forbes series trace - the one that handles aspheres (*text*) |
+| `seventh_order` | third, fifth and seventh order per surface, intrinsic and induced, the seventh by the Forbes series trace - the one that handles aspheres. Takes an optional `degree`, 3 to 8: three is the seventh order and higher carries the orders ABOVE it, which is how to find out whether a design's residual is seventh order at all (*text*) |
 | `aspheric_screen` | whether a design would exercise the aspheric seventh-order path hard enough to test it (*text*) |
 | `distortion_from_coefficients` | how far the coefficients can be trusted for distortion, against rays - NOT the way to get a distortion figure, for which the traced column beside them is the answer (*text*) |
 
 ### `optimize`
 
 Optimises a lens against a merit function given inline as text, and reports what changed.
-Every derivative it uses is analytic - see [docs/optimizer.md](optimizer.md) - including through PRMSA, the
-predicted spot. **Spherical surfaces only:** the optimiser differentiates Buchdahl's spherical
-routine and keeps figuring out of its inner loop altogether, so a figured design - or a conic
-asked to be a variable - is refused before the run. The reporting tools above are unaffected and
-handle figuring throughout, the seventh order through the separate aspheric routine, which
-agrees with Forbes' series trace on every figured test design.
+Every derivative it uses is analytic - see [docs/optimizer.md](optimizer.md) - including through
+PRMSA, the predicted spot. **Conics and even aspheres are carried**, as values and as variables
+(`CC`, `A4`, `A6`, `A8`): a figured surface takes the aspheric arrangement of Buchdahl's Sec. 85,
+which agrees with Forbes' series trace to 2E-10 or better, a spherical one takes his own
+published table bit for bit, and a figured flat in collimated light takes the same chain in
+Laurent series arithmetic, differentiated. A design is refused only when that series route cannot
+vouch for its answer. The reporting tools above are unaffected and handle figuring throughout.
+
+**Any of the thirty-seven aberration coefficients can be targeted**, written as its own name -
+`B, 1, TAR 0`, `Tau15, 2, TAR 0` - which is how the report prints it. They are free in bulk,
+because all thirty-seven come out of one run of the scheme.
+
+The tool's own description carries the full merit-function and variables syntax, generated from
+the same tables the parsers read, and `McpToolsTests` requires every example in it to parse. A
+tool description that lies about its own arguments is worse than one that says nothing, because
+the caller has no way to check it.
 
 | argument | |
 |---|---|
@@ -101,7 +111,7 @@ agrees with Forbes' series trace on every figured test design.
 | `variables` | variables and pickups as text, in the `.var` format. A `.lhlt` carries its own |
 | `method` | `lm`, `psd2`, `psd3` (default) or `hj` |
 | `iterations` | local iterations, or iterations per hop |
-| `hops`, `chains`, `seed` | basin hopping, off by default |
+| `hops`, `chains`, `seed`, `hop_sigma` | basin hopping, off by default. `hop_sigma` is the per-hop kick in units of each variable's own scale, default 0.001 - a whisper rather than a shove, and measured to be right: a large kick lands the design somewhere unrelated and the acceptance test then compares two unfinished designs |
 | `glass_substitution` | name of a substitution catalogue the hopping may take glasses from, e.g. `CoreSet28` |
 | `save_to` | where to write the result. Under hopping this is a **folder**, and one design per chain goes into it. **Nothing is written without it** |
 

@@ -9,8 +9,8 @@ are **analytic everywhere**, including through the predicted spot — which is a
 thirty-seven aberration coefficients reached through some five thousand lines of Buchdahl's
 computing scheme.
 
-**It works on spherical surfaces only.** That is a deliberate restriction, and the reasoning is
-below.
+**It carries conics and even aspheres**, and the figured flat in collimated light too. The
+reasoning is below.
 
 ## The derivatives are exact
 
@@ -73,7 +73,7 @@ rounding. On a plane it is total: the flat-surface starting guess is already exa
 returns on its first pass, and a plano surface being bent reports that bending it does not move
 the ray at all. The finite-difference check caught it; nothing else would have.
 
-## Spherical surfaces only
+## Figuring, and what is carried
 
 The coefficients come from **Buchdahl's computing scheme** — closed-form sums over the paraxial
 ray data, with no trace, no fit and no linear solve. It is the fastest route to a seventh-order
@@ -81,44 +81,140 @@ coefficient there is, and it is why the predicted spot can be evaluated tens of 
 times in a search.
 
 It handles a conic or an even asphere correctly at third and fifth order. At **seventh** order a
-figured system needs an aspheric arrangement Buchdahl never published as a table. This
-repository now has one, as a separate routine (`BuchdahlAsphericScheme`), and it agrees with
-Forbes' series trace on every figured test design to 2E-10 or better — but it is a different
-computation: members of the barred q accumulation from the identities of M Sec. 22, the last of
-them from a second, DUAL run of the whole scheme (paper XII Sec. 6), and the figuring's two
-halves carried through separate passes. Until September 2026 it was a reconstruction the rays
-rejected, by up to a factor of four on `tau20`.
+figured system needs an aspheric arrangement Buchdahl never published as a table, and this
+repository's reconstruction of it is a separate routine, `BuchdahlAsphericScheme`. Until
+September 2026 that reconstruction was one the rays rejected, by up to a factor of four on
+`tau20`, and **this optimizer refused every figured design** on that ground. It was the right
+refusal: descending a quantity wrong by a factor of four is not slow, it is aimed wrongly.
 
-A figured design is still **refused before anything runs**, and a conic or aspheric coefficient
-cannot be declared a variable at all — `VariableKind` has no such member, and the merit-function
-parser recognises `CC` and `A4` in order to *explain* the refusal rather than report them as a
-typo.
+**That arrangement is now established** — all twenty tau against Forbes' series trace to between
+2E-13 and 2E-10 on every figured design, the rays agreeing with both, and an independent
+transcription in `macros/BUCH7_ASPH.ZPL` reproducing `FORBES.ZPL` inside OpticStudio. See
+[docs/verification.md](verification.md). So the optimizer carries figuring: a conic and the r^4,
+r^6 and r^8 terms are variables like any other, spelled `CC`, `A4`, `A6` and `A8`.
 
-**Why refuse rather than route.** The aspheric routine could be differentiated too — it is
-compiled into the dual-number build alongside the spherical one — but carrying two routes means
-every evaluation asks which one it is on, and asks whether each surface is figured, in the middle
-of the arithmetic, and the figured one costs a second run of the scheme. Those questions get
-answered once, at the door, or they get answered tens of thousands of times a second. Refusing up
-front keeps the evaluation loop free of them entirely: there is not one test for figuring anywhere
-inside it. Lifting the restriction is now a decision about cost, not about correctness.
+**The route is not chosen in the inner loop**, which was the second objection and did not survive
+contact with the code. `TertiaryCoefficients.Attach` makes the choice once per evaluation, out of
+data it has already computed — not per surface, and not inside the arithmetic. A spherical design
+travels the path it always did, bit for bit.
 
-That decision also disposes of a hazard rather than merely avoiding it. Buchdahl's chain is full
-of sparse skips of the shape `if (coefficient == 0.0) continue;`, which are sound in ordinary
-arithmetic and a trap under differentiation: a quantity that is zero *because nobody has moved it
-yet* has value nothing and a derivative of something, and dropping its term leaves the value
-perfectly right while the gradient goes silently short. With figuring out of scope, every one of
-those skips is correct again exactly as written, and the fast path stays fast.
+**What is still refused is not a class of design.** The figured flat facing collimated light was
+the last one, and it is carried now — see below. What remains is a failure to CONVERGE: the
+series route vouches for itself or it is not used, and on a design where it cannot, the run is
+refused rather than allowed to keep values that are not finite in any useful sense. That is a
+measurement on the design in front of it rather than a rule about a shape.
 
-The hazard does not disappear entirely, because it is not only about conics. A **plane** surface
-has zero curvature, so the conic term of its sag is skipped — and if that curvature is a variable
-being bent, the term has value nothing and derivative `r^2/2`. The two places where that arises,
-`Surface.Sag` and `RealRayTrace.SagSlope`, therefore ask `SMath.Vanishes` instead of `== 0.0`,
-which is the same comparison in `double` and additionally asks about the derivative in the dual
-build. `ACurvatureVariableStartingAtExactlyZeroKeepsItsGradient` is the test.
+### The figured flat in collimated light, differentiated
 
-**The analysis side is unaffected.** `abcalc <lens>`, `--forbes`, `--screen` and
-`--distortion-coefficients` handle conics and even aspheres at every order they report, exactly
-as before. It is only the optimizer that is spherical.
+A Schmidt corrector plate — a flat with r⁴ figuring in a collimated beam — has an identically
+zero marginal incidence. The incidence ratio is infinite, and the finite coefficients arrive
+only after terms carrying different powers of it cancel. The analysis side has reached them for
+a long time by running the whole chain in Laurent series arithmetic with that surface's curvature
+as the series variable and reading the answer at e⁰.
+
+**The optimizer could not, and refused the design.** That route was compiled into Core alone; in
+the differentiating build the call had no body and compiled away, so the optimizer would have had
+a right value beside a silently wrong derivative. Refusing was the only honest option, because
+nothing downstream could tell the difference.
+
+**It is carried now, by a fifth arithmetic.** `DualSeries` is a dual number whose value and
+derivative are each a `LaurentSeries`, and `AberrationCalculator.Core.Series.Ad` compiles the same
+Core sources against it:
+
+    Core             Scalar = double          the analysis
+    Core.Ad          Scalar = Dual            the optimizer's derivatives
+    Core.Series      Scalar = LaurentSeries   the flat in collimated light
+    Core.Series.Ad   Scalar = DualSeries      both at once
+
+**Why a dual OF series and not a series OF duals.** Both compute the same thing. The other way
+round means making `LaurentSeries` generic over its coefficient type — some three hundred lines
+of delicate, already-verified arithmetic edited for a case it was not written for, with the
+sparse-skip hazard waiting at every `== 0.0` inside it. This way `LaurentSeries` is not touched at
+all: every operation is the ordinary dual rule with the existing series arithmetic underneath, so
+the half that was validated against Forbes stays exactly the code that was validated, and what is
+new is one small struct whose rules are in every textbook.
+
+**Why reading the two off independently is legitimate.** The answer wanted is the e⁰ coefficient,
+and extracting a coefficient is linear — so the e⁰ term of the derivative series IS the derivative
+of the e⁰ term. Nothing has to be re-derived to justify it.
+
+**The one duplication, and the test that guards it.** The formulas are not duplicated; both builds
+compile the same Core sources. What is written twice is about thirty lines of orchestration —
+trace, coefficients, scheme, Table I, increments, tau, convert — because the double file carries a
+diagnostic apparatus this build has no use for. If the two drifted, the derivative would belong to
+a different calculation from the value, and the Jacobian check could not see it: that compares the
+derivative against differences of the SAME route, so it would pass while the value came from
+somewhere else. `TheDifferentiatedSeriesRouteAgreesWithTheDoubleOneOnValue` is the guard, and it
+requires the two routes to agree on all thirty-seven coefficients.
+
+**Measured**, on `Ladder2_FlatFigured`: the value agrees with the double route on all
+thirty-seven, and the derivatives of `tau2` through `tau20` match central differences with respect
+to a curvature, a thickness and the corrector's own r⁴ term. The tolerance there is looser than
+the ordinary Jacobian check and deliberately so — the quantity being differenced is itself the
+e⁰ term of a truncated series, so the central difference carries the series' truncation error on
+top of its own. It is the less accurate of the two instruments, not the more.
+
+One further case is worth recording because it looks like the bug and is not. Figuring a DUMMY
+surface — air on both sides — changes nothing, because every figuring term in the scheme carries
+`n' - n`. The derivative is zero and so is the central difference, and
+`FiguringASurfaceThatCannotRefractHasNoEffectEitherWay` pins both halves, so a legitimate zero
+column can be told apart from the one the broken route used to produce.
+
+### The sparse-skip hazard, which figuring made real
+
+Buchdahl's chain is full of skips of the shape `if (coefficient == 0.0) continue;`. They are
+sound in ordinary arithmetic and a trap under differentiation: a quantity that is zero *because
+nobody has moved it yet* has value nothing and a derivative of something, and dropping its term
+leaves the value perfectly right while the gradient goes silently short.
+
+This was known and handled for one case — a **plane** surface whose curvature is being bent, in
+`Surface.Sag` and `RealRayTrace.SagSlope`, which ask `SMath.Vanishes` instead of `== 0.0`.
+`Vanishes` is the same comparison in `double` and additionally asks about the derivative in the
+dual build, so a structural zero is still skipped and the fast path stays fast.
+
+**Carrying figuring made the same hazard bite much harder, and it took a test to find it.** The
+case is the one a designer actually meets: a spherical surface, a conic declared variable, and
+the optimizer asked whether figuring it would help. The conic is 0 on the first evaluation. Every
+gate deciding whether the aspheric arrangement runs at all was a magnitude test on the VALUE —
+`SMath.Abs(conic) > Eps`, `Abs(a) > 1e-30`, `a4 == 0.0` — so the surface read as a sphere, the
+whole aspheric block was skipped, and every coefficient came back with a correct value and a zero
+derivative. **The merit function would have been right and the gradient identically zero**, and
+the optimizer would have reported that figuring the surface does not help, because it could not
+see that it would. Seven gates in four files now ask `Vanishes`:
+`BuchdahlCoefficients` (the conic and the three polynomial terms), `Surface.IsFigured`,
+`TertiaryCubics.Figuring.From` and the polynomial multiply, `TertiaryScriptT`'s two expansions,
+and one height-ratio shift in `BuchdahlAsphericScheme`.
+
+`AFiguringVariableStartingAtExactlyZeroKeepsItsGradient` and
+`HigherAsphericVariablesStartingAtZeroKeepTheirGradients` are the tests, and they failed before
+the fix in the way that matters — the gradient was not wrong by a little, it was absent.
+
+### What it costs
+
+A figured evaluation is more work than a spherical one and always will be; the aspheric scheme is
+a different and larger computation than Buchdahl's table. It is now considerably cheaper than it
+was, because removing it uncovered a whole wasted pass.
+
+`BuchdahlTableI.Compute` opened with a full recursive call to itself, assigned to a local that
+nothing ever read — left behind by an approach that differenced against the unfigured system and
+was abandoned before it was finished. It cost an entire extra pass of the scheme on every
+evaluation of every figured design. Invisible while figured designs were only analysed one at a
+time; not invisible at tens of thousands of evaluations a run. Measured, best of three runs of
+three hundred, one machine:
+
+| design | before | after |
+|---|---|---|
+| `Ladder2_A4_Both` | 0.385 ms | 0.258 ms |
+| `CookeTriplet_SPOTM_..._A4_A8` | 0.557 ms | 0.326 ms |
+| `CookeTriplet`, spherical | 0.063 ms | 0.066 ms |
+| `KingslakeDG`, spherical | 0.087 ms | 0.092 ms |
+
+A figured evaluation is 1.5 to 1.7 times faster. The spherical rows are the control: the dead
+pass never ran there, so nothing should have moved, and what small movement there is is the
+measurement's own spread.
+
+**The analysis side is unaffected**, as it always was. `abcalc <lens>`, `--forbes`, `--screen`
+and `--distortion-coefficients` handle conics and even aspheres at every order they report.
 
 ## Three files
 
@@ -201,6 +297,7 @@ so `RY, 1, TAR 0, 7` is surface seven at the reference colour, the full field an
 | `PX PY PZ PL PM PN` | paraxial ray position and direction cosines | `surface, wave, hy, px, py` |
 | `RX RY RZ RL RM RN` | the same for a real ray | `surface, wave, hy, px, py` |
 | `ASBLT` | wavefront error a build tolerance would induce | `decentre, tilt, wave` |
+| a coefficient name | one named aberration coefficient (`ABER` internally) | `wave` |
 
 `hy` is a **fraction of the maximum field**, 0 on axis and 1 at the corner — not an index into the
 field list, so a merit function can ask for seven tenths of the field whether or not the design
@@ -216,6 +313,111 @@ not at the semi-diameter the file declared: a declared semi-diameter is a consta
 the optimizer that thinning a lens costs nothing at its edge when the beam is still the size it
 was.
 
+
+### Targeting a named aberration coefficient
+
+The thirty-seven coefficients this program computes can be targeted individually, and **an
+operand is written as the coefficient's own name** — the same name the report prints, so there is
+no table between what a designer reads and what they type:
+
+```
+B,     1, TAR 0                 # third-order spherical to zero
+Pi5,   2, TAR 0                 # fifth-order field curvature
+M2,    5, TAR 0                 # sagittal oblique spherical - Shafer's limiting aberration
+Tau15, 1, MIN -1e-3, MAX 1e-3   # and a seventh-order term held inside a band
+```
+
+Internally that is the `ABER` operand with the coefficient carried beside it; `ABER` on its own is
+refused, because it does not say which. The names are `B F C Pi E` at third order,
+`B5 F1 F2 M1 M2 M3 N1 N2 N3 C5 Pi5 E5` at fifth, and `B7` with `Tau2` to `Tau20` at seventh.
+Case does not matter. `B7` and `Tau1` are the same quantity by two routes and only `B7` is
+spelled.
+
+**Why this is worth having beside `PRMSA`.** A predicted spot mixes eighteen coefficients into one
+number, and it is a poor instrument for asking about any single one: two designs whose `tau15`
+differs by a factor of five predict the same spot to one part in ten thousand, which is measured
+in [verification.md](verification.md) and not assumed. A designer flattening a field or balancing
+oblique spherical against fifth-order astigmatism is asking about the coefficient, and `PRMSA`
+cannot hear that question.
+
+It is also what makes a merit function with no rays in it practical. Shafer's case for that —
+*"it is much quicker to try out many different configurations and ideas if there are no rays in
+the merit function and you are only correcting the 3rd and 5th-order aberrations"* — needs the
+coefficients targetable individually, not only their weighted sum. See
+[references.md](references.md).
+
+**They are free in bulk.** Every coefficient comes out of one run of Buchdahl's scheme, which the
+probe computes once per wavelength and caches, so a merit function of twenty coefficient operands
+costs what one costs. That is what makes a coefficient-only merit function a practical way to
+work rather than merely a possible one.
+
+**System totals, in transverse measure** — the numbers the report prints, so a target and a
+reading cannot disagree. Per-surface contributions are reported by the analysis side and are not
+targetable: the probe caches the system totals alone, and lifting the per-surface arrays into the
+differentiating build is work that has not been done. It is the obvious next step for anyone who
+wants to say "surface 5 should contribute no coma".
+
+#### Which coefficient is which aberration
+
+A designer reading Shafer, or Kidger, or a specification, meets aberrations by their names -
+*fifth-order field curvature*, *sagittal oblique spherical* - and has to type a symbol. This is
+that lookup, and it is the same mapping `AberrationNames` uses to annotate the report, so the
+name beside a number in a report is the name in this table.
+
+The classical names are R. B. Johnson's, "Polynomial Ray Aberrations Computed in Various Lens
+Design Programs," *Appl. Opt.* **12**, 2079 (1973), Table I — the standard nomenclature Robb
+cites. **Johnson's own finding is the reason to read the monomial column too:** he compared six
+programs and found "significant variances in term definitions", so a named aberration means
+little without the term it names. The monomial is what the coefficient multiplies in the
+transverse polynomial, ρ the pupil radius and H the field.
+
+| | coefficient | aberration | multiplies |
+|---|---|---|---|
+| **3rd** | `B` | spherical | ρ³ |
+| | `F` | linear coma | ρ²H |
+| | `C` | astigmatism | ρH² |
+| | `Pi` | Petzval field curvature | ρH² |
+| | `E` | distortion | H³ |
+| **5th** | `B5` | spherical | ρ⁵ |
+| | `F1` `F2` | linear coma — the pair together | ρ⁴H |
+| | `M1` `M3` | oblique spherical, **tangential** — with `M2` | ρ³H² |
+| | `M2` | oblique spherical, **sagittal** | ρ³H² |
+| | `N1` `N2` | elliptical coma, tangential | ρ²H³ |
+| | `N3` | elliptical coma, oblique | ρ²H³ |
+| | `C5` | astigmatism — with `Pi5` | ρH⁴ |
+| | `Pi5` | Petzval / field curvature — with `C5` | ρH⁴ |
+| | `E5` | distortion | H⁵ |
+| **7th** | `B7` | spherical. Robb's `tau1`, and the only tertiary term FIFTHORD and this program's own fifth-order working both reach | ρ⁷ |
+| | `Tau2` `Tau3` | coma | ρ⁶H |
+| | `Tau4` `Tau5` `Tau6` | oblique spherical | ρ⁵H² |
+| | `Tau7` `Tau8` `Tau9` `Tau10` | *no classical counterpart* | ρ⁴H³ |
+| | `Tau11` `Tau12` `Tau13` `Tau14` | *no classical counterpart* | ρ³H⁴ |
+| | `Tau15` `Tau16` `Tau17` | elliptical coma | ρ²H⁵ |
+| | `Tau18` `Tau19` | astigmatism / field curvature | ρH⁶ |
+| | `Tau20` | distortion | H⁷ |
+
+**The seventh-order rows name a family rather than an aberration, and two name nothing.**
+`AberrationNames` gives the third and fifth orders the names Johnson tabulates. For the tertiary
+there is nothing to look up — the classical vocabulary was built for a set that stops at the
+fifth, where there are six monomials against the seventh's eight — so the family is *derived*
+from the monomial by the rule the named orders already follow: no field is spherical, one power
+of field coma, two oblique spherical; no aperture is distortion, one power of aperture
+astigmatism and field curvature, two elliptical coma. All eleven named coefficients come out of
+that rule, which is what makes applying it at seventh order reading the pattern rather than
+inventing one. `TheFamilyRuleReproducesTheNamedOrders` is the anchor.
+
+ρ⁴H³ and ρ³H⁴ get nothing, and that is the honest answer rather than a gap: they have no third-
+or fifth-order counterpart to be named after. They are described by what they multiply, which is
+exact.
+
+**This table was wrong when first written**, and the rule above is what fixed it. Elliptical coma
+and astigmatism were put two rows too high — elliptical coma is two powers of APERTURE, not two
+of field — because the rows were typed out by hand against no rule at all. That is the argument
+for deriving them: a hand-written table has no way to be checked against the pattern it is
+supposed to follow.
+**Shafer's two limiting aberrations, in this notation**, since they are the ones he argues a
+design is decided by: *fifth-order field curvature* is `Pi5` (with `C5`), and *sagittal oblique
+spherical* is `M2`. See [references.md](references.md).
 ### What the predicted spot cannot see
 
 `PRMSA` is the obvious thing to ask for and it is not sufficient on its own. Robb's spot is the
@@ -314,7 +516,7 @@ VAR CV 4 MIN -0.05 MAX 0.05
 PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1  # surface 2's thickness follows surface 1's
 ```
 
-`CV` and `TH`, and nothing else — see **Spherical surfaces only** above.
+`CV`, `TH`, `CC`, `A4`, `A6` and `A8` — see **Figuring, and the one case still refused** above.
 
 **A `VAR` line merges into what is already known.** `VAR TH 2 MIN 1.0` followed by
 `VAR TH 2 MAX 25.0` leaves both limits, not the second alone. For a file this program writes the

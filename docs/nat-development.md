@@ -641,10 +641,11 @@ C: 1, S1: -1, S3,S4: 1, S5: 2, S6: 3`, with barred coefficients taking an extra 
 his `e` is not unity. A coefficient right and its power of `e` wrong looks like a plausible
 number, not an error.
 
-**The optimiser stays spherical-only.** Stage 2 changes nothing about that rule; it adds an
-operand made of third-order quantities, and the refusal in `SphericalOnly.cs` is about Buchdahl's
-reconstructed seventh-order aspheric increment, which NAT never touches. Stage 3's analysis
-accepts conics precisely because it stops at third order.
+**Nothing here changes what the optimiser accepts.** Stage 2 adds an operand made of third-order
+quantities; the optimiser's own restriction was never about NAT and NAT never touches it. (That
+restriction has since been lifted: the optimiser carries conics and even aspheres, and refuses
+only a figured flat facing collimated light. See [optimizer.md](optimizer.md).) Stage 3's
+analysis accepts conics precisely because it stops at third order.
 
 **It does not replace tolerance analysis.** It makes tolerance sensitivity something the optimiser
 can *see*, which is a different claim from predicting a yield.

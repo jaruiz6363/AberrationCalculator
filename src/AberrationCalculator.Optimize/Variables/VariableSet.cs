@@ -57,12 +57,12 @@ public sealed class VariableSet
     public static double Read(OpticalSystem system, Variable v)
     {
         var s = system.Surfaces[v.Surface];
-        return v.Kind switch
-        {
-            VariableKind.Curvature => s.Curvature,
-            VariableKind.Thickness => s.Thickness,
-            _ => 0.0,
-        };
+        if (v.Kind == VariableKind.Curvature) return s.Curvature;
+        if (v.Kind == VariableKind.Thickness) return s.Thickness;
+        if (v.Kind == VariableKind.Conic) return s.Conic;
+
+        int k = v.AsphericIndex;
+        return k >= 0 && k < s.AsphericCoefficients.Length ? s.AsphericCoefficients[k] : 0.0;
     }
 
     /// <summary>
@@ -91,6 +91,12 @@ public sealed class VariableSet
             {
                 case VariableKind.Curvature: s.Curvature = value; break;
                 case VariableKind.Thickness: s.Thickness = value; break;
+                case VariableKind.Conic: s.Conic = value; break;
+                default:
+                    int k = v.AsphericIndex;
+                    if (k >= 0 && k < s.AsphericCoefficients.Length)
+                        s.AsphericCoefficients[k] = value;
+                    break;
             }
         }
     }

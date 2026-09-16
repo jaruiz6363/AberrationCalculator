@@ -57,10 +57,10 @@ OPTIONS
                       SETTINGS. Without <mf>, the settings come from the sidecar
                       file beside the lens (<lensfile>.mf) and, for a .lhlt, from
                       the lens itself - a .lhlt states which surfaces have variable
-                      curvatures and thicknesses, with what bounds, and its pickups,
-                      and all of that is read and honoured. Its own MERIT FUNCTION is
-                      NOT read: this tool optimises a different one, and leaves the
-                      original untouched in the file.
+                      curvatures, thicknesses, conics and aspheric terms, with what
+                      bounds, and its pickups, and all of that is read and honoured.
+                      Its own MERIT FUNCTION is NOT read: this tool optimises a
+                      different one, and leaves the original untouched in the file.
 
                       SAVING. The optimised design goes back in the format it came
                       from, editing that file rather than regenerating it, so that
@@ -76,12 +76,12 @@ OPTIONS
                       by carrying dual numbers through the same aberration chain that
                       computes it, so there is no step size anywhere and no
                       cancellation. Coefficients come from Buchdahl's closed-form
-                      scheme, so SPHERICAL SURFACES ONLY: a figured design, or a
-                      conic asked to be a variable, is refused before the run. Not
-                      because his aspheric seventh order is in doubt - it agrees
-                      with Forbes to 2E-10 or better - but because routing to it
-                      would put a test for figuring inside the inner loop. Analysis
-                      is unaffected.
+                      scheme. CONICS AND EVEN ASPHERES ARE CARRIED, as values
+                      and as variables - CC, A4, A6, A8 - a figured surface
+                      taking the aspheric arrangement of Sec. 85 and a
+                      spherical one Buchdahl's own table. One design is
+                      refused and named: a figured flat facing collimated
+                      light. Analysis is unaffected.
                       See docs/optimizer.md for the merit-function format.
       --optimize_basin_hopping
                       Search over BASINS rather than descending one: kick the design

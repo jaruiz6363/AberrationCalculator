@@ -89,6 +89,10 @@ public static class OperandInputs
 
         OperandType.EFL => WaveOnly,
 
+        // A coefficient is a property of the whole system in one colour. There is no field to
+        // give it - the coefficient IS the field dependence - and no pupil, for the same reason.
+        OperandType.ABER => WaveOnly,
+
         // Lateral colour is a difference between the extreme wavelengths, so it needs no colour
         // of its own - only the field to measure it at. Distortion is quoted in the reference
         // colour by convention and takes the same one input.

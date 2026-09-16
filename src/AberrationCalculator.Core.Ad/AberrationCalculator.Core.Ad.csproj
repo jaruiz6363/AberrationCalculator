@@ -65,4 +65,17 @@
     <Compile Include="@(CoreSource)" Link="linked/%(Filename)%(Extension)" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <!--
+      The series arithmetic, differentiated: Scalar = DualSeries. It is what makes a figured flat
+      facing collimated light reachable HERE and not only in the plain-double build - see
+      TertiaryCoefficients.FlatCollimated.Ad.cs. Aliased for the same reason Core.Optimize aliases
+      this assembly: every name the two share would otherwise be ambiguous.
+    -->
+    <ProjectReference Include="../AberrationCalculator.Core.Series.Ad/AberrationCalculator.Core.Series.Ad.csproj">
+      <Aliases>SeriesAd</Aliases>
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

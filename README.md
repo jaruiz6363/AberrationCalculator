@@ -7,8 +7,22 @@ spot size computed from those coefficients.
 First it tells you what a lens is: the surfaces and materials as stated, the refractive index
 of every material at every wavelength in the file, the first-order layout, and the aberration
 coefficients that follow from them. Then, if you ask it to, it will change the lens: **you** say
-which curvatures and thicknesses may move and between what limits, it moves them to minimize the
-merit function you wrote, and the result goes back into the file it came from.
+what may move - curvatures, thicknesses, conic constants and the r⁴, r⁶ and r⁸ aspheric terms -
+and between what limits, it moves them to minimize the merit function you wrote, and the result
+goes back into the file it came from.
+
+**The merit function can be made of named aberrations rather than of rays.** Any of the
+thirty-seven coefficients is an operand, written as the name the report prints it under:
+
+    B,     1, TAR 0          # third-order spherical
+    Pi5,   2, TAR 0          # fifth-order field curvature
+    M2,    5, TAR 0          # sagittal oblique spherical
+    Tau15, 1, TAR 0          # and the seventh order too
+
+They cost almost nothing together, because all thirty-seven come out of one run of the scheme,
+and they answer a question a predicted spot cannot: a spot mixes eighteen coefficients into one
+number, and two designs whose `tau15` differs by a factor of five predict the same spot to one
+part in ten thousand.
 
 **There are two optimizers**, and which you want depends on whether you are improving a design or
 looking for a different one.
@@ -36,15 +50,23 @@ source**: once in `double`, which is the analysis this program has always perfor
 its tests still guard bit-for-bit, and once with the arithmetic aliased to a forward-mode dual
 number. Nothing is copied and nothing can drift, because they are the same files.
 
-**The optimizer works on spherical surfaces only.** The coefficients come from Buchdahl's
-closed-form scheme, which is the fastest route to a seventh-order coefficient there is. The
-aspheric seventh order is a separate routine - the arrangement of his Sec. 85, which he never
-published as a table, now reconstructed here and agreeing with Forbes' series trace to 2E-10 or
-better on every figured test design ([docs/verification.md](docs/verification.md)) - but it takes a second, dual run
-of the scheme, and the optimizer keeps that choice out of its inner loop by refusing a figured
-design before the run: there is not one test for figuring anywhere inside the evaluation loop.
-Reading and analysing a figured design is unaffected - the coefficient reports, `--forbes` and
-the rest handle conics and even aspheres at every order they report.
+**The optimizer carries conics and even aspheres.** The coefficients come from Buchdahl's
+closed-form scheme, which is the fastest route to a seventh-order coefficient there is; a figured
+surface takes the arrangement of his Sec. 85, which he never published as a table and which is
+reconstructed here. The optimizer refused every figured design until that reconstruction was
+established - it agrees with Forbes' series trace on all twenty tertiary coefficients to between
+2E-13 and 2E-10, and the rays agree with both ([docs/verification.md](docs/verification.md)) - and
+now a conic and the r^4, r^6 and r^8 terms are variables like any other, `CC`, `A4`, `A6`, `A8`.
+A spherical design takes Buchdahl's own published table exactly as before, bit for bit.
+
+**The figured flat in collimated light is carried too**, which was the last design the optimizer
+refused. There the incidence ratio is infinite and the finite coefficients arrive only after
+terms in different powers of it cancel; the analysis side reaches them through a Laurent series
+in that surface's curvature, and the optimizer now does the same in `DualSeries` - a dual number
+whose value and derivative are each such a series - so a Schmidt corrector plate optimises like
+anything else. What is still refused is not a class of design but a failure to converge: the
+series route vouches for itself or it is not used. See
+[docs/optimizer.md](docs/optimizer.md).
 
 PSD recovers the curvature Gauss-Newton discards, from two successive **exact** Jacobians - a
 secant that is only worth taking when both ends are real measurements, which is why nothing here
@@ -70,13 +92,16 @@ mean nothing away from the design they name.
 | variables, bounds, pickups | in the lens file | `<lens>.var` |
 | merit function | `<lens>.mf` | `<lens>.mf` |
 
-A `.lhlt` states which surfaces have variable curvatures and thicknesses, the bounds on them and
+A `.lhlt` states which surfaces have variable curvatures, thicknesses, conics and aspheric
+terms, the bounds on them and
 its pickups; all of that is read, honoured, and written back when the design is saved. Its own
 **merit function is not read** - this tool optimizes a different one - and it is left untouched in
 the file.
 
 ```
 PRMSA,   1, TAR 0                        # the predicted spot
+Pi5,     2, TAR 0                        # ONE NAMED COEFFICIENT - see the table in docs/optimizer.md
+Tau15,   1, MIN -1e-3, MAX 1e-3          # and a seventh-order one, held in a band
 EFL,   100, TAR 50,          2           # focal length, in wavelength 2
 EGT,    10, MIN 1,           2, 4        # glass edges over surfaces 2 to 4
 DTRGT,  10, MIN 1.5, MAX 12, 2, 4        # diameter-to-thickness ratio
@@ -90,10 +115,15 @@ column exists - they are not a recommendation, for the reason at the end of this
 ```
 VAR CV 1                                 # curvature of surface 1
 VAR TH 2 MIN 1.0 MAX 25.0                # a thickness, bounded
+VAR CC 3                                 # conic constant - this FIGURES the surface
+VAR A4 3                                 # and the aspheric terms: A4, A6, A8
 PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1
 ```
 
-`CV` and `TH` are the only variables, for the reason above. Limits are optional and **merge**, so
+`CV`, `TH`, `CC`, `A4`, `A6` and `A8`. The last four figure a surface, and a surface that becomes
+figured sends the seventh order down the aspheric arrangement of Buchdahl's Sec. 85 rather than
+his published table - which is why they were not offered until that arrangement was established.
+Limits are optional and **merge**, so
 setting a maximum does not discard a minimum set a moment earlier; `FREE` takes them off again.
 An operand with `TAR` is driven to it and weighed against everything else, while one with `MIN` or
 `MAX` costs *exactly zero* - in the merit and in the Jacobian - until it is threatened, which is
@@ -420,7 +450,8 @@ Working, and validated in [docs/verification.md](docs/verification.md):
 - the re-normalised per-aberration and per-surface contributions to that spot
 - the optimizer: PSD, Hooke-Jeeves and basin hopping over analytic derivatives, with the
   Jacobian checked operand by operand and variable by variable against central differences.
-  Spherical surfaces only, on purpose ([docs/optimizer.md](docs/optimizer.md))
+  Conics and even aspheres carried, as values and as variables; named aberration
+  coefficients as operands ([docs/optimizer.md](docs/optimizer.md))
 - **nodal aberration theory**, third and fifth order: what the aberrations do when the
   surfaces are not on a common axis, and where the nodes go. Driven by an `.align` sidecar
   that works the same for all six formats, and checked against Thompson's and Buchdahl's
@@ -434,6 +465,8 @@ feed to something else.
 ```
 src/AberrationCalculator.Core   models, glass, ray trace, coefficients
 src/AberrationCalculator.Core.Ad  the same source, compiled against a dual number
+src/AberrationCalculator.Core.Series    the same source, in Laurent series arithmetic
+src/AberrationCalculator.Core.Series.Ad the same source, in both at once
 src/AberrationCalculator.Optimize variables, operands, PSD, Hooke-Jeeves, basin hopping
 src/AberrationCalculator.IO     one reader per format, and the .lhlt writer
 src/AberrationCalculator.Cli    abcalc - the command-line tool
@@ -453,7 +486,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 | [docs/verification.md](docs/verification.md) | **What is actually established here, by what evidence, and what is not.** The order of evidence, the standing results, and the aspheric arrangement with everything it rests on. Read this one first if you are deciding whether to trust any number this program prints. |
 | [docs/references.md](docs/references.md) | Every source the method comes from, which of them have been read, and where each piece of the implementation came from. |
 | [docs/forbes.md](docs/forbes.md) | The second, independent route to the tertiary coefficients - a Lagrangian series trace - and why a program that already had one needed another. |
-| [docs/optimizer.md](docs/optimizer.md) | The optimiser: analytic derivatives throughout, the merit-function format, and why it works on spherical surfaces only. |
+| [docs/optimizer.md](docs/optimizer.md) | The optimiser: analytic derivatives throughout, the merit-function format, how figuring is carried, and which coefficient is which aberration. |
 | [docs/spot-prediction.md](docs/spot-prediction.md) | How well a spot predicted from coefficients matches a traced one, measured rather than asserted, and where seventh order runs out. |
 | [docs/distortion-prediction.md](docs/distortion-prediction.md) | Distortion from the coefficients against traced chief rays. The cleanest window onto a single coefficient there is, and what it found. |
 | [docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md) | What the aberrations do when the surfaces are not on a common axis, and where the nodes go. |

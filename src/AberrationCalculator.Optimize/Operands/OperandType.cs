@@ -123,4 +123,36 @@ public enum OperandType
     /// tilt in and the only angular unit this program uses.</para>
     /// </summary>
     ASBLT,
+
+    /// <summary>
+    /// ONE NAMED ABERRATION COEFFICIENT, in transverse measure - the quantity the report prints
+    /// under that name, computed the same way, so targeting one and reading it back cannot
+    /// disagree.
+    ///
+    /// <para>Which coefficient is carried on <see cref="Operand.Coefficient"/> rather than by a
+    /// member per coefficient, because there are thirty-seven of them and
+    /// <c>BuchdahlTerms.Names</c> already holds the list. In a merit function the coefficient's
+    /// own name IS the operand: <c>B, 1, TAR 0</c> and <c>TAU15, 2, TAR 0</c>. That is
+    /// deliberate - the name a designer reads in the report is the name they type here, with no
+    /// table in between.</para>
+    ///
+    /// <para><b>Why this is worth having beside PRMSA.</b> The predicted spot mixes eighteen
+    /// coefficients into one number, and a spot is a poor instrument for asking about any single
+    /// one of them: two designs whose tau15 differs by a factor of five predict the same spot to
+    /// one part in ten thousand, which is measured in <c>docs/verification.md</c> and not
+    /// assumed. A designer correcting a NAMED aberration - flattening the field, balancing
+    /// oblique spherical against fifth-order astigmatism - is asking about the coefficient
+    /// itself, and asking PRMSA instead is asking a question that cannot hear the answer.</para>
+    ///
+    /// <para>It is also what makes a merit function with no rays in it practical. Shafer's
+    /// argument for that, "it is much quicker to try out many different configurations and ideas
+    /// if there are no rays in the merit function and you are only correcting the 3rd and
+    /// 5th-order aberrations", needs the individual coefficients to be targetable, not only
+    /// their weighted sum. See <c>docs/references.md</c>.</para>
+    ///
+    /// <para><b>The system total, not a surface's share.</b> Per-surface contributions are
+    /// reported by the analysis side and are not targetable here; see the note in
+    /// <c>docs/optimizer.md</c> for what that would take.</para>
+    /// </summary>
+    ABER,
 }

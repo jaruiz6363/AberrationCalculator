@@ -57,6 +57,13 @@ public static class AdBridge
             d.Curvature = Plant(s.Curvature, planted, VariableKind.Curvature, i);
             d.Thickness = Plant(s.Thickness, planted, VariableKind.Thickness, i);
 
+            // The figuring. A conic or an r^4 term that is a variable has to arrive here
+            // seeded, exactly as a curvature does, or the column of the Jacobian belonging to
+            // it comes back zero - which reads as a variable the merit function does not
+            // depend on rather than as a derivative that was never planted.
+            d.Conic = Plant(s.Conic, planted, VariableKind.Conic, i);
+            PlantAspheric(s.AsphericCoefficients, d.AsphericCoefficients, planted, i);
+
             // Glass moves in the hopping, and the semi-diameter follows the beam, so neither is
             // as invariant as the rest. Both are plain assignments and cost nothing to keep.
             d.Material = s.Material;
@@ -103,7 +110,7 @@ public static class AdBridge
                 Type = (AdE.SurfaceType)(int)s.Type,
                 Curvature = Plant(s.Curvature, target, VariableKind.Curvature, i),
                 Thickness = Plant(s.Thickness, target, VariableKind.Thickness, i),
-                Conic = s.Conic,
+                Conic = Plant(s.Conic, target, VariableKind.Conic, i),
                 Material = s.Material,
                 CatalogName = s.CatalogName,
                 IsStop = s.IsStop,
@@ -123,9 +130,7 @@ public static class AdBridge
                 HasMarginalRaySolve = s.HasMarginalRaySolve,
             };
 
-            for (int k = 0; k < s.AsphericCoefficients.Length
-                            && k < d.AsphericCoefficients.Length; k++)
-                d.AsphericCoefficients[k] = s.AsphericCoefficients[k];
+            PlantAspheric(s.AsphericCoefficients, d.AsphericCoefficients, target, i);
 
             for (int k = 0; k < s.Parameters.Length; k++) d.SetParameter(k, s.Parameters[k]);
             for (int k = 0; k < s.Settings.Length; k++) d.SetSetting(k, s.Settings[k]);
@@ -145,6 +150,22 @@ public static class AdBridge
         if (target != null && target.Kind == kind && target.Surface == surface)
             return Dual.Seed(value);
         return value;
+    }
+
+    /// <summary>
+    /// The even-asphere coefficients, with one slot seeded if that is what is being
+    /// differentiated with respect to.
+    ///
+    /// <para>The whole array is copied every time rather than only the seeded slot, because the
+    /// coefficients are what the surface IS: a pass that copied only the seed would trace a
+    /// sphere and report the derivative of a lens that is not on the bench. Only slots 1 to 3
+    /// can be seeded - r^4, r^6, r^8 - but all of them are carried.</para>
+    /// </summary>
+    private static void PlantAspheric(double[] source, Dual[] into, Variable? target, int surface)
+    {
+        int seed = target != null && target.Surface == surface ? target.AsphericIndex : -1;
+        for (int k = 0; k < source.Length && k < into.Length; k++)
+            into[k] = k == seed ? Dual.Seed(source[k]) : source[k];
     }
 
     /// <summary>

@@ -300,11 +300,13 @@ public static class BuchdahlTableI
         // induced terms bilinearly, so the split has to be made before the accumulation and
         // not after it. Differencing against the unfigured system is right only at the surface
         // where the figuring sits, and wrong at every surface after it.
-        BuchdahlTableIRow[]? bare =
-            aspheric != null && !tertiaryHatOnly
-                ? Compute(surfaces, indices, efl, stopParameter, aspheric,
-                          tertiaryHatOnly: true, iota: iota, dual: dual)
-                : null;
+        // THERE USED TO BE A SECOND RUN HERE. A full recursive Compute with tertiaryHatOnly,
+        // assigned to a local that nothing ever read - the arrangement above was built to carry
+        // the half through its own run instead, and the difference-against-the-unfigured-system
+        // approach it belonged to was abandoned before it was finished. It cost an entire extra
+        // pass of the scheme on every evaluation of every figured design, which was invisible
+        // while figured designs were only ever analysed one at a time, and is not invisible now
+        // that the optimiser evaluates them tens of thousands of times in a run.
 
         // Carried between surfaces: the primed angles, which are what the ray transfer
         // actually propagates.

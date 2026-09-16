@@ -98,6 +98,39 @@ internal static class Program
         var tools = new JsonArray();
         foreach (var t in Tools.All)
         {
+            var properties = new JsonObject
+            {
+                ["lens_file"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] =
+                        "Path to the lens file. ZEMAX .zmx, CODE V .seq, OPTALIX "
+                      + ".otx/.opt, OSLO .len/.osl, Optiland .json or LensHH-LT .lhlt "
+                      + "- the format is taken from the extension.",
+                },
+                ["glass_dir"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] =
+                        "Optional folder of .agf catalogs to use instead of the "
+                      + "bundled ones. Note that a glass NAME alone does not say "
+                      + "whose glass it is: some formats carry no catalog, and "
+                      + "picking a different vendor's glass of the same name can "
+                      + "move the focal length by a per cent or two in silence.",
+                },
+            };
+
+            // The few reporting tools that take something of their own. Advertised here rather
+            // than described in prose, so that a caller's schema validation knows about them and
+            // an argument cannot be documented without being accepted.
+            if (t.Extra != null)
+                foreach (var spec in t.Extra)
+                    properties[spec.Name] = new JsonObject
+                    {
+                        ["type"] = spec.Type,
+                        ["description"] = spec.Description,
+                    };
+
             tools.Add(new JsonObject
             {
                 ["name"] = t.Name,
@@ -105,27 +138,7 @@ internal static class Program
                 ["inputSchema"] = new JsonObject
                 {
                     ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["lens_file"] = new JsonObject
-                        {
-                            ["type"] = "string",
-                            ["description"] =
-                                "Path to the lens file. ZEMAX .zmx, CODE V .seq, OPTALIX "
-                              + ".otx/.opt, OSLO .len/.osl, Optiland .json or LensHH-LT .lhlt "
-                              + "- the format is taken from the extension.",
-                        },
-                        ["glass_dir"] = new JsonObject
-                        {
-                            ["type"] = "string",
-                            ["description"] =
-                                "Optional folder of .agf catalogs to use instead of the "
-                              + "bundled ones. Note that a glass NAME alone does not say "
-                              + "whose glass it is: some formats carry no catalog, and "
-                              + "picking a different vendor's glass of the same name can "
-                              + "move the focal length by a per cent or two in silence.",
-                        },
-                    },
+                    ["properties"] = properties,
                     ["required"] = new JsonArray { "lens_file" },
                 },
             });
@@ -188,7 +201,7 @@ internal static class Program
         string? glass = a?["glass_dir"]?.GetValue<string>();
 
         var writer = Tools.Open(lens, glass);
-        string text = tool.Run(writer);
+        string text = tool.Run(writer, a);
 
         // Unresolved materials are reported rather than thrown: the analysis is still
         // meaningful, but every number that depends on the missing glass is not, and the

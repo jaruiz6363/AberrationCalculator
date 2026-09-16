@@ -107,6 +107,18 @@ the design now agrees with Forbes to 1.2E-9, where it was 710 per cent out
 (`FlatCollimatedSeriesTests`). That was the one exception, and it is closed: there is no figured
 case left that this program declines to compute or computes differently from Forbes.
 
+**And it is differentiated too, which it was not at first.** The series route lived in Core alone,
+so the OPTIMISER refused such a design: in the differentiating build the call had no body and
+compiled away, leaving a right value beside a silently wrong derivative. It now runs in
+`AberrationCalculator.Core.Series.Ad`, the same sources again with `Scalar` a dual number whose
+value and derivative are each a Laurent series - so value and derivative come out of one run, and
+reading them off independently is legitimate because extracting the e^0 coefficient is linear.
+Checked two ways on `Ladder2_FlatFigured`: the differentiated route reproduces the double route on
+all thirty-seven coefficients, and the derivatives of tau2 to tau20 match central differences with
+respect to a curvature, a thickness and the corrector's own r^4 term
+(`FlatCollimatedDerivativeTests`). The first of those is the one that matters, because the second
+compares a derivative against differences of its OWN route and would pass even if that route had
+drifted away from the value the analysis reports.
 **The rest of this section records how the defect looked while it was open**, and is kept rather
 than deleted because how an error was found is worth more than the fact that it was. Everything
 in it is in the past tense as a matter of fact, whatever tense it is written in.

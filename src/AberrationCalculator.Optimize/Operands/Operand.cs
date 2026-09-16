@@ -66,6 +66,13 @@ public sealed class Operand
     public string? Comment { get; init; }
 
     /// <summary>
+    /// Which aberration coefficient an <see cref="OperandType.ABER"/> operand measures, spelled
+    /// as <c>BuchdahlTerms.Names</c> spells it: <c>B</c>, <c>Pi5</c>, <c>Tau15</c>. Null for
+    /// every other type.
+    /// </summary>
+    public string? Coefficient { get; init; }
+
+    /// <summary>
     /// Whether the quantity this operand DIFFERENTIATES is the reciprocal of the one it is
     /// declared and reported in.
     ///
@@ -96,7 +103,12 @@ public sealed class Operand
     {
         get
         {
-            var s = Type.ToString();
+            // A coefficient operand is labelled by the coefficient, not by ABER - the label goes
+            // into the report beside the value, and "ABER" in a column of thirty-seven of them
+            // would tell a reader nothing at all.
+            var s = Type == OperandType.ABER && !string.IsNullOrEmpty(Coefficient)
+                  ? Coefficient!
+                  : Type.ToString();
             foreach (var input in OperandInputs.For(Type))
             {
                 switch (input)

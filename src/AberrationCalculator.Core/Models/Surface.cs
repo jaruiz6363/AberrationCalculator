@@ -186,6 +186,22 @@ public class Surface
     /// <summary>Whether the optimiser may change the thickness after this surface.</summary>
     public bool ThicknessVariable { get; set; }
 
+    /// <summary>Whether the optimiser may change this surface's conic constant.</summary>
+    public bool ConicVariable { get; set; }
+
+    /// <summary>
+    /// Whether the optimiser may change each even-asphere coefficient, indexed as
+    /// <see cref="AsphericCoefficients"/> is: [1] is the r^4 term, [2] r^6, [3] r^8.
+    ///
+    /// <para>Slot [0] is the r^2 term, which is folded into the vertex curvature before any
+    /// coefficient is computed and so would duplicate the curvature variable; and [4] upward
+    /// are r^10 and beyond, which do not appear in the third, fifth or seventh order at all.
+    /// Neither is offered. The array is the full length so that it lines up with the
+    /// coefficients it describes and with the .lhlt field of the same name, rather than being
+    /// three bools a reader has to map by hand.</para>
+    /// </summary>
+    public bool[] AsphericVariable { get; set; } = new bool[8];
+
     /// <summary>Lower limit on the curvature, or negative infinity for none.</summary>
     public double CurvatureMin { get; set; } = double.NegativeInfinity;
 
@@ -237,8 +253,16 @@ public class Surface
     {
         get
         {
-            if (SMath.Abs(Conic) > 1e-12) return true;
-            foreach (Scalar a in AsphericCoefficients) if (SMath.Abs(a) > 1e-30) return true;
+            // Vanishes, not a magnitude test, and the difference is the whole of whether a
+            // figuring variable works. In the differentiating build a conic of exactly 0 with a
+            // derivative of 1 - a spherical surface whose conic the optimiser has just been
+            // handed as a variable - is NOT absent: it is the quantity being moved. A magnitude
+            // test reads it from the value alone, calls the surface spherical, and every
+            // aberration coefficient comes back with a right value and a zero derivative, so
+            // the optimiser concludes that figuring the surface cannot help because it cannot
+            // see that it would. In plain double this is the same comparison it always was.
+            if (!SMath.Vanishes(Conic, 1e-12)) return true;
+            foreach (Scalar a in AsphericCoefficients) if (!SMath.Vanishes(a, 1e-30)) return true;
             return false;
         }
     }

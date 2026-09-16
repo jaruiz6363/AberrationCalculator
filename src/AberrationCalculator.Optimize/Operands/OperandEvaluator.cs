@@ -55,6 +55,8 @@ public static class OperandEvaluator
             OperandType.AXC => AxialColour(probe, ctx),
             OperandType.DISTF => Distortion(op, probe, ctx),
 
+            OperandType.ABER => Coefficient(op, probe, ctx),
+
             OperandType.ASBLT => AsBuilt(op, probe, ctx),
 
             _ => throw new NotSupportedException("unknown operand type " + op.Type),
@@ -108,6 +110,25 @@ public static class OperandEvaluator
     /// are weighted, exactly as PRMSA averages over them. Only the field-linear astigmatic term
     /// sees the field, and it enters squared, so the mean of the SQUARED fractional height is
     /// the exact quantity wanted rather than an approximation of it.</para>
+
+    /// <summary>
+    /// One named aberration coefficient, in transverse measure.
+    ///
+    /// <para>The same <c>BuchdahlTerms</c> the report prints, indexed by the same name, so an
+    /// operand and the report cannot disagree about what <c>Tau15</c> is. The whole cost is the
+    /// coefficient run the probe has already cached for this wavelength, so twenty coefficient
+    /// operands in one merit function cost what one costs - which is what makes a merit function
+    /// built out of them practical rather than merely possible.</para>
+    /// </summary>
+    private static Dual Coefficient(Operand op, DesignProbe probe, OperandContext ctx)
+    {
+        string name = op.Coefficient ?? "";
+        if (name.Length == 0)
+            throw new InvalidOperationException(
+                "a coefficient operand carries no coefficient name. It should not have parsed.");
+
+        return probe.Coefficients(ctx.WaveIndex(op.Wave))[name];
+    }
     /// </summary>
     private static Dual AsBuilt(Operand op, DesignProbe probe, OperandContext ctx)
     {

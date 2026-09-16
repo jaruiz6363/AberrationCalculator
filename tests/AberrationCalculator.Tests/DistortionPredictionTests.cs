@@ -446,7 +446,7 @@ public class DistortionPredictionTests
         var writer = Mcp.Tools.Open(Fixtures.Lens("CookeTriplet"), null);
         var tool = Mcp.Tools.All.Single(t => t.Name == "distortion_from_coefficients");
 
-        string text = tool.Run(writer);
+        string text = tool.Run(writer, null);
         Assert.Equal(writer.BuildDistortionText(), text);
         Assert.Contains("DISTORTION FROM THE ABERRATION COEFFICIENTS", text);
         Assert.Contains("Tau20", text);

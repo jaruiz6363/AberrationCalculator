@@ -50,6 +50,13 @@ internal static class ActionTools
         var groups = new List<(string Inputs, List<string> Types)>();
         foreach (var type in OperandHelp.All)
         {
+            // ABER is the one operand whose name in a merit function is not its name here: a
+            // coefficient is written as itself, `Tau15, 1, TAR 0`. Listing "ABER" among the
+            // types would tell the caller to write the one thing the parser refuses, and a tool
+            // description that lies about its own arguments is worse than one that says nothing.
+            // The coefficients get their own sentence beside the examples instead.
+            if (type == OperandType.ABER) continue;
+
             string inputs = OperandInputs.Describe(type);
             var group = groups.Find(g => g.Inputs == inputs);
             if (group.Types == null) groups.Add((inputs, new List<string> { type.ToString() }));
@@ -76,12 +83,13 @@ internal static class ActionTools
           + "differentiated exactly, by carrying dual numbers through the very same aberration "
           + "chain that computes the value. There is no finite difference anywhere, so no step "
           + "size to choose and no subtractive cancellation.\n\n"
-          + "SPHERICAL SURFACES ONLY. The coefficients come from Buchdahl's closed-form scheme. "
-          + "A figured design, or a conic asked to be a variable, is refused before the run - "
-          + "not because his aspheric SEVENTH order is in doubt, it agrees with Forbes' series "
-          + "trace to 2E-10 or better on every figured design, but because routing to it would "
-          + "put a test for figuring inside the evaluation loop and cost a second run of the "
-          + "scheme. The "
+          + "CONICS AND EVEN ASPHERES ARE CARRIED, as values and as variables - CC, A4, A6 and "
+          + "A8. A figured surface takes the aspheric arrangement of Buchdahl's Sec. 85, which "
+          + "agrees with Forbes' series trace on all twenty tertiary coefficients to 2E-10 or "
+          + "better; a spherical one takes his own published table, bit for bit as before; and a "
+          + "figured flat in collimated light takes the same chain in Laurent series "
+          + "arithmetic, differentiated. A design is refused only when that series route "
+          + "cannot vouch for its answer. The "
           + "ANALYSIS tools are unaffected and handle conics and even aspheres at every order "
           + "they report.\n\n"
           + "The lens file on disk is NEVER modified. Pass save_to to write the result "
@@ -101,7 +109,20 @@ internal static class ActionTools
           + "  LCF,     5, TAR 0,           1.0      # lateral colour at the full field\n"
           + "  DISTF,  10, MIN -2, MAX 2,   0.7      # distortion at seven tenths of the field\n"
           + "  RY,      1, TAR 0,           7, 1, 1, 0, 1   # surface, wave, hy, px, py\n"
+          + "  Tau15,   1, TAR 0                     # ONE NAMED ABERRATION COEFFICIENT\n"
+          + "  Pi5,     2, TAR 0                     # fifth-order field curvature\n"
+          + "  M2,      5, MIN -1e-3, MAX 1e-3       # sagittal oblique spherical, bounded\n"
           + InputsByType()
+          + "A COEFFICIENT IS WRITTEN AS ITS OWN NAME, which is how the report prints it - "
+          + "B F C Pi E at third order; B5 F1 F2 M1 M2 M3 N1 N2 N3 C5 Pi5 E5 at fifth; B7 and "
+          + "Tau2 to Tau20 at seventh. Case does not matter, and the only input any of them "
+          + "takes is the wavelength. Do NOT write ABER - it is the internal name and does not "
+          + "say which coefficient; it is refused. Coefficients are free in bulk, because they "
+          + "all come out of one run of the scheme, so a merit function of twenty of them costs "
+          + "what one costs. Prefer them to PRMSA when correcting a NAMED aberration: a "
+          + "predicted spot mixes eighteen coefficients into one number and two designs whose "
+          + "tau15 differs by a factor of five predict the same spot to one part in ten "
+          + "thousand.\n"
           + "Trailing inputs may be left off and take their "
           + "defaults. hy is a fraction of the maximum field, px and py fractions of the pupil "
           + "radius, and wavelengths are numbered from 1 - there is no zero, so leave the "
@@ -109,6 +130,8 @@ internal static class ActionTools
           + "VARIABLES - one per line, merging into whatever was said before:\n"
           + "  VAR CV 1                                 # curvature of surface 1\n"
           + "  VAR TH 2 MIN 1.0 MAX 12.0                # a thickness, bounded\n"
+          + "  VAR CC 3                                 # conic constant - FIGURES the surface\n"
+          + "  VAR A4 3                                 # and the r^4, r^6, r^8 terms: A4 A6 A8\n"
           + "  PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1  # surface 2 follows surface 1\n"
           + "A TAR operand is driven to a value; a MIN/MAX operand costs nothing while it is "
           + "satisfied.",
@@ -120,7 +143,8 @@ internal static class ActionTools
                     "The merit function as text. Either this or merit_file is required."),
                 new ArgumentSpec("variables", "string",
                     "Variables and pickups as text, in the .var format: VAR CV 1, "
-                  + "VAR TH 2 MIN 1 MAX 12, PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1. For a "
+                  + "VAR TH 2 MIN 1 MAX 12, VAR CC 3, VAR A4 3, PICKUP TH 2 INDEX 1 SCALE 1 "
+                  + "OFFSET -0.1. CV TH CC A4 A6 A8 - the last four figure the surface. For a "
                   + ".lhlt these come from the lens file itself and this is not needed."),
                 new ArgumentSpec("merit_file", "string",
                     "Path to a merit function file, instead of passing the text."),
@@ -139,6 +163,15 @@ internal static class ActionTools
                 new ArgumentSpec("chains", "integer",
                     "Independent hopping chains. Default 0 = one per processor."),
                 new ArgumentSpec("seed", "integer", "Random seed for the hopping. Default 1234."),
+                new ArgumentSpec("hop_sigma", "number",
+                    "The per-hop kick, in units of each variable's natural scale. Default 0.001, "
+                  + "and A WHISPER RATHER THAN A SHOVE ON PURPOSE. The instinct that a hop should "
+                  + "be large enough to leave the basin is wrong and was measured to be wrong: a "
+                  + "large kick lands the design somewhere unrelated, the per-hop minimisation "
+                  + "cannot recover it, and the acceptance test then compares two unfinished "
+                  + "designs. Escape is not the kick's job - it belongs to the Metropolis walk "
+                  + "and to the long jump after a chain stalls. Raise this only with a reason. "
+                  + "Needs hops > 0."),
                 new ArgumentSpec("glass_substitution", "string",
                     "Name of a substitution catalogue the hopping may take glasses from, e.g. "
                   + "CoreSet28. Glass is discrete - there is no gradient from one glass to the "
@@ -313,6 +346,7 @@ internal static class ActionTools
         {
             Iterations = Integer(a, "iterations") ?? 200,
             Hops = Integer(a, "hops") ?? 0,
+            HopSigma = Number(a, "hop_sigma") ?? 0.001,
             Chains = Integer(a, "chains") ?? 0,
             Seed = Integer(a, "seed") ?? 1234,
             GlassSubstitution = !string.IsNullOrWhiteSpace(substitution),
@@ -438,6 +472,22 @@ internal static class ActionTools
     {
         var v = a?[name];
         return v == null ? null : v.GetValue<string>();
+    }
+
+    /// <summary>A floating-point argument, accepted as a JSON number or as a string.</summary>
+    private static double? Number(JsonNode? a, string name)
+    {
+        var v = a?[name];
+        if (v == null) return null;
+        try { return v.GetValue<double>(); }
+        catch (Exception)
+        {
+            string? text = v.GetValue<string>();
+            return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture,
+                                   out double d)
+                 ? d
+                 : throw new ArgumentException($"{name} must be a number, not '{text}'");
+        }
     }
 
     private static int? Integer(JsonNode? a, string name)

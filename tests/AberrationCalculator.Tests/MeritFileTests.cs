@@ -280,20 +280,69 @@ RY,      1, TAR 0,            7, 1, 1, 0, 1
     }
 
     /// <summary>
-    /// Figuring is refused, and the refusal EXPLAINS itself. A designer writing <c>VAR CC 3</c>
-    /// has made a reasonable request this program declines; the message has to say why and what
-    /// to do instead, or it reads as a typo in a format they have got wrong.
+    /// The figuring kinds PARSE. They did not until the aspheric arrangement was established,
+    /// and the refusal used to live here, in the parser; it now lives in
+    /// <c>SphericalOnly.Require</c>, which is the layer that actually knows whether the
+    /// evaluation loop can carry a figured surface. Moving it matters because a .var file is
+    /// also read by tools that never optimise.
     /// </summary>
     [Theory]
-    [InlineData("VAR CC 3")]
-    [InlineData("VAR CONIC 3")]
-    [InlineData("VAR A4 1")]
-    public void FiguringIsRefusedWithAnExplanation(string line)
+    [InlineData("VAR CC 3", VariableKind.Conic, 3)]
+    [InlineData("VAR CONIC 3", VariableKind.Conic, 3)]
+    [InlineData("VAR A4 1", VariableKind.Asphere4, 1)]
+    [InlineData("VAR A6 2", VariableKind.Asphere6, 2)]
+    [InlineData("VAR A8 10", VariableKind.Asphere8, 10)]
+    public void FiguringKindsParse(string line, VariableKind kind, int surface)
     {
-        var ex = Assert.Throws<FormatException>(() => VarFile.Parse(new[] { line }));
-        Assert.Contains("spherical", ex.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Buchdahl", ex.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("CV and TH", ex.Message, StringComparison.Ordinal);
+        var spec = VarFile.Parse(new[] { line });
+
+        var v = Assert.Single(spec.Variables.Items);
+        Assert.Equal(kind, v.Kind);
+        Assert.Equal(surface, v.Surface);
+    }
+
+    /// <summary>
+    /// A figuring variable round-trips through the file it is written to. <c>A410</c> is the
+    /// case worth pinning: every prefix is two characters, so the surface number needs no
+    /// separator and cannot be misread.
+    /// </summary>
+    [Fact]
+    public void FiguringVariablesRoundTripThroughTheFile()
+    {
+        var spec = VarFile.Parse(new[]
+        {
+            "VAR CC 3 MIN -2 MAX 0",
+            "VAR A4 1",
+            "VAR A6 2",
+            "VAR A8 10",
+        });
+
+        var again = VarFile.Parse(VarFile.Write(spec).Split('\n'));
+
+        Assert.Equal(4, again.Variables.Count);
+        Assert.Equal("CC3", again.Variables[0].Name);
+        Assert.Equal(-2.0, again.Variables[0].Min);
+        Assert.Equal(0.0, again.Variables[0].Max);
+        Assert.Equal("A41", again.Variables[1].Name);
+        Assert.Equal("A62", again.Variables[2].Name);
+        Assert.Equal("A810", again.Variables[3].Name);
+        Assert.Equal(VariableKind.Asphere8, again.Variables[3].Kind);
+        Assert.Equal(10, again.Variables[3].Surface);
+    }
+
+    /// <summary>
+    /// r^10 and beyond are refused, and told why. They are not a typo - they are a perfectly
+    /// reasonable surface description - but no coefficient this program computes can see them,
+    /// so a variable driving one would have an identically zero column in the Jacobian and would
+    /// look like it was working.
+    /// </summary>
+    [Fact]
+    public void AsphericTermsBeyondR8AreRefusedWithTheReason()
+    {
+        var ex = Assert.Throws<FormatException>(() => VarFile.Parse(new[] { "VAR A10 2" }));
+
+        Assert.Contains("beyond r^8", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("A4, A6 or A8", ex.Message, StringComparison.Ordinal);
     }
 
     [Theory]

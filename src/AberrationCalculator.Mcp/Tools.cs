@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,11 +21,20 @@ namespace AberrationCalculator.Mcp;
 ///
 /// <para>The tools are a thin layer over <see cref="ReportWriter"/>, which the command line
 /// also uses, so the two cannot drift apart.</para>
+/// <summary>
+/// One reporting tool: hand it a lens, it hands back a reading.
+///
+/// <para>Most take nothing beyond the lens and the glass folder, which is why those two live in
+/// one shared schema rather than being restated fourteen times. <see cref="Extra"/> is for the
+/// handful that genuinely take something more - so far only the Forbes degree - and it exists
+/// because the alternative was leaving the CLI able to ask a question the MCP could not. A
+/// caller should not have to know which door they came in through.</para>
 /// </summary>
 internal sealed record Tool(
     string Name,
     string Description,
-    Func<ReportWriter, string> Run);
+    Func<ReportWriter, JsonNode?, string> Run,
+    IReadOnlyList<ArgumentSpec>? Extra = null);
 
 internal static class Tools
 {
@@ -77,6 +87,26 @@ internal static class Tools
         (alignment ?? AlignmentFile.ReadFor(lensPath)).ApplyTo(system);
         return new ReportWriter(system, catalog, Path.GetFullPath(lensPath));
     }
+    /// <summary>
+    /// The Forbes degree an argument node asks for, defaulting to 3 and refused outside 3 to 8.
+    ///
+    /// <para>Refused rather than clamped. A caller asking for degree 12 has a reason - probably a
+    /// wrong idea of what the number means - and silently giving them 8 would confirm it.</para>
+    /// </summary>
+    private static int ForbesDegree(JsonNode? a)
+    {
+        var node = a?["degree"];
+        if (node == null) return 3;
+
+        int degree = node.GetValue<int>();
+        if (degree < 3 || degree > 8)
+            throw new ArgumentException(
+                $"degree must be between 3 and 8; {degree} was asked for. Three is the seventh "
+              + "order, which is what the twenty tau are, and higher degrees carry the orders "
+              + "ABOVE it rather than improving those twenty.");
+        return degree;
+    }
+
 
     public static readonly IReadOnlyList<Tool> All = new[]
     {
@@ -85,56 +115,56 @@ internal static class Tools
           + "data, paraxial rays, Seidel, Buchdahl third/fifth/seventh order, predicted RMS "
           + "spot and the per-aberration and per-surface breakdowns. Start here; ask for one "
           + "of the table tools when a specific number is wanted.",
-            w => w.BuildReport()),
+            (w, _) => w.BuildReport()),
 
         new Tool("prescription",
             "One row per surface: radius, thickness, material, semi-diameter, conic and "
           + "aspheric terms. Tab-separated.",
-            w => w.BuildPrescriptionTsv()),
+            (w, _) => w.BuildPrescriptionTsv()),
 
         new Tool("first_order",
             "Focal length, back and front focal length, F-number, numerical aperture, "
           + "entrance and exit pupils, image height, magnification and total track. "
           + "Name/value pairs, tab-separated.",
-            w => w.BuildFirstOrderTsv()),
+            (w, _) => w.BuildFirstOrderTsv()),
 
         new Tool("paraxial_rays",
             "The marginal and chief ray height and angle at every surface. Tab-separated.",
-            w => w.BuildParaxialRaysTsv()),
+            (w, _) => w.BuildParaxialRaysTsv()),
 
         new Tool("indices",
             "Refractive index of each material at each wavelength. Tab-separated.",
-            w => w.BuildIndicesTsv()),
+            (w, _) => w.BuildIndicesTsv()),
 
         new Tool("seidel",
             "The third-order coefficients - spherical, coma, astigmatism, Petzval, "
           + "distortion and the two chromatic ones - per surface and totalled. "
           + "Tab-separated.",
-            w => w.BuildSeidelTsv()),
+            (w, _) => w.BuildSeidelTsv()),
 
         new Tool("buchdahl",
             "Third, fifth and SEVENTH order aberration coefficients, per surface and "
           + "totalled. The seventh-order set is the part this program exists for; see "
           + "`docs/verification.md` for what is and is not verified about it. Tab-separated.",
-            w => w.BuildBuchdahlTsv()),
+            (w, _) => w.BuildBuchdahlTsv()),
 
         new Tool("rms_spot",
             "Predicted RMS spot radius at each field and wavelength, and the composite "
           + "PRMSA, from the coefficients rather than from traced rays. Tab-separated.",
-            w => w.BuildPrmsTsv()),
+            (w, _) => w.BuildPrmsTsv()),
 
         new Tool("contributions",
             "Per aberration: the RMS spot it would produce on its own, and its share of the "
           + "whole. This is what says WHICH aberration is costing the design its performance. "
           + "Tab-separated.",
-            w => w.BuildContributionTsv()),
+            (w, _) => w.BuildContributionTsv()),
 
         new Tool("surface_breakdown",
             "Per surface: intrinsic, aspheric and induced contributions and their total. The "
           + "induced column is the part a designer cannot see any other way - a surface can "
           + "be blameless on its own and still spoil the system through what it induces "
           + "downstream. Tab-separated.",
-            w => w.BuildSurfaceBreakdownTsv()),
+            (w, _) => w.BuildSurfaceBreakdownTsv()),
 
         new Tool("aspheric_screen",
             "Whether this design would exercise the aspheric SEVENTH-order path hard enough "
@@ -143,7 +173,7 @@ internal static class Tools
           + "spheres, whether the series still converges at this aperture and field, and "
           + "whether the seventh order is visible at all. Use it to sort candidate test "
           + "designs before tracing any of them. Readable text.",
-            w => w.BuildAsphericScreenText()),
+            (w, _) => w.BuildAsphericScreenText()),
 
         new Tool("seventh_order",
             "Third, FIFTH and SEVENTH order aberration coefficients per surface, each split "
@@ -155,9 +185,22 @@ internal static class Tools
           + "aberration reached by two routes sharing no code, which must agree. Use this when "
           + "asked why a design will not correct, or which surface to change - a table of "
           + "totals cannot say, and the induced column can. Readable text.",
-            w => w.BuildForbesText() ?? "The coefficients could not be separated. That happens "
-               + "when the system has no field, or when the series trace does not close on "
-               + "this design."),
+            (w, a) => w.BuildForbesText(ForbesDegree(a)) ?? "The coefficients could not be "
+               + "separated. That happens when the system has no field, or when the series trace "
+               + "does not close on this design.",
+            new[]
+            {
+                new ArgumentSpec("degree", "integer",
+                    "How far to carry the series, 3 to 8. Three is the seventh order and the "
+                  + "default. HIGHER IS NOT MORE ACCURATE FOR THE SEVENTH ORDER - the twenty tau "
+                  + "are what degree 3 already gives - it carries the NEXT orders, which is how "
+                  + "to find out whether a design's residual is seventh order at all. On the "
+                  + "Cooke triplet the predicted corner distortion walks back towards the traced "
+                  + "ray as the degree rises, 1.219E-02 at 3, 1.153E-02 at 4, 1.011E-02 at 5, "
+                  + "against 8.836E-03 traced: that is how docs/distortion-prediction.md "
+                  + "establishes the overshoot is the ORDER running out and not this program "
+                  + "being wrong. It costs more the higher it goes."),
+            }),
 
         new Tool("distortion_from_coefficients",
             "How far the ABERRATION COEFFICIENTS can be trusted for distortion, measured "
@@ -175,11 +218,11 @@ internal static class Tools
           + "made while the scheme's aspheric arrangement was still one the rays rejected and "
           + "kept now that the two agree, because the report names the route it used. Readable "
           + "text.",
-            w => w.BuildDistortionText()),
+            (w, _) => w.BuildDistortionText()),
 
         new Tool("surface_share",
             "Per surface: its share of the spot and the fraction of that which is induced "
           + "rather than its own. Tab-separated.",
-            w => w.BuildSurfaceShareTsv()),
+            (w, _) => w.BuildSurfaceShareTsv()),
     };
 }

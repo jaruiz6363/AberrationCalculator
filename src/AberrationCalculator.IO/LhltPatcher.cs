@@ -90,10 +90,27 @@ namespace AberrationCalculator.Core.IO
                 SetIfChanged(node, "Conic", s.Conic);
                 SetTextIfChanged(node, "Material", s.Material ?? string.Empty);
 
+                // The figuring, which the optimiser can now move. Written back unscaled, exactly
+                // as the reader takes it in: an r^4 coefficient is 1/length^3 and an r^8 one is
+                // 1/length^7, so a unit scale applied to them is not the file's scale but its
+                // cube or its seventh power, and getting that wrong would be silent. The reader
+                // does not scale them either, and the two have to agree.
+                //
+                // THIS BLOCK IS NEW WITH THE FIGURING VARIABLES, and its absence was harmless
+                // only for as long as nothing could change a coefficient: an optimised design
+                // would have been written back carrying the figuring it started with, with no
+                // error anywhere and the result quietly discarded.
+                SetArray(node, "AsphericCoefficients", s.AsphericCoefficients,
+                         Array.Exists(s.AsphericCoefficients, a => a != 0.0));
+
                 // The user's own statement of what may be optimised, and how far, written back
                 // whether or not the optimiser moved anything - it is a setting, not a result.
                 node["CurvatureVariable"] = s.CurvatureVariable;
                 node["ThicknessVariable"] = s.ThicknessVariable;
+                node["ConicVariable"] = s.ConicVariable;
+
+                SetArray(node, "AsphericVariable", s.AsphericVariable,
+                         Array.Exists(s.AsphericVariable, b => b));
 
                 SetBound(node, "CurvatureMin", s.CurvatureMin, Divide: false);
                 SetBound(node, "CurvatureMax", s.CurvatureMax, Divide: false);
@@ -136,6 +153,58 @@ namespace AberrationCalculator.Core.IO
         /// an object distance stored as the string "Infinity" stays that string rather than being
         /// re-rendered, because nothing about it changed.</para>
         /// </summary>
+        /// <summary>
+        /// Writes an array back, creating the key if the file has none and there is something to
+        /// record.
+        ///
+        /// <para><b>Creating a key is a departure from this file's rule</b> that only what the
+        /// optimiser moved may change, so it is done under one condition: the design carries a
+        /// value the key would hold. A .lhlt written for a spherical lens has no
+        /// AsphericCoefficients at all, and if the optimiser has just figured one of its
+        /// surfaces then leaving the key out is not preservation, it is losing the answer.
+        /// Where there is nothing to record and no key, nothing is added - a file that was
+        /// clean stays clean.</para>
+        /// </summary>
+        /// <para><b>Not generic, and that is not an oversight.</b> A generic
+        /// <c>JsonValue.Create&lt;T&gt;</c> binds to the customized-value overload rather than to
+        /// the primitive one, and the node it builds needs a TypeInfoResolver that this
+        /// serializer does not set - so it writes nothing and throws only when the whole
+        /// document is serialised, several frames away from the call that caused it. Two
+        /// concrete overloads bind to the primitive Create and the problem cannot arise.</para>
+        private static void SetArray(JsonObject node, string key, double[] values, bool hasContent)
+        {
+            var existing = node[key] as JsonArray;
+            if (existing == null && !hasContent) return;
+
+            if (existing == null)
+            {
+                var fresh = new JsonArray();
+                for (int k = 0; k < values.Length; k++) fresh.Add(JsonValue.Create(values[k]));
+                node[key] = fresh;
+                return;
+            }
+
+            int n = Math.Min(existing.Count, values.Length);
+            for (int k = 0; k < n; k++) existing[k] = JsonValue.Create(values[k]);
+        }
+
+        private static void SetArray(JsonObject node, string key, bool[] values, bool hasContent)
+        {
+            var existing = node[key] as JsonArray;
+            if (existing == null && !hasContent) return;
+
+            if (existing == null)
+            {
+                var fresh = new JsonArray();
+                for (int k = 0; k < values.Length; k++) fresh.Add(JsonValue.Create(values[k]));
+                node[key] = fresh;
+                return;
+            }
+
+            int n = Math.Min(existing.Count, values.Length);
+            for (int k = 0; k < n; k++) existing[k] = JsonValue.Create(values[k]);
+        }
+
         private static void SetIfChanged(JsonObject node, string key, double value)
         {
             double existing = ReadNumber(node, key);

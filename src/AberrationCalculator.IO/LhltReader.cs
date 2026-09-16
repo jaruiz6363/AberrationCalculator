@@ -97,6 +97,7 @@ namespace AberrationCalculator.Core.IO
                     // helpful. It is left untouched in the file when the design is written back.
                     CurvatureVariable = ls.CurvatureVariable,
                     ThicknessVariable = ls.ThicknessVariable,
+                    ConicVariable = ls.ConicVariable,
                     CurvatureMin = ls.CurvatureMin ?? double.NegativeInfinity,
                     CurvatureMax = ls.CurvatureMax ?? double.PositiveInfinity,
                     ThicknessMin = ls.ThicknessMin ?? double.NegativeInfinity,
@@ -107,6 +108,12 @@ namespace AberrationCalculator.Core.IO
                 {
                     int len = Math.Min(ls.AsphericCoefficients.Length, s.AsphericCoefficients.Length);
                     Array.Copy(ls.AsphericCoefficients, s.AsphericCoefficients, len);
+                }
+
+                if (ls.AsphericVariable != null)
+                {
+                    int len = Math.Min(ls.AsphericVariable.Length, s.AsphericVariable.Length);
+                    Array.Copy(ls.AsphericVariable, s.AsphericVariable, len);
                 }
 
                 // Generic indexed parameters (PRO surface types). Length-clamped so a
