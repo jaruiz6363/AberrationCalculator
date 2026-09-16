@@ -371,11 +371,45 @@ reaches the twenty from totals summed over the surfaces rather than surface by s
 per-surface contributions run `B` to `B7`. Left alone the answer would have been a silent zero,
 which reads exactly like a surface that contributes nothing.
 
-**What this makes possible** is the question Shafer says a design is decided by and a total
-cannot be asked: not *is this design wrong* but *which surface, and is it that surface's own
-fault*. "Surface 5 should contribute no coma" is now an operand. The intrinsic, figuring and
-induced SPLIT of each contribution is reported by the analysis side but is not targetable - the
-split is a diagnosis, and only the total is a thing a surface can be asked to change.
+
+**And the three PARTS of a contribution, which answer to different actions.** A suffix on the
+name takes one of them:
+
+```
+M2,     2, TAR 0,     5      # what surface 5 carries, all told
+M2.INT, 2, TAR 0,     5      # what it generates on its own - bend THIS surface
+M2.FIG, 2, TAR 0,     5      # what its figuring adds - change the figuring
+M2.IND, 5, MAX 1e-3,  5      # what was induced in it - the fix is UPSTREAM
+```
+
+`INT`, `FIG` and `IND`, spelled out as `INTRINSIC`, `FIGURING` and `INDUCED` if preferred, and
+case does not matter. Leaving the suffix off gives all three together. **They add to the
+contribution exactly**, so a designer who drives the intrinsic part and bounds the induced one has
+accounted for everything the surface carries with nothing left unallocated;
+`TheThreePartsSumToTheWholeContribution` holds thirteen coefficients on every surface of a
+spherical design and a figured one.
+
+Asked of the system - no surface, or surface 0 - a part is that part summed over the surfaces,
+which is how to ask *how much of this design's oblique spherical is induced rather than made*.
+
+**This is the operand Shafer's paper argues for**, and the reason the split is in this program at
+all: *"This can only be done effectively, however, if the 5th-order aberration surface
+contributions are broken into two components: the intrinsic component and the induced
+component."* A surface can be blameless in isolation and still be the largest contributor, and
+the two readings call for opposite actions - so an operand that cannot tell them apart is asking
+the design to fix the wrong thing.
+
+Two refusals, both because the honest answer would otherwise be a silent zero:
+
+- **`B.IND` and the rest of the third order.** There is no induced third order - a third-order
+  contribution is built from that surface's own quantities alone, so nothing earlier can act on
+  it. The value would be zero on every design, which is indistinguishable from an aberration
+  that has been corrected.
+- **`Tau2.IND` and the rest of the tertiary.** They have no per-surface value to be split.
+**What this makes possible** is the question Shafer says a design is decided by and a total cannot
+be asked: not *is this design wrong* but *which surface, and is it that surface's own fault*.
+"Surface 5 should contribute no coma" is an operand, and so is "surface 5 should not be having
+coma induced in it".
 
 **They are free in bulk.** Every coefficient comes out of one run of Buchdahl's scheme, which the
 probe computes once per wavelength and caches, so a merit function of twenty coefficient operands

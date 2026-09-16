@@ -65,8 +65,9 @@ public static class OperandHelp
           + "should have had.",
 
         OperandType.ABER =>
-            "One named aberration coefficient, in transverse measure, for the system or for ONE "
-          + "SURFACE - written as the "
+            "One named aberration coefficient, in transverse measure, for the system, for ONE "
+          + "SURFACE, or for one PART of a surface's contribution - .INT, .FIG or .IND - "
+          + "written as the "
           + "coefficient's own name, which is how the report spells it: B, F, C, Pi, E; B5, F1, "
           + "F2, M1, M2, M3, N1, N2, N3, C5, Pi5, E5; B7 and Tau2 to Tau20.",
 

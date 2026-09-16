@@ -91,6 +91,44 @@ public static class MeritFile
     }
 
     /// <summary>
+    /// <summary>The suffix a part is written with, empty for the whole contribution.</summary>
+    internal static string PartSuffix(CoefficientPart part) => part switch
+    {
+        CoefficientPart.Intrinsic => ".INT",
+        CoefficientPart.Figuring => ".FIG",
+        CoefficientPart.Induced => ".IND",
+        _ => "",
+    };
+
+    /// <summary>
+    /// Splits <c>M2.IND</c> into its coefficient and its part. A bare name is the whole
+    /// contribution.
+    ///
+    /// <para>The part is a suffix on the NAME rather than another positional input because the
+    /// inputs are numbers and a part is not one - and because the coefficient's own name is how a
+    /// coefficient operand is written, so the part belongs where a reader is already looking.</para>
+    /// </summary>
+    internal static (string? Name, CoefficientPart Part) CoefficientAndPart(string text)
+    {
+        int dot = text.LastIndexOf('.');
+        if (dot < 0) return (CoefficientNamed(text), CoefficientPart.Total);
+
+        string? name = CoefficientNamed(text.Substring(0, dot));
+        if (name == null) return (null, CoefficientPart.Total);
+
+        return text.Substring(dot + 1).ToUpperInvariant() switch
+        {
+            "INT" or "INTRINSIC" => (name, CoefficientPart.Intrinsic),
+            "FIG" or "FIGURING" => (name, CoefficientPart.Figuring),
+            "IND" or "INDUCED" => (name, CoefficientPart.Induced),
+            var other => throw new FormatException(
+                $"'{other}' is not a part of a coefficient. The parts are INT (what the surface "
+              + "generates on its own), FIG (what its figuring adds) and IND (what the aberration "
+              + $"already reaching it generates in it); leaving the suffix off gives all three. So "
+              + $"'{name}.INT', or '{name}' for the whole contribution"),
+        };
+    }
+
     /// The canonical spelling of an aberration coefficient, or null if the text is not one.
     ///
     /// <para>Case-insensitive, and it returns the name as <c>BuchdahlTerms.Names</c> spells it
@@ -109,7 +147,7 @@ public static class MeritFile
     private static Operand ParseOperand(string line)
     {
         var field = new List<string>();
-        foreach (string part in line.Split(',')) field.Add(part.Trim());
+        foreach (string piece in line.Split(',')) field.Add(piece.Trim());
 
         if (field.Count < 2)
             throw new FormatException(
@@ -120,9 +158,10 @@ public static class MeritFile
         // function are one name with no table between them. ABER is accepted too, for anything
         // generating these mechanically, but then the coefficient has nowhere to come from.
         string? coefficient = null;
+        var part = CoefficientPart.Total;
         if (!Enum.TryParse<OperandType>(field[0], true, out var type))
         {
-            coefficient = CoefficientNamed(field[0]);
+            (coefficient, part) = CoefficientAndPart(field[0]);
             if (coefficient == null)
                 throw new FormatException(
                     $"'{field[0]}' is not an operand and not an aberration coefficient.\n"
@@ -220,23 +259,40 @@ public static class MeritFile
         // A span given only its first surface is that surface alone.
         if (surface2 == 0) surface2 = surface;
 
-        // A tertiary coefficient has no per-surface value to give. Buchdahl's scheme reaches the
-        // twenty from totals summed over the surfaces rather than surface by surface, so the
-        // per-surface terms stop at B7 - and asking for Tau5 on surface 3 would otherwise return
-        // a silent zero, which reads exactly like a surface that contributes nothing.
-        if (type == OperandType.ABER && surface != 0 && coefficient != null
-            && coefficient.StartsWith("Tau", StringComparison.Ordinal))
+        // A tertiary coefficient has neither a per-surface value nor a part. Buchdahl's scheme
+        // reaches the twenty from totals summed over the surfaces rather than surface by surface,
+        // so the per-surface terms stop at B7 - and either question would otherwise return a
+        // silent zero, which reads exactly like a surface that contributes nothing.
+        if (type == OperandType.ABER && coefficient != null
+            && coefficient.StartsWith("Tau", StringComparison.Ordinal)
+            && (surface != 0 || part != CoefficientPart.Total))
             throw new FormatException(
-                $"{coefficient} is a SYSTEM coefficient and has no per-surface value, so it "
-              + $"cannot be asked for on surface {surface}. Buchdahl's scheme reaches the twenty "
+                $"{coefficient} is a SYSTEM coefficient: it has no per-surface value and no "
+              + "intrinsic, figuring or induced part. Buchdahl's scheme reaches the twenty "
               + "tertiary coefficients from totals summed over the surfaces, not surface by "
-              + "surface; the per-surface contributions run B to B7. Drop the surface to target "
-              + $"the system's {coefficient}, or name one of the eighteen for a surface.");
+              + "surface; the per-surface contributions run B to B7. Write "
+              + $"'{coefficient}, ... ' on its own for the system's value.");
+
+        // There is no induced third order. A third-order contribution is built from the surface's
+        // own quantities alone, so nothing earlier can act on it, and B.IND is identically zero on
+        // every design. Refused rather than answered, because a zero here is indistinguishable
+        // from an aberration that has been corrected.
+        if (type == OperandType.ABER && part == CoefficientPart.Induced && coefficient != null
+            && AberrationNames.Order(coefficient) == 3)
+            throw new FormatException(
+                $"{coefficient} is a THIRD-ORDER coefficient and has no induced part - a "
+              + "third-order contribution is built from that surface's own quantities alone, so "
+              + "there is nothing for an earlier surface to induce in it. The answer would be "
+              + $"zero on every design, which is not distinguishable from a corrected one. Use "
+              + $"'{coefficient}.INT' or '{coefficient}.FIG', or the fifth order, where induced "
+              + "terms are real.");
+
 
         return new Operand
         {
             Type = type,
             Coefficient = coefficient,
+            Part = part,
             Surface = surface,
             Surface2 = surface2,
             Wave = wave,
@@ -317,7 +373,7 @@ public static class MeritFile
         // ABER would produce a file this parser refuses, by its own rule that ABER does not say
         // which coefficient - the round trip is the test that keeps the two honest.
         sb.Append(op.Type == OperandType.ABER && !string.IsNullOrEmpty(op.Coefficient)
-                  ? op.Coefficient!
+                  ? op.Coefficient! + PartSuffix(op.Part)
                   : op.Type.ToString())
           .Append(", ").Append(N(op.Weight));
 
