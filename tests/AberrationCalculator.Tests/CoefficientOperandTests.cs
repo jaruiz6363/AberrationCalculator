@@ -46,6 +46,10 @@ public class CoefficientOperandTests
     private static Operand Coef(string name, double target = 0.0, double weight = 1.0) =>
         new Operand { Type = OperandType.ABER, Coefficient = name, Target = target, Weight = weight };
 
+    private static Operand CoefAt(string name, int surface) =>
+        new Operand { Type = OperandType.ABER, Coefficient = name, Surface = surface,
+                      Target = 0.0, Weight = 1.0 };
+
     /// <summary>
     /// Every one of the thirty-seven parses, by its own name, in whatever case it is typed. The
     /// canonical spelling is what travels, so that the indexer, the label and the file written
@@ -286,5 +290,157 @@ public class CoefficientOperandTests
     public void HelpStillRefusesAnUnknownName()
     {
         Assert.Throws<ArgumentException>(() => SettingsCommands.Help("TAU21"));
+    }
+
+    /// <summary>
+    /// <b>The surfaces add to the system total.</b> This is the property that makes a per-surface
+    /// operand worth having: a designer targeting surface 5's coma has to be able to compare it
+    /// with the system's, and with the other surfaces'. The chain keeps per-surface contributions
+    /// UNSCALED and multiplies only the totals by the F/number, so without the scaling applied in
+    /// <c>SurfaceCoefficients</c> these would be in different units from the number printed beside
+    /// them - agreeing with nothing and summing to nothing.
+    /// </summary>
+    [Theory]
+    [InlineData("CookeTriplet")]
+    [InlineData("Ladder2_A4_Both")]
+    public void ThePerSurfaceContributionsSumToTheSystemTotal(string lens)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(Fixtures.Lens(lens), catalog);
+        var vars = Vars(new Variable { Kind = VariableKind.Curvature, Surface = 1 });
+        var design = new Design(system, catalog, vars);
+
+        int last = system.LastOpticalSurface();
+
+        // The eighteen that HAVE a per-surface value. Tau2 to Tau20 do not, and are refused.
+        string[] perSurface =
+            { "B", "F", "C", "Pi", "E", "B5", "F1", "F2", "M1", "M2", "M3",
+              "N1", "N2", "N3", "C5", "Pi5", "E5", "B7" };
+
+        var merit = new MeritFunction(design);
+        foreach (string name in perSurface) merit.Add(Coef(name));                  // the totals
+        foreach (string name in perSurface)
+            for (int s = 1; s <= last; s++) merit.Add(CoefAt(name, s));             // and the parts
+
+        var r = merit.Evaluate(false);
+        Assert.True(r.Ok, r.Failure);
+
+        for (int i = 0; i < perSurface.Length; i++)
+        {
+            double total = r.Values[i];
+
+            double sum = 0.0;
+            for (int s = 0; s < last; s++)
+                sum += r.Values[perSurface.Length + i * last + s];
+
+            double tol = 1e-9 * Math.Max(1e-12, Math.Abs(total));
+            Assert.True(Math.Abs(total - sum) <= tol,
+                $"{perSurface[i]}: total {total:G12}, surfaces sum to {sum:G12}");
+        }
+    }
+
+    /// <summary>
+    /// A per-surface coefficient is a different number from the system's, so the operand is
+    /// actually reaching the surface rather than quietly returning the total.
+    /// </summary>
+    [Fact]
+    public void APerSurfaceCoefficientIsNotTheSystemTotal()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var design = new Design(LensFile.Read(Fixtures.Lens("CookeTriplet"), catalog), catalog,
+                                Vars(new Variable { Kind = VariableKind.Curvature, Surface = 1 }));
+
+        var merit = new MeritFunction(design);
+        merit.Add(Coef("B"));
+        merit.Add(CoefAt("B", 1));
+        merit.Add(CoefAt("B", 3));
+
+        var r = merit.Evaluate(false);
+        Assert.True(r.Ok, r.Failure);
+
+        Assert.NotEqual(r.Values[0], r.Values[1]);
+        Assert.NotEqual(r.Values[1], r.Values[2]);
+    }
+
+    /// <summary>
+    /// <b>A tertiary coefficient has no per-surface value, and asking for one is refused.</b>
+    /// The per-surface terms stop at B7 because Buchdahl's scheme reaches the twenty from totals
+    /// summed over the surfaces. Left alone it would have returned a silent zero, which reads
+    /// exactly like a surface that contributes nothing - the failure this session has met three
+    /// times and the reason the refusal is explicit.
+    /// </summary>
+    [Theory]
+    [InlineData("Tau5")]
+    [InlineData("Tau15")]
+    [InlineData("Tau20")]
+    public void ATertiaryCoefficientIsRefusedPerSurface(string name)
+    {
+        var ex = Assert.Throws<FormatException>(
+            () => MeritFile.Parse(new[] { $"{name}, 1, TAR 0, 3" }));
+
+        Assert.Contains("SYSTEM coefficient", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("B to B7", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>But the same coefficient without a surface is the system's, and is accepted.</summary>
+    [Fact]
+    public void ATertiaryCoefficientIsStillFineForTheSystem()
+    {
+        var ops = MeritFile.Parse(new[] { "Tau15, 1, TAR 0" });
+        Assert.Equal(0, ops[0].Surface);
+        Assert.Equal("Tau15", ops[0].Coefficient);
+    }
+
+    /// <summary>
+    /// Surface first, wavelength second, and the label says which is which. Surface 0 is the
+    /// system and is not labelled "s0", which would read as the object surface.
+    /// </summary>
+    [Fact]
+    public void ASurfaceAndAWavelengthRoundTripThroughTheFile()
+    {
+        var original = MeritFile.Parse(new[]
+        {
+            "B,   1, TAR 0",            // the system
+            "M2,  2, TAR 0, 4",         // surface 4
+            "Pi5, 3, TAR 0, 4, 2",      // surface 4, wavelength 2
+        });
+
+        Assert.Equal(0, original[0].Surface);
+        Assert.Equal(4, original[1].Surface);
+        Assert.Equal(4, original[2].Surface);
+        Assert.Equal(2, original[2].Wave);
+
+        Assert.Equal("B", original[0].Label);
+        Assert.Equal("M2 s4", original[1].Label);
+
+        var again = MeritFile.Parse(MeritFile.Write(original).Split('\n'));
+        Assert.Equal(3, again.Count);
+        Assert.Equal(0, again[0].Surface);
+        Assert.Equal(4, again[1].Surface);
+        Assert.Equal(4, again[2].Surface);
+        Assert.Equal(2, again[2].Wave);
+    }
+
+    /// <summary>
+    /// The derivative of a per-surface coefficient is analytic and exact, on a figured design as
+    /// well as a spherical one.
+    /// </summary>
+    [Theory]
+    [InlineData("CookeTriplet")]
+    [InlineData("Ladder2_A4_Both")]
+    public void PerSurfaceDerivativesMatchCentralDifferences(string lens)
+    {
+        var vars = Vars(
+            new Variable { Kind = VariableKind.Curvature, Surface = 1 },
+            new Variable { Kind = VariableKind.Thickness, Surface = 2 });
+
+        var catalog = CatalogLocator.LoadBundled();
+        var design = new Design(LensFile.Read(Fixtures.Lens(lens), catalog), catalog, vars);
+
+        var merit = new MeritFunction(design);
+        foreach (string name in new[] { "B", "F", "C", "E", "B5", "M2", "Pi5", "B7" })
+            for (int s = 1; s <= 3; s++) merit.Add(CoefAt(name, s));
+
+        CheckJacobian(design, merit, vars);
     }
 }

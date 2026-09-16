@@ -65,6 +65,31 @@ internal static class DoubleToDual
         InfiniteConjugate = p.InfiniteConjugate,
     };
 
+    /// <summary>
+    /// A whole coefficient result, totals and per-surface contributions alike.
+    ///
+    /// <para>Only the two a merit function can reach are carried: the totals, and the per-surface
+    /// TOTAL contribution. The intrinsic, aspheric and induced arrays are diagnostics the report
+    /// prints and no operand targets, and lifting three more arrays per wavelength on a path
+    /// chosen because it is ten times cheaper would give that saving back for nothing. If an
+    /// operand ever wants them, this is the one place to add them - and a test that the sum of
+    /// the parts is the whole will say at once whether they arrived.</para>
+    /// </summary>
+    public static AdA.BuchdahlResult Result(BuchdahlResult r)
+    {
+        var perSurface = new AdA.BuchdahlTerms[r.PerSurface.Length];
+        for (int i = 0; i < perSurface.Length; i++)
+            perSurface[i] = Coefficients(r.PerSurface[i]);
+
+        return new AdA.BuchdahlResult
+        {
+            Totals = Coefficients(r.Totals),
+            PerSurface = perSurface,
+            FNumber = r.FNumber,
+            Lagrange = r.Lagrange,
+        };
+    }
+
     public static AdA.BuchdahlTerms Coefficients(BuchdahlTerms t)
     {
         var d = new AdA.BuchdahlTerms();

@@ -127,7 +127,13 @@ public static class OperandEvaluator
             throw new InvalidOperationException(
                 "a coefficient operand carries no coefficient name. It should not have parsed.");
 
-        return probe.Coefficients(ctx.WaveIndex(op.Wave))[name];
+        int wave = ctx.WaveIndex(op.Wave);
+
+        // Surface 0 is the object surface and contributes to nothing, so it means the system
+        // total - which is also what leaving the input off gives.
+        return op.Surface == 0
+             ? probe.Coefficients(wave)[name]
+             : probe.SurfaceCoefficients(wave, op.Surface)[name];
     }
     /// </summary>
     private static Dual AsBuilt(Operand op, DesignProbe probe, OperandContext ctx)

@@ -150,9 +150,14 @@ public enum OperandType
     /// 5th-order aberrations", needs the individual coefficients to be targetable, not only
     /// their weighted sum. See <c>docs/references.md</c>.</para>
     ///
-    /// <para><b>The system total, not a surface's share.</b> Per-surface contributions are
-    /// reported by the analysis side and are not targetable here; see the note in
-    /// <c>docs/optimizer.md</c> for what that would take.</para>
+    /// <para><b>The system's, or one surface's share of it.</b> A surface number picks out the
+    /// contribution of that surface; surface 0, or none, is the whole system. The shares add to
+    /// the total exactly, which is what lets a designer compare one surface with another and with
+    /// the system. That is the question Shafer says a design is decided by and a total cannot be
+    /// asked: not whether the design is wrong but WHICH SURFACE, and whether it is that surface's
+    /// own doing. <c>Tau2</c> to <c>Tau20</c> have no per-surface value - the scheme reaches them
+    /// from totals summed over the surfaces - and asking for one is refused rather than answered
+    /// with a zero.</para>
     /// </summary>
     ABER,
 }

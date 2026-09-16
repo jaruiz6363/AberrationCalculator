@@ -31,7 +31,7 @@ public sealed class DesignProbe
     private readonly int _primary;
 
     private readonly Dictionary<long, AdR.ParaxialResult> _paraxial = new();
-    private readonly Dictionary<int, AdA.BuchdahlTerms> _coefficients = new();
+    private readonly Dictionary<int, AdA.BuchdahlResult> _coefficients = new();
     private readonly Dictionary<long, AdR.RealRayTrace.SurfaceHit[]> _rays = new();
     private Dual[]? _apertureRadius;
 
@@ -118,9 +118,56 @@ public sealed class DesignProbe
     /// the figured flat facing collimated light, because the route that handles it exists only in
     /// the plain-double build and would leave the derivative silently wrong here.</para>
     /// </summary>
-    public AdA.BuchdahlTerms Coefficients(int wave)
+    public AdA.BuchdahlTerms Coefficients(int wave) => Whole(Clamp(wave)).Totals;
+
+    /// <summary>
+    /// One SURFACE's contribution to the thirty-seven coefficients, in the same transverse
+    /// measure as the system totals.
+    ///
+    /// <para><b>The scaling is the whole of why this is not just an array lookup.</b> The chain
+    /// keeps per-surface contributions unscaled and multiplies only the totals by the F/number.
+    /// Handing a designer the raw array would give them a number in different units from the
+    /// system value printed beside it, agreeing with nothing and summing to nothing. Scaled here,
+    /// the surfaces add to the total exactly, which is the property that makes a per-surface
+    /// operand worth having at all.</para>
+    ///
+    /// <para><b>Tau2 to Tau20 are not here and are zero if asked for.</b> Buchdahl's scheme
+    /// reaches the twenty from totals summed over the surfaces, not surface by surface, so the
+    /// per-surface terms carry the eighteen through B7 and nothing above. The merit-function
+    /// parser refuses a tertiary coefficient with a surface for that reason - a silent zero is
+    /// the one answer worse than a refusal.</para>
+    /// </summary>
+    public AdA.BuchdahlTerms SurfaceCoefficients(int wave, int surface)
     {
-        int w = Clamp(wave);
+        var whole = Whole(Clamp(wave));
+        if (surface < 0 || surface >= whole.PerSurface.Length)
+            throw new ArgumentOutOfRangeException(
+                nameof(surface), surface,
+                $"surface {surface} is not one this design has a contribution for");
+
+        var terms = whole.PerSurface[surface];
+        var scaled = new AdA.BuchdahlTerms();
+        Dual f = whole.FNumber;
+
+        scaled.B = terms.B * f;     scaled.F = terms.F * f;   scaled.C = terms.C * f;
+        scaled.Pi = terms.Pi * f;   scaled.E = terms.E * f;
+        scaled.B5 = terms.B5 * f;   scaled.F1 = terms.F1 * f; scaled.F2 = terms.F2 * f;
+        scaled.M1 = terms.M1 * f;   scaled.M2 = terms.M2 * f; scaled.M3 = terms.M3 * f;
+        scaled.N1 = terms.N1 * f;   scaled.N2 = terms.N2 * f; scaled.N3 = terms.N3 * f;
+        scaled.C5 = terms.C5 * f;   scaled.Pi5 = terms.Pi5 * f;
+        scaled.E5 = terms.E5 * f;   scaled.B7 = terms.B7 * f;
+        return scaled;
+    }
+
+    /// <summary>
+    /// The whole coefficient result at one wavelength, computed once and kept.
+    ///
+    /// <para>A probe is built per variable and thrown away, so this caching is per column of the
+    /// Jacobian - exactly the scope over which the answer is the same. Twenty coefficient
+    /// operands over six surfaces cost one run of the scheme between them.</para>
+    /// </summary>
+    private AdA.BuchdahlResult Whole(int w)
+    {
         if (_coefficients.TryGetValue(w, out var cached)) return cached;
 
         // Nine tenths of an evaluation is the tertiary scheme below. On a value-only probe it
@@ -131,7 +178,7 @@ public sealed class DesignProbe
             var bd = Core.Aberrations.BuchdahlCoefficients.Compute(_core, pd);
             Core.Aberrations.TertiaryCoefficients.Attach(_core, _coreIndices[w], pd, bd, _maxField);
 
-            var lifted = DoubleToDual.Coefficients(bd.Totals);
+            var lifted = DoubleToDual.Result(bd);
             _coefficients[w] = lifted;
             return lifted;
         }
@@ -140,8 +187,8 @@ public sealed class DesignProbe
         var b = AdA.BuchdahlCoefficients.Compute(_sys, p);
         AdA.TertiaryCoefficients.Attach(_sys, _indices[w], p, b, _maxField);
 
-        _coefficients[w] = b.Totals;
-        return b.Totals;
+        _coefficients[w] = b;
+        return b;
     }
 
     /// <summary>

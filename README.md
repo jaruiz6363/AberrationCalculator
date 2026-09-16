@@ -17,12 +17,17 @@ thirty-seven coefficients is an operand, written as the name the report prints i
     B,     1, TAR 0          # third-order spherical
     Pi5,   2, TAR 0          # fifth-order field curvature
     M2,    5, TAR 0          # sagittal oblique spherical
-    Tau15, 1, TAR 0          # and the seventh order too
+    M2,    5, TAR 0, 5       # ...and SURFACE 5's share of it alone
+    Tau15, 1, TAR 0          # the seventh order too
 
 They cost almost nothing together, because all thirty-seven come out of one run of the scheme,
 and they answer a question a predicted spot cannot: a spot mixes eighteen coefficients into one
 number, and two designs whose `tau15` differs by a factor of five predict the same spot to one
 part in ten thousand.
+
+A surface number after the target takes **that surface's share** instead of the system's, and the
+shares add to the total exactly. That is the question a table of totals cannot be asked - not
+whether the design is wrong but *which surface, and is it that surface's own doing*.
 
 **There are two optimizers**, and which you want depends on whether you are improving a design or
 looking for a different one.
@@ -101,6 +106,7 @@ the file.
 ```
 PRMSA,   1, TAR 0                        # the predicted spot
 Pi5,     2, TAR 0                        # ONE NAMED COEFFICIENT - see the table in docs/optimizer.md
+M2,      5, TAR 0,           5           # ...and surface 5's share of one
 Tau15,   1, MIN -1e-3, MAX 1e-3          # and a seventh-order one, held in a band
 EFL,   100, TAR 50,          2           # focal length, in wavelength 2
 EGT,    10, MIN 1,           2, 4        # glass edges over surfaces 2 to 4
