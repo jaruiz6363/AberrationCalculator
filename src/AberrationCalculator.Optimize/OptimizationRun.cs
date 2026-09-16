@@ -62,6 +62,18 @@ public sealed class RunSettings
     /// </summary>
     public double HopSigma { get; set; } = 0.001;
 
+    /// <summary>
+    /// Whether the hop kicks the conic and aspheric terms too. Default false - they are still
+    /// optimised, just not thrown. See <see cref="BasinHoppingOptions.HopFiguring"/>.
+    /// </summary>
+    public bool HopFiguring { get; set; }
+
+    /// <summary>
+    /// The kick on the first hop, before the design has ever been minimised. Default 0.001, the
+    /// same as <see cref="HopSigma"/>. See <see cref="BasinHoppingOptions.InitialPerturbSigma"/>.
+    /// </summary>
+    public double InitialPerturbSigma { get; set; } = 0.001;
+
     public IProgress<BasinHoppingProgress>? Progress { get; set; }
 
     /// <summary>
@@ -186,6 +198,8 @@ public static class OptimizationRun
                     LmIterationsPerHop = settings.Iterations,
                     HjStepsPerHop = settings.HjStepsPerHop,
                     HopSigma = settings.HopSigma,
+                    InitialPerturbSigma = settings.InitialPerturbSigma,
+                    HopFiguring = settings.HopFiguring,
                     GlassSubstitution = settings.GlassSubstitution,
                     SubstitutionCatalog = settings.SubstitutionCatalog,
                     Seed = settings.Seed,

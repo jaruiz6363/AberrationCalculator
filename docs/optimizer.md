@@ -688,6 +688,68 @@ a Metropolis walk goes tens of hops between records while working perfectly well
 stall alone collapses every chain onto the leader and throws away the independence that made
 running several worth it.
 
+
+**The kick has to be in each variable's own units, and for the figuring kinds it was not.** An
+unbounded variable is kicked against its own size floored at one — the floor being what lets a
+variable sitting at exactly zero move at all. For a curvature near 0.01 that is a tenth of the
+curvature: meaningful and survivable. For an r⁴ coefficient near 1E-6 it was a kick of 1E-3,
+three thousand times the value, putting several lens units of sag on the surface; for r⁸ it was
+worse by a further six orders.
+
+**It broke nothing, which is why it lasted.** The local minimisation after each hop hauled the
+design back and the Metropolis test rejected it, so a run still converged — it simply spent every
+figuring hop climbing out of somewhere absurd instead of exploring, which is the precise failure
+this section already warns about for kicks that are too large. Figuring is now kicked against the
+scale `Scaling.PhysicalCeilings` gives it, the same one the local optimiser steps by, which puts
+every kind on one footing: how far a step moves the glass at the edge of the aperture. Curvature
+and thickness keep the rule they had, because the default kick size was measured against it and
+the figuring fix is not a reason to disturb it.
+
+**An honest note on what that bought.** On the design it was found with, the fix does not change
+the answer: same merit to every printed digit and the same r⁴ value to five, across several seeds
+and up to thirty hops, because the local optimisation recovers either way. What it removes is
+wasted work, and no design has yet been found where it removes more than that. It is made because
+a kick three thousand times a quantity's own size is indefensible on its face, not because a
+measurement demanded it — and saying so is better than implying a benefit that was not observed.
+
+**And then the better question: should the kick reach the figuring at all?** LensHH-LT does not
+randomize aspherics, and on reflection that is the right line. A conic or an r⁴ term is a
+nearly-linear correction that the local stage refits reliably from wherever it starts, so throwing
+it does not choose a different basin — it discards a figure that is about to be fitted again,
+while the shape variables, which do choose the basin, get no more of the kick for it. So the hop
+now passes the figuring over by default. `--hop-figuring` (`hop_figuring` over MCP) asks for the
+old behaviour, which is defensible for a conic: at −1 and at 0 that is a genuinely different
+surface rather than a small correction.
+
+**The figuring is still optimised at every hop.** The exclusion is from the random kick and
+nothing else — Hooke-Jeeves and the least-squares stage step the conic and the aspheric terms
+exactly as before, off the same `PhysicalCeilings` scale. This is worth stating because an
+implementation that skipped figuring in both places would still improve the merit on every design
+and would pass any test that only watches the merit, while quietly freezing the figure; the two
+are asserted apart in `HopFiguringTests`. On the design this was measured on, an r⁴ term seeded
+at 3.0E−07 still lands at −4.90E−06 with the kick switched off: a change of sign and a factor of
+sixteen, done entirely by the local stage.
+
+**And it changed no answer either**, which by now is the expected result rather than a
+disappointment. Seeds 7 and 23 over thirty hops give the same merit to every printed digit and
+the same r⁴ to five, kicked or not. What the default buys is that the kick is spent where it can
+choose a basin instead of where it cannot.
+
+**The first hop takes its own sigma, which until now it did not.** `--initial-sigma`
+(`initial_perturb_sigma` over MCP) sizes the kick applied before the design has ever been
+minimised. That kick has a different job from the ones after it: it breaks exact symmetry, since
+a design sitting on a stationary point has nowhere to go, while every later kick is asking to be
+moved somewhere new. Raise it to start from a deliberately disturbed design — useful off a
+skeleton, where the starting point is a guess rather than a design — without making every
+subsequent hop that violent.
+
+The option existed from the first optimizer commit, `01fa6a4`, with exactly that reasoning
+written on it, and was **never connected to anything**. The first hop was kicked at `HopSigma`
+like all the others. The two default to the same 0.001, so no run and no test could tell the
+difference, and nothing said so: a knob that is documented, exported and inert is the quietest
+kind of defect, because reading the code confirms the feature and only grepping for the reference
+refutes it. Connecting it changes no default behaviour, which is asserted rather than assumed.
+
 Steps are in units of each variable's **natural scale**, computed from the Jacobian as the step
 that moves the merit by a set amount, capped by what the parameter can plausibly do on this design
 (curvatures against the focal length, thicknesses against the total track). A search that stepped
@@ -813,6 +875,8 @@ in the base folder, not beside the shell.
 | `--chains <n>` | default 0 = one per processor |
 | `--seed <n>` | default 1234 |
 | `--hop-sigma <s>` | size of a hop, in natural steps |
+| `--initial-sigma <s>` | size of the first hop only; default 0.001, the same as `--hop-sigma` |
+| `--hop-figuring` | kick the conic and aspheric terms too; off by default, and they are optimised either way |
 | `--glass_substitution <catalogue>` | let the hopping try glasses from that catalogue |
 | `--dir <path>` | take bare names against this folder, for this run only |
 | `--save` | overwrite the lens that was read |

@@ -115,6 +115,16 @@ OPTIONS
       --hop-sigma <s> Size of a hop, in natural steps. Default 0.001 - a tenth of a
                       per cent. Escape is the job of the
                       Metropolis walk and the restarts, not of the kick.
+      --hop-figuring  Kick the conic and aspheric terms on a hop as well. Off by
+                      default: they are still OPTIMISED every hop, but throwing
+                      them discards a figure the local stage is about to fit
+                      again, and the kick is better spent on the shape.
+      --initial-sigma <s>
+                      Size of the FIRST hop only, in natural steps. Default 0.001,
+                      the same as --hop-sigma. Its job is different: it breaks exact
+                      symmetry, since a design on a stationary point has nowhere to
+                      go. Raise it to start from a deliberately disturbed design -
+                      useful off a skeleton - without making every later hop violent.
       --save          Overwrite the lens that was read with the optimised design.
       --save <folder> Under --optimize_basin_hopping, the folder to write the
                       designs into - one per chain, plus their settings.
@@ -330,6 +340,10 @@ EXIT CODES
                 case "--hop-sigma":
                     if (++i >= args.Length) throw new ArgumentException("--hop-sigma needs a number");
                     optimize.HopSigma = double.Parse(args[i], CultureInfo.InvariantCulture); break;
+                case "--hop-figuring": optimize.HopFiguring = true; break;
+                case "--initial-sigma":
+                    if (++i >= args.Length) throw new ArgumentException("--initial-sigma needs a number");
+                    optimize.InitialPerturbSigma = double.Parse(args[i], CultureInfo.InvariantCulture); break;
                 case "--glass-substitution": optimize.GlassSubstitution = true; break;
                 case "--screen":
                     screen = true;

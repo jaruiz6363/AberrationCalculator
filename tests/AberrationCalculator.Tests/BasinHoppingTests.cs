@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.IO;
 using AberrationCalculator.Core.Models;
+using AberrationCalculator.Optimize;
 using AberrationCalculator.Optimize.Algorithms;
 using AberrationCalculator.Optimize.Evaluation;
 using AberrationCalculator.Optimize.Operands;
@@ -244,5 +245,85 @@ public class BasinHoppingTests
 
         Assert.InRange(design.System.Surfaces[1].Curvature, 0.018, 0.024);
         Assert.InRange(design.Read()[0], 0.018, 0.024);
+    }
+}
+
+/// <summary>
+/// The FIRST hop's kick, which is sized separately from the rest.
+///
+/// <para><b>These exist because the option was inert.</b> <c>InitialPerturbSigma</c> was declared
+/// in the first optimizer commit, documented as "a small kick applied once before the first
+/// minimisation ... to break exact symmetry", and read by nothing: hop 1 was kicked at
+/// <c>HopSigma</c> like every other hop. Because the two default to the same 0.001 no run could
+/// tell, and because nothing referenced it no compiler warning could either.</para>
+///
+/// <para>So the assertions are the two halves that were missing: that it now reaches the search
+/// at all, and that leaving it alone reproduces the old behaviour exactly.</para>
+/// </summary>
+public class InitialSigmaTests
+{
+    private static OpticalSystem Triplet(GlassCatalog catalog) =>
+        LensFile.Read(Fixtures.Lens("CookeTriplet"), catalog);
+
+    private static VariableSet Vars()
+    {
+        var set = new VariableSet();
+        for (int s = 1; s <= 6; s++)
+            set.Add(new Variable { Kind = VariableKind.Curvature, Surface = s });
+        return set;
+    }
+
+    private static Operand[] Operands() => new[]
+    {
+        new Operand { Type = OperandType.PRMSA, Target = 0.0, Weight = 1.0 },
+        new Operand { Type = OperandType.EFL, Target = 50.0, Weight = 10.0 },
+    };
+
+    private static double RunWith(double? initial)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var options = new BasinHoppingOptions
+        {
+            Chains = 1,
+            MaxHops = 1,          // hop 1 IS the initial kick, so one hop isolates it
+            LmIterationsPerHop = 3,
+            HjStepsPerHop = 1,    // barely minimise, so where the kick landed still shows
+            EnableMetropolis = false,
+            Seed = 31337,
+        };
+        if (initial.HasValue) options.InitialPerturbSigma = initial.Value;
+        return new BasinHopping(Triplet(catalog), catalog, Vars(), Operands(), options)
+            .Run().Merit;
+    }
+
+    /// <summary>
+    /// <b>It reaches the search.</b> A first kick four thousand times the default lands somewhere
+    /// a near-unminimised hop cannot disguise, so the merit differs - which is all that was
+    /// needed to notice the option was doing nothing, and was never asserted.
+    /// </summary>
+    [Fact]
+    public void TheInitialSigmaChangesWhereTheFirstHopLands()
+    {
+        Assert.NotEqual(RunWith(4.0), RunWith(0.001), 9);
+    }
+
+    /// <summary>
+    /// <b>And the default is the behaviour that was there before.</b> Connecting a dead option is
+    /// only safe if leaving it alone is a no-op, and since it defaults to <c>HopSigma</c>'s own
+    /// 0.001, setting it explicitly to that must give the untouched run bit for bit.
+    /// </summary>
+    [Fact]
+    public void LeavingItAloneIsTheOldBehaviour()
+    {
+        Assert.Equal(RunWith(null), RunWith(0.001), 12);
+    }
+
+    /// <summary>Stated once, so that changing either default has to be deliberate.</summary>
+    [Fact]
+    public void ItDefaultsToTheOrdinaryHop()
+    {
+        var options = new BasinHoppingOptions();
+        Assert.Equal(options.HopSigma, options.InitialPerturbSigma);
+        Assert.Equal(0.001, new RunSettings().InitialPerturbSigma);
     }
 }
