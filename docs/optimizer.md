@@ -356,6 +356,58 @@ reading cannot disagree. Per-surface contributions are reported by the analysis 
 targetable: the probe caches the system totals alone, and lifting the per-surface arrays into the
 differentiating build is work that has not been done. It is the obvious next step for anyone who
 wants to say "surface 5 should contribute no coma".
+
+#### Which coefficient is which aberration
+
+A designer reading Shafer, or Kidger, or a specification, meets aberrations by their names -
+*fifth-order field curvature*, *sagittal oblique spherical* - and has to type a symbol. This is
+that lookup, and it is the same mapping `AberrationNames` uses to annotate the report, so the
+name beside a number in a report is the name in this table.
+
+The classical names are R. B. Johnson's, "Polynomial Ray Aberrations Computed in Various Lens
+Design Programs," *Appl. Opt.* **12**, 2079 (1973), Table I — the standard nomenclature Robb
+cites. **Johnson's own finding is the reason to read the monomial column too:** he compared six
+programs and found "significant variances in term definitions", so a named aberration means
+little without the term it names. The monomial is what the coefficient multiplies in the
+transverse polynomial, ρ the pupil radius and H the field.
+
+| | coefficient | aberration | multiplies |
+|---|---|---|---|
+| **3rd** | `B` | spherical | ρ³ |
+| | `F` | linear coma | ρ²H |
+| | `C` | astigmatism | ρH² |
+| | `Pi` | Petzval field curvature | ρH² |
+| | `E` | distortion | H³ |
+| **5th** | `B5` | spherical | ρ⁵ |
+| | `F1` `F2` | linear coma — the pair together | ρ⁴H |
+| | `M1` `M3` | oblique spherical, **tangential** — with `M2` | ρ³H² |
+| | `M2` | oblique spherical, **sagittal** | ρ³H² |
+| | `N1` `N2` | elliptical coma, tangential | ρ²H³ |
+| | `N3` | elliptical coma, oblique | ρ²H³ |
+| | `C5` | astigmatism — with `Pi5` | ρH⁴ |
+| | `Pi5` | Petzval / field curvature — with `C5` | ρH⁴ |
+| | `E5` | distortion | H⁵ |
+| **7th** | `B7` | spherical. Robb's `tau1`, and the only tertiary term FIFTHORD and this program's own fifth-order working both reach | ρ⁷ |
+| | `Tau2` `Tau3` | the seventh-order coma family | ρ⁶H |
+| | `Tau4` `Tau5` `Tau6` | the seventh-order oblique spherical family | ρ⁵H² |
+| | `Tau7` `Tau8` `Tau9` `Tau10` | the seventh-order elliptical coma family | ρ⁴H³ |
+| | `Tau11` `Tau12` `Tau13` `Tau14` | | ρ³H⁴ |
+| | `Tau15` `Tau16` `Tau17` | the seventh-order astigmatism and field-curvature family | ρ²H⁵ |
+| | `Tau18` `Tau19` | | ρH⁶ |
+| | `Tau20` | distortion | H⁷ |
+
+**The seventh-order rows are deliberately vaguer, and the vagueness is the honest part.**
+`AberrationNames` names the third and fifth orders because Johnson tabulates them; it does not
+name `Tau2` to `Tau20`, because the classical vocabulary was built for a set that stops at the
+fifth. What IS exact for them is the monomial - the aperture and field powers come from
+`TertiaryCoefficients.AperturePower` and the azimuthal form from `Prms` - so a tertiary
+coefficient is identified here by what it multiplies and by which fifth-order family it is the
+next member of, rather than by a name invented for the table. Two rows carry no family name at
+all, for the same reason: ρ³H⁴ and ρH⁶ have no fifth-order analogue to be named after.
+
+**Shafer's two limiting aberrations, in this notation**, since they are the ones he argues a
+design is decided by: *fifth-order field curvature* is `Pi5` (with `C5`), and *sagittal oblique
+spherical* is `M2`. See [references.md](references.md).
 ### What the predicted spot cannot see
 
 `PRMSA` is the obvious thing to ask for and it is not sufficient on its own. Robb's spot is the

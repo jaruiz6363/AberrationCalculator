@@ -642,6 +642,14 @@ Set against Dilworth above, the two disagree about the merit function and agree 
 diagnosis: both want the program to say what to change, and Shafer is explicit that the
 coefficient breakdown is how it says it.
 
+*The two aberrations he argues a design is decided by, in this program's notation*, since he
+names them the way a designer does and the program labels them the way Rimmer did: fifth-order
+field curvature is `Pi5`, taken with `C5`; sagittal oblique spherical is `M2`. Both can be
+targeted directly in a merit function, written as those names. The full lookup from an
+aberration's name to its coefficient is in [optimizer.md](optimizer.md) - it was added because
+of this paper, which is what made it obvious that a reader arriving with a name in mind had
+nowhere to turn it into a symbol.
+
 ## Implementation provenance
 
 The published sources above are the authority for the method. What establishes that this
