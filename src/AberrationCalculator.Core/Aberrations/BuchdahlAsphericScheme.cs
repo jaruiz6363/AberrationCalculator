@@ -856,7 +856,11 @@ public static class BuchdahlAsphericScheme
                     // The two halves are separable, and worth separating: the split-primary
                     // delta is zero wherever the previous surface is unfigured or has nothing
                     // accumulated ahead of it, so the two reach different designs.
-                    var d = options.SharedQBarWithSplitPrimary ? qBar[i] : new Scalar[6];
+                    // qBar is non-null exactly when SharedQBarWithSplitPrimary is set - see where it
+                    // is built. Testing the ARRAY rather than the option says the same thing once
+                    // instead of twice, and is the form the compiler can check, as the dagger and
+                    // sixth-member deltas below already do.
+                    var d = qBar is not null ? qBar[i] : new Scalar[6];
                     Scalar qbShift = checkHalf && options.YBarredFromSharedAccumulations
                                    ? r.Rho - t[6] : 0.0;
 
