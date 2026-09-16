@@ -274,13 +274,6 @@ public class BuchdahlTableITests
         var (surfaces, indices) = Triplet();
         var rows = BuchdahlTableI.Compute(surfaces, indices, efl: 1.0, stopParameter: 0.113227);
 
-        double Sum(int entry)
-        {
-            double a = 0.0;
-            for (int i = 1; i < surfaces.Count - 1; i++) a += rows[i].T[entry];
-            return a;
-        }
-
         double Tot(int m, bool bar)
         {
             double a = 0.0;
