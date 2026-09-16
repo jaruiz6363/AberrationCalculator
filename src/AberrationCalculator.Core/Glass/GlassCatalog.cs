@@ -123,12 +123,39 @@ public class GlassCatalog
                 if (_byQualifiedName.TryGetValue(cat.ToUpperInvariant() + ":" + name, out var p))
                     return p;
 
+        foreach (var cat in FallbackPreference)
+            if (_byQualifiedName.TryGetValue(cat.ToUpperInvariant() + ":" + name, out var d))
+                return d;
+
         foreach (var cat in _catalogs)
             if (_byQualifiedName.TryGetValue(cat + ":" + name, out var any))
                 return any;
 
         return null;
     }
+
+    /// <summary>
+    /// Which catalogue wins a bare name that no file claimed, before load order decides it.
+    ///
+    /// <para><b>Load order is alphabetical, which made CDGM the authority on every name it
+    /// shares.</b> Nothing recommends CDGM for that job, and the consequence is not a slightly
+    /// different glass. Its F series is RENUMBERED against Schott's, so the wrong catalogue hands
+    /// back a neighbour from the same family - CDGM's F3 is 1.616592, which is Schott's F4 exactly,
+    /// and CDGM's F4 is 1.620047, which is Schott's F2 to five decimals. Nine names collide and
+    /// every one of them differs, from 0.21 per cent to 1.43. A glass that is wrong by a
+    /// neighbouring catalogue number is the hardest kind to notice.</para>
+    ///
+    /// <para><b>Schott is the defensible default</b> for the files that name no catalogue at all:
+    /// they are overwhelmingly classical designs from a literature written in Schott glasses, and
+    /// it is what OpticStudio resolves them to - checked on Kingslake's double Gauss, where the
+    /// indices recovered from OpticStudio's own paraxial data are Schott's to six figures.</para>
+    ///
+    /// <para><b>This does not make the answer certain, and the warning still fires.</b> The file
+    /// still did not say, <see cref="CatalogsContaining"/> still reports that it could not have
+    /// known, and the report still prints which catalogue was used. A better guess is not a
+    /// substitute for saying it was a guess.</para>
+    /// </summary>
+    public static IReadOnlyList<string> FallbackPreference { get; set; } = new[] { "SCHOTT" };
 
     /// <summary>
     /// Every loaded catalog that has a glass of this name.

@@ -72,6 +72,13 @@ public sealed class QuaternaryResult
 /// Reading Sec. 3 without the table would send an implementer to
 /// <c>BuchdahlTableI.Compute(dual: true)</c> for nothing.</para>
 ///
+/// <para><b>CONFIRMED AGAINST A SECOND IMPLEMENTATION.</b> BUCH7.ZPL stage F computes the same
+/// fourteen rows inside OpticStudio, off its own paraxial data. On Kingslake's double Gauss every
+/// surface agrees with this class in all three columns to the five figures the report prints, and
+/// the system figure with it - 4.196252E+04. That took fixing the glass resolution first: the
+/// design reads F4, and the bare name had been resolving to CDGM's F4 rather than Schott's, which
+/// put the two eleven per cent apart. See <see cref="GlassCatalog.FallbackPreference"/>.</para>
+///
 /// <para><b>Two exact checks, and both are cheap.</b> Eq. (2.12): at a PLANE refracting surface,
 /// where <c>i = -v</c>, the intrinsic coefficient must reduce to
 /// <c>(35/128) N (1 - k^2)^4 y v^9</c> - a closed form needing no lens and no tolerance argument,

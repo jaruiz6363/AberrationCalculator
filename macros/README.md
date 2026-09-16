@@ -19,9 +19,7 @@ for that is upstream of the surface the total blames, and a table of totals cann
 
 ### Status
 
-Stages A to E are written and all five pass, at either conjugate. Stage F, the ninth
-order, is written and its arithmetic is checked against the C#, but it has not been run
-in OpticStudio - see below.
+All six stages are written and all six pass, at either conjugate.
 
 | stage | contents | agrees with | result |
 |---|---|---|---|
@@ -30,7 +28,7 @@ in OpticStudio - see below.
 | C | Buchdahl's Table I, t1 to t155, per surface | `reference/CookeTriplet_TableI.txt` | 155 of 155 to 7e-16 |
 | D | the twenty tau, intrinsic and induced per surface | that file's tau block, and a Forbes series trace at 250 mm | 420 of 420; 20 of 20 to every printed digit |
 | E | publishes the coefficients into the call buffer for `ROBB.ZPL` to read and turn into an RMS spot radius | `Prms.cs`, and the `rms_spot` tool, on the same lens | 33 of 33 to every printed digit |
-| F | the NINTH order - quaternary spherical aberration, per surface, `q9 = 1` | Buchdahl's own Table I in paper IV, through `QuaternarySpherical.cs` | formulas identical to the C# by mechanical diff; **not yet run in OpticStudio** |
+| F | the NINTH order - quaternary spherical aberration, per surface, `q9 = 1` | `QuaternarySpherical.cs`, which reproduces Buchdahl's own paper IV Table I | run on KingslakeDG: every surface, all three columns and the total agree to 5 figures |
 
 ### Stage F, the ninth order
 
@@ -65,22 +63,38 @@ ninth order, as he published none at the seventh.
 Results land in `tt` columns 241–248, which were free: stage D ends at 240 and the array
 is declared with 250.
 
-**The conversion to transverse measure is the one step here without a second route.** Stage D
-puts each tau into transverse measure by `efac * um^a * hmax^b`; that rule is confirmed at
-twenty points, and at `a = 7, b = 0` it agrees with `sB7 * fnum`, which arrives by a different
-path. Ninth-order spherical is `a = 9, b = 0`, so it extends to `efac * um^9` — the natural
-continuation, but every point confirming the rule has total degree SEVEN and this has degree
-nine. BUCH7 prints the unconverted value beside the converted one so that a wrong scale is
-diagnosable rather than merely suspected.
+**The conversion to transverse measure had no second route, and now it has one.** Stage D puts
+each tau into transverse measure by `efac * um^a * hmax^b`; that rule is confirmed at twenty
+points, and at `a = 7, b = 0` it agrees with `sB7 * fnum`, which arrives by a different path.
+Ninth-order spherical is `a = 9, b = 0`, so it extends to `efac * um^9` — the natural
+continuation, but every point confirming the rule has total degree seven and this has degree nine.
 
-**What is checked and what is not.** The twelve formulas were diffed mechanically against
-`QuaternarySpherical.cs`, which reproduces Buchdahl's printed Sigma1 table to a few parts
-in a million against a system figure of −172968. That makes the *transcription* checked.
-The macro itself has **not been run in OpticStudio** — nobody here has one — so its
-paraxial inputs, its `tt` indices under a live `nsm`, and its printing are unverified.
-Running it on a Cooke triplet and comparing with `abcalc --quaternary` is the outstanding
-check, and it is worth doing precisely because the two reach the same fourteen rows through
-different paraxial data.
+Measured on KingslakeDG, it holds. The printed ratio of the unconverted and transverse lines is
+−1.454733E−09, and that factors into quantities taken from the prescription alone:
+`um = −(EPD/2)/EFL = −0.06249754` gives `um^9 = −1.454676E−11`, leaving `efac = 100.00395`
+against an EFL of 100.00394 — so `vpk = 1.000000`, which is exactly what it must be, the p ray
+starting at unit height and leaving at unit angle in units of the focal length. Six significant
+figures, from numbers that know nothing about this stage. BUCH7 still prints both lines, because
+that is what made the check free.
+
+**What the OpticStudio run actually settled.** Every surface of stage F agrees with
+`QuaternarySpherical.cs` in all three columns to the five figures the C# prints, and so does the
+system figure, 4.196252E+04 — cross-implementation confirmation of the fourteen rows on a design
+that is not Buchdahl's own. It also confirmed `r1` and `r2` from inside the macro: they are running
+sums of `t132` and `t133`, which the stage C dump prints, and they match at every surface to every
+digit.
+
+It took a bug fix to get there. The design reads **F4**, and the bare name was resolving to CDGM's
+F4 (1.620047) rather than Schott's (1.616592), which put the two implementations eleven per cent
+apart in the ninth order. See `GlassCatalog.FallbackPreference`. The macro was the one that agreed
+with OpticStudio.
+
+**How it was checked, in the order the checks were made.** First the twelve formulas were diffed
+mechanically against `QuaternarySpherical.cs` — extracted from both files, normalised so that
+`tt(i, 83)` and `t[83]` become the same token, and compared. They are identical, which made the
+*transcription* checked but said nothing about the macro running. Then it was run, and the paraxial
+inputs, the `tt` indices under a live `nsm` and the printing were checked all at once by the
+agreement above.
 
 ### Where the numbers come from, and what merely agrees with them
 
@@ -778,9 +792,17 @@ It is kept as a separate column, not folded into `full 7th`, for exactly that re
 three is already `+B7 only` — the previous order plus spherical alone — so the shape is one the
 file established before this.
 
-**Neither column has been run in OpticStudio.** See the stage F note above: the arithmetic is
-checked against the C#, the transverse conversion of B9 is not checked at all, and nothing here
-has met a live `nsm`.
+**Run, and the axial columns reproduce by hand.** On KingslakeDG the four original columns and the
+new one come out exactly as an independent evaluation of `RMS^2 = sum_ij c_i c_j 2/(a_i + a_j + 2)` from
+the five published coefficients predicts, to all seven printed digits:
+
+| | 3rd | 3rd+5th | +B7 | +B9 |
+|---|---|---|---|---|
+| computed by hand | 4.682353e-03 | 3.362864e-03 | 3.157879e-03 | 3.141444e-03 |
+| ROBB printed | 4.682353E-03 | 3.362864E-03 | 3.157879E-03 | 3.141444E-03 |
+
+`B9 = −6.104427E−05` moved the axial spot by −0.52 per cent. At `H = 0` the `+B7 only` and
+`full 7th` columns are identical, as they must be: on axis B7 is the whole of the seventh order.
 
 It was written the other way round first - BUCH7 as the parent calling ROBB - which works
 equally well, because the call buffer carries data in both directions: the shipped

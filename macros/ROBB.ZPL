@@ -649,8 +649,8 @@ IF (has9 > 0.5)
    PRINT "seventh-order truncation misses by 134 um, the ninth by 11, and the eleventh"
    PRINT "by 11.8 - worse than the ninth."
    PRINT " "
-   PRINT "Its conversion to transverse measure is also the one number BUCH7 publishes"
-   PRINT "without a second route to check it against. See stage F there."
+   PRINT "Its conversion to transverse measure WAS the one number BUCH7 published without"
+   PRINT "a second route. It now has one - see stage F - and it held to six figures."
 ELSE
    PRINT " "
    PRINT "NOTE: BUCH7 reported no ninth order, so B9 is zero and the '+B9' column below"

@@ -1007,7 +1007,10 @@ public sealed class ReportWriter
                     + (_sys.GlassCatalogsAreInferred
                         ? " The catalog shown against each was worked out from the glass names "
                         + "rather than read from the file, so it is this program's guess."
-                        : " The first loaded was used."));
+                        : " Schott wins a name no file claimed, because the files that name no "
+                        + "catalog are overwhelmingly classical designs written in Schott glasses "
+                        + "and that is what OpticStudio resolves them to; anything Schott does "
+                        + "not have falls to load order. A better guess is still a guess."));
         foreach (var s in _sys.Surfaces)
             if (s.Type == SurfaceType.CoordinateBreak)
             {

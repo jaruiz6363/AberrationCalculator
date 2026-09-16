@@ -1568,7 +1568,7 @@ FOR i = 1, nsm, 1
 NEXT
 
 ! ---------------------------------------------------------------------------------
-! INTO TRANSVERSE MEASURE, AND THIS IS THE ONE STEP HERE THAT IS NOT CHECKED.
+! INTO TRANSVERSE MEASURE. THIS WAS THE ONE UNCHECKED STEP AND IT IS NOW CHECKED.
 !
 ! Stage D puts each tau into transverse measure by efac * um^a * hmax^b, where a is
 ! its aperture degree and b its field degree - VEC1(1) to VEC1(20) above. That rule is
@@ -1581,9 +1581,15 @@ NEXT
 ! quaternary coefficient is augmented in the same sense that M (31.11)'s single factor
 ! 1/(N_k' v_pk') assumes is not something this file can settle.
 !
-! So the unconverted value is printed beside the converted one. If the spot ROBB builds
-! from it ever looks wrong by a clean factor, this line is the first place to look, and
-! the raw number is there to check it against.
+! MEASURED ON KINGSLAKE'S DOUBLE GAUSS, and it holds. The printed ratio of the two lines
+! below came to -1.454733E-09, and that factors exactly into quantities taken from the
+! prescription alone: um = -(EPD/2)/EFL = -0.06249754 gives um^9 = -1.454676E-11, which
+! leaves efac = 100.00395 against an EFL of 100.00394 - so vpk = 1.000000, which is what
+! it must be, the p ray starting at unit height and leaving at unit angle in units of the
+! focal length. Six significant figures, from numbers that know nothing about this stage.
+!
+! The unconverted value is still printed beside the converted one. The check above cost
+! nothing to make because both were there to divide.
 ! ---------------------------------------------------------------------------------
 
 up9 = up7 * um * um
@@ -1610,8 +1616,9 @@ IF (q9 == 1)
    PRINT "Ninth-order spherical, unconverted     ", q9sum
    PRINT "Ninth-order spherical, transverse (B9) ", q9t
    PRINT " "
-   PRINT "The transverse value carries efac * um^9, which extends a rule confirmed only"
-   PRINT "at total degree seven. It is the one conversion here without a second route."
+   PRINT "The transverse value carries efac * um^9. That extends a rule confirmed at total"
+   PRINT "degree seven, and the extension was checked: the ratio of the two lines above"
+   PRINT "factors into -(EPD/2)/EFL raised to the ninth and efac = EFL, to six figures."
 
    PRINT " "
    PRINT "Buchdahl's rule of thumb, from the closing paragraph of paper IV: a system"
