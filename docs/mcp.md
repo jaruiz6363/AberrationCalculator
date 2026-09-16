@@ -90,10 +90,19 @@ Optimises a lens against a merit function given inline as text, and reports what
 Every derivative it uses is analytic - see [docs/optimizer.md](optimizer.md) - including through
 PRMSA, the predicted spot. **Conics and even aspheres are carried**, as values and as variables
 (`CC`, `A4`, `A6`, `A8`): a figured surface takes the aspheric arrangement of Buchdahl's Sec. 85,
-which agrees with Forbes' series trace to 2E-10 or better, and a spherical one takes his own
-published table bit for bit. One design is refused and named - a figured flat facing collimated
-light, where the route that reaches the coefficients is not in the differentiating build. The
-reporting tools above are unaffected and handle figuring throughout.
+which agrees with Forbes' series trace to 2E-10 or better, a spherical one takes his own
+published table bit for bit, and a figured flat in collimated light takes the same chain in
+Laurent series arithmetic, differentiated. A design is refused only when that series route cannot
+vouch for its answer. The reporting tools above are unaffected and handle figuring throughout.
+
+**Any of the thirty-seven aberration coefficients can be targeted**, written as its own name -
+`B, 1, TAR 0`, `Tau15, 2, TAR 0` - which is how the report prints it. They are free in bulk,
+because all thirty-seven come out of one run of the scheme.
+
+The tool's own description carries the full merit-function and variables syntax, generated from
+the same tables the parsers read, and `McpToolsTests` requires every example in it to parse. A
+tool description that lies about its own arguments is worse than one that says nothing, because
+the caller has no way to check it.
 
 | argument | |
 |---|---|

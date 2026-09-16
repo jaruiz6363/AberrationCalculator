@@ -1,5 +1,8 @@
 using System;
 using System.IO;
+using System.Linq;
+
+using AberrationCalculator.Optimize.Io;
 using AberrationCalculator.Mcp;
 using Xunit;
 
@@ -149,5 +152,87 @@ public class McpToolsTests
 
         Assert.True(missing.Count == 0,
             "docs/mcp.md does not mention: " + string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// <b>Every merit-function example in the optimize tool's description actually parses.</b>
+    ///
+    /// <para>That description is the only thing a model reads before writing a merit function, so
+    /// an example that does not parse is not a documentation slip - it is an instruction to do
+    /// something the program refuses. The check is mechanical for the same reason the operand
+    /// documentation check is: written out by hand it drifted the moment a signature changed.</para>
+    /// </summary>
+    [Fact]
+    public void EveryMeritExampleInTheOptimizeDescriptionParses()
+    {
+        var optimize = ActionTools.All.Single(t => t.Name == "optimize");
+
+        foreach (string raw in optimize.Description.Split('\n'))
+        {
+            string line = raw.Trim();
+
+            // The example lines are the indented ones carrying a TAR, MIN or MAX. Prose about
+            // them is not indented, and the VAR lines are handled by the test below.
+            if (!raw.StartsWith("  ") || !line.Contains(",")) continue;
+            if (line.StartsWith("VAR ") || line.StartsWith("PICKUP ")) continue;
+            if (!line.Contains("TAR ") && !line.Contains("MIN ") && !line.Contains("MAX ")) continue;
+
+            var parsed = MeritFile.Parse(new[] { line });
+            Assert.True(parsed.Count == 1, $"this example does not parse: {line}");
+        }
+    }
+
+    /// <summary>And every VARIABLES example, against the .var parser.</summary>
+    [Fact]
+    public void EveryVariableExampleInTheOptimizeDescriptionParses()
+    {
+        var optimize = ActionTools.All.Single(t => t.Name == "optimize");
+        int seen = 0;
+
+        foreach (string raw in optimize.Description.Split('\n'))
+        {
+            string line = raw.Trim();
+            if (!line.StartsWith("VAR ") && !line.StartsWith("PICKUP ")) continue;
+
+            var spec = VarFile.Parse(new[] { line });
+            Assert.True(spec.Variables.Count + spec.Pickups.Count == 1,
+                        $"this example does not parse: {line}");
+            seen++;
+        }
+
+        Assert.True(seen >= 4, "the variables examples have gone missing from the description");
+    }
+
+    /// <summary>
+    /// <b>The description does not tell a caller to write ABER.</b> It is the internal name of the
+    /// coefficient operand and the parser refuses it, because it does not say which coefficient -
+    /// a coefficient is written as its own name. The generated INPUTS BY TYPE line is built from
+    /// the operand enum, so ABER would appear there unless it is deliberately left out.
+    /// </summary>
+    [Fact]
+    public void TheOptimizeDescriptionDoesNotOfferABERAsAType()
+    {
+        var optimize = ActionTools.All.Single(t => t.Name == "optimize");
+
+        Assert.DoesNotContain("ABER takes", optimize.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("ABER take ", optimize.Description, StringComparison.Ordinal);
+
+        // And it says positively what to write instead, or a caller learns nothing from the
+        // absence.
+        Assert.Contains("Tau15", optimize.Description, StringComparison.Ordinal);
+        Assert.Contains("Do NOT write ABER", optimize.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The figuring variables are offered. They exist, they are what the last two pieces of work
+    /// were for, and a model that is never told about them cannot use them.
+    /// </summary>
+    [Fact]
+    public void TheOptimizeDescriptionOffersTheFiguringVariables()
+    {
+        var optimize = ActionTools.All.Single(t => t.Name == "optimize");
+
+        Assert.Contains("VAR CC 3", optimize.Description, StringComparison.Ordinal);
+        Assert.Contains("A4", optimize.Description, StringComparison.Ordinal);
     }
 }

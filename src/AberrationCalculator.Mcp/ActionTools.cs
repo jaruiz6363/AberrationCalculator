@@ -50,6 +50,13 @@ internal static class ActionTools
         var groups = new List<(string Inputs, List<string> Types)>();
         foreach (var type in OperandHelp.All)
         {
+            // ABER is the one operand whose name in a merit function is not its name here: a
+            // coefficient is written as itself, `Tau15, 1, TAR 0`. Listing "ABER" among the
+            // types would tell the caller to write the one thing the parser refuses, and a tool
+            // description that lies about its own arguments is worse than one that says nothing.
+            // The coefficients get their own sentence beside the examples instead.
+            if (type == OperandType.ABER) continue;
+
             string inputs = OperandInputs.Describe(type);
             var group = groups.Find(g => g.Inputs == inputs);
             if (group.Types == null) groups.Add((inputs, new List<string> { type.ToString() }));
@@ -102,7 +109,20 @@ internal static class ActionTools
           + "  LCF,     5, TAR 0,           1.0      # lateral colour at the full field\n"
           + "  DISTF,  10, MIN -2, MAX 2,   0.7      # distortion at seven tenths of the field\n"
           + "  RY,      1, TAR 0,           7, 1, 1, 0, 1   # surface, wave, hy, px, py\n"
+          + "  Tau15,   1, TAR 0                     # ONE NAMED ABERRATION COEFFICIENT\n"
+          + "  Pi5,     2, TAR 0                     # fifth-order field curvature\n"
+          + "  M2,      5, MIN -1e-3, MAX 1e-3       # sagittal oblique spherical, bounded\n"
           + InputsByType()
+          + "A COEFFICIENT IS WRITTEN AS ITS OWN NAME, which is how the report prints it - "
+          + "B F C Pi E at third order; B5 F1 F2 M1 M2 M3 N1 N2 N3 C5 Pi5 E5 at fifth; B7 and "
+          + "Tau2 to Tau20 at seventh. Case does not matter, and the only input any of them "
+          + "takes is the wavelength. Do NOT write ABER - it is the internal name and does not "
+          + "say which coefficient; it is refused. Coefficients are free in bulk, because they "
+          + "all come out of one run of the scheme, so a merit function of twenty of them costs "
+          + "what one costs. Prefer them to PRMSA when correcting a NAMED aberration: a "
+          + "predicted spot mixes eighteen coefficients into one number and two designs whose "
+          + "tau15 differs by a factor of five predict the same spot to one part in ten "
+          + "thousand.\n"
           + "Trailing inputs may be left off and take their "
           + "defaults. hy is a fraction of the maximum field, px and py fractions of the pupil "
           + "radius, and wavelengths are numbered from 1 - there is no zero, so leave the "
@@ -110,6 +130,8 @@ internal static class ActionTools
           + "VARIABLES - one per line, merging into whatever was said before:\n"
           + "  VAR CV 1                                 # curvature of surface 1\n"
           + "  VAR TH 2 MIN 1.0 MAX 12.0                # a thickness, bounded\n"
+          + "  VAR CC 3                                 # conic constant - FIGURES the surface\n"
+          + "  VAR A4 3                                 # and the r^4, r^6, r^8 terms: A4 A6 A8\n"
           + "  PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1  # surface 2 follows surface 1\n"
           + "A TAR operand is driven to a value; a MIN/MAX operand costs nothing while it is "
           + "satisfied.",
@@ -121,7 +143,8 @@ internal static class ActionTools
                     "The merit function as text. Either this or merit_file is required."),
                 new ArgumentSpec("variables", "string",
                     "Variables and pickups as text, in the .var format: VAR CV 1, "
-                  + "VAR TH 2 MIN 1 MAX 12, PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1. For a "
+                  + "VAR TH 2 MIN 1 MAX 12, VAR CC 3, VAR A4 3, PICKUP TH 2 INDEX 1 SCALE 1 "
+                  + "OFFSET -0.1. CV TH CC A4 A6 A8 - the last four figure the surface. For a "
                   + ".lhlt these come from the lens file itself and this is not needed."),
                 new ArgumentSpec("merit_file", "string",
                     "Path to a merit function file, instead of passing the text."),
