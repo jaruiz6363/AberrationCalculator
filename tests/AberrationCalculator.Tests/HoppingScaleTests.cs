@@ -2,6 +2,7 @@ using System;
 
 using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.IO;
+using AberrationCalculator.Optimize;
 using AberrationCalculator.Optimize.Algorithms;
 using AberrationCalculator.Optimize.Evaluation;
 using AberrationCalculator.Optimize.Variables;
@@ -130,5 +131,95 @@ public class HoppingScaleTests
 
         Assert.True(BasinHopping.PerturbScale(v, 0.0, Array.Empty<double>(), 0) > 0.0);
         Assert.True(BasinHopping.PerturbScale(v, 0.0, new[] { 0.0 }, 0) > 0.0);
+    }
+}
+
+/// <summary>
+/// WHETHER a hop moves each kind, which is a separate question from how far.
+///
+/// <para>LensHH-LT does not randomize aspherics, and that is the better default. A figuring term is
+/// a nearly-linear correction the local stage fits reliably from wherever it starts, so throwing it
+/// does not choose a different basin - it discards a figure that is about to be fitted again. The
+/// shape variables are what choose the basin, and the kick belongs to them.</para>
+///
+/// <para><b>The distinction these tests exist to protect is between the KICK and the SEARCH.</b>
+/// Excluding figuring from the kick must not exclude it from the optimisation: Hooke-Jeeves and the
+/// least-squares stage still step it at every hop, so the aspheric is fitted as hard as before. An
+/// implementation that skipped it in both places would still pass a merit-improves test while
+/// quietly freezing the figure, so the two are asserted apart.</para>
+/// </summary>
+public class HopFiguringTests
+{
+    private static Design Triplet(params Variable[] vars)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(Fixtures.Lens("CookeTriplet"), catalog);
+        var set = new VariableSet();
+        set.AddRange(vars);
+        return new Design(system, catalog, set);
+    }
+
+    private static (double[] before, double[] after) Hop(bool hopFiguring, params Variable[] vars)
+    {
+        var design = Triplet(vars);
+        var before = design.Read();
+        BasinHopping.Randomize(design, 0.5, new Random(4242), hopFiguring);
+        return (before, design.Read());
+    }
+
+    /// <summary>
+    /// By default the kick passes the figuring variables over and moves the shape ones.
+    /// </summary>
+    [Fact]
+    public void AHopLeavesTheFiguringAloneAndMovesTheShape()
+    {
+        var cv = new Variable { Kind = VariableKind.Curvature, Surface = 1 };
+        var cc = new Variable { Kind = VariableKind.Conic, Surface = 2 };
+        var a4 = new Variable { Kind = VariableKind.Asphere4, Surface = 2 };
+        var a6 = new Variable { Kind = VariableKind.Asphere6, Surface = 2 };
+        var a8 = new Variable { Kind = VariableKind.Asphere8, Surface = 2 };
+
+        var (before, after) = Hop(hopFiguring: false, cv, cc, a4, a6, a8);
+
+        Assert.NotEqual(before[0], after[0]);                 // the curvature was kicked
+        for (int i = 1; i < before.Length; i++)
+            Assert.Equal(before[i], after[i]);                // and the four figuring kinds were not
+    }
+
+    /// <summary>And asking for it kicks them, so the switch is a switch and not a comment.</summary>
+    [Fact]
+    public void AskingForItKicksThemInstead()
+    {
+        var cc = new Variable { Kind = VariableKind.Conic, Surface = 2 };
+        var a4 = new Variable { Kind = VariableKind.Asphere4, Surface = 2 };
+
+        var (before, after) = Hop(hopFiguring: true, cc, a4);
+
+        Assert.NotEqual(before[0], after[0]);
+        Assert.NotEqual(before[1], after[1]);
+    }
+
+    /// <summary>
+    /// <b>The one that matters.</b> Not kicking a figuring variable must not stop the local search
+    /// stepping it - the Hooke-Jeeves scale is read from <c>PerturbScale</c>, which knows nothing
+    /// about the switch, and a nonzero scale there is what keeps the aspheric being optimised.
+    /// </summary>
+    [Fact]
+    public void TheLocalSearchStillStepsWhatTheHopSkips()
+    {
+        var a4 = new Variable { Kind = VariableKind.Asphere4, Surface = 2 };
+        var design = Triplet(a4);
+        var ceilings = Scaling.PhysicalCeilings(design);
+
+        Assert.True(BasinHopping.PerturbScale(a4, 0.0, ceilings, 0) > 0.0,
+            "the aspheric would be frozen in the local search, not merely unkicked");
+    }
+
+    /// <summary>The default is off, stated once so a change to it has to be deliberate.</summary>
+    [Fact]
+    public void TheDefaultIsNotToKickThem()
+    {
+        Assert.False(new BasinHoppingOptions().HopFiguring);
+        Assert.False(new RunSettings().HopFiguring);
     }
 }

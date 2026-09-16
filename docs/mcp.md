@@ -115,6 +115,7 @@ the caller has no way to check it.
 | `method` | `lm`, `psd2`, `psd3` (default) or `hj` |
 | `iterations` | local iterations, or iterations per hop |
 | `hops`, `chains`, `seed`, `hop_sigma` | basin hopping, off by default. `hop_sigma` is the per-hop kick in units of each variable's own scale, default 0.001 - a whisper rather than a shove, and measured to be right: a large kick lands the design somewhere unrelated and the acceptance test then compares two unfinished designs |
+| `hop_figuring` | whether a hop also kicks the **conic and aspheric terms**. Default false. They are still *optimised* at every hop; this governs the random kick only. A figuring term is a nearly-linear correction the local stage refits from wherever it starts, so throwing it does not choose a different basin - it discards a figure that is about to be fitted again. Set it true to kick them anyway, which is defensible for a conic: at -1 and at 0 that is a genuinely different surface, not a small correction |
 | `glass_substitution` | name of a substitution catalogue the hopping may take glasses from, e.g. `CoreSet28` |
 | `save_to` | where to write the result. Under hopping this is a **folder**, and one design per chain goes into it. **Nothing is written without it** |
 

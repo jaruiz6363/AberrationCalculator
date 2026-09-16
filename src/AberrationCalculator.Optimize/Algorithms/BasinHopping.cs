@@ -10,10 +10,11 @@ using AberrationCalculator.Optimize.Evaluation;
 using AberrationCalculator.Optimize.Operands;
 using AberrationCalculator.Optimize.Variables;
 
-// PerturbScale is internal so that the scale a hop gives each KIND of variable can be asserted
-// directly. It was wrong for the figuring kinds by a factor of three thousand and nothing said so,
-// because the local optimisation after each hop hid it - the search wasted its hops rather than
-// breaking. A defect that only costs work needs a test that reads the work.
+// PerturbScale and Randomize are internal so that WHETHER a hop moves each KIND of variable, and
+// by how much, can be asserted directly. The scale was wrong for the figuring kinds by a factor of
+// three thousand and nothing said so, because the local optimisation after each hop hid it - the
+// search wasted its hops rather than breaking. A defect that only costs work needs a test that
+// reads the work.
 [assembly: InternalsVisibleTo("AberrationCalculator.Tests")]
 
 namespace AberrationCalculator.Optimize.Algorithms;
@@ -75,6 +76,23 @@ public sealed class BasinHoppingOptions
     /// <see cref="RestartAfterStalledHops"/>, and to the elite restart.</para>
     /// </summary>
     public double HopSigma { get; set; } = 0.001;
+
+    /// <summary>
+    /// Whether a hop kicks the FIGURING variables - conic and the aspheric terms - or leaves them
+    /// where the local optimiser put them. Default false.
+    ///
+    /// <para><b>They are still optimised.</b> This governs the random kick only; Hooke-Jeeves and
+    /// the least-squares stage step them exactly as before. LensHH-LT draws the same line, and it
+    /// is the right one: a figuring term is a nearly-linear correction that the local stage fits
+    /// reliably from wherever it starts, so kicking it does not choose a different basin - it
+    /// discards a fitted figure that is about to be fitted again. The kick's budget is better
+    /// spent on the shape variables, which do choose the basin.</para>
+    ///
+    /// <para>Set it true to kick them anyway - defensible for a conic, which at -1 and at 0 is a
+    /// genuinely different surface rather than a small correction. No design has yet been found
+    /// where it changes the answer either way.</para>
+    /// </summary>
+    public bool HopFiguring { get; set; }
 
     /// <summary>Accept a worse design with probability exp(-dMerit/T), to walk between basins.</summary>
     public bool EnableMetropolis { get; set; } = true;
@@ -411,7 +429,7 @@ public sealed class BasinHopping
                 design.Apply(bestX);
                 RestoreGlasses(design, bestGlass);
                 design.RefreshIndices();
-                Randomize(design, _options.RestartSigma, rng);
+                Randomize(design, _options.RestartSigma, rng, _options.HopFiguring);
                 sigma = _options.HopSigma;
                 // NOT hopsSinceBest: a jump is not an improvement, and clearing it here is
                 // exactly what made the elite trigger unreachable.
@@ -425,7 +443,7 @@ public sealed class BasinHopping
                 swapsThisHop = SwapGlasses(design, rng);
 
             // ── The kick ──────────────────────────────────────────────────────────────────
-            if (!restartHop) Randomize(design, sigma, rng);
+            if (!restartHop) Randomize(design, sigma, rng, _options.HopFiguring);
 
             // ── Pattern search, then least squares ────────────────────────────────────────
             var hjClock = System.Diagnostics.Stopwatch.StartNew();
@@ -620,13 +638,19 @@ public sealed class BasinHopping
     /// <para>Clamping piles variables onto the walls and they never come off; reflection keeps a
     /// constrained variable exploring the interior.</para>
     /// </summary>
-    private static void Randomize(Design design, double sigma, Random rng)
+    internal static void Randomize(Design design, double sigma, Random rng, bool hopFiguring)
     {
         var x = design.Read();
         var ceilings = Scaling.PhysicalCeilings(design);
         var items = design.Variables.Items;
         for (int i = 0; i < x.Length && i < items.Count; i++)
+        {
+            // The kick skips figuring by default; the LOCAL stages below still step it, so the
+            // aspheric is optimised at every hop - it is simply not thrown first.
+            if (!hopFiguring && items[i].Figures) continue;
+
             x[i] += sigma * PerturbScale(items[i], x[i], ceilings, i) * Gaussian(rng);
+        }
         design.Apply(x);                       // Apply folds each variable inside its bounds
     }
 

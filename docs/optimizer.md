@@ -711,6 +711,30 @@ and up to thirty hops, because the local optimisation recovers either way. What 
 wasted work, and no design has yet been found where it removes more than that. It is made because
 a kick three thousand times a quantity's own size is indefensible on its face, not because a
 measurement demanded it — and saying so is better than implying a benefit that was not observed.
+
+**And then the better question: should the kick reach the figuring at all?** LensHH-LT does not
+randomize aspherics, and on reflection that is the right line. A conic or an r⁴ term is a
+nearly-linear correction that the local stage refits reliably from wherever it starts, so throwing
+it does not choose a different basin — it discards a figure that is about to be fitted again,
+while the shape variables, which do choose the basin, get no more of the kick for it. So the hop
+now passes the figuring over by default. `--hop-figuring` (`hop_figuring` over MCP) asks for the
+old behaviour, which is defensible for a conic: at −1 and at 0 that is a genuinely different
+surface rather than a small correction.
+
+**The figuring is still optimised at every hop.** The exclusion is from the random kick and
+nothing else — Hooke-Jeeves and the least-squares stage step the conic and the aspheric terms
+exactly as before, off the same `PhysicalCeilings` scale. This is worth stating because an
+implementation that skipped figuring in both places would still improve the merit on every design
+and would pass any test that only watches the merit, while quietly freezing the figure; the two
+are asserted apart in `HopFiguringTests`. On the design this was measured on, an r⁴ term seeded
+at 3.0E−07 still lands at −4.90E−06 with the kick switched off: a change of sign and a factor of
+sixteen, done entirely by the local stage.
+
+**And it changed no answer either**, which by now is the expected result rather than a
+disappointment. Seeds 7 and 23 over thirty hops give the same merit to every printed digit and
+the same r⁴ to five, kicked or not. What the default buys is that the kick is spent where it can
+choose a basin instead of where it cannot.
+
 Steps are in units of each variable's **natural scale**, computed from the Jacobian as the step
 that moves the merit by a set amount, capped by what the parameter can plausibly do on this design
 (curvatures against the focal length, thicknesses against the total track). A search that stepped
@@ -836,6 +860,7 @@ in the base folder, not beside the shell.
 | `--chains <n>` | default 0 = one per processor |
 | `--seed <n>` | default 1234 |
 | `--hop-sigma <s>` | size of a hop, in natural steps |
+| `--hop-figuring` | kick the conic and aspheric terms too; off by default, and they are optimised either way |
 | `--glass_substitution <catalogue>` | let the hopping try glasses from that catalogue |
 | `--dir <path>` | take bare names against this folder, for this run only |
 | `--save` | overwrite the lens that was read |

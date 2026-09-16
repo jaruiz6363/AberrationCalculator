@@ -184,6 +184,16 @@ internal static class ActionTools
                   + "designs. Escape is not the kick's job - it belongs to the Metropolis walk "
                   + "and to the long jump after a chain stalls. Raise this only with a reason. "
                   + "Needs hops > 0."),
+                new ArgumentSpec("hop_figuring", "boolean",
+                    "Whether a hop also kicks the FIGURING variables - conic and the aspheric "
+                  + "terms. Default false, matching LensHH-LT. They are still OPTIMISED at "
+                  + "every hop; this governs the random kick only. A figuring term is a "
+                  + "nearly-linear correction the local stage fits reliably from wherever it "
+                  + "starts, so throwing it does not choose a different basin - it discards a "
+                  + "figure that is about to be fitted again, and the kick is better spent on "
+                  + "the shape variables, which do choose the basin. Set it true to kick them "
+                  + "anyway, which is defensible for a conic: at -1 and at 0 that is a "
+                  + "genuinely different surface rather than a small correction. Needs hops > 0."),
                 new ArgumentSpec("glass_substitution", "string",
                     "Name of a substitution catalogue the hopping may take glasses from, e.g. "
                   + "CoreSet28. Glass is discrete - there is no gradient from one glass to the "
@@ -359,6 +369,7 @@ internal static class ActionTools
             Iterations = Integer(a, "iterations") ?? 200,
             Hops = Integer(a, "hops") ?? 0,
             HopSigma = Number(a, "hop_sigma") ?? 0.001,
+            HopFiguring = Flag(a, "hop_figuring") ?? false,
             Chains = Integer(a, "chains") ?? 0,
             Seed = Integer(a, "seed") ?? 1234,
             GlassSubstitution = !string.IsNullOrWhiteSpace(substitution),
@@ -499,6 +510,26 @@ internal static class ActionTools
                                    out double d)
                  ? d
                  : throw new ArgumentException($"{name} must be a number, not '{text}'");
+        }
+    }
+
+    /// <summary>
+    /// A boolean argument, accepted as a JSON true/false or as the string a shell would send.
+    /// Same reasoning as <see cref="Integer"/>: refusing one spelling of the same fact is a
+    /// needless way to fail.
+    /// </summary>
+    private static bool? Flag(JsonNode? a, string name)
+    {
+        var v = a?[name];
+        if (v == null) return null;
+        try { return v.GetValue<bool>(); }
+        catch (Exception)
+        {
+            string text = v.ToString().Trim();
+            if (bool.TryParse(text, out bool parsed)) return parsed;
+            if (text is "1" or "yes" or "on") return true;
+            if (text is "0" or "no" or "off") return false;
+            throw new ArgumentException($"{name} must be true or false, not '{text}'");
         }
     }
 
