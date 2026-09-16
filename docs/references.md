@@ -650,6 +650,15 @@ aberration's name to its coefficient is in [optimizer.md](optimizer.md) - it was
 of this paper, which is what made it obvious that a reader arriving with a name in mind had
 nowhere to turn it into a symbol.
 
+*And the split he asks for is an operand, not only a printout.* The sentence quoted above - that
+the fifth order can be controlled effectively only if the surface contributions are broken into
+intrinsic and induced components - now has a form the optimiser understands: `M2.INT` drives what
+a surface generates on its own and `M2.IND` bounds what is induced in it, the second answered by
+moving the surfaces ahead of it rather than that one. Shafer asks for the split so that a designer
+knows where to act; this makes it the thing that acts. The closing sentence of his paper asks for
+the printout, and that is `srf = 1` in `macros/BUCH7_ASPH.ZPL` and the per-surface breakdown in
+the report.
+
 ## Implementation provenance
 
 The published sources above are the authority for the method. What establishes that this

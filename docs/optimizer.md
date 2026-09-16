@@ -296,8 +296,8 @@ so `RY, 1, TAR 0, 7` is surface seven at the reference colour, the full field an
 | `DTRGT` | diameter-to-thickness ratio | `surface, surface2` |
 | `PX PY PZ PL PM PN` | paraxial ray position and direction cosines | `surface, wave, hy, px, py` |
 | `RX RY RZ RL RM RN` | the same for a real ray | `surface, wave, hy, px, py` |
-| `ASBLT` | wavefront error a build tolerance would induce | `decentre, tilt, wave` |
-| a coefficient name | one named aberration coefficient (`ABER` internally) | `wave` |
+| `ASBLT` | wavefront error a build tolerance would induce | `decentre, tilt-deg, wave` |
+| a coefficient name | one named aberration coefficient, optionally one surface and one part (`ABER` internally) | `surface, wave` |
 
 `hy` is a **fraction of the maximum field**, 0 on axis and 1 at the corner — not an index into the
 field list, so a merit function can ask for seven tenths of the field whether or not the design
