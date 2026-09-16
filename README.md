@@ -461,8 +461,9 @@ Working, and validated in [docs/verification.md](docs/verification.md):
 - the re-normalised per-aberration and per-surface contributions to that spot
 - the optimizer: PSD, Hooke-Jeeves and basin hopping over analytic derivatives, with the
   Jacobian checked operand by operand and variable by variable against central differences.
-  Conics and even aspheres carried, as values and as variables; named aberration
-  coefficients as operands ([docs/optimizer.md](docs/optimizer.md))
+  Conics and even aspheres carried, as values and as variables; any named aberration
+  coefficient as an operand - for the system, for one surface, or for the intrinsic,
+  figuring or induced part of a surface's share ([docs/optimizer.md](docs/optimizer.md))
 - **nodal aberration theory**, third and fifth order: what the aberrations do when the
   surfaces are not on a common axis, and where the nodes go. Driven by an `.align` sidecar
   that works the same for all six formats, and checked against Thompson's and Buchdahl's

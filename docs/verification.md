@@ -51,7 +51,7 @@ computes the seventh-order set this program exists for, so neither could be.
 | fifth order against FIFTHORD, finite conjugate | 18 of 18 totals |
 | the per-surface split | intrinsic + figuring + induced = total, to 1.8E-14 |
 | E, E5 and tau20 against traced chief rays | each to under one per cent wherever the two routes agree, at both conjugates |
-| the suite | 597 tests, and everything they read is in this repository |
+| the suite | over a thousand tests, and everything they read is in this repository |
 
 ## The aspheric arrangement, and how it was established
 
