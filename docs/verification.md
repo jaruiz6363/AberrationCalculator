@@ -70,6 +70,7 @@ zero there: the Petzval sum depends on the vertex curvature and the indices, and
 has the same vertex sphere as the sphere it was figured from. And the induced part recovered by
 difference is not a quantity either program computes as such - FIFTHORD never names it, and this
 program never obtains it by subtraction - so the two arrive at it by different routes entirely.
+
 ## Standing results
 
 | what | result |
