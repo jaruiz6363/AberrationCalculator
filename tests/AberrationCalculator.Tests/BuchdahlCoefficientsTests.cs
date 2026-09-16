@@ -189,6 +189,54 @@ public class BuchdahlCoefficientsTests
     }
 
     /// <summary>
+    /// <b>The figuring contributes nothing to the Petzval sum, and that is asserted rather than
+    /// skipped.</b>
+    ///
+    /// <para>The Petzval sum depends on the vertex curvature and the refractive indices, and a
+    /// figured surface has the same vertex sphere as the sphere it was figured from - so the conic
+    /// and the r^4, r^6 and r^8 terms add nothing to it. FIFTHORD says the same thing by leaving
+    /// the Petzval column BLANK in every aspheric block it prints.</para>
+    ///
+    /// <para><b>Which was not being checked.</b> The fixtures record that blank by omitting
+    /// <c>Pi</c> from the aspheric object, and <see cref="MatchesTheRecordedReference"/> skips any
+    /// coefficient a fixture does not state - so a positive statement that a term is ABSENT was
+    /// being read as an absence of data. Two implementations agreeing that a term is zero is worth
+    /// more than two agreeing about a value, since there are far more ways to be accidentally
+    /// right about a number than about a nothing.</para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Fixtures))]
+    public void TheFiguringContributesNothingToPetzval(string fixture)
+    {
+        if (fixture == null) return;                     // reference repo absent
+        var dir = OracleDir()!;
+        var doc = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(dir, fixture + ".buchdahl.json"))).RootElement;
+
+        var (r, _) = Run(Path.Combine(dir, fixture + ".zmx"));
+
+        if (!doc.TryGetProperty("aspheric", out var asph)) return;
+
+        int checked_ = 0;
+        foreach (var s in asph.EnumerateObject())
+        {
+            // The reference must not state one either: if a future FIFTHORD run ever produced a
+            // Petzval figure here, this test is wrong rather than the program.
+            Assert.False(s.Value.TryGetProperty("Pi", out _),
+                $"{fixture}: the reference states an aspheric Petzval at surface {s.Name}, which "
+              + "FIFTHORD leaves blank - the fixture or this expectation is wrong");
+
+            var got = r.Aspheric[int.Parse(s.Name)];
+            Assert.True(got != null, $"{fixture}: no aspheric contribution at surface {s.Name}");
+            Assert.Equal(0.0, got!.Pi);
+            checked_++;
+        }
+
+        Assert.True(checked_ > 0, $"{fixture} has an aspheric block with no surfaces in it");
+    }
+
+
+    /// <summary>
     /// The totals are deliberately NOT the sum of the per-surface intrinsic parts: they
     /// carry the aspheric contributions, the induced cross-surface corrections, and the
     /// F/number. A design with two aspheres and a mid-stop makes all three matter, so this
