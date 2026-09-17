@@ -47,9 +47,16 @@ public sealed class AsphericScreen
     /// WORST value over the field span from half the screened height out to it, not at that
     /// height alone. The prediction is
     /// a power series in aperture and field, and this is the ratio of consecutive terms in it:
-    /// well under one means the ninth order that nobody computes here is smaller still and can
-    /// be neglected. Near or above one means the series has stopped converging usefully, and
-    /// any residual is as likely to be the missing ninth order as a fault in the seventh.
+    /// well under one means the ninth order is smaller still and can be neglected. Near or above
+    /// one means the series has stopped converging usefully, and any residual is as likely to be
+    /// the missing ninth order as a fault in the seventh.
+    ///
+    /// <para><b>That last sentence used to end the matter, and no longer has to.</b> The ninth
+    /// order was uncomputable here when this was written, so an on-axis residual could only be
+    /// ATTRIBUTED to it. <see cref="QuaternarySpherical"/> computes the spherical part of it, which
+    /// on axis is the whole of it, so on a system of spheres the question is now arithmetic rather
+    /// than a judgement about a ratio. Off axis, and on any figured design, the ratio is still all
+    /// there is.</para>
     /// </summary>
     public double SeriesRatio { get; init; }
 
@@ -179,8 +186,9 @@ public static class AsphericDiagnostic
         //
         // The quantity wants to sit in a BAND. Below a per cent the seventh order is a rounding
         // correction and its errors are unmeasurable; above about half, the truncation is doing
-        // so much of the work that the ninth order nobody computes here will be doing plenty
-        // too, and a residual could not be attributed. Taken as the worst over a span of field
+        // so much of the work that the ninth order will be doing plenty too, and a residual
+        // could not be attributed - though on a system of spheres QuaternarySpherical can now
+        // measure the axial part of that instead of leaving it to this ratio. Taken as the worst over a span of field
         // so that one lucky point cannot carry a design.
         double seventhStep = Math.Abs(r7 - r5);
         double worstWork = 0.0;

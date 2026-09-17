@@ -277,11 +277,23 @@ unpublished, but that one has been reconstructed and checked ([verification.md](
 NINTH order and not the seventh that is the wall. Forbes has no such wall — the order is a
 parameter.
 
-**What would be needed, concretely.** The ninth order has more than twenty coefficients, so
-it is not a matter of extending an array: it needs the polynomial written out, the extraction
-generalised past its hard-coded degree seven, and `Prms` extended to form a spot from the
-larger set. None of that is research. It is the same work again at the next order, on
-machinery that has already been shown to carry it.
+**What would be needed, concretely, and one corner of it is now done.** The ninth order has more
+than twenty coefficients, so it is not a matter of extending an array: it needs the polynomial
+written out, the extraction generalised past its hard-coded degree seven, and `Prms` extended to
+form a spot from the larger set. None of that is research. It is the same work again at the next
+order, on machinery that has already been shown to carry it.
+
+The exception is **ninth-order spherical**, which Buchdahl published separately — paper IV, three
+pages, fourteen entries per surface appended to the tertiary scheme — and which
+`QuaternarySpherical.cs` now computes, checked against his own printed table and against his
+closed-form plane-surface identity. `ROBB.ZPL` carries it into a spot as a fifth column.
+
+That matters for exactly one of the cases on this page and not the others. **On axis, spherical IS
+the whole ninth order** — every other term of that order carries a power of the field — so the
+axial prediction can now be completed rather than truncated. Off axis it is one term of more than
+twenty, and the wall described above still stands. It is also spherical surfaces only: no aspheric
+arrangement exists at the ninth order, so the hard-corrected asphere that this page finds
+undescribed stays undescribed.
 
 **And a caveat on where this bites.** Every design here that the seventh order fails on is
 f/5 at 20 degrees, and the one it comfortably describes is f/8 at 4. Speed and field vary
