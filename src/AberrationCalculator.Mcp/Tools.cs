@@ -220,6 +220,18 @@ internal static class Tools
           + "text.",
             (w, _) => w.BuildDistortionText()),
 
+        new Tool("quaternary_spherical",
+            "The coefficient of QUATERNARY - ninth-order - spherical aberration, per surface, "
+          + "with the intermediate rows Buchdahl prints beside it. Everything else here stops "
+          + "at the SEVENTH order, so where a prediction and a traced ray part company on axis "
+          + "the residual has had to be attributed to the ninth order rather than measured; "
+          + "this makes that arithmetic. Buchdahl, Optical Aberration Coefficients IV, J. Opt. "
+          + "Soc. Am. 48, 757 (1958). SPHERICAL SURFACES ONLY - a figured design is refused "
+          + "with its reason rather than answered, because he published no aspheric "
+          + "arrangement at this order and the scheme would return a number that is neither "
+          + "the spherical coefficient nor the aspheric one. Readable text.",
+            (w, _) => w.BuildQuaternaryText()),
+
         new Tool("surface_share",
             "Per surface: its share of the spot and the fraction of that which is induced "
           + "rather than its own. Tab-separated.",

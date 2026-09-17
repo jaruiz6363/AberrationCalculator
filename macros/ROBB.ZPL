@@ -39,6 +39,14 @@
 !   pupil is not sampled at all. There are no rings and no spokes and no convergence
 !   to worry about: the only approximation is the truncation of the series itself.
 !
+! FIVE COLUMNS, AND THE FIFTH IS NOT LIKE THE OTHER FOUR
+!
+!   Columns one to four are nested truncations of ONE series - third, third plus fifth,
+!   plus B7, full seventh. The fifth adds ninth-order SPHERICAL alone, which COMPLETES
+!   the ninth order on axis, where every other term of that order carries a power of the
+!   field and vanishes, and is a fragment of it everywhere else. It is printed apart for
+!   that reason rather than folded into the fourth; see the note printed above the table.
+!
 ! REFERENCED TO THE CENTROID, as Robb specifies - the variance about the mean
 ! intersection, not about the chief ray. That is what the mean subtraction near the
 ! end is for. The mean of eps_z is zero because every one of its terms is odd in
@@ -141,6 +149,8 @@ ENDIF
 !   17-34  tau2 to tau19,    seventh, tau20 excluded
 !   45     761976, the handshake
 !   46     1 if the seventh order is present, 0 if only third and fifth were computed
+!   47     B9, ninth-order spherical, in transverse measure
+!   48     1 if the ninth order is present
 !
 ! All in TRANSVERSE measure and in lens units, which is what BUCH7 prints as its
 ! system totals. Unconverted coefficients would give a number in no units at all.
@@ -150,6 +160,14 @@ FOR kk = 1, 34, 1
    VEC4(kk) = CALD(kk)
 NEXT
 has7 = CALD(46)
+
+! The ninth order arrives in its own slot rather than as coefficient 35 of a set,
+! because it is not part of the same truncation: see the +B9 column below for what it
+! is and is not. A BUCH7 that never reached stage F leaves slot 48 clear, and the
+! coefficient is then zeroed so the extra column simply repeats the full seventh.
+has9 = CALD(48)
+VEC4(35) = CALD(47)
+IF (ABSO(has9 - 1) > 0.5) THEN VEC4(35) = 0
 
 ! ---------------------------------------------------------------------------------
 ! WHERE THE IMAGE PLANE ACTUALLY IS.
@@ -218,7 +236,8 @@ VEC3(71) = 0.5
 VEC3(81) = 0.5
 
 ! ---------------------------------------------------------------------------------
-! Robb Eq. (2), the meridional component eps_y. Twenty-five terms.
+! Robb Eq. (2), the meridional component eps_y. Twenty-six terms - twenty-five of
+! Robb's own, and B9 appended, which is not his.
 !
 !   VEC1(k)         the coefficient combination, evaluated
 !   VEC1(50 + k)    the power of rho
@@ -384,14 +403,21 @@ VEC1(50 + kk) = 1
 VEC1(100 + kk) = 6
 VEC1(150 + kk) = 2
 
+kk = kk + 1
+VEC1(kk) = VEC4(35)
+VEC1(50 + kk) = 9
+VEC1(100 + kk) = 0
+VEC1(150 + kk) = 2
+
 ny = kk
-IF (ny != 25)
+IF (ny != 26)
    PRINT "ROBB built the wrong number of eps_y terms; the file has been edited badly."
    GOTO 999
 ENDIF
 
 ! ---------------------------------------------------------------------------------
-! Robb Eq. (2), the sagittal component eps_z. Nineteen terms, in VEC2 with the same
+! Robb Eq. (2), the sagittal component eps_z. Twenty terms - nineteen of Robb's and
+! B9 appended - in VEC2 with the same
 ! layout. It has fewer terms because the constant theta function does not appear:
 ! every term of eps_z is odd in theta, which is also why its mean over the pupil is
 ! zero and why the centroid subtraction below touches only eps_y.
@@ -513,8 +539,14 @@ VEC2(50 + kk) = 1
 VEC2(100 + kk) = 6
 VEC2(150 + kk) = 5
 
+kk = kk + 1
+VEC2(kk) = VEC4(35)
+VEC2(50 + kk) = 9
+VEC2(100 + kk) = 0
+VEC2(150 + kk) = 5
+
 nz = kk
-IF (nz != 19)
+IF (nz != 20)
    PRINT "ROBB built the wrong number of eps_z terms; the file has been edited badly."
    GOTO 999
 ENDIF
@@ -544,22 +576,34 @@ ENDIF
 ! ---------------------------------------------------------------------------------
 
 nb7y = 0
+nb9y = 0
 FOR ia = 1, ny, 1
    VEC1(200 + ia) = 4
    IF ((VEC1(50 + ia) + VEC1(100 + ia)) <= 3) THEN VEC1(200 + ia) = 1
    IF ((VEC1(50 + ia) + VEC1(100 + ia)) == 5) THEN VEC1(200 + ia) = 2
    IF (VEC1(50 + ia) == 7) THEN VEC1(200 + ia) = 3
+   IF (VEC1(50 + ia) == 9) THEN VEC1(200 + ia) = 5
    IF (VEC1(200 + ia) == 3) THEN nb7y = nb7y + 1
+   IF (VEC1(200 + ia) == 5) THEN nb9y = nb9y + 1
 NEXT
 
 nb7z = 0
+nb9z = 0
 FOR ia = 1, nz, 1
    VEC2(200 + ia) = 4
    IF ((VEC2(50 + ia) + VEC2(100 + ia)) <= 3) THEN VEC2(200 + ia) = 1
    IF ((VEC2(50 + ia) + VEC2(100 + ia)) == 5) THEN VEC2(200 + ia) = 2
    IF (VEC2(50 + ia) == 7) THEN VEC2(200 + ia) = 3
+   IF (VEC2(50 + ia) == 9) THEN VEC2(200 + ia) = 5
    IF (VEC2(200 + ia) == 3) THEN nb7z = nb7z + 1
+   IF (VEC2(200 + ia) == 5) THEN nb9z = nb9z + 1
 NEXT
+
+IF ((nb9y != 1) | (nb9z != 1))
+   PRINT "ROBB cannot identify ninth-order spherical aberration uniquely; there should"
+   PRINT "be exactly one term of aperture degree nine in each of eps_y and eps_z."
+   GOTO 999
+ENDIF
 
 IF ((nb7y != 1) | (nb7z != 1))
    PRINT "ROBB cannot identify seventh-order spherical aberration uniquely; there"
@@ -588,6 +632,30 @@ PRINT "   M1 ", VEC4(8), "   M2 ", VEC4(9), "   M3 ", VEC4(10)
 PRINT "   N1 ", VEC4(11), "   N2 ", VEC4(12), "   N3 ", VEC4(13)
 PRINT "   C5 ", VEC4(14), "   Pi5", VEC4(15)
 PRINT "   B7 ", VEC4(16)
+PRINT "   B9 ", VEC4(35)
+IF (has9 > 0.5)
+   PRINT " "
+   PRINT "THE +B9 COLUMN IS NOT A NINTH-ORDER SPOT, AND MUST NOT BE READ AS ONE."
+   PRINT " "
+   PRINT "ON AXIS it is exact and it completes the order: every other ninth-order term"
+   PRINT "carries a power of the field, so at H = 0 spherical IS the whole ninth order,"
+   PRINT "and the difference between the last two columns there is real."
+   PRINT " "
+   PRINT "OFF AXIS it is a PARTIAL ninth order - some twenty other terms of that order"
+   PRINT "are absent - and a partial order is not guaranteed to be an improvement. Terms"
+   PRINT "of one order routinely cancel against each other, so adding one of them can"
+   PRINT "move the answer either way. This repository has measured that even COMPLETE"
+   PRINT "orders are not monotone: on the worst design in docs/spot-prediction.md the"
+   PRINT "seventh-order truncation misses by 134 um, the ninth by 11, and the eleventh"
+   PRINT "by 11.8 - worse than the ninth."
+   PRINT " "
+   PRINT "Its conversion to transverse measure WAS the one number BUCH7 published without"
+   PRINT "a second route. It now has one - see stage F - and it held to six figures."
+ELSE
+   PRINT " "
+   PRINT "NOTE: BUCH7 reported no ninth order, so B9 is zero and the '+B9' column below"
+   PRINT "is IDENTICAL to 'full 7th'. Two columns reading the same is the symptom."
+ENDIF
 IF (has7 > 0.5)
    PRINT "   tau2 to tau19 also received."
 ELSE
@@ -645,7 +713,7 @@ PRINT " "
 PRINT "RMS spot RADIUS in lens units, referenced to the CENTROID, at the GAUSSIAN"
 PRINT "image plane."
 PRINT " "
-PRINT "     H            3rd        3rd+5th       +B7 only       full 7th"
+PRINT "     H            3rd        3rd+5th       +B7 only       full 7th            +B9"
 
 ! ---------------------------------------------------------------------------------
 ! The double sum. Terms are selected by total degree a + b, which is 3 for the third
@@ -657,7 +725,7 @@ hstep = 1 / nsteps
 FOR istep = 0, nsteps, 1
    hh = istep * hstep
 
-   FOR icol = 1, 4, 1
+   FOR icol = 1, 5, 1
       acc = 0
 
       ! eps_y against itself
@@ -724,7 +792,7 @@ FOR istep = 0, nsteps, 1
    FORMAT 6.2
    PRINT hh,
    FORMAT 15.6 EXP
-   PRINT VEC3(121), VEC3(122), VEC3(123), VEC3(124)
+   PRINT VEC3(121), VEC3(122), VEC3(123), VEC3(124), VEC3(125)
 NEXT
 
 PRINT " "

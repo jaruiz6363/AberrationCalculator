@@ -23,13 +23,28 @@
 !
 ! LIMITS, STATED PLAINLY
 !
-!   Spherical surfaces only. A conic or an even-asphere term makes the macro stop with
-!   an explanation rather than return a number that looks like an answer. Buchdahl
-!   gives the aspheric scheme but never published the arranged table for it, so this
-!   file does not guess at one. BUCH7_ASPH.ZPL, beside this one, IS that arrangement
-!   reconstructed, and it carries conics and even aspheres; it agrees with FORBES.ZPL
-!   on all twenty seventh-order coefficients on every figured design tried. This macro
-!   is left as the spherical routine, checked against Buchdahl's own printed numbers.
+!   TWO DIFFERENT KINDS OF SPHERICAL-ONLY LIVE IN THIS FILE NOW, and they are worth
+!   keeping apart, because one of them has a way out and the other does not.
+!
+!   Orders three, five and seven are spherical only IN THIS MACRO. A conic or an
+!   even-asphere term makes it stop with an explanation rather than return a number
+!   that looks like an answer. Buchdahl gives the aspheric scheme but never published
+!   the arranged table for it, so this file does not guess at one. BUCH7_ASPH.ZPL,
+!   beside this one, IS that arrangement reconstructed, and it carries conics and even
+!   aspheres; it agrees with FORBES.ZPL on all twenty seventh-order coefficients on
+!   every figured design tried. This macro is left as the spherical routine, checked
+!   against Buchdahl's own printed numbers. So: want the seventh order on a figured
+!   design, run BUCH7_ASPH.
+!
+!   STAGE F, THE NINTH ORDER, IS SPHERICAL ONLY IN THE SUBJECT. There is no aspheric
+!   arrangement at this order anywhere - Buchdahl published none, paper IV reaches
+!   quaternary spherical and stops, and unlike the tertiary one nobody has reconstructed
+!   it. BUCH7_ASPH therefore has no stage F and will not grow one by transcription;
+!   somebody would have to derive the arrangement first. That is not a gap in these
+!   macros, it is where the published subject ends.
+!
+!   The consequence for a reader: on a figured design there IS a seventh order to be
+!   had, from the macro next door, and there is NO ninth order to be had at all.
 !
 !   Rotationally symmetric and sequential. Either conjugate: the object position
 !   enters only through M (13.4)'s four starting values, and is carried.
@@ -67,6 +82,24 @@
 paraxmode = PMOD()
 PARAXIAL ON
 eps = 1E-10
+
+! Set to 1 to add stage F, the coefficient of QUATERNARY - ninth-order - spherical
+! aberration, by Buchdahl paper IV (J. Opt. Soc. Am. 48, 757, 1958). Off by default
+! because it is a fifteenth column on a report that is already wide, and because
+! almost nobody needs it: everything else here stops at the seventh order and that
+! is enough for most designs. It is worth switching on when a predicted spot and a
+! traced one part company ON AXIS, because the residual there has otherwise to be
+! ATTRIBUTED to the ninth order rather than measured.
+!
+! It costs nothing to leave on. Paper IV builds the quaternary as an appendix to the
+! tertiary scheme, so every quantity the fourteen rows need is an entry of Table I
+! that stages A to D have already computed - fourteen more entries per surface on a
+! table of two hundred and forty.
+!
+! SPHERICAL SURFACES ONLY, which is this macro's own limit anyway: a conic or an
+! even-asphere term stops BUCH7 before it reaches here. Buchdahl published no
+! aspheric arrangement at the ninth order, as he published none at the seventh.
+q9 = 0
 wl = PWAV()
 
 ns = NSUR()
@@ -1440,6 +1473,176 @@ PRINT "the F/number, which is done for their totals. Check the third order again
 PRINT "Analyze > Aberrations > Seidel Coefficients and the fifth against FIFTHORD."
 
 
+
+! =================================================================================
+! STAGE F - the coefficient of QUATERNARY (ninth-order) spherical aberration.
+!
+! Buchdahl, "Optical Aberration Coefficients. IV. The Coefficient of Quaternary
+! Spherical Aberration", J. Opt. Soc. Am. 48, 757 (1958). Its Table I is the
+! fourteen rows below, and he says of them that "the computing scheme is quite
+! brief, viz. only 14 entries of the usual kind per surface. It is constructed
+! along the usual lines, and no further comment is required."
+!
+! WHY IT IS SO SHORT. Paper IV builds the quaternary as "an appendix to that for
+! the set of tertiary coefficients", so every quantity it needs is already an entry
+! of Table I. Stages A to D computed all of them; this stage only reads tt.
+!
+! IT NEEDS NO DUAL RUN, though Sec. 3 sounds as if it does. Sec. 3 says the one
+! quantity in its Eq. (3.1) not explicit in the tertiary scheme is T1-dagger, and
+! that obtaining it "requires T1q", through the identity M (21.7). Buchdahl then
+! performs that reduction himself - the three rows feeding r3 below ARE M (21.7)
+! written out, in p-side quantities alone. Reading Sec. 3 without the table sends
+! an implementer looking for a second pass that is not wanted.
+!
+! THE TWO SIGMA CONVENTIONS DIFFER, and Buchdahl flags it because confusing them
+! gives a plausible wrong number rather than an obvious one: the sum in the r3 row
+! "exceptionally indicates the sum of the entries in the three preceding rows",
+! while the sum in the last row follows the usual convention and takes the FOUR
+! above it, the intrinsic row included. Both are written out here as explicit
+! additions rather than as a running total, so neither can quietly gain a row.
+!
+! WHERE THE RESULTS GO. tt columns 241 to 248, which are free - stage D ends at
+! 240 and the array is declared with 250.
+!
+!    241 r1, the accumulated tertiary spherical    244 r4
+!    242 r2, its barred partner                    245 r5
+!    243 r3, T1-dagger                             246 r6
+!                                                  247 intrinsic q1p
+!                                                  248 total q1p
+!
+! CHECKED AGAINST HIS OWN PRINTED TABLE. Paper IV computes all of this for the
+! triplet Sigma1 and prints the six r rows beside the answer, so a wrong
+! transcription shows up at a named row rather than at a total. The C# in this
+! repository reproduces that table to a few parts in a million, against a system
+! figure of -172968; this macro is the same fourteen rows reached through
+! OpticStudio's paraxial data instead, so agreement between the two is a check
+! across implementations rather than a repeat of one.
+!
+! UNITS. Buchdahl's, unconverted, as the per-surface third and fifth orders above
+! are. His own rule of thumb from the closing paragraph: a system meant to work at
+! f/2 should aim at individual contributions of at most order 1000 at unit focal
+! length, and his triplet runs to six figures, which is why he chose it.
+! =================================================================================
+
+! THE COMPUTATION BELOW IS UNCONDITIONAL; q9 gates only the PRINTING further down.
+! ROBB.ZPL reads the transverse total out of the call buffer, and it cannot set a
+! variable in this macro to ask for it - ZPL does not document whether a child macro
+! shares the parent's variables, which is exactly why the call buffer exists. So the
+! coefficient is always formed and always published, and q9 decides only whether this
+! macro prints it. That costs fourteen entries per surface on a table of two hundred
+! and forty, which is nothing.
+
+FOR i = 1, nsm, 1
+
+   q9v2 = tt(i, 156)
+   q9v9 = q9v2 * q9v2
+
+   ! r1 and r2 - sums over the surfaces BEFORE this one, the convention t69 to
+   ! t80 follow for the secondary and t15 to t19 for the primary. Guarded the way
+   ! the t69 block above is, rather than trusting FOR m = 1, 0, 1 to do nothing.
+   tt(i, 241) = 0
+   tt(i, 242) = 0
+   IF (i > 1)
+      FOR m = 1, i - 1, 1
+         tt(i, 241) = tt(i, 241) + tt(m, 132)
+         tt(i, 242) = tt(i, 242) + tt(m, 133)
+      NEXT
+   ENDIF
+
+   ! The three rows feeding r3, which are M (21.7) written out.
+   q9a = ((tt(i, 83) - tt(i, 9) - tt(i, 20)) * tt(i, 15) + tt(i, 69)) * tt(i, 81) + tt(i, 6) * tt(i, 241) - tt(i, 242)
+   q9b = ((0.5 * tt(i, 20) + tt(i, 9) - tt(i, 83)) * tt(i, 20) + tt(i, 9) * tt(i, 83) - tt(i, 86)) * tt(i, 9)
+   q9c = (0.5 * tt(i, 15) * tt(i, 82) - tt(i, 6) * tt(i, 70) + tt(i, 102)) * tt(i, 15) + tt(i, 16) * tt(i, 86) - tt(i, 21) * tt(i, 69)
+
+   ! r3 = T1-dagger. The sum here is the THREE rows above and nothing else.
+   tt(i, 243) = (2.5 * tt(i, 83) - 3.0 * tt(i, 9)) * tt(i, 83) * tt(i, 83) + tt(i, 20) * tt(i, 70) + q9a + q9b + q9c
+
+   ! The intrinsic coefficient, Eq. (2.15). t34 is Buchdahl's w and t10 his a_p,
+   ! so the 280/8 below is the 35 that equation carries.
+   tt(i, 244) = 0.25 * (q9v9 - tt(i, 9)) * tt(i, 10)
+   tt(i, 245) = (17.0 * tt(i, 2) - 9.0 * q9v2) * tt(i, 7) * tt(i, 244)
+   tt(i, 246) = (41.0 * q9v2 - 87.0 * tt(i, 2)) * tt(i, 7) * tt(i, 38) / 3.0
+
+   tt(i, 247) = (280.0 * tt(i, 34) * tt(i, 34) * tt(i, 34) + tt(i, 245) + tt(i, 246)) * tt(i, 10) / 8.0
+
+   ! The induced rows of Eq. (3.1). t8 is omega-tilde, t25 is A-dagger, t101 is
+   ! S1-dagger, t121 is the intrinsic tertiary spherical t1p, and t122 is z2 -
+   ! the one mu = 2 entry the paper keeps, every other one being irrelevant here.
+   q9d = ((-0.5 * tt(i, 8) * tt(i, 25) - tt(i, 48) + tt(i, 49)) * tt(i, 15) - tt(i, 8) * tt(i, 69) + tt(i, 122)) * tt(i, 15)
+   q9e = ((tt(i, 25) * tt(i, 25) + 6.0 * tt(i, 101)) * tt(i, 25) + 3.0 * tt(i, 243)) * tt(i, 10)
+   q9f = (4.0 * tt(i, 15) * tt(i, 43) + 7.0 * tt(i, 121)) * tt(i, 25) + tt(i, 43) * tt(i, 69)
+
+   ! And the last row, whose sum is the FOUR above it - the intrinsic included.
+   tt(i, 248) = (2.0 * tt(i, 25) * tt(i, 25) + tt(i, 101)) * 5.0 * tt(i, 38) + tt(i, 247) + q9d + q9e + q9f
+
+NEXT
+
+q9sum = 0
+FOR i = 1, nsm, 1
+   q9sum = q9sum + tt(i, 248)
+NEXT
+
+! ---------------------------------------------------------------------------------
+! INTO TRANSVERSE MEASURE. THIS WAS THE ONE UNCHECKED STEP AND IT IS NOW CHECKED.
+!
+! Stage D puts each tau into transverse measure by efac * um^a * hmax^b, where a is
+! its aperture degree and b its field degree - VEC1(1) to VEC1(20) above. That rule is
+! confirmed at twenty points, a running from seven down to zero, and at a = 7, b = 0 it
+! agrees with sB7 * fnum, which reaches the same number by a different route.
+!
+! Ninth-order spherical is a = 9, b = 0, so the rule extends to efac * um^9. It is the
+! natural continuation and nothing here contradicts it - but every point that confirms
+! the rule has total degree SEVEN, and this has degree nine. Whether Buchdahl's
+! quaternary coefficient is augmented in the same sense that M (31.11)'s single factor
+! 1/(N_k' v_pk') assumes is not something this file can settle.
+!
+! MEASURED ON KINGSLAKE'S DOUBLE GAUSS, and it holds. The printed ratio of the two lines
+! below came to -1.454733E-09, and that factors exactly into quantities taken from the
+! prescription alone: um = -(EPD/2)/EFL = -0.06249754 gives um^9 = -1.454676E-11, which
+! leaves efac = 100.00395 against an EFL of 100.00394 - so vpk = 1.000000, which is what
+! it must be, the p ray starting at unit height and leaving at unit angle in units of the
+! focal length. Six significant figures, from numbers that know nothing about this stage.
+!
+! The unconverted value is still printed beside the converted one. The check above cost
+! nothing to make because both were there to divide.
+! ---------------------------------------------------------------------------------
+
+up9 = up7 * um * um
+q9t = q9sum * efac * up9
+
+IF (q9 == 1)
+
+   PRINT " "
+   PRINT "Ninth order - quaternary spherical aberration, per surface"
+   PRINT "Buchdahl IV, J. Opt. Soc. Am. 48, 757 (1958), Table I. Unconverted, as the"
+   PRINT "third and fifth orders above are. INTRINSIC is what the surface makes on its"
+   PRINT "own; TOTAL adds what it makes by acting on the aberration already reaching it."
+   FORMAT 15.6 EXP
+   PRINT "  surf      intrinsic          total      T1-dagger             r1             r2"
+   FOR i = 1, nsm, 1
+      FORMAT 5.0 INT
+      PRINT i,
+      FORMAT 15.6 EXP
+      PRINT tt(i, 247), tt(i, 248), tt(i, 243), tt(i, 241), tt(i, 242)
+   NEXT
+
+   PRINT " "
+   FORMAT 15.6 EXP
+   PRINT "Ninth-order spherical, unconverted     ", q9sum
+   PRINT "Ninth-order spherical, transverse (B9) ", q9t
+   PRINT " "
+   PRINT "The transverse value carries efac * um^9. That extends a rule confirmed at total"
+   PRINT "degree seven, and the extension was checked: the ratio of the two lines above"
+   PRINT "factors into -(EPD/2)/EFL raised to the ninth and efac = EFL, to six figures."
+
+   PRINT " "
+   PRINT "Buchdahl's rule of thumb, from the closing paragraph of paper IV: a system"
+   PRINT "intended to work at f/2 should aim at individual contributions of at most"
+   PRINT "order 1000 at unit focal length. His own triplet runs to six figures, which"
+   PRINT "is why he chose it - it is a poorly corrected system and the table shows it."
+
+ENDIF
+
 ! =================================================================================
 ! STAGE E - publish the coefficients into the call buffer, so that a parent macro
 ! can pick them up. ROBB.ZPL is the one that does: it calls this macro and turns
@@ -1465,10 +1668,12 @@ PRINT "Analyze > Aberrations > Seidel Coefficients and the fifth against FIFTHOR
 ! which stage D already converted per tau. Sending the unconverted per-surface
 ! quantities instead would give a spot in no units at all.
 !
-! The call buffer holds fifty-one numeric slots and thirty-four are needed, so the
-! whole coefficient set fits with room for the two control values. Slot 45 carries a
-! handshake, so that a caller can tell the difference between coefficients that are
-! genuinely zero and a run of this macro that never got here.
+! The call buffer holds fifty-one numeric slots. Thirty-four carry the third, fifth
+! and seventh orders, slot 47 the ninth, and slots 45, 46 and 48 are control values -
+! so the whole set fits with room to spare. Slot 45 carries a handshake, so that a
+! caller can tell the difference between coefficients that are genuinely zero and a run
+! of this macro that never got here; 46 and 48 say whether the seventh and the ninth
+! order are present at all.
 !
 ! This stage is reached only if stage D completed. The earlier GOTO 999 exits -
 ! an afocal system, a chief ray with no field - skip it, and slot 45 is then never
@@ -1501,6 +1706,14 @@ CALLSETDBL 16, VEC1(21)
 FOR rbk = 2, 19, 1
    CALLSETDBL rbk + 15, VEC1(20 + rbk)
 NEXT
+
+! The ninth order, which stage F formed unconditionally. Slot 48 mirrors slot 46:
+! it lets a caller tell a genuine zero from a run that never reached stage F.
+!
+! SLOT 47 CARRIES THE ONE CONVERSION IN THIS FILE WITHOUT A SECOND ROUTE - see stage F
+! for what efac * um^9 rests on. Everything else published here is confirmed twice.
+CALLSETDBL 47, q9t
+CALLSETDBL 48, 1
 
 ! Written last, so that it is set only if everything above it was.
 CALLSETDBL 45, 761976

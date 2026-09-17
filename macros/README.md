@@ -19,7 +19,7 @@ for that is upstream of the surface the total blames, and a table of totals cann
 
 ### Status
 
-All five stages are written and all five pass, at either conjugate.
+All six stages are written and all six pass, at either conjugate.
 
 | stage | contents | agrees with | result |
 |---|---|---|---|
@@ -28,6 +28,94 @@ All five stages are written and all five pass, at either conjugate.
 | C | Buchdahl's Table I, t1 to t155, per surface | `reference/CookeTriplet_TableI.txt` | 155 of 155 to 7e-16 |
 | D | the twenty tau, intrinsic and induced per surface | that file's tau block, and a Forbes series trace at 250 mm | 420 of 420; 20 of 20 to every printed digit |
 | E | publishes the coefficients into the call buffer for `ROBB.ZPL` to read and turn into an RMS spot radius | `Prms.cs`, and the `rms_spot` tool, on the same lens | 33 of 33 to every printed digit |
+| F | the NINTH order - quaternary spherical aberration, per surface, `q9 = 1` | `QuaternarySpherical.cs`, which reproduces Buchdahl's own paper IV Table I | run on KingslakeDG: every surface, all three columns and the total agree to 5 figures |
+
+
+### Two kinds of spherical-only, and only one has a way out
+
+This matters more since stage F arrived, because the file now contains both.
+
+**Orders three, five and seven are spherical only *in this macro*.** A conic or an even asphere
+stops it. That is a limit of `BUCH7.ZPL`, not of the subject: `BUCH7_ASPH.ZPL` is Buchdahl's
+Sec. 85 arrangement reconstructed, it carries conics and even aspheres, and it agrees with
+`FORBES.ZPL` on all twenty seventh-order coefficients on every figured design tried. Want the
+seventh order on a figured design and you run the macro next door.
+
+**Stage F, the ninth order, is spherical only *in the subject*.** There is no aspheric
+arrangement at this order anywhere. Buchdahl published none — paper IV reaches quaternary
+spherical and stops — and unlike the tertiary one nobody has reconstructed it. `BUCH7_ASPH` has
+no stage F and will not grow one by transcription; somebody would have to derive the arrangement
+first, and the only exact check available for it would be a closed-form conic on axis.
+
+So for a reader with a figured design: there **is** a seventh order to be had, and there is **no
+ninth order to be had at all**. That is where the published subject ends, not where these macros
+stop trying.
+
+### Stage F, the ninth order
+
+The coefficient is ALWAYS computed and always published to the call buffer; `q9 = 0`, near
+the top of the file, gates only whether BUCH7 PRINTS it. That is because `ROBB.ZPL` reads it
+out of the buffer and cannot set a variable in BUCH7 to ask for it - ZPL does not document
+whether a child macro shares the parent's variables, which is why the buffer exists. Set
+`q9 = 1` and the per-surface table appears, with the six intermediate `r` rows Buchdahl
+prints beside the answer.
+
+Source: Buchdahl, *Optical Aberration Coefficients IV: The Coefficient of Quaternary
+Spherical Aberration*, **J. Opt. Soc. Am. 48**, 757 (1958).
+
+**Why it is only fourteen lines of arithmetic.** Paper IV builds the quaternary as "an
+appendix to that for the set of tertiary coefficients", so every quantity it needs is
+already an entry of Table I that stages A to D computed. Buchdahl: "the computing scheme
+is quite brief, viz. only 14 entries of the usual kind per surface."
+
+**It needs no dual run**, though Sec. 3 sounds as if it does — it says obtaining
+`T1-dagger` "requires `T1q`" via identity M (21.7), and then performs that reduction
+himself: the three rows feeding `r3` *are* M (21.7) written out in p-side quantities.
+
+**Two different sums, and Buchdahl flags it himself** because confusing them gives a
+plausible wrong number: the sum in the `r3` row "exceptionally indicates the sum of the
+entries in the three preceding rows", while the sum in the last row takes the **four**
+above it, the intrinsic row included.
+
+**Spherical surfaces only**, which is this macro's limit anyway — a conic or an even
+asphere stops BUCH7 long before stage F. Buchdahl published no aspheric arrangement at the
+ninth order, as he published none at the seventh.
+
+Results land in `tt` columns 241–248, which were free: stage D ends at 240 and the array
+is declared with 250.
+
+**The conversion to transverse measure had no second route, and now it has one.** Stage D puts
+each tau into transverse measure by `efac * um^a * hmax^b`; that rule is confirmed at twenty
+points, and at `a = 7, b = 0` it agrees with `sB7 * fnum`, which arrives by a different path.
+Ninth-order spherical is `a = 9, b = 0`, so it extends to `efac * um^9` — the natural
+continuation, but every point confirming the rule has total degree seven and this has degree nine.
+
+Measured on KingslakeDG, it holds. The printed ratio of the unconverted and transverse lines is
+−1.454733E−09, and that factors into quantities taken from the prescription alone:
+`um = −(EPD/2)/EFL = −0.06249754` gives `um^9 = −1.454676E−11`, leaving `efac = 100.00395`
+against an EFL of 100.00394 — so `vpk = 1.000000`, which is exactly what it must be, the p ray
+starting at unit height and leaving at unit angle in units of the focal length. Six significant
+figures, from numbers that know nothing about this stage. BUCH7 still prints both lines, because
+that is what made the check free.
+
+**What the OpticStudio run actually settled.** Every surface of stage F agrees with
+`QuaternarySpherical.cs` in all three columns to the five figures the C# prints, and so does the
+system figure, 4.196252E+04 — cross-implementation confirmation of the fourteen rows on a design
+that is not Buchdahl's own. It also confirmed `r1` and `r2` from inside the macro: they are running
+sums of `t132` and `t133`, which the stage C dump prints, and they match at every surface to every
+digit.
+
+It took a bug fix to get there. The design reads **F4**, and the bare name was resolving to CDGM's
+F4 (1.620047) rather than Schott's (1.616592), which put the two implementations eleven per cent
+apart in the ninth order. See `GlassCatalog.FallbackPreference`. The macro was the one that agreed
+with OpticStudio.
+
+**How it was checked, in the order the checks were made.** First the twelve formulas were diffed
+mechanically against `QuaternarySpherical.cs` — extracted from both files, normalised so that
+`tt(i, 83)` and `t[83]` become the same token, and compared. They are identical, which made the
+*transcription* checked but said nothing about the macro running. Then it was run, and the paraxial
+inputs, the `tt` indices under a live `nsm` and the printing were checked all at once by the
+agreement above.
 
 ### Where the numbers come from, and what merely agrees with them
 
@@ -313,9 +401,25 @@ traced, with the surface factors written as the C# writes them.
 
 ## BUCH7_ASPH.ZPL
 
-The same three orders as `BUCH7.ZPL`, for a system that **may carry conics and even
-aspheres**. Buchdahl's computing scheme throughout, with the aspheric arrangement of
-his Sec. 85.
+The third, fifth and seventh orders - not the ninth - for a system that **may carry conics
+and even aspheres**. Buchdahl's computing scheme throughout, with the aspheric arrangement of
+his Sec. 85. There is no ninth order here; see below for why that is the subject's limit
+rather than this file's.
+
+### It has no ninth order, and that is not an oversight
+
+`BUCH7.ZPL` grew a stage F — the coefficient of quaternary (ninth-order) spherical aberration,
+from Buchdahl paper IV. This macro has no counterpart and cannot gain one by transcription.
+
+Paper IV reaches quaternary **spherical** and stops, and there is no aspheric arrangement at that
+order in the literature at all. The tertiary one existed to be reconstructed because Buchdahl
+wrote Secs. 84 and 85 for it; nothing corresponds at the ninth. Deriving one would be new work,
+and the only exact check available for it would be a closed-form conic on axis — which is a
+narrow oracle, though a real one.
+
+So the division between the two macros is not symmetric. At the seventh order this file is the
+capable one and `BUCH7.ZPL` is the restricted one. At the ninth, `BUCH7.ZPL` is the only one that
+computes anything and it computes it only for spheres.
 
 ### Why, given BUCH7 already exists
 
@@ -695,6 +799,52 @@ what they imply about the spot.
 The call goes in one direction only. BUCH7 publishes its totals into the call buffer and
 calls nothing; ROBB calls BUCH7 and reads them back. Were both to call each other the pair
 would recurse until OpticStudio gave up, so the call lives in exactly one of them.
+
+
+### The `+B9` column, and why it stands apart
+
+ROBB prints five truncations, not four. The first four are nested cuts of **one** series —
+third, third plus fifth, plus B7, full seventh. The fifth adds **ninth-order spherical
+alone**, read from call-buffer slot 47.
+
+Adding it cost almost nothing, which is the point worth recording: the macro has no table of
+constants. Every term is stored as four numbers — coefficient, ρ power `a`, field power `b`,
+θ-function id — and the pupil average of any product is closed form. B9 is `a = 9, b = 0` with
+**the same θ functions B and B7 already use** (2 in `eps_y`, 5 in `eps_z`), so none of the
+eleven surviving θ pairings changed and no integral was re-derived. It is four lines in each
+component.
+
+**It needs a spherical design**, because ROBB calls `BUCH7.ZPL`, which declines a figured
+surface - and at this order there is no `BUCH7_ASPH` to fall back on, since no aspheric
+arrangement exists at the ninth. On a figured design ROBB reports no coefficients at all, from
+BUCH7's own refusal, and the question of a ninth-order column does not arise.
+
+**On axis the column is exact and completes the order.** Every other ninth-order term carries
+a power of the field, so at `H = 0` spherical *is* the whole ninth order, and the gap between
+the last two columns there is a real measurement.
+
+**Off axis it is a fragment of that order** — some twenty terms absent — and a partial order
+carries no guarantee of improvement, because terms of one order routinely cancel against each
+other. This repository has measured that even *complete* orders are not monotone: on the worst
+design in [../docs/spot-prediction.md](../docs/spot-prediction.md) the seventh-order truncation
+misses by 134 µm, the ninth by 11, and the eleventh by 11.8 — worse than the ninth. The macro
+prints that caveat above the table rather than leaving it here.
+
+It is kept as a separate column, not folded into `full 7th`, for exactly that reason. Column
+three is already `+B7 only` — the previous order plus spherical alone — so the shape is one the
+file established before this.
+
+**Run, and the axial columns reproduce by hand.** On KingslakeDG the four original columns and the
+new one come out exactly as an independent evaluation of `RMS^2 = sum_ij c_i c_j 2/(a_i + a_j + 2)` from
+the five published coefficients predicts, to all seven printed digits:
+
+| | 3rd | 3rd+5th | +B7 | +B9 |
+|---|---|---|---|---|
+| computed by hand | 4.682353e-03 | 3.362864e-03 | 3.157879e-03 | 3.141444e-03 |
+| ROBB printed | 4.682353E-03 | 3.362864E-03 | 3.157879E-03 | 3.141444E-03 |
+
+`B9 = −6.104427E−05` moved the axial spot by −0.52 per cent. At `H = 0` the `+B7 only` and
+`full 7th` columns are identical, as they must be: on axis B7 is the whole of the seventh order.
 
 It was written the other way round first - BUCH7 as the parent calling ROBB - which works
 equally well, because the call buffer carries data in both directions: the shipped
