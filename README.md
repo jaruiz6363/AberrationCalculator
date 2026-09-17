@@ -439,6 +439,11 @@ as air.
   paraxial image height and magnification.
 - **Aberration coefficients** - third order (Seidel), fifth and seventh order
   (Buchdahl/Rimmer).
+- **Ninth-order spherical aberration** - Buchdahl's quaternary coefficient, per surface,
+  `abcalc <lensfile> --quaternary-spherical`. SPHERICAL SURFACES ONLY, and a figured design is
+  refused with its reason: Buchdahl published no aspheric arrangement at this order. Everything
+  else here stops at the seventh, so an on-axis residual has had to be ATTRIBUTED to the ninth
+  rather than measured; this makes it arithmetic.
 - **PRMS** - the RMS spot size predicted from those coefficients, per field and per
   wavelength, and **PRMSA**, the weighted composite over all of them.
 - **Nodal aberration theory** - third and fifth order, for a design whose surfaces are not on

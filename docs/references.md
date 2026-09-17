@@ -158,6 +158,36 @@ footnote 2 of XII and footnote 1 of XIV:
 Neither XII nor XIV cites X, XI or XIII, so their citations need a JOSA index; nothing yet
 suggests they bear on this work.
 
+**[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. IV. The Coefficient of Quaternary
+Spherical Aberration," *J. Opt. Soc. Am.* **48**, 757-759 (1958).
+Ninth order, and only its spherical term. Three pages. `QuaternarySpherical.cs` is its Table I.
+
+**It is an appendix to III, not a new scheme.** Buchdahl says so — "the computing scheme in this
+instance being treated as an appendix to that for the set of tertiary coefficients" — and the
+consequence is that every one of the twenty-eight quantities the fourteen rows need is already an
+entry of the tertiary Table I. He adds: "the computing scheme is quite brief, viz. only 14 entries
+of the usual kind per surface."
+
+**Sec. 3 reads as though a dual run is needed, and it is not.** It says the one quantity in
+Eq. (3.1) not explicit in the tertiary scheme is `T1-dagger`, and that obtaining it "requires
+T1q", through the identity M (21.7). He then performs that reduction himself: the three rows
+feeding `r3` in his Table I *are* M (21.7) written out in p-side quantities.
+
+**Two checks come with it, and both were used.** Eq. (2.12): at a plane refracting surface, where
+`i = -v`, the intrinsic coefficient must reduce to `(35/128) N (1 - k^2)^4 y v^9` — a closed form
+needing no lens, which he calls "a fairly reliable check" and uses himself. And his Table I
+computes the whole thing for the triplet `Sigma1`, the same system paper III is checked against
+here, printing the six intermediate `r` rows beside the answer and a system figure of −172968.
+
+**Spherical surfaces, and that is the subject's limit rather than a choice.** The paper narrows
+itself explicitly — "all entries relating to t_μpj, ī_μpj (μ = 2,…,10) except z2 are of course
+irrelevant" — and no aspheric arrangement exists at this order anywhere. Buchdahl wrote Secs. 84
+and 85 for the tertiary; nothing corresponds at the quaternary.
+
+His closing remark is worth keeping with the numbers: a system meant to work at f/2 should aim at
+individual surface contributions of at most order 1000 at unit focal length. `Sigma1`'s run to six
+figures, "as is of course to be expected of so poorly corrected a system."
+
 **[have] Buchdahl, H. A.**, "Optical Aberration Coefficients. VII. The Primary, Secondary, and
 Tertiary Deformation and Retardation of the Wave Front," *J. Opt. Soc. Am.* **50**, 540 (1960).
 **The bridge between this program's transverse coefficients and the WAVE-FRONT coefficients
