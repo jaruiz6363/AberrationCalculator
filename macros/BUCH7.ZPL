@@ -23,13 +23,28 @@
 !
 ! LIMITS, STATED PLAINLY
 !
-!   Spherical surfaces only. A conic or an even-asphere term makes the macro stop with
-!   an explanation rather than return a number that looks like an answer. Buchdahl
-!   gives the aspheric scheme but never published the arranged table for it, so this
-!   file does not guess at one. BUCH7_ASPH.ZPL, beside this one, IS that arrangement
-!   reconstructed, and it carries conics and even aspheres; it agrees with FORBES.ZPL
-!   on all twenty seventh-order coefficients on every figured design tried. This macro
-!   is left as the spherical routine, checked against Buchdahl's own printed numbers.
+!   TWO DIFFERENT KINDS OF SPHERICAL-ONLY LIVE IN THIS FILE NOW, and they are worth
+!   keeping apart, because one of them has a way out and the other does not.
+!
+!   Orders three, five and seven are spherical only IN THIS MACRO. A conic or an
+!   even-asphere term makes it stop with an explanation rather than return a number
+!   that looks like an answer. Buchdahl gives the aspheric scheme but never published
+!   the arranged table for it, so this file does not guess at one. BUCH7_ASPH.ZPL,
+!   beside this one, IS that arrangement reconstructed, and it carries conics and even
+!   aspheres; it agrees with FORBES.ZPL on all twenty seventh-order coefficients on
+!   every figured design tried. This macro is left as the spherical routine, checked
+!   against Buchdahl's own printed numbers. So: want the seventh order on a figured
+!   design, run BUCH7_ASPH.
+!
+!   STAGE F, THE NINTH ORDER, IS SPHERICAL ONLY IN THE SUBJECT. There is no aspheric
+!   arrangement at this order anywhere - Buchdahl published none, paper IV reaches
+!   quaternary spherical and stops, and unlike the tertiary one nobody has reconstructed
+!   it. BUCH7_ASPH therefore has no stage F and will not grow one by transcription;
+!   somebody would have to derive the arrangement first. That is not a gap in these
+!   macros, it is where the published subject ends.
+!
+!   The consequence for a reader: on a figured design there IS a seventh order to be
+!   had, from the macro next door, and there is NO ninth order to be had at all.
 !
 !   Rotationally symmetric and sequential. Either conjugate: the object position
 !   enters only through M (13.4)'s four starting values, and is carried.

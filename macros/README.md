@@ -30,6 +30,27 @@ All six stages are written and all six pass, at either conjugate.
 | E | publishes the coefficients into the call buffer for `ROBB.ZPL` to read and turn into an RMS spot radius | `Prms.cs`, and the `rms_spot` tool, on the same lens | 33 of 33 to every printed digit |
 | F | the NINTH order - quaternary spherical aberration, per surface, `q9 = 1` | `QuaternarySpherical.cs`, which reproduces Buchdahl's own paper IV Table I | run on KingslakeDG: every surface, all three columns and the total agree to 5 figures |
 
+
+### Two kinds of spherical-only, and only one has a way out
+
+This matters more since stage F arrived, because the file now contains both.
+
+**Orders three, five and seven are spherical only *in this macro*.** A conic or an even asphere
+stops it. That is a limit of `BUCH7.ZPL`, not of the subject: `BUCH7_ASPH.ZPL` is Buchdahl's
+Sec. 85 arrangement reconstructed, it carries conics and even aspheres, and it agrees with
+`FORBES.ZPL` on all twenty seventh-order coefficients on every figured design tried. Want the
+seventh order on a figured design and you run the macro next door.
+
+**Stage F, the ninth order, is spherical only *in the subject*.** There is no aspheric
+arrangement at this order anywhere. Buchdahl published none — paper IV reaches quaternary
+spherical and stops — and unlike the tertiary one nobody has reconstructed it. `BUCH7_ASPH` has
+no stage F and will not grow one by transcription; somebody would have to derive the arrangement
+first, and the only exact check available for it would be a closed-form conic on axis.
+
+So for a reader with a figured design: there **is** a seventh order to be had, and there is **no
+ninth order to be had at all**. That is where the published subject ends, not where these macros
+stop trying.
+
 ### Stage F, the ninth order
 
 The coefficient is ALWAYS computed and always published to the call buffer; `q9 = 0`, near
@@ -380,9 +401,25 @@ traced, with the surface factors written as the C# writes them.
 
 ## BUCH7_ASPH.ZPL
 
-The same three orders as `BUCH7.ZPL`, for a system that **may carry conics and even
-aspheres**. Buchdahl's computing scheme throughout, with the aspheric arrangement of
-his Sec. 85.
+The third, fifth and seventh orders - not the ninth - for a system that **may carry conics
+and even aspheres**. Buchdahl's computing scheme throughout, with the aspheric arrangement of
+his Sec. 85. There is no ninth order here; see below for why that is the subject's limit
+rather than this file's.
+
+### It has no ninth order, and that is not an oversight
+
+`BUCH7.ZPL` grew a stage F — the coefficient of quaternary (ninth-order) spherical aberration,
+from Buchdahl paper IV. This macro has no counterpart and cannot gain one by transcription.
+
+Paper IV reaches quaternary **spherical** and stops, and there is no aspheric arrangement at that
+order in the literature at all. The tertiary one existed to be reconstructed because Buchdahl
+wrote Secs. 84 and 85 for it; nothing corresponds at the ninth. Deriving one would be new work,
+and the only exact check available for it would be a closed-form conic on axis — which is a
+narrow oracle, though a real one.
+
+So the division between the two macros is not symmetric. At the seventh order this file is the
+capable one and `BUCH7.ZPL` is the restricted one. At the ninth, `BUCH7.ZPL` is the only one that
+computes anything and it computes it only for spheres.
 
 ### Why, given BUCH7 already exists
 
@@ -776,6 +813,11 @@ constants. Every term is stored as four numbers — coefficient, ρ power `a`, f
 **the same θ functions B and B7 already use** (2 in `eps_y`, 5 in `eps_z`), so none of the
 eleven surviving θ pairings changed and no integral was re-derived. It is four lines in each
 component.
+
+**It needs a spherical design**, because ROBB calls `BUCH7.ZPL`, which declines a figured
+surface - and at this order there is no `BUCH7_ASPH` to fall back on, since no aspheric
+arrangement exists at the ninth. On a figured design ROBB reports no coefficients at all, from
+BUCH7's own refusal, and the question of a ninth-order column does not arise.
 
 **On axis the column is exact and completes the order.** Every other ninth-order term carries
 a power of the field, so at `H = 0` spherical *is* the whole ninth order, and the gap between
