@@ -627,8 +627,11 @@ nothing**, from two gradients the optimizer already has:
 
 Subtracting the Gauss-Newton diagonal from that leaves an estimate of precisely the part that was
 dropped, and *that* — rather than a blind multiple of the identity — is what is added to the
-normal equations. D. C. Dilworth, "Pseudo second derivative matrix and its application to
-automatic lens design," *Applied Optics* **17**, 3372 (1978).
+normal equations. D. C. Dilworth, "Pseudo-second-derivative matrix and its application to
+automatic lens design," *Applied Optics* **17**(21), 3372 (1978) - and his 1983 follow-up on the
+stabilising factor, which is the one that bears on `psd2` against `psd3`. Neither is in hand;
+both, and the rest of what the optimiser is built from, are in
+[references.md](references.md#optimisation).
 
 The secant is a difference of two gradients, so both ends have to be real measurements — which is
 why this optimizer holds an **exact analytic Jacobian at every iteration and never Broyden-updates

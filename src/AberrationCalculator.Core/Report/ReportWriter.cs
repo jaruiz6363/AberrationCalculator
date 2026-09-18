@@ -151,6 +151,7 @@ public sealed class ReportWriter
         SeidelSection(sb, trace);
         BuchdahlSection(sb, trace);
         PrmsSection(sb);
+        BestFocusSection(sb);
         ContributionSection(sb);
         SurfaceContributionSection(sb);
         Warnings(sb, trace);
@@ -419,6 +420,89 @@ public sealed class ReportWriter
         sb.AppendLine("number here. docs/spot-prediction.md measures it against traced rays.");
         sb.AppendLine("How far out it stays usable depends on how much seventh-order field aberration the");
         sb.AppendLine("design actually carries, so check against a ray trace before relying on full field.");
+        sb.AppendLine();
+    }
+
+    /// <summary>
+    /// Where the spot is smallest, per wavelength - the one thing the section above cannot say.
+    ///
+    /// <para>Each colour is computed in its own indices throughout: its own paraxial trace, its
+    /// own back focal length, its own marginal slope and its own coefficient set. That is why the
+    /// table has a row per wavelength rather than a single answer, and why the shifts are NOT on
+    /// a common origin - each is measured from its own colour's paraxial plane.</para>
+    /// </summary>
+    private void BestFocusSection(StringBuilder sb)
+    {
+        double maxField = MaxField();
+        var per = new List<(int, double, double, bool, ParaxialResult, BuchdahlTerms)>();
+        for (int wi = 0; wi < Math.Max(1, _sys.Wavelengths.Count); wi++)
+        {
+            var n = _indices[Math.Min(wi, _indices.Count - 1)];
+            var trace = ParaxialTrace.Trace(_sys, n, maxField);
+            var totals = Buchdahl(trace, null, n).Totals;
+            bool primary = wi < _sys.Wavelengths.Count && _sys.Wavelengths[wi].IsPrimary;
+            double value = wi < _sys.Wavelengths.Count ? _sys.Wavelengths[wi].Value : 0.0;
+            double weight = wi < _sys.Wavelengths.Count ? _sys.Wavelengths[wi].Weight : 1.0;
+            per.Add((wi, value, weight, primary, trace, totals));
+        }
+
+        var fields = new List<(double, double)>();
+        for (int fi = 0; fi < Math.Max(1, _sys.Fields.Count); fi++)
+        {
+            double fy = fi < _sys.Fields.Count ? _sys.Fields[fi].Y : 0.0;
+            double fw = fi < _sys.Fields.Count ? _sys.Fields[fi].Weight : 1.0;
+            fields.Add((Math.Abs(maxField) > 1e-15 ? fy / maxField : 0.0, fw));
+        }
+
+        var rows = BestFocus.ForSystem(per, fields, _sys.LastOpticalSurface());
+
+        sb.AppendLine("BEST FOCUS");
+        sb.AppendLine("----------------------------------------------------------------");
+        sb.AppendLine("Where the RMS spot above is smallest, from the same coefficients and with no rays");
+        sb.AppendLine("traced. Robb's polynomial is referred to the PARAXIAL image plane and carries no");
+        sb.AppendLine("defocus term, so PRMS cannot be used to choose an image plane; this is the plane it");
+        sb.AppendLine("would choose. Criterion: minimum radius of gyration about the centroid, which is");
+        sb.AppendLine("Sands, J. Opt. Soc. Am. 63, 582 (1973), and which is NOT the disk of least");
+        sb.AppendLine("confusion - for third-order spherical the two differ by a ninth of the shift.");
+        sb.AppendLine();
+        sb.AppendLine("dZ is in LENS UNITS from that WAVELENGTH'S OWN paraxial plane, positive away from");
+        sb.AppendLine("the last surface. BFL is that colour's own back focal length, so the spread down");
+        sb.AppendLine("the BFL column is longitudinal chromatic aberration and the dZ values are not on a");
+        sb.AppendLine("common origin: to compare colours, add each row's BFL to its dZ.");
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv, "{0,-12} {1,-12} {2,8} {3,14} {4,14} {5,14}",
+            "Wavelength", "BFL", "Hy", "dZ", "PRMS(parax)", "PRMS(focus)"));
+
+        foreach (var r in rows)
+        {
+            string wl = r.Wavelength < _sys.Wavelengths.Count
+                ? _sys.Wavelengths[r.Wavelength].Value.ToString("0.####", Inv)
+                  + (r.IsPrimary ? "*" : "")
+                : "-";
+            bool first = true;
+            foreach (var f in r.Fields)
+            {
+                sb.AppendLine(string.Format(Inv, "{0,-12} {1,-12} {2,8:0.####} {3,14} {4,14} {5,14}",
+                    first ? wl : "", first ? r.Bfl.ToString("0.######", Inv) : "",
+                    f.H, Num6(f.DeltaZ), Num6(f.RmsParaxial), Num6(f.RmsBestFocus)));
+                first = false;
+            }
+            sb.AppendLine(string.Format(Inv, "{0,-12} {1,-12} {2,8} {3,14}",
+                "", "", "all", Num6(r.DeltaZWholeField)));
+        }
+
+        sb.AppendLine(new string('-', 64));
+        sb.AppendLine("The 'all' row is the single plane that best focuses the whole field at that");
+        sb.AppendLine("wavelength, weighted by the field weights - Sands's Sec. IV. It minimises the");
+        sb.AppendLine("weighted sum of the mean squares, so it is a compromise between the rows above it");
+        sb.AppendLine("and equals none of them unless the field curvature is flat.");
+        sb.AppendLine();
+        sb.AppendLine("WHAT THIS INHERITS. The truncation of the coefficients at seventh order, and the");
+        sb.AppendLine("paraxial approximation for the image-space ray direction - a plane shift displaces");
+        sb.AppendLine("a ray at normalised pupil height rho by dZ*u*rho. Sands tests that approximation");
+        sb.AppendLine("and finds it justified except where image-space ray angles approach 45 degrees or");
+        sb.AppendLine("distortion is very large. It also inherits PRMS's blindness to apertures: a beam");
+        sb.AppendLine("clipped anywhere reads the same as one that passes unobstructed.");
         sb.AppendLine();
     }
 

@@ -446,6 +446,10 @@ as air.
   rather than measured; this makes it arithmetic.
 - **PRMS** - the RMS spot size predicted from those coefficients, per field and per
   wavelength, and **PRMSA**, the weighted composite over all of them.
+- **Best focus** - where that spot is smallest, per wavelength: the shift from each colour's own
+  paraxial plane, its own back focal length beside it, and the one plane that serves the whole
+  field. Robb's polynomial has no defocus term and says so; this is the plane it would choose,
+  by the minimum-radius-of-gyration criterion of Sands (1973).
 - **Nodal aberration theory** - third and fifth order, for a design whose surfaces are not on
   a common axis: where each surface's aberration field has been displaced to, where the nodes
   of the system's field are, and what the fifth order does to the third.
@@ -463,6 +467,9 @@ Working, and validated in [docs/verification.md](docs/verification.md):
   aspheric and induced parts, per surface and totalled
 - PRMS and PRMSA, the RMS spot radius predicted from those coefficients with no
   rays traced
+- the best-focus plane per wavelength, derived from the same polynomial rather than
+  transcribed from Sands, and checked three ways: against his one published number, against
+  an exactly-integrated pupil, and against real traced rays
 - the re-normalised per-aberration and per-surface contributions to that spot
 - the optimizer: PSD, Hooke-Jeeves and basin hopping over analytic derivatives, with the
   Jacobian checked operand by operand and variable by variable against central differences.
@@ -503,6 +510,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 | [docs/verification.md](docs/verification.md) | **What is actually established here, by what evidence, and what is not.** The order of evidence, the standing results, and the aspheric arrangement with everything it rests on. Read this one first if you are deciding whether to trust any number this program prints. |
 | [docs/references.md](docs/references.md) | Every source the method comes from, which of them have been read, and where each piece of the implementation came from. |
 | [docs/forbes.md](docs/forbes.md) | The second, independent route to the tertiary coefficients - a Lagrangian series trace - and why a program that already had one needed another. |
+| [docs/forbes-ninth-order.md](docs/forbes-ninth-order.md) | A scope note: what the same series trace would take to reach the NINTH order on a figured design, where Buchdahl published one coefficient of thirty and no aspheric arrangement at all. |
 | [docs/optimizer.md](docs/optimizer.md) | The optimiser: analytic derivatives throughout, the merit-function format, how figuring is carried, and which coefficient is which aberration. |
 | [docs/spot-prediction.md](docs/spot-prediction.md) | How well a spot predicted from coefficients matches a traced one, measured rather than asserted, and where seventh order runs out. |
 | [docs/distortion-prediction.md](docs/distortion-prediction.md) | Distortion from the coefficients against traced chief rays. The cleanest window onto a single coefficient there is, and what it found. |

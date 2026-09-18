@@ -247,6 +247,98 @@ public static class Prms
     }
 
     /// <summary>
+    /// The pupil average of <c>eps . rho_vec</c>, where <c>rho_vec</c> is the normalised pupil
+    /// vector <c>(rho cos theta, rho sin theta)</c>. This is the ONE quantity Robb's polynomial
+    /// does not itself expose and a best-focus plane needs.
+    ///
+    /// <para><b>Why this is all it takes.</b> Moving the image plane by <c>dZ</c> displaces a ray
+    /// at normalised pupil height <c>rho</c> by <c>dZ u rho</c> along the pupil vector, with
+    /// <c>u</c> the paraxial marginal slope in image space - Sands's Eq. (9), the paraxial
+    /// approximation for the image-space direction, which he finds justified except near
+    /// 45-degree ray angles or very large distortion. Writing <c>d = dZ u</c>, the mean square
+    /// radius at the shifted plane is</para>
+    ///
+    /// <code>    S2(d) = MeanSquare + 2 d L + d^2/2</code>
+    ///
+    /// <para>with <c>L</c> this average and <c>1/2</c> the average of <c>rho^2</c> over the unit
+    /// disc. It is a quadratic in <c>d</c>, so best focus is <c>d = -2L</c> exactly, with no
+    /// search and nothing traced.</para>
+    ///
+    /// <para><b>No centroid correction appears</b>, and that is not an omission. The variance is
+    /// about the centroid, so the defocus term should enter as a covariance - but the mean of
+    /// <c>rho_vec</c> over the pupil is zero, so the covariance and the raw average coincide and
+    /// the defocus term cannot move the centroid. What it does move is the magnification, by
+    /// carrying the reference point along the chief ray; that is Sands's <c>m*</c> and it is a
+    /// different quantity from this one.</para>
+    ///
+    /// <para><b>Distortion is absent here too.</b> E, E5 and Tau20 are missing from the term
+    /// table, as Robb intended, and they belong missing: a term with no pupil dependence has
+    /// zero average against <c>rho_vec</c> and could not contribute to a best-focus plane even
+    /// if it were carried.</para>
+    /// </summary>
+    public static Scalar DefocusCoupling(BuchdahlTerms totals, Scalar h)
+    {
+        if (totals == null) throw new ArgumentNullException(nameof(totals));
+
+        Scalar sum = 0.0;
+        foreach (var t in CrossForm)
+        {
+            Scalar hp = t.HPower == 0 ? 1.0 : SMath.Pow(h, t.HPower);
+            sum += t.Factor * totals[t.Name] * hp;
+        }
+        return sum;
+    }
+
+    /// <summary>
+    /// Mean square spot radius at a plane <paramref name="deltaZ"/> from the paraxial one, with
+    /// <paramref name="u"/> the paraxial marginal slope in image space. At
+    /// <c>deltaZ = 0</c> this is <see cref="MeanSquare"/> exactly.
+    /// </summary>
+    public static Scalar MeanSquareDefocused(BuchdahlTerms totals, Scalar h, Scalar deltaZ,
+                                             Scalar u)
+    {
+        Scalar d = deltaZ * u;
+        return MeanSquare(totals, h) + 2.0 * d * DefocusCoupling(totals, h) + 0.5 * d * d;
+    }
+
+    /// <summary>The linear form of <see cref="DefocusCoupling"/>, assembled once.</summary>
+    private static readonly (string Name, int HPower, Scalar Factor)[] CrossForm = BuildCross();
+
+    private static (string Name, int HPower, Scalar Factor)[] BuildCross()
+    {
+        var acc = new Dictionary<(string, int), Scalar>();
+
+        void Add(string c, int h, Scalar v)
+            => acc[(c, h)] = acc.TryGetValue((c, h), out var cur) ? cur + v : v;
+
+        // Each term contributes <c rho^A H^B f(theta) * rho g(theta)>, which separates into the
+        // radial average of rho^(A+1) over the unit disc - 2/(A+3) with weight 2 rho drho - and
+        // the azimuthal average of f against g. g is cos for the meridional component and sin
+        // for the sagittal one, which is what makes this the projection onto the pupil vector.
+        void Accumulate(Term[] list, string against)
+        {
+            foreach (var t in list)
+            {
+                Scalar th = ThetaAverage(t.F, against);
+                if (th == 0.0) continue;
+                Scalar rad = 2.0 / (t.A + 3);
+                foreach (var (name, mult) in t.C) Add(name, t.B, mult * th * rad);
+            }
+        }
+
+        Accumulate(Ey, "cos");
+        Accumulate(Ez, "sin");
+
+        return acc.Where(kv => SMath.Abs(kv.Value) > 1e-12)
+                  .Select(kv => (kv.Key.Item1, kv.Key.Item2, kv.Value))
+                  .OrderBy(t => t.Item2).ThenBy(t => t.Item1)
+                  .ToArray();
+    }
+
+    /// <summary>The assembled linear form, as (coefficient, H power, factor).</summary>
+    public static IEnumerable<(string Name, int HPower, Scalar Factor)> CrossTerms => CrossForm;
+
+    /// <summary>
     /// Mean square spot radius at fractional field height <paramref name="h"/>, from the
     /// system's transverse coefficients. Zero on axis for a design with no spherical
     /// aberration; never negative.
