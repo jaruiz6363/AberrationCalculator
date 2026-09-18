@@ -252,4 +252,68 @@ public class AsphericBeyondR8Tests
               + "is what entitles the seventh-order coefficients to ignore it.");
         }
     }
+
+    // ── And where it DOES start to matter ───────────────────────────────────────────────
+
+    /// <summary>
+    /// The other side of the claim, and the one that says the rule is a rule rather than a
+    /// convenient exclusion: r^10 is absent at the seventh order because it cannot reach it, and
+    /// PRESENT at the ninth because that is exactly the order it reaches.
+    ///
+    /// <para><c>ForbesTrace.Figure</c> builds the sag to <c>degree + 1</c>, so a trace truncated
+    /// at degree 3 - the seventh order - carries p to p^4, which is r^2 to r^8, and one at degree
+    /// 4 carries p^5, which is r^10. That is not a coincidence of the implementation: the highest
+    /// deformation that can reach transverse order 2m+1 is r^(2m+2), which is exactly the term
+    /// <c>degree + 1</c> admits. The same line of code gives the right answer at every order.</para>
+    ///
+    /// <para>So this test requires both things of one pair of traces: at degree 3 every monomial
+    /// of the series is untouched by the term, and at degree 4 the degree-four part moves while
+    /// everything below it still does not.</para>
+    /// </summary>
+    [Fact]
+    public void RTenthIsDeadAtTheSeventhOrderAndLiveAtTheNinth()
+    {
+        var plain = Analyse("CookeTriplet", 0.0, false);
+        var figured = Analyse("CookeTriplet", 1e-2, false, 4);
+
+        ForbesTrace Trace(Run r, int degree)
+            => ForbesCoefficients.Trace(r.System, r.Indices, r.Paraxial, degree);
+
+        // Degree 3 - the seventh order. Nothing anywhere may move.
+        var a3 = Trace(plain, 3);
+        var b3 = Trace(figured, 3);
+        for (int x = 0; x <= 3; x++)
+            for (int y = 0; x + y <= 3; y++)
+                for (int z = 0; x + y + z <= 3; z++)
+                {
+                    Assert.True(a3.S[x, y, z].Equals(b3.S[x, y, z]),
+                        $"S[{x},{y},{z}] moved at degree 3 when r^10 was added: it cannot reach "
+                      + "the seventh order.");
+                    Assert.True(a3.T[x, y, z].Equals(b3.T[x, y, z]),
+                        $"T[{x},{y},{z}] moved at degree 3 when r^10 was added.");
+                }
+
+        // Degree 4 - the ninth order. Everything below degree four still may not move, and
+        // something AT degree four must.
+        var a4 = Trace(plain, 4);
+        var b4 = Trace(figured, 4);
+        bool moved = false;
+        for (int x = 0; x <= 4; x++)
+            for (int y = 0; x + y <= 4; y++)
+                for (int z = 0; x + y + z <= 4; z++)
+                {
+                    bool same = a4.S[x, y, z].Equals(b4.S[x, y, z])
+                             && a4.T[x, y, z].Equals(b4.T[x, y, z]);
+                    if (x + y + z < 4)
+                        Assert.True(same,
+                            $"[{x},{y},{z}] is of degree {x + y + z} and moved when r^10 was "
+                          + "added. The term reaches the ninth order and nothing below it.");
+                    else if (!same) moved = true;
+                }
+
+        Assert.True(moved,
+            "the degree-four part of the trace did not move when r^10 was added, so the ninth "
+          + "order is not seeing a term that is of exactly that order - and a ninth-order "
+          + "extraction built on this trace would be wrong.");
+    }
 }

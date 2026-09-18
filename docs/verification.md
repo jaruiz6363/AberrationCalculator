@@ -312,6 +312,14 @@ reached the sag - which is a real bug, and the one the r^2 term actually had onc
   the 128 an r^8 term would give or the 2048 of an r^12 one. That is what "it cannot reach the
   seventh order" means when it is put as a measurement rather than an assertion.
 
+**And the rule is a rule, not a convenient exclusion.** The same pair of traces shows `r^10` dead
+at the seventh order and live at the ninth: `ForbesTrace.Figure` builds the sag to `degree + 1`, so
+degree 3 carries `r^2` to `r^8` and degree 4 carries `r^10`. The highest deformation that can reach
+transverse order `2m+1` is `r^(2m+2)`, which is exactly what that line admits, so it is right at
+every order rather than tuned for this one. At degree 3 an added `r^10` moves no monomial of `S` or
+`T`; at degree 4 it moves the degree-four part and still nothing below it. So the term is excluded
+where it cannot contribute and included where it can, by the truncation itself.
+
 **One thing does change, and it is the route rather than the answer.** `Surface.IsFigured` is true
 for any aspheric term, r^10 included - correctly, since the surface really is aspheric - and that
 flag decides whether the tertiary coefficients come from the spherical scheme or the aspheric one.

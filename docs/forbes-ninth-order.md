@@ -175,6 +175,26 @@ generalises; what has to be supplied is the ninth-order rows and the `cos 5θ` f
 comment — "a trigonometric polynomial of degree at most six" — becomes ten, still far below its
 4096 samples.
 
+**5. Nothing, for the aspheric term that becomes live — and that is worth checking rather than
+assuming.** `r^10` cannot reach the seventh order and **does** reach the ninth, which is exactly
+the order it first contributes at. So a ninth-order treatment has to carry it, and the trace
+already does: `ForbesTrace.Figure` builds the sag to `degree + 1`, so degree 3 admits `p` to `p^4`,
+which is `r^2` to `r^8`, and degree 4 admits `p^5`, which is `r^10`. That is not a happy accident
+of the code — the highest deformation that can reach transverse order `2m+1` is `r^(2m+2)`, which
+is precisely what `degree + 1` lets in, so the one line is right at every order.
+
+`RTenthIsDeadAtTheSeventhOrderAndLiveAtTheNinth` pins both halves on one pair of traces: at
+degree 3 an added `r^10` moves no monomial of `S` or `T` at all, and at degree 4 it moves the
+degree-four part while still moving nothing below it.
+
+**What would have to move is everything built around "r^8 is the ceiling."**
+`AsphericDiagnostic.BeyondEighthOrder` measures unrepresentable figuring as the sag from `r^10`
+upward against `r^4` to `r^8`; at the ninth order that boundary becomes `r^12` against `r^4` to
+`r^10`. The optimiser refuses `r^10` and beyond as variables, and `Surface.AsphericVariable` says
+why — at the ninth order `r^10` becomes a legitimate variable and the refusal would be wrong. The
+report's new note on figuring beyond `r^8` would need the same shift. None of that is difficult;
+all of it is easy to forget, which is why it is listed.
+
 ## The basis, which turns out to be printed after all
 
 **This section said the opposite when it was written, and the correction is the most useful thing
