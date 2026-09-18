@@ -290,12 +290,37 @@ the invitation they used to print unconditionally - an invitation that would hav
 hunting a fault in the wrong program. The guard was exercised both ways on the pair above: the
 refusal on `F8`, the original text on `F3`.
 
-## Figuring beyond r^8
+## Which order each deformation term reaches
 
-The claim made about r^10 and above is stronger than "it is ignored": those terms **cannot
-appear** in anything this program computes. A deformation `A_n r^n` first contributes at wave
-order `n`, which is transverse order `n-1`, so r^4 reaches the third order, r^6 the fifth, r^8 the
-seventh - and r^10 reaches the NINTH and nothing below it.
+A deformation `A_n r^n` first contributes at wave order `n`, which is transverse order `n-1`.
+Measured term by term rather than asserted, by `AsphericOnsetTests`: each term is nudged on a
+surface that is figured already, and every coefficient below its onset must be **bit-identical**
+while something at the onset must move.
+
+| term | slot | first reaches | third order | fifth | seventh | ninth |
+|---|---|---|---|---|---|---|
+| r^2 | `[0]` | **the focal length** - it is a curvature change, not figuring | — | — | — | — |
+| r^4 | `[1]` | **3rd** | yes | yes | yes | yes |
+| r^6 | `[2]` | **5th** | **no** | yes | yes | yes |
+| r^8 | `[3]` | **7th** | **no** | **no** | yes | yes |
+| r^10 | `[4]` | **9th** | **no** | **no** | **no** | yes |
+| r^12 | `[5]` | 11th | **no** | **no** | **no** | **no** |
+
+**The "no" column is the useful one.** An r^6 term cannot touch the third order however large it
+is, so it corrects the fifth without disturbing a third-order solution; r^8 leaves both the third
+and the fifth alone. That is a property of the optics, not a tolerance, which is why the test
+demands bit-identity rather than agreement.
+
+**But a term is not finished at its onset.** It goes on affecting every order above it, both in
+its own right - Buchdahl's aspheric increments cascade, the fifth-order term carrying the
+fourth-order one inside it and the seventh carrying both - and by induction, since changing a
+surface changes the rays every later surface sees. `ATermKeepsAffectingEveryOrderAboveItsOnset`
+pins that for r^4 at all three orders. Reading the table as "r^4 is the third-order term" is the
+natural mistake and it is wrong: the table says where a term STARTS.
+
+The rest of this section is about the top of that ladder, where the terms fall off the end of what
+this program computes at all. The claim made about r^10 and above is stronger than "it is
+ignored": those terms **cannot appear** in anything below the ninth order.
 
 **Both halves of that are tested, and either alone would be worthless.** That the coefficients do
 not move is half; on its own it would pass equally against code that threw the term away before it

@@ -252,17 +252,28 @@ public sealed class ReportWriter
                     c.ToString("0.000000000E+00", Inv), past ? "   <- takes no part, see below" : ""));
             }
         }
+        sb.AppendLine();
+        sb.AppendLine("WHICH ORDER EACH TERM REACHES. A deformation r^n first contributes at wave order");
+        sb.AppendLine("n, which is transverse order n-1, so each term leaves every order below it exactly");
+        sb.AppendLine("alone - an r^6 term cannot touch the third order however large it is. It does go on");
+        sb.AppendLine("affecting every order ABOVE its onset, in its own right and by induction, so this");
+        sb.AppendLine("says where a term starts and not where it stops.");
+        sb.AppendLine();
+        sb.AppendLine("    r^2   the focal length - a curvature change, not figuring");
+        sb.AppendLine("    r^4   3rd order and above");
+        sb.AppendLine("    r^6   5th order and above");
+        sb.AppendLine("    r^8   7th order and above");
+        sb.AppendLine("    r^10  9th order and above - past everything computed here");
+
         if (beyond)
         {
             sb.AppendLine();
-            sb.AppendLine("FIGURING BEYOND r^8 TAKES NO PART IN ANYTHING BELOW, and is not being dropped:");
-            sb.AppendLine("it genuinely does not appear. A deformation of r^n first contributes at wave");
-            sb.AppendLine("order n, which is transverse order n-1, so r^4 reaches the third order, r^6 the");
-            sb.AppendLine("fifth, r^8 the seventh - and r^10 reaches the NINTH, which is past everything");
-            sb.AppendLine("this program computes. The surface is still that shape and real rays still see");
-            sb.AppendLine("it; the coefficients cannot. So a design whose figuring lives mostly in those");
-            sb.AppendLine("terms is not described by what follows, however strong its aspherics look, and");
-            sb.AppendLine("the predicted spot will part company with a traced one by whatever they do.");
+            sb.AppendLine("THIS DESIGN CARRIES FIGURING BEYOND r^8, and by the table above it takes no part");
+            sb.AppendLine("in anything that follows. It is not being dropped - it genuinely does not appear.");
+            sb.AppendLine("The surface is still that shape and real rays still see it; the coefficients");
+            sb.AppendLine("cannot. So a design whose figuring lives mostly in those terms is not described");
+            sb.AppendLine("by what follows, however strong its aspherics look, and the predicted spot will");
+            sb.AppendLine("part company with a traced one by whatever they do.");
         }
         sb.AppendLine();
     }
