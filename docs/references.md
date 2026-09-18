@@ -2,17 +2,32 @@
 
 The method this program implements is not original work. It is Buchdahl's aberration
 coefficients in Rimmer's notation, Robb's analytic spot-size integration over them, and
-Rosete-Aguilar and Rayces's re-normalisation of them into comparable quantities. This
-file records what each source contributes and whether it has been read.
+Rosete-Aguilar and Rayces's re-normalisation of them into comparable quantities. Nor is the
+optimiser built on top of them: PSD is Dilworth's, the pattern search Hooke and Jeeves's, the
+basin hopping Wales and Doye's - see [Optimisation](#optimisation). This file records what each
+source contributes and whether it has been read.
 
 Status: **[have]** the paper is in hand. **[wanted]** it is cited downstream but has not
 been obtained here.
 
-Note on the scanned papers: the text layer on the 1958, 1970 and 1976 scans is 1950s-70s OCR
+**The nine items still marked `[wanted]` have been looked for and are not expected to arrive**
+(as of 18 September 2026), and the list should be read as a record rather than as a queue. Three
+are theses - Rimmer's, Sands's and the two the nodal work rests on - which is why they are hard
+to get. Two, Rayces (1964) and Nijboer (1943), are needed only if the wave-aberration
+re-normalisation is ever implemented, which it is not. Two more, Shack and Thompson (1980) and
+the Buchroeder and Thompson dissertations, are historical: Thompson (2005) is in hand and
+supersedes them as a source of equations. **None of the nine is load-bearing for anything this
+program computes**, and where one of them would have been - Rimmer's notation - the notation is
+fixed instead by Robb's Eq. (2) and Johnson's Table I, both held. If that ceases to be true, this
+paragraph is the thing that has to change first.
+
+Note on the scanned papers: the text layer on the 1958, 1970, 1973 and 1976 scans is 1950s-70s OCR
 and is unusable for anything mathematical - the tables and equations come out as noise. Their
 prose is readable; their formulae are not. Working from them requires page images. Everything
 quoted from Sands (1970) below is prose for that reason; his Eqs. (33)-(34) and (45) and his
-Sec. VIII identities have been located but not transcribed.
+Sec. VIII identities have been located but not transcribed. The same holds for Sands (1973):
+his Tables I and II are the two things in this file most worth transcribing and neither can be
+transcribed from the text layer.
 
 ## Primary sources
 
@@ -241,10 +256,77 @@ which was the subject of paper I.
 The analytical initial-design method Buchdahl pairs his coefficients with. Not needed for
 the coefficients themselves.
 
-**[wanted] Sands, P. J.**, "Aberration Coefficients and Surfaces of Best Focus," *J. Opt.
-Soc. Am.* **63**, 582-588 (1973).
-The focus-adjustment method Robb points to for exactly the defocus-blindness problem.
-The highest-value item on this list for anyone optimising against PRMSA.
+**[have] Sands, P. J.**, "Aberration Coefficients and Surfaces of Best Focus," *J. Opt.
+Soc. Am.* **63**(5), 582-588 (1973).
+The focus-adjustment method Robb points to for exactly the defocus-blindness problem. **Read,
+and the criterion is implemented** - `BestFocus.cs`, reported per wavelength. It closes that
+hole, and it also answers a question this repository had been treating as open.
+
+*What was taken from it and what was not.* The criterion, and the two facts that make it
+checkable: the third-order identity below, and that best focus is not the disk of least
+confusion. **Not his Table II.** The focal shift is derived here from Robb's own polynomial in
+this program's convention - the mean square radius is a quadratic in the plane shift whose two
+non-constant terms are pupil averages of that polynomial, so the minimum is written down rather
+than searched for and no conversion between his normalisation and Rimmer's is needed. His
+published third-order plane is then an external check on that derivation rather than its source,
+and `BestFocusTests` holds it, along with an exactly-integrated pupil and real traced rays.
+
+*On the defocus problem, which is what it was wanted for.* The image is focused by minimising
+the radius of gyration of the spot diagram, which Sands notes is equivalent to maximising the
+low-frequency response. His Eq. (8) gives the focal shift as `x* = -b/c` for two pupil integrals,
+and Sec. II carries those integrals out **once and for all in terms of the aberration
+coefficients**, so that his Eqs. (12) and (13) read
+
+    x* = (-2/va') SUM_n SUM_a  x(n)a  p0^(2(n-a)) H^(2a)
+    m* =    m   + SUM_n SUM_a  m(n)a  p0^(2(n-a)) H^(2a)
+
+with `n = 1..4` running over orders three, five, seven and nine, and **Table II giving every
+`x(n)a` and `m(n)a` as a combination of the sigma, mu, tau and eta coefficients** - which are the
+five, twelve, twenty and thirty this program's own sets correspond to. Nothing is traced. Two
+structural facts fall out of the same section: `x*` depends only on the **symmetric** aberrations
+and the centroid shift only on the **comatic** ones, and the best-focus plane is not the disk of
+least confusion - for third-order spherical it is at `-(2 sigma1/3 va')p0^2` against the disk's
+`-(3 sigma1/4 va')p0^2`. Sec. IV then averages over the field, with a weight `w(H) = w0 + w1 H^2`,
+to give the single plane of best focus over the whole field of view.
+
+That is implementable here from what the program already computes, third through seventh, and it
+is the missing half of PRMSA rather than an improvement to it. The conversion between Sands's
+normalisation and Rimmer's is the work, not the formulae.
+
+*What he validates it against.* Five systems, predicted against ray-traced, with the orders added
+one at a time. On an f/2.9 triplet at 24 degrees the third-through-ninth prediction is excellent
+and third-through-seventh visibly short of it; on a 45-degree Vega-type it is poor beyond about
+40 degrees, where "the series for distortion converges very slowly, if at all". He also tests the
+paraxial approximation for the image-space direction and finds it justified except near
+45-degree ray angles or very large distortion, and finds vignetting does not invalidate the
+method except at the extreme edge of the field at full aperture.
+
+**And then footnote 8, which is the find.** Describing the program behind his ninth-order columns:
+
+> "The program computes the values of the a and b components of six third-order, 12 fifth-order,
+> 20 seventh-order, and 30 ninth-order coefficients."
+
+**Thirty at the ninth order, published.** Twelve and twenty are this program's own secondary and
+tertiary counts exactly, and six is the third-order count in the transverse monomial basis rather
+than Seidel's five. That is the count [forbes-ninth-order.md](forbes-ninth-order.md) derived from
+the invariant monomials and could only call an extrapolation; it is now a published number, and
+the derivation is confirmed rather than merely consistent.
+
+Two further things in the same place. His Sec. II says the program was written **"based on some
+unpublished work of Buchdahl"** and computes the ninth-order coefficients of a symmetric system
+**of spherical surfaces** - so a ninth-order scheme existed in 1973, unpublished, and it had the
+same restriction paper IV has. And his **Table I prints the ninth-order aberration polynomials**:
+the generic form of both components, the thirty coefficients grouped by monomial, with classical
+names - spherical aberration, circular coma, oblique spherical aberration, cubic coma, then
+quintic astigmatism, quintic coma, cubic astigmatism and elliptical coma, then linear astigmatism
+and curvature of field, then distortion - and a footnote that two of the types have no
+counterpart among the lower orders. The group counts read 1, 2, 3, 4, 5, 5, 4, 3, 2, 1.
+
+**The table is in a 2005 scan and its formulae are OCR noise; the row-to-name alignment has been
+read off a damaged text layer and has not been checked against a page image.** The counts and the
+footnote are legible and are what is relied on above. He gives the third-, fifth- and
+seventh-order polynomials by reference rather than reprinting them - Eqs. (2.6)-(2.11) of
+Cruickshank and Hills (1960), which is held here.
 
 **[have] Cruickshank, F. D. and Hills, G. A.**, "Use of Optical Aberration Coefficients
 in Optical Design," *J. Opt. Soc. Am.* **50**, 379-387 (1960).
@@ -592,6 +674,9 @@ wrong. Both halves of that are here now: the optimiser is his PSD, and the
 intrinsic-and-induced split exists because "which surface, and is it that surface's own
 fault" is the question a designer needs answered before deciding what to do.
 
+The book is the argument; the algorithm has its own papers, and they are under
+[Optimisation](#optimisation) below.
+
 **[have] Dilworth, D. C.**, "The Ascendency of Numerical Methods in Lens Design",
 *J. Imaging* **4**(12), 137 (2018). DOI 10.3390/jimaging4120137. Open access.
 
@@ -688,6 +773,104 @@ moving the surfaces ahead of it rather than that one. Shafer asks for the split 
 knows where to act; this makes it the thing that acts. The closing sentence of his paper asks for
 the printout, and that is `srf = 1` in `macros/BUCH7_ASPH.ZPL` and the per-surface breakdown in
 the report.
+
+## Optimisation
+
+**This section was missing, and its absence said something wrong about the program.** Every source
+above is a source for the *coefficients* - what they are, how they are computed, how they turn
+into a spot. But `abcalc` optimises, and the optimiser is not this project's invention either: PSD
+is Dilworth's, the pattern search is Hooke and Jeeves's, the basin hopping is Wales and Doye's.
+[optimizer.md](optimizer.md) describes what is implemented and why; this is where it came from.
+Nothing here had a citation anywhere in the repository except the one line of Applied Optics in
+[optimizer.md](optimizer.md) itself.
+
+All nine are now in hand, and none of them has been read yet. That is a real distinction and this
+section keeps it: what the optimiser does is described in [optimizer.md](optimizer.md) from the
+code, not from these papers, and every claim about whose idea it is stands where it stood before
+the PDFs arrived.
+
+Dilworth's book and his 2018 *J. Imaging* paper are above under *Books that shaped the approach*,
+and they stay there: they are entered for what they argue about how a design program should work,
+which is a different debt from the algorithm. The algorithm is here.
+
+**[have] Dilworth, D. C.**, "Pseudo-second-derivative matrix and its application to automatic
+lens design," *Appl. Opt.* **17**(21), 3372-3375 (1978). DOI 10.1364/AO.17.003372 (OSA pattern -
+verify on retrieval).
+**The source of the default optimiser.** The diagonal of the dropped second-derivative term,
+estimated from two successive gradients and added to the normal equations in place of Marquardt's
+blind multiple of the identity. Four pages.
+
+**In hand and not yet read, and the distinction matters here more than anywhere else on this
+page.** [optimizer.md](optimizer.md) says where the code is what this entry says here: the
+per-variable secant curvature and its use as the damping diagonal are his, but the clipping, the
+smoothing between iterations and the division of labour between `psd2` and `psd3` are **this
+implementation's reading of the idea and have not been checked against the paper**. Acquiring it
+does not change that by itself. Until it is read against the code, the program should go on saying
+it implements PSD rather than that it implements Dilworth's PSD.
+
+**[have] Dilworth, D. C.**, "Improved convergence with the pseudo-second-derivative (PSD)
+optimization method," *Proc. SPIE* **399**, *Optical System Design, Analysis, and Production*
+(1983). DOI 10.1117/12.935427.
+The follow-up, on altering the stabilising factor, with the improvement demonstrated in SYNOPSYS.
+**This is the one that would settle `psd2` against `psd3`**, which is exactly a question about
+what the stabilising factor is allowed to do - whether a negative curvature estimate is clipped to
+zero or kept with its sign. That distinction is the whole difference between the two methods here
+and it was arrived at by reasoning rather than read.
+
+**In hand and not yet read.** Until it is, nothing in [optimizer.md](optimizer.md) changes: the
+`psd2`/`psd3` division still stands on reasoning, and the entry above still says so. Reading this
+one is the cheapest correction available to the optimiser's provenance, and it may make the 1978
+paper unnecessary or may not - that is one of the things reading it would settle.
+
+**[have] Faggiano, A.**, "Automatic lens design with pseudo-second-derivative matrix: a
+contribution," *Appl. Opt.* **19**(24), 4226 (1980). DOI 10.1364/AO.19.004226 (verify on
+retrieval).
+An independent account of the method two years after it was published, including the selection of
+the damping factor. Worth having for the same reason a second textbook is: where the original is
+terse, a second account is what tells you whether your reading of it is the usual one. This
+repository has twice lost days to a reading that was merely plausible.
+
+**[have] Robb, P. N.**, "Accelerating convergence in automatic lens design," *Appl. Opt.*
+**18**(24), 4191-4194 (1979). DOI 10.1364/AO.18.004191.
+**The same Robb whose spot integration this program already implements**, on the same problem
+Dilworth's paper addresses and one year later: an acceleration applied to damped least squares
+that took a typical case from 175 iterations to 16 on the same stationary point. Of direct
+interest because the fault it attacks - a least-squares run crawling once the residuals stop being
+small - is the one PSD attacks, by a different device.
+
+**[have] Dilworth, D. C.**, "Novel global optimization algorithms: binary construction and the
+saddle-point method," *Proc. SPIE* **8486**, *Current Developments in Lens Design and Optical
+Engineering XIII* (2012). DOI 10.1117/12.929156.
+The other half of the SYNOPSYS case, and the one his 2018 paper credits alongside PSD: a binary
+search over the SIGNS of the element powers, so that a five-element lens is 32 cases rather than a
+mesh of 200,000 nodes. This program answers the same question with basin hopping, which is a
+stochastic walk over the same space and makes no use of the structure his construction exploits.
+Whether that structure is worth having here is an open question and this is the paper that would
+inform it.
+
+**[have] Hooke, R. and Jeeves, T. A.**, "'Direct search' solution of numerical and statistical
+problems," *J. ACM* **8**(2), 212-229 (1961). DOI 10.1145/321062.321069.
+The pattern search `--method hj` implements: an exploratory move over the variables one at a time,
+followed by a pattern move along whatever direction that found. Cited here because the method is
+named in the program's own output and a reader should be able to find out what it is.
+
+**[have] Wales, D. J. and Doye, J. P. K.**, "Global optimization by basin-hopping and the lowest
+energy structures of Lennard-Jones clusters containing up to 110 atoms," *J. Phys. Chem. A*
+**101**(28), 5111-5116 (1997). DOI 10.1021/jp970984n.
+Basin hopping, from the chemistry it was invented in. The transformation it describes - local
+minimisation flattens the landscape into interpenetrating staircases, and the walk is taken over
+those rather than over the raw surface - is what `--hops` does, Metropolis acceptance included.
+The lens-design literature generally arrives at the same device by other routes and under other
+names; this is where the one implemented here comes from.
+
+**[have] Levenberg, K.**, "A method for the solution of certain non-linear problems in least
+squares," *Quart. Appl. Math.* **2**, 164-168 (1944).
+**[have] Marquardt, D. W.**, "An algorithm for least-squares estimation of nonlinear
+parameters," *J. Soc. Indust. Appl. Math.* **11**(2), 431-441 (1963). DOI 10.1137/0111030
+(verify on retrieval).
+`--method lm`, the baseline the other two are measured against in
+[optimizer.md](optimizer.md#the-optimizers). Listed for completeness rather than because anything
+about it is in doubt.
 
 ## Implementation provenance
 
