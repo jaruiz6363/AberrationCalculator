@@ -295,6 +295,13 @@ twenty, and the wall described above still stands. It is also spherical surfaces
 arrangement exists at the ninth order, so the hard-corrected asphere that this page finds
 undescribed stays undescribed.
 
+**Unless the order is reached the other way.** Buchdahl's is not the only route to a ninth-order
+coefficient, and Forbes' series trace has no aspheric arrangement to be missing — the trace
+already carries the order and only the reading stops at seven.
+[forbes-ninth-order.md](forbes-ninth-order.md) scopes what that would take: thirty coefficients,
+of which paper IV gives one, and a checking problem harder than the tertiary's rather than easier,
+because at that order there is no second route left to disagree with.
+
 **And a caveat on where this bites.** Every design here that the seventh order fails on is
 f/5 at 20 degrees, and the one it comfortably describes is f/8 at 4. Speed and field vary
 together across these fixtures, so nothing here separates them, and "fast lenses need higher

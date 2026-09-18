@@ -31,6 +31,17 @@ errors they found, 17 to 467 per cent across the ladder, were not ones that read
 had turned up. It stays in the program as the standing second opinion, and it is what the aspheric
 numbers are checked against.
 
+**That is its whole job at the seventh order, and none of its job one order up.** At the ninth
+there is almost nothing left for it to be a second opinion about: Buchdahl published one
+coefficient of thirty, paper IV's quaternary spherical, on spherical surfaces only, and no
+aspheric arrangement exists at that order at any level of completeness. Forbes' route has no
+arrangement to extend — the order is the truncation degree, figuring is ordinary coefficients in
+`f_i`, and the code does not branch — so **the property that made it a fit judge is the same one
+that makes it the only route that reaches the ninth order on a figured design at all**. What it
+would take, what it could be checked against and what it would not give are
+[docs/forbes-ninth-order.md](forbes-ninth-order.md). Nothing of it is implemented; the trace
+already carries the order and only the reading stops at seven.
+
 Forbes' formulation removes the difficulty rather than solving it. He writes the *i*th surface as
 
     x = f_i(y . y)
@@ -115,6 +126,12 @@ own fault" cannot be put to it.
 Forbes is the second opinion, and that is a permanent job rather than a probationary one. It
 adjudicated the aspheric arrangement once; it stands ready to adjudicate the next change to it,
 and `ForbesCoefficientsTests` puts the question on every build.
+
+**At the seventh order.** The division of labour above is a seventh-order one throughout, and it
+is stated that way because one order up it reverses: there is no Buchdahl route to be second to,
+and the roles it would have to take on — sole source, with only real rays to check it — are
+harder ones than adjudication. [docs/forbes-ninth-order.md](forbes-ninth-order.md) is about that
+and says so rather than promising it.
 
 ## The extraction, and why the inversion is gone
 
