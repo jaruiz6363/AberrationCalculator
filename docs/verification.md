@@ -290,6 +290,41 @@ the invitation they used to print unconditionally - an invitation that would hav
 hunting a fault in the wrong program. The guard was exercised both ways on the pair above: the
 refusal on `F8`, the original text on `F3`.
 
+## Figuring beyond r^8
+
+The claim made about r^10 and above is stronger than "it is ignored": those terms **cannot
+appear** in anything this program computes. A deformation `A_n r^n` first contributes at wave
+order `n`, which is transverse order `n-1`, so r^4 reaches the third order, r^6 the fifth, r^8 the
+seventh - and r^10 reaches the NINTH and nothing below it.
+
+**Both halves of that are tested, and either alone would be worthless.** That the coefficients do
+not move is half; on its own it would pass equally against code that threw the term away before it
+reached the sag - which is a real bug, and the one the r^2 term actually had once. So
+`AsphericBeyondR8Tests` also requires that the surface genuinely is different:
+
+- **Nothing moves.** Adding r^10, r^12, r^14 and r^16 to a surface that is figured already leaves
+  every coefficient and the focal length **bit-identical**, on four designs. In the Forbes route
+  bit-identity holds even on a surface that was spherical, because its figure is a truncated power
+  series in `p = r^2` and r^10 falls outside the truncation rather than being filtered out of a
+  list - there is no special case to leave.
+- **But the lens really has changed.** A real marginal ray lands elsewhere.
+- **And the displacement is ninth order.** Halving the pupil divides it by 512, measured, not by
+  the 128 an r^8 term would give or the 2048 of an r^12 one. That is what "it cannot reach the
+  seventh order" means when it is put as a measurement rather than an assertion.
+
+**One thing does change, and it is the route rather than the answer.** `Surface.IsFigured` is true
+for any aspheric term, r^10 included - correctly, since the surface really is aspheric - and that
+flag decides whether the tertiary coefficients come from the spherical scheme or the aspheric one.
+So adding r^10 to a sphere moves the design onto the other route, and the two agree to one or two
+parts in 1E16 rather than to the bit. The test says so in that case instead of demanding a
+bit-identity that would be asserting something untrue about the implementation.
+
+**The report now says it too.** An r^10 row in the aspheric table is marked `takes no part`, with a
+note below giving the reason and the consequence: the surface is still that shape and real rays
+still see it, so a design whose figuring lives mostly in those terms is not described by the
+coefficients, however strong its aspherics look. Both ZPL macros already warned; the C# report
+printed the row and said nothing, which invited the reader to assume it had gone in.
+
 ## What is not established
 
 **How far the seventh order reaches.** It is a property of the lens and not a number. Of five

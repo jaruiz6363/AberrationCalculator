@@ -233,6 +233,7 @@ public sealed class ReportWriter
 
         sb.AppendLine("ASPHERIC SURFACES");
         sb.AppendLine("----------------------------------------------------------------");
+        bool beyond = false;
         foreach (var (i, s) in rows)
         {
             sb.AppendLine(string.Format(Inv, "Surface {0}   conic = {1}", i, s.Conic.ToString("0.########", Inv)));
@@ -240,8 +241,28 @@ public sealed class ReportWriter
             {
                 double c = s.AsphericCoefficients[k];
                 if (c == 0.0) continue;
-                sb.AppendLine(string.Format(Inv, "    r^{0,-3} {1}", 2 * k + 2, c.ToString("0.000000000E+00", Inv)));
+                // Index 0 is r^2, which is a curvature change and IS carried - see
+                // Surface.VertexCurvature. Index 4 upward is r^10 and beyond, which reaches the
+                // ninth order and so cannot touch anything below. Marked rather than hidden: a
+                // reader who sees the term listed above the coefficients would otherwise assume
+                // it went into them.
+                bool past = k >= 4;
+                if (past) beyond = true;
+                sb.AppendLine(string.Format(Inv, "    r^{0,-3} {1}{2}", 2 * k + 2,
+                    c.ToString("0.000000000E+00", Inv), past ? "   <- takes no part, see below" : ""));
             }
+        }
+        if (beyond)
+        {
+            sb.AppendLine();
+            sb.AppendLine("FIGURING BEYOND r^8 TAKES NO PART IN ANYTHING BELOW, and is not being dropped:");
+            sb.AppendLine("it genuinely does not appear. A deformation of r^n first contributes at wave");
+            sb.AppendLine("order n, which is transverse order n-1, so r^4 reaches the third order, r^6 the");
+            sb.AppendLine("fifth, r^8 the seventh - and r^10 reaches the NINTH, which is past everything");
+            sb.AppendLine("this program computes. The surface is still that shape and real rays still see");
+            sb.AppendLine("it; the coefficients cannot. So a design whose figuring lives mostly in those");
+            sb.AppendLine("terms is not described by what follows, however strong its aspherics look, and");
+            sb.AppendLine("the predicted spot will part company with a traced one by whatever they do.");
         }
         sb.AppendLine();
     }
