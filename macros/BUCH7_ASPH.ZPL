@@ -51,7 +51,9 @@
 !
 !   THE THIRD AND FIFTH ORDERS AND B7 against FIFTHORD.ZPL, which ships with
 !   OpticStudio and carries aspheres: it prints the same eighteen transverse totals
-!   stage B prints, and on a figured lens they must agree.
+!   stage B prints, and on a figured lens they must agree - UNLESS A SURFACE CARRIES
+!   A NON-ZERO PARM 1. See the next block. The macro refuses the comparison in its
+!   own output when it finds one, rather than leaving you to discover it.
 !
 !   THE SEVENTH ORDER against FORBES.ZPL in this same folder, which reaches tau1 to
 !   tau20 by order doubling and shares no arithmetic with the scheme below. That is
@@ -60,6 +62,42 @@
 !   ON A LENS OF SPHERES this macro and BUCH7.ZPL must agree entry for entry: none of
 !   the aspheric machinery is reached there, so a disagreement is a fault in this file
 !   rather than anything to do with the aspheric arrangement.
+!
+! THE r^2 TERM, PARM 1, IS HANDLED HERE AND IS NOT HANDLED BY FIFTHORD
+!
+!   PARM 1 is not figuring. A surface of curvature c carrying A2 is exactly the sphere
+!   of curvature c + 2*A2 carrying whatever departure is left over, so the term changes
+!   the surface's POWER - it is a radius in disguise, where r^4 and above are genuine
+!   departures from a sphere. This macro folds it into the vertex curvature, zeroes the
+!   conic, and re-measures A4, A6 and A8 from THAT sphere, which is the block headed
+!   "Vertex form, per surface" below.
+!
+!   THIS MACRO IS ACCURATE WHEN A2 IS NON-ZERO, and that is measured rather than
+!   claimed. On a test design built for it - a conic with A4, A6, A8 and PARM 1 = 1E-4,
+!   where the term moves the focal length from 78.0375 to 77.4194 - this macro agrees
+!   to every printed digit, all eighteen totals and all twenty tau, with an independent
+!   C# implementation that is itself corroborated three ways: by Buchdahl's scheme
+!   folding the term as above, by Forbes' series trace which does no folding at all and
+!   carries A2 as the first coefficient of the sag series, and by coefficients recovered
+!   from real traced rays. OpticStudio's own focal length agrees with all of them, which
+!   is also what establishes that the paraxial data this macro reads accounts for PARM 1.
+!
+!   FIFTHORD IS NOT ACCURATE THERE. It is not that it ignores the term and returns the
+!   answer for the surface without it, which would be incomplete but defensible. It
+!   takes its paraxial ray data from OpticStudio, which includes the power the term
+!   adds, and then computes each surface's contribution from the base curvature - so
+!   the two halves describe different surfaces and the result is neither lens. On the
+!   test design its B is 2.5314E-02, against 2.7696E-02 with the term and 2.6888E-02
+!   without. On an unfigured surface of the same file it still agrees with this macro
+!   to all five printed digits, and on the figured one its Petzval differs by exactly
+!   the ratio of the two curvatures, which is what locates the cause.
+!
+!   Its author does flag the term - "Zemax uses a second-order aspheric deformation
+!   coefficient which is not used in this treatment" - and that is candid, and the
+!   macro was written in 1998 and given away freely. But the note describes an
+!   omission, and what happens is an inconsistency, so it reads as weaker than the
+!   situation warrants. Hence the refusal this macro prints instead of the usual
+!   invitation to compare.
 !
 ! THREE SWITCHES, all off by default and all about the lens in front of you
 !
@@ -285,6 +323,7 @@ stopp = p0
 ! ---------------------------------------------------------------------------------
 
 anyfig = 0
+anyr2 = 0
 FOR i = 1, nsm, 1
    vcv = CURV(i)
    vkk = CONI(i)
@@ -294,6 +333,7 @@ FOR i = 1, nsm, 1
    va8 = PARM(4, i)
 
    IF (ABSO(va2) > 0)
+      anyr2 = 1
       vc2 = vcv * vcv
       vc3 = vc2 * vcv
       vc5 = vc3 * vc2
@@ -850,7 +890,17 @@ PRINT "   N1 ", sN1 * fnum, "   N2 ", sN2 * fnum, "   N3 ", sN3 * fnum
 PRINT "   C5 ", sC5 * fnum, "   Pi5", sP5 * fnum, "   E5 ", sE5 * fnum
 PRINT "   B7 ", sB7 * fnum
 PRINT " "
-PRINT "Run FIFTHORD on this same file and these eighteen must match, asphere or not."
+IF (anyr2 == 0)
+   PRINT "Run FIFTHORD on this same file and these eighteen must match, asphere or not."
+ELSE
+   PRINT "DO NOT COMPARE THESE WITH FIFTHORD ON THIS FILE. A surface here carries a"
+   PRINT "non-zero PARM 1, the r^2 deformation, and FIFTHORD does not handle it: it"
+   PRINT "takes paraxial data from OpticStudio, which INCLUDES the power that term"
+   PRINT "adds, and then computes each surface's contribution from the BASE curvature."
+   PRINT "The two halves describe different surfaces, so its answer is neither this"
+   PRINT "lens nor the lens without the term. The numbers above are the correct ones."
+   PRINT "Compare against FORBES.ZPL instead, which shares no arithmetic with this."
+ENDIF
 PRINT " "
 
 ! ---------------------------------------------------------------------------------

@@ -48,6 +48,10 @@ relative on every build, over seven designs. So the intrinsic and figuring parts
 can now target are checked against a second implementation of the same published method, not only
 against their own sum.
 
+**That cross-check has a measured boundary**, and it is the r-squared deformation term: every one
+of the seven fixtures has `PARM 1` zero, and the agreement above holds only there. See
+*The r-squared term* below.
+
 The induced part is not in the reference, because FIFTHORD does not print it. It is reached the
 other way about: the macro's totals are NOT the sum of the surface rows it prints, and
 `TotalsAreNotTheSumOfTheIntrinsicParts` requires that gap to exist. Differencing a FIFTHORD run by
@@ -178,6 +182,113 @@ coefficients as above, because the disagreement sits in the smallest terms and a
 weights them. Predicted-versus-traced spot agreement would have certified a tau15 that is
 wrong by five times and points the wrong way. It is not used as a correctness metric here,
 and `spot-prediction.md` says what it is used for instead.
+
+## The r-squared term, and where the FIFTHORD cross-check stops
+
+An even asphere's first coefficient, `PARM 1` in OpticStudio, multiplies r-squared. **It is not
+figuring.** A surface of curvature `c` carrying `A2` is exactly the sphere of curvature `c + 2 A2`
+carrying whatever is left over, so the term changes the surface's POWER and with it the focal
+length of the system. Everything from r^4 upward is genuine departure from a sphere; r^2 is a
+radius in disguise.
+
+That distinction is the whole of this section, because programs differ on whether they notice it.
+
+### What was measured
+
+`tests/fixtures/coefficient-reference/F8_r2_conic_a4_a6_a8` exists for this. It is
+`F3_conic_a4_a6_a8` with `PARM 1 = 1.0E-04` added and nothing else changed. The term is not a
+perturbation: it moves the effective focal length from 78.037505 to 77.419426, the F/number from
+3.9019 to 3.8710, `B` by three per cent and `B7` by 0.43.
+
+| | notices `PARM 1` | EFL it works at |
+|---|---|---|
+| OpticStudio's own first-order data | yes | 77.419426 |
+| this program | yes | 77.419426 |
+| `macros/BUCH7_ASPH.ZPL` | yes | 77.419426 |
+| FIFTHORD | **partly** | mixes both |
+
+**This program is correct here, and it is not this program's own opinion of itself.** Four things
+that share no arithmetic agree on that design: the Buchdahl aspheric scheme, which folds the term
+into the vertex curvature and re-measures the figuring from that sphere; the Forbes series trace,
+which does no folding at all and simply carries `A2` as the first coefficient of the sag series;
+the ray inversion, which recovers the coefficients from real traced rays and knows nothing of
+either; and OpticStudio's own focal length. The first three agree on the twenty tau to nine
+significant figures, with the rays at their own ladder floor of 3E-06.
+
+**BUCH7_ASPH agrees with this program to every printed digit on that file**, all eighteen totals
+and all twenty tau. Its EFL comes from `GETSYSTEMDATA`, so that agreement also establishes the
+thing the fixture was built to test: OpticStudio's paraxial data accounts for `PARM 1`, and the
+macro's folded vertex curvature is therefore consistent with the pupil and focal length it reads
+back.
+
+### Why FIFTHORD is not accurate when A2 is non-zero
+
+It was expected to return the answer for the lens with the term removed. **It does not.** Its `B`
+comes to 2.5314E-02, against 2.7696E-02 with the term and 2.6888E-02 without it - neither. The
+reason is that it takes its paraxial ray data from OpticStudio, which INCLUDES the r-squared
+power, and then computes each surface's contribution from the BASE curvature. The two halves
+describe different surfaces.
+
+Two measurements locate that rather than infer it. On surface 2 of the fixture, which carries no
+figuring, FIFTHORD and this program agree on every third- and fifth-order term to all five printed
+digits - so nothing general is wrong with either. On surface 1, which carries the term, the
+Petzval contribution differs by exactly the ratio of the two curvatures:
+
+    FIFTHORD    -5.2159E-03  x  (0.0202 / 0.0200)  =  -5.268059E-03
+    this program                                     -5.268041E-03
+
+to 3.4E-06, which is the limit of FIFTHORD's five printed digits. Petzval depends on the surface
+curvature and the indices alone, so it isolates which curvature each program used and nothing
+else. The totals then differ by -8.6 per cent on `B`, -4.4 on `N1` and -1.65 on `B7`, while `E`,
+`E5`, `N2` and `M2` are unmoved - the signature of a curvature error rather than of a dropped
+term.
+
+### The author flags it, and the flag understates it
+
+The macro's header says:
+
+> "Zemax uses a second-order aspheric deformation coefficient which is not used in this treatment.
+> It may appear in a future version."
+
+That is candid and it was written in 1998, and none of this is a criticism of a macro given away
+freely. But it describes an omission, and a reader would reasonably take it to mean the result is
+the one for the surface without that term - an incomplete answer, and a defensible thing to hand
+back. What the macro actually returns is an inconsistent one: a lens whose rays come from one
+surface and whose contributions come from another. **A note strong enough for what happens would
+have to say that the coefficients are not to be used at all when `PARM 1` is non-zero**, rather
+than that the term is not used.
+
+### What this does and does not disturb
+
+**It does not touch the 586-value agreement.** Those seven fixtures have `PARM 1` zero, which the
+README beside them records as deliberate, and the agreement there stands at a worst residual of
+1.1E-12. This section says where that agreement stops applying, which is a boundary on a
+cross-check and not a defect in either program.
+
+**Nothing in this repository needs fixing.** The term is read, folded, and carried correctly, and
+`AsphericR2TermTests` already pins the equivalence of the two ways of writing the same surface.
+
+**And the macro pair has now been run against each other on `F8`.** `FORBES.ZPL` reproduces
+`BUCH7_ASPH.ZPL` on that file to every printed digit - all eighteen totals and all twenty tau,
+`tau1 = 2.515701E-04` through `tau20 = -4.928042E-09` - and both agree with this program. The two
+macros share no arithmetic and, on this term specifically, take opposite approaches: FORBES puts
+`A2` straight into the sag series as the coefficient of `p` and folds nothing, while BUCH7_ASPH
+folds it into the vertex curvature and re-measures the figuring from that sphere. Agreement
+between those two is worth more than agreement between two implementations of the same treatment.
+
+So on the r-squared term the count is five: two macros, two C# routes and real rays, against
+FIFTHORD alone.
+
+**And the refutation is now direct rather than inferred.** Both macros were also run on
+`F3_conic_a4_a6_a8`, the same lens without the term, and they reproduce this program's numbers for
+it exactly - `B = 2.688792E-02`, `tau1 = 2.526552E-04`, `tau20 = -4.894869E-09`. So the A2-free
+answer is in hand and measured, and FIFTHORD's 2.5314E-02 on `F8` is not it. It was expected to
+return that answer; it returns a third thing.
+
+**Both macros now refuse the FIFTHORD comparison when they meet a non-zero `PARM 1`**, in place of
+the invitation they used to print unconditionally - an invitation that would have sent a reader
+hunting a fault in the wrong program. The guard was exercised both ways on the pair above: the
+refusal on `F8`, the original text on `F3`.
 
 ## What is not established
 

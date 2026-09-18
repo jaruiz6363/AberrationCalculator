@@ -114,7 +114,18 @@
 !      Only PARM 1 to 4 take part - they are r^2 to r^8. An r^10 term or above enters
 !      the figure past the truncation and CANNOT reach the seventh order; it is not
 !      being ignored, it genuinely does not appear. The macro says so when it meets
-!      one rather than silently dropping it. ***
+!      one rather than silently dropping it.
+!
+!      PARM 1 IS CARRIED HERE AND IS NOT CARRIED BY FIFTHORD. This macro puts it
+!      straight into the sag series as the coefficient of p, doing no folding at all,
+!      while BUCH7_ASPH folds it into the vertex curvature and re-measures the rest
+!      from that sphere. The two treatments are opposite and they agree: on a conic
+!      with r^4, r^6, r^8 and PARM 1 = 1E-4 they match on all eighteen totals and all
+!      twenty tau to every digit either prints, and OpticStudio's own focal length
+!      agrees with both. FIFTHORD does not - it reads paraxial data that includes the
+!      power the term adds and then uses the base curvature for the contributions, so
+!      its answer is neither lens. The closing block below refuses that comparison
+!      when it finds such a surface instead of inviting it. ***
 !
 !   4. THE NAMED COEFFICIENTS - the five of the third order, the twelve of the fifth
 !      and the twenty of the seventh. These are NOT read off S, T, V and W. The
@@ -654,10 +665,12 @@ FOR gi = 0, nsm + 1, 1
 NEXT
 
 gz = 0
+anyr2 = 0
 FOR gi = 1, nsm, 1
    ccur = CURV(gi)
    ccon = CONI(gi)
    cas1 = PARM(1, gi)
+   IF (ABSO(cas1) > 0) THEN anyr2 = 1
    cas2 = PARM(2, gi)
    cas3 = PARM(3, gi)
    cas4 = PARM(4, gi)
@@ -2560,16 +2573,33 @@ SUB showco
    PRINT " "
    PRINT "THE CHECK THAT NEEDS NOTHING FROM THIS REPOSITORY, AND WORKS ON ASPHERES:"
    PRINT " "
-   PRINT "FIFTHORD.ZPL ships with OpticStudio and CARRIES ASPHERES - it prints the"
-   PRINT "aspheric contribution surface by surface. Its transverse totals are the"
-   PRINT "same eighteen quantities printed above: B through E5, and B7 which is"
-   PRINT "tau1. Run it on the same file and the two must agree."
-   PRINT " "
-   PRINT "That has been done. On CookeTriplet_SPOTM_START_LO_ASPHERE, which carries"
-   PRINT "r^4 and r^6 figuring on two surfaces and which BUCH7 declines outright, all"
-   PRINT "EIGHTEEN agree to every digit FIFTHORD prints - worst 3.7E-05, which is its"
-   PRINT "own five-figure rounding. That includes B7 against tau1, and is the direct"
-   PRINT "evidence for the claim above that B7 survives the aspheric case."
+   IF (anyr2 == 0)
+      PRINT "FIFTHORD.ZPL ships with OpticStudio and CARRIES ASPHERES - it prints the"
+      PRINT "aspheric contribution surface by surface. Its transverse totals are the"
+      PRINT "same eighteen quantities printed above: B through E5, and B7 which is"
+      PRINT "tau1. Run it on the same file and the two must agree."
+      PRINT " "
+      PRINT "That has been done. On CookeTriplet_SPOTM_START_LO_ASPHERE, which carries"
+      PRINT "r^4 and r^6 figuring on two surfaces and which BUCH7 declines outright, all"
+      PRINT "EIGHTEEN agree to every digit FIFTHORD prints - worst 3.7E-05, which is its"
+      PRINT "own five-figure rounding. That includes B7 against tau1, and is the direct"
+      PRINT "evidence for the claim above that B7 survives the aspheric case."
+   ELSE
+      PRINT "NOT ON THIS FILE. A surface here carries a non-zero PARM 1, the r^2"
+      PRINT "deformation, and FIFTHORD does not handle that term. It is not that it"
+      PRINT "ignores it and returns the answer for the surface without it: it takes"
+      PRINT "paraxial data from OpticStudio, which INCLUDES the power the term adds,"
+      PRINT "and then computes each surface's contribution from the BASE curvature."
+      PRINT "The two halves describe different surfaces, so its answer is neither"
+      PRINT "lens. Its author flags the term as 'not used in this treatment', which"
+      PRINT "reads as an omission and is in fact an inconsistency."
+      PRINT " "
+      PRINT "The numbers above are not in doubt. Compare them with BUCH7_ASPH.ZPL,"
+      PRINT "which folds the r^2 term into the vertex curvature and shares no"
+      PRINT "arithmetic with the trace above. On a conic carrying r^4, r^6, r^8 and"
+      PRINT "PARM 1 = 1E-4 the two agree on all eighteen totals and all twenty tau to"
+      PRINT "every digit either prints."
+   ENDIF
    PRINT " "
    PRINT "The third order can also be had from Analyze > Aberrations > Seidel"
    PRINT "Coefficients, which carries aspheres too. Converted to transverse measure"

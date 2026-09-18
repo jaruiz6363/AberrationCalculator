@@ -24,7 +24,7 @@ All six stages are written and all six pass, at either conjugate.
 | stage | contents | agrees with | result |
 |---|---|---|---|
 | A | paraxial basis, per-surface primary, running sums | the Seidel analysis in OpticStudio | 30 of 30, both conjugates |
-| B | fifth order per surface, intrinsic and induced, plus B7 | FIFTHORD | 18 of 18 totals, both conjugates |
+| B | fifth order per surface, intrinsic and induced, plus B7 | FIFTHORD, where `PARM 1` is zero; the C# otherwise | 18 of 18 totals, both conjugates; 18 of 18 and all 20 tau on a design carrying `PARM 1` |
 | C | Buchdahl's Table I, t1 to t155, per surface | `reference/CookeTriplet_TableI.txt` | 155 of 155 to 7e-16 |
 | D | the twenty tau, intrinsic and induced per surface | that file's tau block, and a Forbes series trace at 250 mm | 420 of 420; 20 of 20 to every printed digit |
 | E | publishes the coefficients into the call buffer for `ROBB.ZPL` to read and turn into an RMS spot radius | `Prms.cs`, and the `rms_spot` tool, on the same lens | 33 of 33 to every printed digit |
@@ -277,6 +277,17 @@ System totals, transverse measure (what FIFTHORD prints)
 Run on `CookeTriplet.zmx` at wavelength 2, all eighteen system totals match FIFTHORD to
 every digit FIFTHORD prints, and every per-surface INTRINSIC row matches its per-surface
 rows exactly - six surfaces, three groups, plus B7.
+
+**That comparison holds only while `PARM 1` is zero, and the macro now refuses it when it
+is not.** The r^2 deformation term is a radius in disguise - a surface of curvature `c`
+carrying `A2` is the sphere of curvature `c + 2*A2` carrying whatever is left over - and
+FIFTHORD does not handle it: it takes paraxial data from OpticStudio, which includes the
+power that term adds, and then computes each surface's contribution from the base
+curvature, so its answer is neither the lens with the term nor the lens without it.
+`BUCH7_ASPH` folds the term into the vertex curvature and is accurate there, which is
+measured rather than claimed - see the header block **THE r^2 TERM, PARM 1** and
+[docs/verification.md](../docs/verification.md). On a file carrying one, the macro prints a
+refusal in place of its usual invitation to compare, and points at `FORBES.ZPL` instead.
 
 That comparison also settles what FIFTHORD's per-surface table is. It is the INTRINSIC
 part alone. Its rows do not sum to its own totals, and cannot, because the induced part
