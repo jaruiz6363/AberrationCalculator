@@ -755,17 +755,34 @@ because of that.** Dilworth holds that aberration theory has been overtaken in d
 > cannot, in spite of generations of mathematical genius, design lenses according to a set of
 > algebraic statements."
 
-He credits the success of SYNOPSYS to two things and neither is aberration theory: the
-PSD III optimiser, and a binary search over the SIGNS of element powers - a five-element
-lens is 32 cases rather than a mesh of 200,000 nodes, and each is optimised numerically.
+He credits the success of SYNOPSYS to two things: the PSD III optimiser, and a binary search
+over the SIGNS of element powers - a five-element lens is 32 cases rather than a mesh of
+200,000 nodes, and each is optimised numerically.
 
-The answer this repository would give is not a rebuttal, and what it has since become makes
-the agreement larger rather than smaller. It now optimises and it now searches - with his
-PSD as the local step and a basin hopping above it - so the disagreement has narrowed to one
-thing: what the merit function is MADE OF. Here it is made of aberration coefficients rather
-than of traced rays, and the claim made for that is a modest one, which is that it gets close
-enough for real ray tracing to finish the job. It is not offered as a way to arrive at a
-starting point, which is the ground he is arguing on and where he is right.
+**This entry used to add "and neither is aberration theory", and that was wrong.** His own
+2012 paper, which is the paper describing that binary search, puts the third and fifth orders
+inside it - see the entry under [Optimisation](#optimisation) and the passage quoted there.
+The screening stage of DSEARCH is an optimisation run against all the third- and fifth-order
+aberrations plus three real rays, used to triage the 2^N candidates before the expensive
+stages see any of them. So aberration theory is in his pipeline, in the fast-objective role,
+and the sentence removed here was reading his conclusions without checking his methods.
+
+**The correction cuts the other way too, and the concession below was too generous.** This
+entry said the coefficients are "not offered as a way to arrive at a starting point, which is
+the ground he is arguing on and where he is right". He uses coefficients to arrive at starting
+points - that is what the screen is for.
+
+**None of which makes his position inconsistent, and the distinction is the whole of it.**
+What he argues against is the DESIGNER working up a third-order solution BY HAND before
+submitting it to the computer: "one cannot design lenses according to a set of algebraic
+statements". That is compatible with a program using a cheap analytic objective inside an
+automated search, which is what his screen is and what this one would be. The disagreement was
+never about whether coefficients are useful to a machine. It is about whether they are useful
+to a person, which is the claim the per-surface split below rests on.
+
+So what remains of the disagreement is smaller than this entry used to claim. He and this
+program agree that coefficients are worth optimising against when rays are expensive; they
+differ on whether the resulting numbers are worth READING.
 
 The other half stands unchanged. "Surface 5 contributes almost nothing of its own and nearly
 all of what it carries was induced upstream" is not a statement a merit function makes, at
@@ -773,11 +790,24 @@ any speed, and it is what tells a designer where to go and look. Dilworth's own 
 the computer should say what to change; the remaining disagreement is over whether a number
 the designer can reason about is worth having on the way there.
 
-*A note on how this entry came to be written.* It was first recorded here, on a
-recollection, as saying the opposite - that SYNOPSYS uses aberration theory early because it
-is fast against real ray tracing. Reading the paper showed that it argues close to the
-reverse. The recollection may still hold for the BOOK, or for how DSEARCH forms its first
-merit function; neither has been checked, and neither should be cited until it is.
+*A note on how this entry came to be written, and how it came out.* It was first recorded
+here, on a recollection, as saying the opposite - that SYNOPSYS uses aberration theory early
+because it is fast against real ray tracing. Reading the 2018 paper showed that it argues
+close to the reverse, so the entry was rewritten and the recollection was set aside with this
+note: "The recollection may still hold for the BOOK, or for how DSEARCH forms its first merit
+function; neither has been checked, and neither should be cited until it is."
+
+**It has now been checked, and the recollection was right, on the second of the two
+possibilities it named.** DSEARCH forms its first merit function from the third- and
+fifth-order aberrations with three real rays, in Dilworth's own words in the 2012 paper. The
+recollection was correct about the program and wrong only about which of his writings would
+show it - his conclusions argue one way and his methods section does the other, and reading
+only the first is what produced the error here twice, in opposite directions.
+
+Worth keeping as a record of the method rather than of the fact. An unverified recollection
+was written down as unverified, the two places it could be true were named, it was kept out of
+the argument until one of them was read, and then it was confirmed rather than quietly
+adopted. That is the whole of what this file is for.
 
 **[have] Shafer, D.**, "I Plead the 5th", *Recent Trends in Optical Systems Design II*,
 SPIE Vol. 1049 (1989), pp. 11-16.
@@ -848,10 +878,12 @@ is Dilworth's, the pattern search is Hooke and Jeeves's, the basin hopping is Wa
 Nothing here had a citation anywhere in the repository except the one line of Applied Optics in
 [optimizer.md](optimizer.md) itself.
 
-All nine are now in hand, and none of them has been read yet. That is a real distinction and this
-section keeps it: what the optimiser does is described in [optimizer.md](optimizer.md) from the
-code, not from these papers, and every claim about whose idea it is stands where it stood before
-the PDFs arrived.
+All nine are in hand. **One has been read** - Dilworth (2012), marked `[have, read]` below - and
+reading it corrected a claim this file made about its author elsewhere, which is the argument for
+reading the other eight. The rest are `[have]` and unread, and that is a real distinction this
+section keeps: what the optimiser does is described in [optimizer.md](optimizer.md) from the code,
+not from these papers, and every claim about whose idea it is stands where it stood before the
+PDFs arrived.
 
 Dilworth's book and his 2018 *J. Imaging* paper are above under *Books that shaped the approach*,
 and they stay there: they are entered for what they argue about how a design program should work,
@@ -902,15 +934,41 @@ that took a typical case from 175 iterations to 16 on the same stationary point.
 interest because the fault it attacks - a least-squares run crawling once the residuals stop being
 small - is the one PSD attacks, by a different device.
 
-**[have] Dilworth, D. C.**, "Novel global optimization algorithms: binary construction and the
-saddle-point method," *Proc. SPIE* **8486**, *Current Developments in Lens Design and Optical
+**[have, read] Dilworth, D. C.**, "Novel global optimization algorithms: binary construction and
+the saddle-point method," *Proc. SPIE* **8486**, *Current Developments in Lens Design and Optical
 Engineering XIII* (2012). DOI 10.1117/12.929156.
 The other half of the SYNOPSYS case, and the one his 2018 paper credits alongside PSD: a binary
 search over the SIGNS of the element powers, so that a five-element lens is 32 cases rather than a
 mesh of 200,000 nodes. This program answers the same question with basin hopping, which is a
 stochastic walk over the same space and makes no use of the structure his construction exploits.
-Whether that structure is worth having here is an open question and this is the paper that would
-inform it.
+
+**It also contains the passage that corrects this file's account of him**, and it is worth
+quoting because it is a description of his own pipeline rather than an argument:
+
+> "An obvious enhancement is first to screen all of the candidates in a very simple evaluation
+> step, in our case consisting of an optimization run that minimizes all of the 3rd and 5th-order
+> aberrations along with just three real rays. This step executes very quickly, and a specified
+> number of candidates are saved for the next phase, which involves a more demanding optimization
+> with a larger set of real rays, with another optional simulated annealing stage afterwards."
+
+So DSEARCH runs in four stages - enumerate the 2^N sign combinations from a stack of near-flat
+plates, screen them on third- and fifth-order aberrations with three real rays, optimise the
+survivors against many rays, then optionally anneal - and the cheap stage is made of exactly the
+quantities this program computes. See the note in *Books that shaped the approach* above for what
+that does to the argument recorded there.
+
+**The staged pattern is the interesting thing here, more than the binary search.** A screen has to
+be cheap and needs only to rank, not to be right; a coefficient set is well suited to that and a
+ray trace is not. This program's screen could be richer than his - the seventh order rather than
+the fifth, and the per-surface intrinsic-and-induced split, which could reject a candidate for the
+REASON its aberration is large rather than only for the size of it. Whether to adopt the pattern
+is a design question and not a documentation one; nothing here implements it, and `--hops` remains
+a stochastic walk with a full merit evaluation at every step.
+
+*The rest of the paper* is the Saddle-Point Build, after Bociort: a zero-power shell added beside
+an existing element opens new dimensions at a local minimum, and the merit function is unchanged
+at the moment of insertion if it is made only of ray intercepts. Its inverse is automatic element
+deletion. Neither is implemented here and neither is proposed.
 
 **[have] Hooke, R. and Jeeves, T. A.**, "'Direct search' solution of numerical and statistical
 problems," *J. ACM* **8**(2), 212-229 (1961). DOI 10.1145/321062.321069.
