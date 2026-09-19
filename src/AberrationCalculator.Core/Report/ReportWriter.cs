@@ -753,6 +753,19 @@ public sealed class ReportWriter
     /// above one "a residual is as likely the missing ninth order" as a fault in the seventh.
     /// This makes that an arithmetic question.</para>
     /// </summary>
+    /// <summary>
+    /// Which surface to figure, and what figuring it would buy - see
+    /// <see cref="AspherePlacement"/>. Its own output rather than a report section, for the
+    /// reason the distortion check and the aspheric screen are: it asks a design question rather
+    /// than describing the design in hand, and a reader who wanted the coefficients did not ask
+    /// where to put an asphere.
+    /// </summary>
+    public string BuildAspherePlacementText()
+    {
+        var trace = ParaxialTrace.Trace(_sys, PrimaryIndices, MaxField());
+        return AspherePlacement.Render(_sys, PrimaryIndices, trace, Seidel(trace));
+    }
+
     public string BuildQuaternaryText()
     {
         var sb = new StringBuilder();

@@ -62,6 +62,15 @@ OPTIONS
                       published no aspheric arrangement at this order and the scheme
                       would return a number that is neither one thing nor the other.
                       Writes nothing else. Abbreviates to --quaternary.
+      --asphere-placement
+                      WHERE an asphere would do the most good, and what it would
+                      buy - the design question asked forwards, where every other
+                      table here asks what is wrong with the design in hand. Per
+                      surface: the marginal and chief ray heights, their ratio H/h,
+                      which sum the surface moves most, and the r^4 coefficient
+                      that would drive each Seidel sum to zero on its own. THIRD
+                      ORDER ONLY, and Petzval is absent because no figuring can
+                      reach it. Writes nothing else. Abbreviates to --asphere-where.
       --optimize [mf] Optimise the design and write the result.
 
                       SETTINGS. Without <mf>, the settings come from the sidecar
@@ -261,7 +270,7 @@ EXIT CODES
     {
         string? lensPath = null, outDir = null, glassDir = null, baseDir = null;
         bool writeFiles = true, quiet = false, screen = false, forbes = false, distortion = false;
-        bool nat = false, quaternary = false;
+        bool nat = false, quaternary = false, asphereWhere = false;
         double screenH = 1.0;
         int forbesDegree = 3;
 
@@ -301,6 +310,7 @@ EXIT CODES
                     break;
                 case "--distortion-coefficients": case "--distortion": distortion = true; break;
                 case "--quaternary-spherical": case "--quaternary": quaternary = true; break;
+                case "--asphere-placement": case "--asphere-where": asphereWhere = true; break;
                 case "--nat": case "--nodal": nat = true; break;
 
                 case "--optimize": case "--optimise":
@@ -521,6 +531,7 @@ EXIT CODES
         // And the ninth order, which is its own mode for the same reason and is additionally
         // REFUSED on a figured design, so it would be an apology in the middle of a report.
         if (quaternary) { Console.Write(writer.BuildQuaternaryText()); return writer.Unresolved.Count > 0 ? 2 : 0; }
+        if (asphereWhere) { Console.Write(writer.BuildAspherePlacementText()); return writer.Unresolved.Count > 0 ? 2 : 0; }
 
         // The nodal report answers a question about a MISALIGNED lens, which none of the others
         // can be asked at all, so it is its own mode rather than a section of the main report.

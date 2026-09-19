@@ -675,6 +675,60 @@ notation problem noted above has three sides to it and not two. Cites Zhang for 
 fifth-order components and for the exact freeform decentre-and-tilt formulas; neither has been
 obtained here.
 
+## Aspheric surfaces
+
+**[have, read] Schulz, G.**, "Aspheric surfaces," in E. Wolf (ed.), *Progress in Optics* **XXV**
+(Elsevier, 1988), pp. 349-415.
+The review of the subject: representations, design methods, fabrication and testing,
+applications, and the theoretical limits. Three things in it bear directly on this program.
+
+**Sec. 3.3 is now implemented as `AspherePlacement`.** Reading the Delano `(H, h)` diagram, he
+states that the ratio of chief-ray to marginal-ray height at a surface "quantitatively determines
+the weight by which an aspheric deformation of the surface i influences the individual Seidel
+aberrations" - small `|H/h|` reaches spherical aberration, large reaches distortion, the middle
+range moves all of them by comparable amounts. This repository already formed that ratio, as a
+local variable named `ratio` inside `SeidelCoefficients`, and used exactly the power law he
+describes; what it had never done was ask the question forwards. `--asphere-placement` does, and
+because the third-order aspheric contribution is LINEAR in the coefficient, the sensitivities are
+exact derivatives rather than differences.
+
+**Sec. 2.1 is the source for an identity this program relies on and did not cite.** His Eq. (2.5),
+`a2 = 1/2R` and `a4 = (1+b)/8R^3`, crediting Hopkins (1950, p. 151) and Born and Wolf (1964,
+p. 138), is the conic-to-polynomial equivalence that `BUCH7_ASPH.ZPL` computes in its vertex-form
+block as `k1*c3/8`, that `AsphericR2TermTests` rests on, and that the fixtures
+`F2_a4_equivalent` and `F7_conic_as_polynomial` exist to test. It was derived here rather than
+read, and it is correct; it now has a source.
+
+**Sec. 3.3 also confirms, independently, something this repository had established against
+FIFTHORD.** The Petzval condition "cannot be influenced by asphericities". This program leaves
+the Petzval column blank in its aspheric block for that reason, `verification.md` records the
+agreement with FIFTHORD that it is absent, and `AspherePlacement` has no `S4` column and says
+why. Three routes to the same statement.
+
+*Two counting results from Sec. 6.2, which bound what figuring can do and are worth knowing
+rather than computing.* The number of aspherics needed for `m`th-order aplanatism is `(1+m/2)^2`
+for even `m` and `(1+m)(3+m)/4` for odd - so one surface for axial stigmatism, **two for ordinary
+aplanatism**, four for the second order, six for the third. And from Schulz (1980): three
+refracting surfaces, two of them aspheric, suffice to zero all five Seidel sums.
+
+**[have, read] Wassermann, G. D. and Wolf, E.**, "On the theory of aplanatic aspheric systems,"
+*Proc. Phys. Soc. B* **62**, 2-8 (1949).
+The classical construction of two aspheric profiles giving EXACT aplanatism - axial stigmatism
+together with exact satisfaction of the sine condition, at all orders rather than to third or
+fifth. Two coupled first-order differential equations for the profiles, whose coefficients come
+from two ray-traced congruences: forward from the axial object point to the first corrector, and
+backward from the axial image point to the second. Solved numerically to any accuracy wanted.
+The two aspherics must be optical neighbours; any number of surfaces may precede or follow them.
+That it takes exactly two is Schulz's `m = 1` count above.
+
+**It is not implemented and is not proposed, and the reason is a mismatch rather than a doubt.**
+It is design synthesis where this program analyses and optimises; and its output is a TABULATED
+PROFILE, where every surface here is a conic plus an even polynomial to `r^16`. Fitting the one
+to the other would reintroduce precisely the error the method exists to eliminate, which is not a
+detail but the point of it. Recorded because it is the standard reference for what two aspherics
+can be made to do exactly, and because it is the source of the two-surface aplanat that the
+counting result above explains.
+
 ## Diffraction, which this program does not compute
 
 **[have] Lewkowicz, M., Nowak, J. and Zając, M.**, "Calculation of the aberration spot - improved
