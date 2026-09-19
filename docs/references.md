@@ -470,14 +470,30 @@ re-normalisation is ever implemented here.
 
 ## Nodal aberration theory
 
-**None of this is implemented.** These are the sources for the proposal in
-[nat-development.md](nat-development.md), and they are listed here so the reading is not lost and so the
-gap between what is in hand and what the work needs is on the record.
-
 NAT is a different axis of generalisation from the rest of this file. Everything above extends
 the aberration expansion in **order**, with rotational symmetry assumed. NAT extends it in
-**symmetry**, with the order held at third. The two compose, and NAT wants as input exactly the
-per-surface coefficients this program already computes.
+**symmetry**. The two compose, and NAT wants as input exactly the per-surface coefficients this
+program already computes.
+
+**This section read "None of this is implemented" until 19 September 2026, and it was untrue the
+day it was written.** The sentence went in with commit `7a00d7f`, which is the commit that added
+nodal aberration theory stages 1 to 4a. The preamble was drafted while NAT was still the proposal
+in [nat-development.md](nat-development.md) and was not revised when the proposal became code, in
+the same commit. It is the second time this file has described work as not done while the work sat
+beside it - the Buchdahl monograph entry above records the first - and the failure mode is the
+same both times: an entry written at the start of a piece of work and never re-read at the end of
+it.
+
+**What is implemented**, and [nodal-aberration-theory.md](nodal-aberration-theory.md) is the page
+for it: the third order from the Seidel sums, the fifth by way of Buchdahl's W coordinates and the
+deformation-to-retardation conversion, each surface's sigma vector, the coma node, the astigmatic
+node pair and the medial vertex, nodes for every fifth-order term but `W511`, freeform Zernike
+overlays through trefoil and above, and what the fifth order does to the third. It is driven by an
+`.align` sidecar, exposed as `--nat` and over MCP, and checked against Thompson's published
+telescope tables.
+
+**What is not** is the seventh order: the tertiary rows of VI Table I are transcribed but unused.
+That, and the acquisitions below, are the real gap.
 
 ### The foundation
 
@@ -530,8 +546,14 @@ informing one.
 - **Eq. (11) gives a SECOND sigma vector for an aspheric surface**, from the aspheric departure
   treated as a zero-power plate after Burch, distinct from the one for the spherical base. At
   the secondary of his telescope the two differ by more than a factor of two. This is Schmid
-  2010's `sigma_SPH` and `sigma_ASPH`, and it is not implemented here - so `--nat` is currently
-  right only for spherical surfaces.
+  2010's `sigma_SPH` and `sigma_ASPH`. **This entry also said it was not implemented, and that
+  `--nat` was right only for spherical surfaces. Both were out of date.**
+  `Nat/SigmaVector.cs` carries `SigmaAspheric`, and
+  `ThompsonTelescopeTests.TheAsphericSigmaVectorsReproduceTable5` holds it against the aspheric
+  column of his Table 5 - 0.0540234 at the secondary, to six figures - with the vector required
+  to vanish on the unfigured surface. The two conditions under which each sigma fails to form
+  are different, and conflating them was a real bug; `nodal-aberration-theory.md` says which is
+  which.
 
 **[have] Thompson, K. P.**, the multinodal fifth-order trilogy, *J. Opt. Soc. Am. A*:
 
@@ -652,6 +674,48 @@ its fifth-order coefficients from **Sasian's** set rather than Thompson's or Rim
 notation problem noted above has three sides to it and not two. Cites Zhang for the induced
 fifth-order components and for the exact freeform decentre-and-tilt formulas; neither has been
 obtained here.
+
+## Diffraction, which this program does not compute
+
+**[have] Lewkowicz, M., Nowak, J. and Zając, M.**, "Calculation of the aberration spot - improved
+numerical algorithm," Institute of Physics, Technical University of Wrocław. Undated; it cites a
+1996 paper as in print and benchmarks on a 100 MHz Pentium.
+**A draft rather than a final paper** - its acknowledgments section is empty, its figures are cited
+without numbers, and an untranslated Polish editorial note is left in the body. Cite it with that
+in mind.
+
+It is here for one paragraph, which names a limit of this program that nothing else on this page
+does. Their justification for abandoning geometric methods:
+
+> "the geometrical methods have only limited value, especially when the investigated optical
+> element has small aberrations... does not include the influence of diffraction, which becomes to
+> prevail in well-corrected optical systems."
+
+**PRMS is a geometric spot and said nothing about that.** The word "diffraction" appeared in no
+document in this repository before this paper was read. `spot-prediction.md` already records that
+predictions fail on hard-corrected designs and attributes it entirely to truncation; this is a
+second and independent reason, running the opposite way. Truncation bites where the aberrations
+are large. Diffraction bites where they are small, and no number of orders helps: the image cannot
+be smaller than the Airy disc. The PRMS section of the report now says so.
+
+*What the paper itself does*, for the record, is the step after the coefficients: given the complex
+amplitude on the exit pupil, evaluate the diffraction integral. Two ideas - a global least-squares
+polynomial fit to phase data known only at scattered points, then a local split of the Taylor
+expansion into a linear part and the rest, with cosine and sine of the rest expanded so that
+everything reduces to integrals of `x^n cos(bx)` and `x^n sin(bx)` done analytically. They report
+eight or nine exact digits where linear-exponent methods reach five.
+
+**It is not a source to implement from and it is not proposed as one.** The algorithm is of its
+time; FFT of the pupil function and the extended Nijboer-Zernike theory are the modern defaults.
+Two things in it would nonetheless be worth having if a diffraction spot were ever built here.
+Their **error measure** is better than the usual one: rather than trusting the decimal digits that
+stop changing, they compare the integrand against its local approximation at random points in each
+subdomain and sum the local bounds, which gives an error bound instead of a stability heuristic -
+the same preference for a measured bound that the rest of this repository runs on. And their
+**step one would not be needed here**: they fit a polynomial to scattered ray-traced wavefront
+data because that is all they have, where a coefficient program knows the wavefront analytically.
+That is only an advantage if the WAVE coefficients exist, which here they do not - it needs the
+wave-aberration half recorded above, with Rayces (1964) and Nijboer (1943) both still `[wanted]`.
 
 ## Books that shaped the approach
 

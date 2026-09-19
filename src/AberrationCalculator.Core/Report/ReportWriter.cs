@@ -421,6 +421,14 @@ public sealed class ReportWriter
         sb.AppendLine("it takes no account of any surface's aperture: a beam clipped on axis or off it");
         sb.AppendLine("reads the same as one that passes unobstructed.");
         sb.AppendLine();
+        sb.AppendLine("IT IS ALSO A GEOMETRIC SPOT, and says nothing about diffraction. On a well-corrected");
+        sb.AppendLine("design this number goes on shrinking past the point where it means anything: the");
+        sb.AppendLine("real image cannot be smaller than the Airy disc, and below that scale the answer is");
+        sb.AppendLine("set by the wave and not by the rays. Compare it against the Airy radius before");
+        sb.AppendLine("reading it as an image size. The failure is the opposite way round from the");
+        sb.AppendLine("truncation one below - that bites where the aberrations are LARGE, this where they");
+        sb.AppendLine("are small - so a design can be out of range of both at once for opposite reasons.");
+        sb.AppendLine();
         sb.AppendLine(string.Format(Inv, "{0,-12} {1,-10} {2,10} {3,10} {4,16}",
             "Wavelength", "Field", "Hy", "Weight", "PRMS"));
         foreach (var c in cases)
