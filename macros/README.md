@@ -1736,3 +1736,116 @@ coefficients. Nothing numerical would have caught it: RAYINV's own answers were 
 FORBES' were wrong in a way that still agrees with everything on an axial fan. There is no
 audit for this one and it is not clear what an audit would look like — the fix is that the
 conjugate is now decided in one place per macro, with the boundary written down beside it.
+
+---
+
+## ASPHWHERE.ZPL
+
+**WHERE** an asphere would do the most good, and what it would buy. Third order only.
+
+### Why, and it is the opposite question
+
+Every other macro in this folder says what is wrong with the lens in hand, per surface.
+This one asks it the other way round: an asphere costs money, so if you can afford one,
+where does it go?
+
+The source is G. Schulz, "Aspheric surfaces", in E. Wolf (ed.), *Progress in Optics XXV*
+(Elsevier, 1988), Sec. 3.3, reading the Delano `(H, h)` diagram:
+
+> The normalized ratio `H_i/h_i` quantitatively determines the weight by which an aspheric
+> deformation of the surface `i` influences the individual Seidel aberrations. If `|H_i/h_i|`
+> is small, primarily the spherical aberration can be controlled, and if `|H_i/h_i|` is
+> large, primarily the distortion. If `|H_i/h_i|` has a value in a middle range, the
+> asphericity parameter influences all five Seidel aberrations by nearly equal weights.
+
+### It changes nothing. The lens is not touched.
+
+No surface type is switched, no `PARM` is written, and nothing is restored afterwards because
+nothing is disturbed. The whole calculation is paraxial — two ray traces, the index steps, and
+arithmetic. A figure is never applied; what is reported is what one *would* do.
+
+That is the design rather than a convenience. **A macro that edits the lens must put it back,
+and if it stops on an error part way through it leaves the design damaged on your screen.**
+This one cannot.
+
+It follows that the macro cannot mark its own work. To see a prediction come true, type the
+coefficient into `PARM 2` of the surface named and watch **Analyze > Aberrations > Seidel
+Coefficients** move — which is more convincing than a macro agreeing with itself.
+
+### r⁴ and only r⁴, and that is forced rather than chosen
+
+A deformation `r^n` first reaches transverse order `n-1`, so `r^6` reaches the fifth order and
+`r^8` the seventh, and **neither can move a Seidel sum at all**. `r^4` is the only figuring the
+third order can see.
+
+| | why it is not here |
+|---|---|
+| `r^2`, `PARM 1` | not figuring — a curvature change, and it moves the focal length. Where a design carries one the paraxial rays already account for it; nothing here proposes changing it |
+| a conic | would do the same job at this order and is deliberately not offered. A conic `K` on vertex curvature `c` is an `r^4` coefficient of `Kc^3/8`, so either states the same third-order correction — but a conic **drags `r^6` and `r^8` along with it**, growing as `K^2` and `K^3`. They agree here and part company at the fifth and seventh orders, which this macro cannot see. A conic also cannot figure a flat at all, since `c^3` is then zero |
+| Petzval | **cannot be reached by any of it.** `S4` depends on the surface curvatures and the index steps alone. Schulz says the same — the Petzval condition "cannot be influenced by asphericities" — and it is why a flat field can need a glass change or another element rather than a figure |
+
+### What it prints
+
+Four tables, in Buchdahl's convention throughout: `B` spherical, `F` coma, `C` astigmatism,
+`E` distortion.
+
+| table | what it is |
+|---|---|
+| `h`, `H`, `H/h`, *reaches* | the ratio, and a reading of it. The four sensitivities stand as `1 : H/h : (H/h)^2 : (H/h)^3`, so `H/h` alone fixes what a surface can reach. The bands are a reading of that ratio, not a second measurement |
+| SAG to null `B`, `F`, `C`, `E` | the figuring that would null each sum on its own, **as sag at the semi-aperture, in lens units**. A row is **four alternatives, not four things at once**: one surface, one figure, and you choose which sum to kill |
+| `A4` to null each | the same figures as `r^4` coefficients — the number to type into `PARM 2`. Nothing in the sag table is an `A4` and nothing here is a sag |
+| what each choice buys | each row nulls its target from whichever surface leaves the design **in the best state overall — not the cheapest one** — and shows that state, so the collateral is visible: the other three move too, and a figure aimed at one sum can cancel a second for nothing or wreck it. Exact, not linearised |
+
+The *reaches* bands are `|H/h| < 0.15` spherical essentially alone, `0.15` to `0.5` spherical
+mainly with some coma, `0.5` to `2` all four comparably, and `≥ 2` distortion mainly. They say
+how a surface **divides** its effect, never how much it has, and they are **not** ranked against
+what this design actually suffers from.
+
+**OUT OF REACH** means the figure needed would be deeper than the surface is wide — not a
+correction to that surface but a different one. It is what a surface **at the stop** returns for
+coma, astigmatism and distortion: its chief-ray height is zero, so its leverage on those three is
+zero and the coefficient that would null them is unbounded. The test is on the lens, not on the
+arithmetic.
+
+`size` weights the four equally and is **not a spot size** — it exists to rank rows that would
+otherwise be compared four numbers at a time. Petzval is left out of it because no figure moves
+it, so it would add the same constant to every row. *Cheapest* means **depth of glass to remove**,
+a manufacturing cost and not an optical one; a surface far from the stop has a wide footprint, so
+the whole of it must be figured to the quoted depth even though only the marginal-ray zone does
+the work on spherical aberration. That mildly favours surfaces near the stop for a geometric
+reason rather than an optical one.
+
+### Checking it, and why the check is worth more than it looks
+
+Against `abcalc --asphere-placement`, which is this repository's C# and shares no arithmetic with
+the macro. The predicted coefficients must agree to every digit either prints.
+
+The two work in **different conventions**: the C# in Welford's Seidel, the macro in Buchdahl's,
+differing in sign and in scale. On a Cooke triplet the same spherical aberration reads
+`+6.9600E-03` there and `-3.4800E-02` here. **The predicted coefficient is nevertheless identical
+in both**, because it is a ratio — `-total/derivative` — and any common convention factor cancels
+in it. So agreement is a real check on the arithmetic rather than on whether two conventions were
+lined up correctly.
+
+The `SAG` column is the one place the two can legitimately differ. The macro uses `SDIA`,
+OpticStudio's own semi-aperture, which knows the real bundle; the C# has no ray tracer here and
+falls back to `|h| + |H|` where a file states no semi-diameter, which is a little larger — `9.08`
+against `8.71` on a double Gauss. **The `A4` column cannot differ**: it has no aperture in it.
+Nor can the ranking, which is by outcome.
+
+The third-order sums it prints can be checked in turn against **Analyze > Aberrations > Seidel
+Coefficients**, converted to transverse measure, and against `BUCH7.ZPL` in this folder, which
+computes them by the same scheme.
+
+### Limits, stated plainly
+
+**STANDARD and EVENASPH surfaces only**, declined by name on anything else, because `PARM` on a
+toroid or a grating is not an aspheric coefficient and reading it as one would give a confident
+wrong answer rather than an error. Rotationally symmetric and sequential, either conjugate; an
+afocal system is refused.
+
+**Third order only — and at that order it is exact.** The aspheric contribution is exactly
+*linear* in the coefficient, so the sensitivities are exact derivatives with no step size to
+choose and the "what it buys" table is exact rather than linearised. That is a property of the
+third order and not a claim about the macro. **A figure sized here will move the fifth and seventh
+orders, and this macro does not look at them. Treat it as where to start.**
