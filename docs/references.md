@@ -1039,6 +1039,57 @@ those rather than over the raw surface - is what `--hops` does, Metropolis accep
 The lens-design literature generally arrives at the same device by other routes and under other
 names; this is where the one implemented here comes from.
 
+### Boundary constraint handling, which this program decides and never cited
+
+[optimizer.md](optimizer.md) states that bounds are enforced by **reflection - not by clamping,
+and not by a sigmoid** - and argues it from first principles: reflection has derivative of
+magnitude one everywhere, a clamp leaves the Jacobian describing a variable that is not moving,
+and a sigmoid's derivative goes to zero exactly at the bound, so a variable driven against a limit
+stops responding. That argument was made here without reference to any literature. There is one,
+and it says the question is larger than this program assumed.
+
+**[wanted] Boks, R., Kononova, A. V. and Wang, H.**, "Quantifying the impact of boundary
+constraint handling methods on differential evolution," *GECCO '21 Companion*, 1199-1207 (2021).
+[arXiv:2105.06757](https://arxiv.org/abs/2105.06757).
+Twenty-eight differential-evolution variants against thirteen boundary handling methods on
+standard benchmarks. The choice "substantially affects the empirical performance as well as the
+number of generated infeasible solutions", and the paper ends with recommendations for which to
+use when - the closest thing to a direct answer to the question this repository settled by
+argument.
+
+**[wanted] Kononova, A. V., Caraffini, F. and Bäck, T.**, "Differential evolution outside the
+box," *Information Sciences* **581**, 587-604 (2021).
+[arXiv:2004.10489](https://arxiv.org/abs/2004.10489).
+How often the question even arises, which is the surprise: "significantly more solutions than what
+is usually assumed by practitioners need to undergo some sort of 'correction' to conform with the
+definition of the problem's search domain", with strong dependence on the algorithm's components
+and parameter settings. Relevant here because the basin hopping stage throws large steps ON
+PURPOSE, so it generates out-of-domain candidates by design rather than by accident.
+
+**[wanted] Kononova, A. V., Vermetten, D., Caraffini, F., Mitran, M.-A. and Zaharie, D.**, "The
+importance of being constrained: dealing with infeasible solutions in differential evolution and
+beyond," *Evolutionary Computation* **32**(1), 3-48 (2024).
+[arXiv:2203.03512](https://arxiv.org/abs/2203.03512).
+The strongest claim of the three, and the one that bears on this repository whichever method it
+uses: results "cannot be considered reproducible unless the algorithm fully specifies what should
+be done with solutions generated outside the domain, even in the case of simple box constraints".
+Different choices induce "notably different behaviours - in terms of performance, disruptiveness
+and population diversity", and the importance of the choice "quickly grows with problem's
+dimensionality". It deliberately does not rank the methods; it argues the choice must be stated.
+
+**By that standard this program is already in order, and for the right reason** - the rule is
+named, both alternatives are named, and the reasoning is given, which is what the 2024 paper asks
+for and says is rarely done. **What is NOT established here is whether reflection is a good choice
+as well as a stated one.** The argument in `optimizer.md` is about derivatives and is sound as far
+as it goes; none of it is a measurement, and a lens with bounded curvatures and thicknesses is not
+a BBOB benchmark. These three would say what the alternatives actually cost. The dimensionality
+finding is a specific caution for the basin hopping stage, where twenty variables is ordinary.
+
+*None of the three is about lens design, and none is about a derivative-exact local method.* They
+are about differential evolution, which this program does not use. They are here because the
+boundary question is the same question whatever generates the step, and because this repository
+had made a decision on it with no idea that a literature existed.
+
 **[have] Levenberg, K.**, "A method for the solution of certain non-linear problems in least
 squares," *Quart. Appl. Math.* **2**, 164-168 (1944).
 **[have] Marquardt, D. W.**, "An algorithm for least-squares estimation of nonlinear

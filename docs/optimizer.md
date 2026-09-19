@@ -602,6 +602,17 @@ variable becomes numb exactly where the design is most likely to need it, which 
 the two places this optimizer lives: constrained descent, and a stochastic search that throws
 large steps on purpose.
 
+**That argument is from first principles and there is a literature it never consulted**, now in
+[references.md](references.md#optimisation). Its finding, across twenty-eight algorithm variants
+and thirteen boundary methods, is that the choice "substantially affects the empirical
+performance"; that far more candidates go out of bounds than practitioners assume; and — the claim
+that bears on this page whichever method is used — that results "cannot be considered reproducible
+unless the algorithm fully specifies what should be done with solutions generated outside the
+domain". By that standard this section is in order, since it names the rule and both rejected
+alternatives and gives the reasoning. What it does not do is MEASURE any of it, and the
+literature's importance-grows-with-dimensionality finding is a caution for basin hopping
+specifically, where twenty variables is ordinary.
+
 A variable that touches either end of a **pickup** is refused. Pickups are resolved when a file is
 read and are not maintained afterwards, so optimizing one end of a cemented pair would part the
 cement.
