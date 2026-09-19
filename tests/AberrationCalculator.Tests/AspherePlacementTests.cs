@@ -162,6 +162,116 @@ public class AspherePlacementTests
     }
 
     /// <summary>
+    /// The impact table is exact. Whatever state it predicts after a figure is applied must be
+    /// the state <see cref="SeidelCoefficients"/> computes when that figure is actually applied -
+    /// all four sums, not just the one being nulled.
+    ///
+    /// <para>This is the test that earns the "what each choice buys" block. Without it the
+    /// collateral columns would be a plausible-looking extrapolation, and the whole point of
+    /// them is that a designer can act on them.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("CookeTriplet")]
+    [InlineData("KingslakeDG")]
+    public void ThePredictedStateAfterAFigureIsTheRealOne(string name)
+    {
+        var s = Load(name);
+        int checks = 0;
+
+        foreach (var r in AspherePlacement.Screen(s.System, s.Indices, s.Paraxial, s.Seidel))
+        {
+            foreach (var (coef, ok) in new[]
+                     {
+                         (r.NullS1, r.CanReachS1), (r.NullS2, r.CanReachS2),
+                         (r.NullS3, r.CanReachS3), (r.NullS5, r.CanReachS5),
+                     })
+            {
+                if (!ok || double.IsNaN(coef)) continue;
+
+                var predicted = AspherePlacement.After(r, coef, s.Seidel);
+                var actual = WithFiguring(name, r.Surface, coef);
+
+                void Same(double p, double a, string which)
+                {
+                    double scale = Math.Max(Math.Abs(a), Math.Abs(s.Seidel.TotalS1));
+                    Assert.True(Math.Abs(p - a) <= 1e-9 * scale,
+                        $"{name} surface {r.Surface}: the impact table predicted {which} = "
+                      + $"{p:E8} after the figure; applying it gave {a:E8}.");
+                }
+                Same(predicted.S1, actual.TotalS1, "S1");
+                Same(predicted.S2, actual.TotalS2, "S2");
+                Same(predicted.S3, actual.TotalS3, "S3");
+                Same(predicted.S5, actual.TotalS5, "S5");
+                checks++;
+            }
+        }
+
+        Assert.True(checks >= 4, $"{name}: only {checks} states were checked.");
+    }
+
+    /// <summary>
+    /// A surface at the stop has no leverage on coma, astigmatism or distortion, and must be
+    /// REFUSED for them rather than answered with a huge number.
+    ///
+    /// <para>This is the defect the sag column exists to close. The chief-ray height at the stop
+    /// is zero only to within the rounding of the paraxial trace, so the leverage is tiny rather
+    /// than exactly zero and the coefficient that would null those sums came out finite - 3.5E+09
+    /// on the Cooke triplet, printed without comment in a column of microns. The guard is now on
+    /// the sag, and a figure deeper than the surface is wide is refused.</para>
+    /// </summary>
+    [Fact]
+    public void ASurfaceAtTheStopIsRefusedForTheFieldAberrations()
+    {
+        var s = Load("CookeTriplet");
+        var rows = AspherePlacement.Screen(s.System, s.Indices, s.Paraxial, s.Seidel);
+
+        AsphereCandidate? atStop = null;
+        foreach (var r in rows)
+            if (atStop == null || Math.Abs(r.Ratio) < Math.Abs(atStop.Ratio)) atStop = r;
+
+        Assert.NotNull(atStop);
+        Assert.True(Math.Abs(atStop!.Ratio) < 1e-6,
+            $"expected a surface with H/h at zero; the smallest was {atStop.Ratio:E3}");
+
+        Assert.True(atStop.CanReachS1, "a surface at the stop still reaches spherical aberration");
+        Assert.False(atStop.CanReachS2, "coma should be out of reach from the stop");
+        Assert.False(atStop.CanReachS3, "astigmatism should be out of reach from the stop");
+        Assert.False(atStop.CanReachS5, "distortion should be out of reach from the stop");
+    }
+
+    /// <summary>
+    /// Everything the screen says is reachable must be a figure a surface could carry - the sag
+    /// no deeper than the surface is wide - and the sag must be the coefficient times the fourth
+    /// power of that radius, so the two tables describe one surface.
+    /// </summary>
+    [Theory]
+    [InlineData("CookeTriplet")]
+    [InlineData("KingslakeDG")]
+    public void ReachableMeansAFigureTheSurfaceCouldCarry(string name)
+    {
+        var s = Load(name);
+        foreach (var r in AspherePlacement.Screen(s.System, s.Indices, s.Paraxial, s.Seidel))
+        {
+            Assert.True(r.ApertureRadius > 0.0, $"surface {r.Surface} has no aperture to judge at");
+            double r4 = Math.Pow(r.ApertureRadius, 4);
+
+            void Check(double coefficient, double sag, bool reach, string what)
+            {
+                if (!double.IsNaN(coefficient))
+                    Assert.Equal(coefficient * r4, sag, 12);
+                if (reach)
+                    Assert.True(Math.Abs(sag) <= r.ApertureRadius,
+                        $"{name} surface {r.Surface}: {what} is called reachable at {sag:E3} of "
+                      + $"sag on a semi-aperture of {r.ApertureRadius:F4}.");
+            }
+            Check(r.NullS1, r.SagS1, r.CanReachS1, "S1");
+            Check(r.NullS2, r.SagS2, r.CanReachS2, "S2");
+            Check(r.NullS3, r.SagS3, r.CanReachS3, "S3");
+            Check(r.NullS5, r.SagS5, r.CanReachS5, "S5");
+        }
+    }
+
+    /// <summary>
     /// The screen renders, names Schulz, and says the two things a reader must not miss: that
     /// Petzval is out of reach, and that this is the third order only.
     /// </summary>
@@ -174,7 +284,14 @@ public class AspherePlacementTests
         Assert.Contains("WHERE AN ASPHERE WOULD ACT", text, StringComparison.Ordinal);
         Assert.Contains("Schulz", text, StringComparison.Ordinal);
         Assert.Contains("PETZVAL IS ABSENT", text, StringComparison.Ordinal);
-        Assert.Contains("leverage, normalised", text, StringComparison.Ordinal);
+        Assert.Contains("SAG null S1", text, StringComparison.Ordinal);
+        Assert.Contains("A4 null S1", text, StringComparison.Ordinal);
+        Assert.Contains("worst side effect", text, StringComparison.Ordinal);
+        Assert.Contains("OUT OF REACH", text, StringComparison.Ordinal);
+        Assert.Contains("CHEAPEST SURFACE FOR EACH SUM", text, StringComparison.Ordinal);
+        Assert.Contains("THE TERM APPLIED IS r^4 AND ONLY r^4", text, StringComparison.Ordinal);
+        Assert.Contains("r^2 IS NOT TOUCHED", text, StringComparison.Ordinal);
+        Assert.Contains("WHAT EACH CHOICE BUYS", text, StringComparison.Ordinal);
         Assert.Contains("THIRD ORDER", text, StringComparison.Ordinal);
     }
 }
