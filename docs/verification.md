@@ -265,8 +265,12 @@ README beside them records as deliberate, and the agreement there stands at a wo
 1.1E-12. This section says where that agreement stops applying, which is a boundary on a
 cross-check and not a defect in either program.
 
-**Nothing in this repository needs fixing.** The term is read, folded, and carried correctly, and
-`AsphericR2TermTests` already pins the equivalence of the two ways of writing the same surface.
+**This section said "nothing in this repository needs fixing", and that was wrong.** It was
+written on the strength of the Buchdahl route and the two macros, which do carry the term
+correctly and which `AsphericR2TermTests` pins. The Seidel route had not been checked, because
+nothing checked it, and it had been wrong since the file was written. See *The r-squared bug in
+the Seidel route* below. The claim should have been that three things were checked and a fourth
+had not been looked at.
 
 **And the macro pair has now been run against each other on `F8`.** `FORBES.ZPL` reproduces
 `BUCH7_ASPH.ZPL` on that file to every printed digit - all eighteen totals and all twenty tau,
@@ -276,8 +280,88 @@ macros share no arithmetic and, on this term specifically, take opposite approac
 folds it into the vertex curvature and re-measures the figuring from that sphere. Agreement
 between those two is worth more than agreement between two implementations of the same treatment.
 
-So on the r-squared term the count is five: two macros, two C# routes and real rays, against
-FIFTHORD alone.
+So on the r-squared term, four things carried it correctly - two macros, the C# Buchdahl route and
+real rays - and the C# Seidel route did not, which is the subject of the next section.
+
+## The r-squared bug in the Seidel route
+
+**`SeidelCoefficients` computed the aspheric third order wrongly whenever a surface carried an
+r-squared term, from the day the file was written until 19 September 2026.**
+
+The aspheric Seidel term is the surface's departure from its VERTEX SPHERE at `r^4`, because the
+vertex sphere is what the paraxial trace has already accounted for. Writing `cb` for the base
+curvature and `c` for the vertex curvature `cb + 2 A2`:
+
+    wanted:     (1+k) cb^3 / 8  +  A4  -  c^3 / 8
+    computed:        k  c^3 / 8  +  A4
+
+The `(cb^3 - c^3)/8` piece was absent. **When `A2 = 0` the two expressions are equal**, which is
+why the error was invisible: the paraxial data was right, Petzval was right, the focal length was
+right, and only the aspheric contribution to `S1`, `S2`, `S3` and `S5` was wrong.
+
+### Why nothing caught it
+
+Every fixture in this repository has `A2 = 0`, and the coefficient-reference README records that
+as deliberate. `AsphericR2TermTests` makes exactly the right check and makes it on the BUCHDAHL
+route; no equivalent existed for the Seidel route. There is even a shared helper that does the
+conversion correctly - `Surface.VertexForm()`, used by `BuchdahlCoefficients` and twice by
+`BuchdahlTableI` - and `SeidelCoefficients` did not call it. The defect was not a misunderstanding
+of the optics; it was one file keeping its own copy of an expression the others got from a helper.
+
+### What caught it, which is the part worth reusing
+
+**Writing one surface two ways and requiring one answer.** A surface of base curvature `cb`
+carrying `A2 = d` is exactly the surface of curvature `cb + 2d` carrying
+`A4 += (cb^3 - (cb+2d)^3)/8`; the two sag series agree term for term and part company only at
+`r^6`, which cannot reach a Seidel sum. On `KingslakeDG` with `d = 1e-4` on surface 1 the two
+descriptions gave `S1 = -0.000572` and `S1 = -0.001412`.
+
+That is a self-contradiction inside one program, established without reference to anything
+external. What outside agreement settled was only WHICH of the two answers was right, and two
+independent things said the same: this program's own Buchdahl route, which gives one answer for
+both descriptions, and an independent commercial implementation's Seidel analysis, run on both
+descriptions and giving `-0.001412` for each.
+
+### The same term is wrong in a third program, in a different way
+
+**Running the same one-surface-two-ways check outward found a bug in LensHH-LT's Seidel
+analysis.** That program does account for aspheric figuring in the third order - putting `A4` on a
+surface moves that surface's `S1`, `S2`, `S3` and `S5`, which is more than several programs do -
+but an r-squared coefficient reaches nothing at all. With `A2 = 1E-04` on surface 1 of the same
+lens the reported radius is unchanged, the focal length is still 100, and the Seidel sums do not
+budge.
+
+That is a **different** fault from the one this repository had, and the difference is the
+diagnosis. Here the paraxial data was correct - the r-squared term was folded into the vertex
+curvature, so the focal length and Petzval both moved - and only the `r^4` departure measured from
+that sphere was wrong. There the term is dropped before the paraxial data is formed, so nothing
+downstream of it can be right either.
+
+The fault belongs to LensHH-LT and is the responsibility of that program's author, who is handling
+it in that repository. It is recorded here for two reasons: this repository's cross-check is what
+found it, and it is why LensHH-LT could not be the second opinion on the question above.
+
+### The first fix was also wrong
+
+Grouping the correction as `(1+k) cb^3/8 - c^3/8` is the same algebra and NOT the same arithmetic:
+`1 + k` rounds, so a conic of -0.6 moved in its last bits, and several tests in this suite demand
+bit-identity of exactly those numbers. Regrouped as `k cb^3/8 + A4 + (cb^3 - c^3)/8`, the conic
+keeps its untouched term and the correction is a difference of two cubes of the same double -
+identically zero when `A2` is zero, so nothing previously reported moved. `SeidelR2TermTests`
+holds both halves: five surface descriptions checked both ways, a guard that the term is not
+silently dropped, and the bit-exactness of the correction.
+
+### What it reached, and what it did not
+
+**Reached:** the aspheric contribution to `S1`, `S2`, `S3`, `S5` on a surface with `A2 != 0`, and
+through them `AspherePlacement`, which consumes `SeidelResult` and so gave wrong sensitivities and
+wrong placement advice on such a design.
+
+**Did not reach:** the Buchdahl route at any order, `BUCH7.ZPL` - which declines any lens carrying
+an r-squared term outright - `BUCH7_ASPH.ZPL`, which does the full vertex conversion at `r^4`,
+`r^6` and `r^8`, the Forbes trace, which carries `A2` in the sag series where no conversion is
+needed, and real ray tracing, which uses the true sag. Petzval was never affected, since it takes
+the vertex curvature directly.
 
 **And the refutation is now direct rather than inferred.** Both macros were also run on
 `F3_conic_a4_a6_a8`, the same lens without the term, and they reproduce this program's numbers for

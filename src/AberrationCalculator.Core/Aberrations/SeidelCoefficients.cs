@@ -163,12 +163,39 @@ public static class SeidelCoefficients
             }
 
             // Aspheric figuring adds to every term except Petzval, which depends only on
-            // the surface's curvature and index step. A conic of constant K departs from
-            // the sphere by K c^3 r^4 / 8 to fourth order; an explicit r^4 coefficient
-            // adds directly to that.
+            // the surface's curvature and index step.
+            //
+            // The quantity wanted is the surface's departure from its VERTEX SPHERE at r^4,
+            // because the vertex sphere is what the paraxial trace above has already
+            // accounted for. Writing cb for the base curvature and c for the vertex one, the
+            // surface's own r^4 coefficient is (1+k) cb^3 / 8 + A4 and the vertex sphere's is
+            // c^3 / 8, so the departure is their difference.
+            //
+            // THE TWO CURVATURES ARE NOT THE SAME WHEN THERE IS AN r^2 TERM. An r^2
+            // coefficient is a curvature change - c = cb + 2 A2 - so a surface carrying one
+            // departs from its vertex sphere at r^4 even with no r^4 coefficient at all. This
+            // line used to read `Conic * c^3 / 8 + A4`, which is the same thing whenever
+            // A2 = 0 and wrong whenever it is not: the (cb^3 - c^3)/8 piece was missing.
+            //
+            // It was wrong for as long as the file existed and nothing caught it, because
+            // every fixture here has A2 = 0. What caught it was writing the same surface two
+            // ways - once as (cb, A2) and once as the equivalent (c, A4) shifted sphere - and
+            // getting two different answers. OpticStudio's Seidel analysis gives one answer
+            // for both, and so does this program's own Buchdahl route, which does the vertex
+            // conversion explicitly. See AsphericR2TermTests.
+            // GROUPED SO THAT THE A2 = 0 CASE IS BIT-IDENTICAL TO WHAT THIS ALWAYS COMPUTED.
+            // Writing the departure as (1+k)cb^3/8 - c^3/8 is the same algebra and is NOT the
+            // same arithmetic: 1 + k rounds, so every existing conic result would shift in its
+            // last bits and every bit-identity test in this suite would have to be loosened to
+            // accommodate a change that is supposed to affect nothing. Split out instead, the
+            // conic keeps its own term untouched and the correction is a difference of two
+            // cubes that is EXACTLY zero when cb and c are the same double - which they are
+            // whenever A2 is zero, since VertexCurvature is then Curvature + 0.0.
+            double cBase = surf.Curvature;
             double a4 = 0.0;
-            if (Math.Abs(surf.Conic) > 1e-15) a4 += surf.Conic * c * c * c / 8.0;
+            if (Math.Abs(surf.Conic) > 1e-15) a4 += surf.Conic * cBase * cBase * cBase / 8.0;
             if (surf.AsphericCoefficients.Length > 1) a4 += surf.AsphericCoefficients[1];
+            a4 += cBase * cBase * cBase / 8.0 - c * c * c / 8.0;
             if (Math.Abs(a4) > 1e-30)
             {
                 double sAsph = 8.0 * (nAfter - nBefore) * a4 * y * y * y * y;
