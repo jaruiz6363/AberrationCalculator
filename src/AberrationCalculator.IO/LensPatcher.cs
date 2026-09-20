@@ -130,7 +130,27 @@ namespace AberrationCalculator.Core.IO
 
                     case "GLAS":
                         string material = s.Material ?? string.Empty;
-                        if (string.IsNullOrWhiteSpace(material))
+                        if (s.ModelIndexEnabled && s.ModelNd > 0.0)
+                        {
+                            // A MODEL glass, and it must not be mistaken for no glass at all.
+                            // The reader leaves Material BLANK for one deliberately - the index
+                            // comes from (Nd, Vd, dPgF) rather than from a catalogue lookup, and
+                            // GlassCatalog gives the model precedence - so the emptiness below
+                            // is not the absence of a glass, and deleting the line here turned
+                            // the element into air. Silently: the patched file reads back with
+                            // one fewer surface of glass and no complaint from anything.
+                            //
+                            // The name token stays as the file wrote it (___BLANK) and only the
+                            // two model numbers are touched, in the fields the reader takes them
+                            // from: GLAS <name> <flag> <flag> <Nd> <Vd> ...
+                            file.Lines[i] =
+                                LineEdit.Argument(line).Equals("___BLANK", StringComparison.OrdinalIgnoreCase)
+                                    ? LineEdit.ReplaceNumberIfChanged(
+                                          LineEdit.ReplaceNumberIfChanged(line, s.ModelNd, 3),
+                                          s.ModelVd, 4)
+                                    : line;
+                        }
+                        else if (string.IsNullOrWhiteSpace(material))
                         {
                             // The glass is gone. Removing the line is the only honest edit; a
                             // GLAS line naming nothing is not a thing a well-formed file contains.

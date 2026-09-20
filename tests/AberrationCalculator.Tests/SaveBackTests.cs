@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -46,9 +47,77 @@ public class SaveBackTests
     private static string Fixture(string name) =>
         Path.Combine(AppContext.BaseDirectory, "fixtures", "lenses", name);
 
+    private static string ZmxDir =>
+        Path.Combine(AppContext.BaseDirectory, "fixtures", "coefficient-reference");
+
     private static string ZmxFixture() =>
-        Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "fixtures",
-                                        "coefficient-reference"), "*.zmx").OrderBy(f => f).First();
+        Directory.GetFiles(ZmxDir, "*.zmx").OrderBy(f => f).First();
+
+    /// <summary>Every .zmx fixture, by bare name, so a new one is covered the day it lands.</summary>
+    public static IEnumerable<object[]> EveryZmxFixture() =>
+        Directory.GetFiles(ZmxDir, "*.zmx").OrderBy(f => f)
+                 .Select(f => new object[] { Path.GetFileName(f) });
+
+    /// <summary>
+    /// Patching ONE value in a .zmx leaves every other surface describing the same lens - the
+    /// same curvatures, thicknesses, conics and, above all, the same REFRACTIVE INDICES.
+    ///
+    /// <para><b>A model glass was being deleted.</b> The reader leaves <c>Material</c> blank for
+    /// one deliberately, because its index comes from (Nd, Vd) rather than a catalogue, and the
+    /// patcher read that blank as "the glass is gone" and removed the GLAS line. The element
+    /// became air. Nothing complained: the file still parsed, still had the right number of
+    /// surfaces, and still had the curvature that had just been optimised.</para>
+    ///
+    /// <para>It survived because every .zmx fixture here named a catalogue glass, so no test had
+    /// a model glass to lose - the same shape of blind spot as the r-squared term, and found the
+    /// same way, by adding a design that sits in it. Running over EVERY fixture rather than one
+    /// is the guard against the next one.</para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EveryZmxFixture))]
+    public void PatchingAZmxLeavesEveryOtherSurfaceDescribingTheSameLens(string name)
+    {
+        using var s = new Scratch();
+        string lens = s.Copy(Path.Combine(ZmxDir, name), "L.zmx");
+
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(lens, catalog);
+        int primary = system.PrimaryWavelengthIndex < 0 ? 0 : system.PrimaryWavelengthIndex;
+        double lambda = system.Wavelengths[primary].Value;
+        var before = IndexResolver.Build(system, catalog, lambda,
+                                         new System.Collections.Generic.List<string>());
+
+        double moved = system.Surfaces[1].Curvature * 1.05 + 1e-4;
+        system.Surfaces[1].Curvature = moved;
+
+        string output = s.At("L.optimised.zmx");
+        LensPatcher.Save(system, lens, output);
+
+        var back = LensFile.Read(output, catalog);
+        var after = IndexResolver.Build(back, catalog, lambda,
+                                        new System.Collections.Generic.List<string>());
+
+        Assert.Equal(system.Surfaces.Count, back.Surfaces.Count);
+        Assert.Equal(moved, back.Surfaces[1].Curvature, 12);
+
+        for (int i = 0; i < system.Surfaces.Count; i++)
+        {
+            Assert.True(Math.Abs(before[i] - after[i]) < 1e-12,
+                $"{name}: the index after surface {i} went from {before[i]:F9} to {after[i]:F9} "
+              + "when one curvature was patched. A surface has lost or changed its glass, which "
+              + "makes the saved file a different lens from the one that was optimised.");
+
+            if (i == 1) continue;
+            Assert.Equal(system.Surfaces[i].Curvature, back.Surfaces[i].Curvature, 12);
+            Assert.Equal(system.Surfaces[i].Conic, back.Surfaces[i].Conic, 12);
+            if (!double.IsInfinity(system.Surfaces[i].Thickness))
+                Assert.Equal(system.Surfaces[i].Thickness, back.Surfaces[i].Thickness, 9);
+            else
+                Assert.True(double.IsInfinity(back.Surfaces[i].Thickness),
+                    $"{name}: surface {i} was at infinity and came back at "
+                  + $"{back.Surfaces[i].Thickness}");
+        }
+    }
 
     // ── .lhlt ────────────────────────────────────────────────────────────────────────────
 
