@@ -163,6 +163,13 @@ NEXT
 n0 = INDX(0)
 IF (ISMS(0)) THEN n0 = -n0
 lag = n0 * (VEC3(501) * VEC2(2) - VEC2(501) * VEC3(2))
+
+! The object medium's index, magnitude only. The tertiary scheme needs it twice, in
+! stage C: Buchdahl's p and q rays must carry a Lagrange invariant of ONE, and theirs
+! comes out as exactly this number. See the note at the ray start below. The sign is
+! dropped because it belongs to the mirror count, not to the medium.
+n0abs = ABSO(n0)
+IF (n0abs < eps) THEN n0abs = 1
 IF (ABSO(lag) < eps)
    PRINT "The Lagrange invariant is zero. Is the field zero, or the aperture?"
    GOTO 999
@@ -640,10 +647,26 @@ NEXT
 ! M (13.4), reduced OT-coordinates. At iota = 0 these are the four values this macro
 ! used to hard-code, and the p ray does then enter parallel to the axis; at any other
 ! conjugate it does not, and nothing else in the whole of stage C would notice.
+!
+! THE PAIR MUST CARRY A LAGRANGE INVARIANT OF ONE, and in an immersed object space it
+! does not unless the q ray is divided by the object index. The invariant of these
+! four values is n0 (v_q y_p - v_p y_q) = n0 (1 - p iota)/g = n0 exactly: one when
+! object space is air and n0 when it is not. The scheme is not homogeneous in the q
+! ray's scale - a_p divides by that ray combination while the field terms multiply by
+! powers of it - so a pair whose invariant is not one cannot be absorbed by any later
+! normalisation, and comes out instead as a different error in every tau: some out by
+! exactly 1/n0, some by more, two of them changing SIGN at n0 = 1.3.
+!
+! "Reduced" is the word above and it is what was missing: in reduced coordinates the
+! angle is N u, so v_q = 1 means a PLAIN angle of 1/n0. The transfer below carries
+! plain angles, so the reduction has to be done here, in the starting values. At
+! n0 = 1 it is a division by exactly 1.0 and nothing moves, which is why Buchdahl's
+! own printed triplet - in air, like every published example - validated it for as
+! long as it stood. The field variable carries the other half; see hmax in stage D.
 typ = 1
 tvp = iota
-tyq = p0 / goe
-tvq = 1 / goe
+tyq = p0 / goe / n0abs
+tvq = 1 / goe / n0abs
 
 FOR i = 1, nsm, 1
 
@@ -1281,6 +1304,14 @@ IF ((ABSO(mf) > eps) & (finite == 0))
       PRINT "      is used, which is right either way."
    ENDIF
 ENDIF
+
+! THE FIELD VARIABLE CARRIES THE OBJECT INDEX, the other half of the reduction made
+! at the ray start above. The chief ray's tangent recovered here is a PLAIN angle, and
+! the q ray it is expressed in was divided by n0, so the number that multiplies that
+! ray is n0 times the tangent. Applied after the MAXF comparison above so that the
+! diagnostic goes on comparing two plain tangents, which is what it is about. One in
+! air, so nothing this macro has ever reported moves.
+hmax = hmax * n0abs
 
 ! The per-tau conversion factor, efl u^a H^(7-a). The aperture powers run
 ! 7 6 6 5 5 5 4 4 4 4 3 3 3 3 2 2 2 1 1 0 and the field power is seven less each.

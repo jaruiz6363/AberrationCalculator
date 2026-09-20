@@ -299,14 +299,6 @@ public static partial class TertiaryCoefficients
                                             system.Surfaces[stop].SemiDiameter,
                                             IotaOf(system, paraxial));
 
-        // The aspheric increments need the all-spherical scheme to difference against, which
-        // is the same run the increments are then fed back into. Build returns null when no
-        // surface is figured, and the scheme takes that as "spherical throughout".
-        var spherical = BuchdahlTableI.Compute(system.Surfaces, indices, paraxial.Efl, scheme.P,
-                                               iota: IotaOf(system, paraxial));
-        var increments = AsphericSchemeIncrements.Build(coefficients, spherical,
-                                                        system.LastOpticalSurface());
-
         // The conjugate, which enters ONLY through the starting values of the two rays.
         // III says so outright - "the choice of different coordinate systems reflects itself
         // only in the starting values of y_p, v_p, y_q, v_q (cf. M Secs. 12-13)" - and then
@@ -326,6 +318,24 @@ public static partial class TertiaryCoefficients
             ? scheme.P
             : paraxial.EntrancePupilPosition / paraxial.Efl;
 
+        // The aspheric increments need the all-spherical scheme to difference against, which
+        // is the same run the increments are then fed back into. Build returns null when no
+        // surface is figured, and the scheme takes that as "spherical throughout".
+        //
+        // AT THE STOP PARAMETER THE COEFFICIENTS ARE ACTUALLY COMPUTED AT, which is not
+        // scheme.P at a finite conjugate. The note above says why scheme.P is wrong there -
+        // it is a derived value resting on an identity that iota breaks - and this table used
+        // it anyway while the run it is differenced against used the paraxial one. A figured
+        // system at a finite conjugate was therefore taking its increments against a reference
+        // built for a different pupil, and came out about 5E-5 from Forbes' series trace where
+        // spheres agree to 5E-15. Spheres never saw it, because Build returns null for them and
+        // this table is then unused; an infinite conjugate never saw it either, because the two
+        // stop parameters are the same expression there. The combination is in no fixture.
+        var spherical = BuchdahlTableI.Compute(system.Surfaces, indices, paraxial.Efl,
+                                               stopParameter, iota: iota);
+        var increments = AsphericSchemeIncrements.Build(coefficients, spherical,
+                                                        system.LastOpticalSurface());
+
         // The conversion, M (31.11) with the variables of (13.5) and (31.13). Each factor
         // collapses to the one used before when iota is zero, which is the regression guard:
         // v'_pk becomes one, g becomes one, and the object height over the object distance
@@ -334,9 +344,19 @@ public static partial class TertiaryCoefficients
         Scalar lengthFactor = paraxial.Efl
                             / (paraxial.N[system.LastOpticalSurface()] * scheme.PRayFinalAngle);
         Scalar u = -(0.5 * paraxial.Epd / paraxial.Efl) / g;
-        Scalar hmax = infinite
+
+        // The field variable multiplies the q ray, and that ray is started in REDUCED
+        // coordinates - a plain angle of 1/N_0, so that the pair carries a Lagrange invariant
+        // of one, which the scheme requires and which an immersed object space would otherwise
+        // break. See the long note at the ray start in BuchdahlTableI. The physical chief ray's
+        // plain angle is therefore N_0 times the q ray it is expressed in, and that factor
+        // belongs here. One when object space is air, which is every design in this repository.
+        Scalar nObject = SMath.Abs(paraxial.N[0]);
+        if (nObject < 1e-12) nObject = 1.0;
+
+        Scalar hmax = nObject * (infinite
             ? SMath.Tan(maxField * SMath.PI / 180.0)
-            : -(paraxial.ParaxialImageHeight / paraxial.Magnification) / objectDistance;
+            : -(paraxial.ParaxialImageHeight / paraxial.Magnification) / objectDistance);
 
         // The two routines. Spheres keep Buchdahl's own arrangement, bit for bit as validated; a
         // figured system takes the Sec. 85 arrangement, which needs the dual run's increments for
@@ -348,8 +368,11 @@ public static partial class TertiaryCoefficients
         }
         else
         {
+            // The same stop parameter as the direct increments, for the same reason - its
+            // own documentation says it must be "the stop parameter the direct increments
+            // were bridged at", and at a finite conjugate that is no longer scheme.P.
             var dualIncrements = AsphericSchemeIncrements.BuildDual(system, paraxial, indices,
-                                                                    scheme.P, iota);
+                                                                    stopParameter, iota);
             raw = BuchdahlAsphericScheme.Tau(system.Surfaces, indices, paraxial.Efl, stopParameter,
                                              increments, iota, BuchdahlAsphericScheme.Options.Default,
                                              dualIncrements);

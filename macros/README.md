@@ -199,6 +199,28 @@ against Buchdahl's own printed numbers.
 
 Object at infinity, rotationally symmetric, sequential, no mirrors.
 
+### An immersed object space, and the reduction it needs
+
+**Both macros had the defect that was found in the C# on 20 September 2026 and both now carry
+the fix.** Buchdahl's p and q rays have to be a pair whose Lagrange invariant is ONE, and the
+four starting values of M (13.4) give a pair whose invariant is exactly `n0` - one when object
+space is air, which is every published example and every design either macro had ever been run
+on, and not one when the object sits in a medium.
+
+The scheme is not homogeneous in the q ray's scale, so a pair with the wrong invariant cannot be
+absorbed by any later normalisation: it comes out as a different error in every tau. Measured
+against Forbes' series trace and against real traced rays, both of which are free of the
+convention, the seventh order was 0.24 per cent out at `n0 = 1.01` and 23 per cent out at
+`n0 = 1.30`, with two coefficients changing sign at the larger index.
+
+The fix is the reduction the comment at that ray start always claimed: in reduced coordinates the
+angle is `N u`, so `v_q = 1` means a plain angle of `1/n0`, and the transfer carries plain angles.
+Two lines at the ray start, divided by `n0abs`, and the field variable `hmax` multiplied by the
+same number, since the chief ray's plain tangent is now `n0` times the q ray it is expressed in.
+
+**In air it is a division by exactly 1.0**, so every number either macro has ever printed is
+unchanged, including the reference listings in this file.
+
 ### On the two ways it finds Buchdahl's p
 
 `p` is the entrance pupil position in focal lengths, and everything else is built on it.
@@ -345,7 +367,7 @@ stays finite where q does not - a flat surface facing collimated space. That
 regularisation is not transcribed, so such a surface is refused at the top rather than
 got wrong quietly.
 
-### Three ZPL traps this macro has already hit
+### Four ZPL traps this macro has already hit
 
 Recorded because each produced something that looked like working code.
 
@@ -361,6 +383,13 @@ Recorded because each produced something that looked like working code.
 3. **FOR does not skip an empty range.** `FOR m = 1, 0, 1` is reported as an infinite
    loop rather than executing zero times. Any loop whose bound can fall below its start
    - a sum over preceding surfaces at the first surface, say - needs guarding.
+
+4. **A variable may not be named after a function.** `nobj = ABSO(n0)` is refused with
+   "Variable name may not be the same as a function name: NOBJ", NOBJ being ZPL's
+   non-sequential object count. The refusal is at least loud and immediate; the trap is
+   that the reserved list is the whole function list, which is long, and an obvious name
+   for a quantity is often an obvious name for a function. The object index is `n0abs`
+   here for exactly that reason.
 
 ### ZPL variable names are case-insensitive
 

@@ -340,10 +340,40 @@ public static class BuchdahlTableI
                 // and the p ray does then enter parallel to the axis.
                 Scalar gOE = 1.0 - stopParameter * iota;
                 if (SMath.Abs(gOE) < 1e-12) gOE = 1.0;
+
+                // THE PAIR MUST CARRY A LAGRANGE INVARIANT OF ONE, and in an immersed object
+                // space it does not unless the q ray is scaled.
+                //
+                // The invariant of these four starting values is N_0 (v_q y_p - v_p y_q), which
+                // works out to N_0 (1 - p iota)/g = N_0 exactly - one when object space is air
+                // and N_0 when it is not. The scheme is not homogeneous in the q ray's scale:
+                // a_p DIVIDES by that ray combination (see the note on the Lagrange invariant
+                // below) while the field terms multiply by powers of it, so a pair whose
+                // invariant is not one cannot be absorbed by any later normalisation. It comes
+                // out instead as a different error in every coefficient - some tau out by
+                // exactly 1/N_0, some by more, two of them changing SIGN at N_0 = 1.3.
+                //
+                // The comment above names the convention: M (13.4) is in REDUCED coordinates,
+                // where the angle is N u, so v_q = 1 means a plain angle of 1/N_0. This
+                // recurrence propagates plain angles, so the reduction has to be done here, in
+                // the starting values. At N_0 = 1 it is a division by exactly 1.0 and nothing
+                // moves, which is why Buchdahl's own printed triplet - in air, like every
+                // published example and every fixture here - validated this for as long as it
+                // stood.
+                //
+                // The field normalisation carries the other half: the physical chief ray's
+                // plain angle is now N_0 times this rescaled q ray, so hmax is multiplied by
+                // N_0 where the transverse conversion is assembled. See TertiaryCoefficients.
+                //
+                // ABS because the dual run of the scheme negates every index (paper XII
+                // Sec. 6), and what is wanted is the medium's index, not that run's sign.
+                Scalar nObject = indices.Length > 0 ? SMath.Abs(indices[0]) : 1.0;
+                if (nObject < 1e-12) nObject = 1.0;
+
                 t[1] = 1.0;                       // y_p starts at unit height
                 t[2] = iota;                      // v_p: the object is at 1/iota
-                t[4] = stopParameter / gOE;       // y_q at the entrance pupil, rescaled
-                t[5] = 1.0 / gOE;                 // v_q normalised on the same factor
+                t[4] = stopParameter / gOE / nObject;   // y_q at the entrance pupil, reduced
+                t[5] = 1.0 / gOE / nObject;             // v_q, the same ray and the same scale
                 if (dual)
                 {
                     (t[1], t[4]) = (t[4], t[1]);

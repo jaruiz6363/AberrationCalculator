@@ -119,9 +119,15 @@ public static partial class TertiaryCoefficients
         DS g = 1.0 - stopParameter * iota;
         DS lengthFactor = p.Efl / (p.N[last] * scheme.PRayFinalAngle);
         DS u = -(0.5 * p.Epd / p.Efl) / g;
-        DS hmax = infinite
+
+        // The object index, for the same reason as in the ordinary route: the q ray is started
+        // reduced so the pair's Lagrange invariant is one, and the physical chief ray is N_0
+        // times it. See the note at the ray start in BuchdahlTableI.
+        DS nObject = DSMath.Abs(p.N[0]);
+
+        DS hmax = nObject * (infinite
             ? DSMath.Tan(Lift(maxField) * Math.PI / 180.0)
-            : -(p.ParaxialImageHeight / p.Magnification) / objectDistance;
+            : -(p.ParaxialImageHeight / p.Magnification) / objectDistance);
 
         var dual = SAb.AsphericSchemeIncrements.BuildDual(sys, p, n, scheme.P, iota);
         var raw = SAb.BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, stopParameter, increments,

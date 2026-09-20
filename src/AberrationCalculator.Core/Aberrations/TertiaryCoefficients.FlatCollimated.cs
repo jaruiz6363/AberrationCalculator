@@ -174,9 +174,15 @@ public static partial class TertiaryCoefficients
         Laurent g = 1.0 - stopParameter * iota;
         Laurent lengthFactor = p.Efl / (p.N[last] * scheme.PRayFinalAngle);
         Laurent u = -(0.5 * p.Epd / p.Efl) / g;
-        Laurent hmax = infinite
+
+        // The object index, for the same reason as in the ordinary route: the q ray is started
+        // reduced so the pair's invariant is one, and the physical chief ray is N_0 times it.
+        Laurent nObject = LaurentMath.Abs(p.N[0]);
+        if (LaurentMath.Vanishes(nObject, 1e-12)) nObject = 1.0;
+
+        Laurent hmax = nObject * (infinite
             ? LaurentMath.Tan(maxField * Math.PI / 180.0)
-            : -(p.ParaxialImageHeight / p.Magnification) / objectDistance;
+            : -(p.ParaxialImageHeight / p.Magnification) / objectDistance);
 
         var dual = SAb.AsphericSchemeIncrements.BuildDual(sys, p, n, scheme.P, iota);
         if (dual != null) Stage("dual increments", IncrementsOf(dual));

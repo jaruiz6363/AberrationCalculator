@@ -274,6 +274,13 @@ NEXT
 n0 = INDX(0)
 IF (ISMS(0)) THEN n0 = -n0
 lag = n0 * (VEC3(501) * VEC2(2) - VEC2(501) * VEC3(2))
+
+! The object medium's index, magnitude only. The tertiary pass needs it twice:
+! Buchdahl's p and q rays must carry a Lagrange invariant of ONE, and theirs comes out
+! as exactly this number. See the note at the ray start. The sign is dropped because
+! it belongs to the mirror count, not to the medium.
+n0abs = ABSO(n0)
+IF (n0abs < eps) THEN n0abs = 1
 IF (ABSO(lag) < eps)
    PRINT "The Lagrange invariant is zero. Is the field zero, or the aperture?"
    GOTO 900
@@ -1677,6 +1684,12 @@ IF (ABSO(hmax) < eps)
    GOTO 900
 ENDIF
 
+! THE FIELD VARIABLE CARRIES THE OBJECT INDEX, the other half of the reduction made at
+! the ray start. The chief ray's tangent recovered above is a PLAIN angle, and the q
+! ray it is expressed in was divided by n0, so the number that multiplies that ray is
+! n0 times the tangent. One in air, so nothing this macro has ever reported moves.
+hmax = hmax * n0abs
+
 ! M (31.11)'s factor, where v'_pk is the p ray's OWN angle after the last surface.
 ! Paper III states the same rule in words: the entries are the augmented coefficients
 ! and "must be divided by N_k' v_pk'" to give the actual ones. The scheme's v is the
@@ -2677,12 +2690,23 @@ SUB tablei
       IF (tii == 1)
          ! M (13.4), reduced OT-coordinates. iota = 1/l_01 in focal lengths is the
          ! only quantity in the whole scheme that knows where the object is.
+         !
+         ! THE PAIR MUST CARRY A LAGRANGE INVARIANT OF ONE, and in an immersed object
+         ! space it does not unless the q ray is divided by the object index: the
+         ! invariant of these four values is n0 (1 - p iota)/g = n0 exactly. The
+         ! scheme is not homogeneous in the q ray's scale - a_p divides by that ray
+         ! combination while the field terms multiply by powers of it - so the error
+         ! cannot be absorbed downstream and comes out differently in every tau.
+         ! "Reduced" is the word above: the angle is N u, so v_q = 1 means a PLAIN
+         ! angle of 1/n0, and the transfer below carries plain angles. At n0 = 1 this
+         ! is a division by exactly 1.0. The field variable carries the other half;
+         ! see hmax.
          tigoe = 1 - stopp * iota
          IF (ABSO(tigoe) < 1E-12) THEN tigoe = 1
          tt(tib, 1) = 1
          tt(tib, 2) = iota
-         tt(tib, 4) = stopp / tigoe
-         tt(tib, 5) = 1 / tigoe
+         tt(tib, 4) = stopp / tigoe / n0abs
+         tt(tib, 5) = 1 / tigoe / n0abs
          IF (gdual == 1)
             tisw = tt(tib, 1)
             tt(tib, 1) = tt(tib, 4)
