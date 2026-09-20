@@ -334,6 +334,55 @@ public sealed class ReportWriter
                 + string.Join(", ", s.DistortionSuppressedAt)
                 + " - the marginal ray meets them at normal incidence.");
         sb.AppendLine();
+        FieldSurfaceSection(sb, s, p);
+    }
+
+    /// <summary>
+    /// The same third-order numbers said the other way round: where the image surface this lens
+    /// FORMS lies, rather than how much astigmatism and Petzval it has.
+    ///
+    /// <para>This is the form that answers a detector question. `S3` and `S4` divided by
+    /// `2 n' u'^2` are the longitudinal distances from the paraxial plane to the sagittal and
+    /// tangential foci at full field, and the radius that would put a detector on the medial
+    /// surface follows from the sag. When the file's own image surface is curved, the residual
+    /// between the two is printed, because that is the number that says whether the detector
+    /// chosen matches the lens - and it is the only place in this program where the shape of the
+    /// image surface is read at all.</para>
+    /// </summary>
+    private void FieldSurfaceSection(StringBuilder sb, SeidelResult s, ParaxialResult p)
+    {
+        var f = FieldSurfaces.Compute(_sys, s, p, MaxField());
+        if (double.IsNaN(f.MedialSag) || double.IsInfinity(f.MedialSag)) return;
+
+        string Radius(Scalar r) => Scalar.IsInfinity(r) || Scalar.IsNaN(r)
+            ? "infinity" : Num(r);
+
+        sb.AppendLine("FIELD SURFACES (FROM S3 AND S4)");
+        sb.AppendLine("----------------------------------------------------------------");
+        sb.AppendLine("Longitudinal, at the full field, positive when the focus falls SHORT of the");
+        sb.AppendLine("paraxial plane. These say where to put a detector; the coefficients above do");
+        sb.AppendLine("not read the image surface, and neither does any other program's.");
+        sb.AppendLine();
+        sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}", "Petzval radius", Radius(f.PetzvalRadius)));
+        sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}",
+            "Image height the sags are quoted at", Num(f.ImageHeight)));
+        sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}", "Petzval surface", Num(f.PetzvalSag)));
+        sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}", "Sagittal surface", Num(f.SagittalSag)));
+        sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}", "Medial surface", Num(f.MedialSag)));
+        sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}", "Tangential surface", Num(f.TangentialSag)));
+        sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}",
+            "Detector radius matching the medial", Radius(f.MedialMatchingRadius)));
+
+        if (f.ImageSurfaceIsCurved)
+        {
+            Scalar r = 1.0 / f.ImageSurfaceCurvature;
+            sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}", "This file's image surface, radius", Num(r)));
+            sb.AppendLine(string.Format(Inv, "{0,-38}{1,14}",
+                "  leaves, against the medial surface", Num(f.MedialResidual)));
+            sb.AppendLine("  The coefficients above are unchanged by that surface, as they should be.");
+            sb.AppendLine("  A REAL RAY analysis here still catches rays on a plane - see docs/verification.md.");
+        }
+        sb.AppendLine();
     }
 
     private void BuchdahlSection(StringBuilder sb, ParaxialResult p)

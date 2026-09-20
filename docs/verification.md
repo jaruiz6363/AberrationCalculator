@@ -78,6 +78,12 @@ now asserts it.
 | fifth order against FIFTHORD, finite conjugate | 18 of 18 totals |
 | the per-surface split | intrinsic and figuring against the FIFTHORD reference, 1E-9 over seven designs, every build; the figuring's Petzval asserted absent; and internally, intrinsic + figuring + induced = total to 1.8E-14 |
 | E, E5 and tau20 against traced chief rays | each to under one per cent wherever the two routes agree, at both conjugates |
+| the field surfaces against OpticStudio | Petzval radius and the sagittal, medial and tangential sags, to five decimals on `E0_infinite_flat` |
+| the E-family fixtures against OpticStudio | Seidel 5 of 5 and FIFTHORD 18 of 18, per surface and total, on a design never compared before |
+| immersed IMAGE space, n = 1.01 and 1.30 | third order predicts traced rays, Seidel and Buchdahl agree through the immersion to 1E-10, and the tertiary set agrees with Forbes to 2E-12 |
+| immersed OBJECT space | third order right by the same checks; the seventh order agrees with Forbes and with real rays to 2.2E-15, after the defect recorded below was fixed |
+| immersed OBJECT space against FIFTHORD | 17 of 18 to every digit the macro prints, on `Ej_object_space_n101`; `E5` differs by 8E-13, which is 1.6E-12 of the largest coefficient and at the agreement floor recorded above |
+| figured at a FINITE conjugate against Forbes | 1E-13 at two stop positions, three object distances and an immersed object medium, after the defect recorded below was fixed |
 | the suite | over a thousand tests, and everything they read is in this repository |
 
 ## The aspheric arrangement, and how it was established
@@ -374,6 +380,319 @@ the invitation they used to print unconditionally - an invitation that would hav
 hunting a fault in the wrong program. The guard was exercised both ways on the pair above: the
 refusal on `F8`, the original text on `F3`.
 
+
+## The two ends of the system: the end surfaces and the end media
+
+**Everything in this repository has been checked on lenses whose object and image surfaces are
+plane and whose object and image spaces are air.** Every fixture is like that. That is the same
+shape of blind spot the r-squared bug lived in - a case no test happened to contain - so ten of
+them were asked about deliberately: the image surface curved, curved with a conic, curved with
+`A4` and `A6`, curved with `A2`; the same four on the object surface at finite conjugate; and
+each end medium at `n = 1.01` instead of 1. `CurvedObjectAndImageSurfaceTests` and
+`ImmersedSpaceTests` hold the answers.
+
+Two different answers came back.
+
+### The end SURFACES: their shape reaches nothing, and that is not always harmless
+
+**Curvature, conic, `A2`, `A4` and `A6` on the object surface or the image surface change no
+number this program produces.** Not the paraxial trace, not a Seidel sum, not a Buchdahl total at
+any order, not the Forbes series, not a traced ray. Bit for bit, across all four shapes on both
+end surfaces, against a fingerprint of the entire result - both rays at every surface, every
+per-surface array, every coefficient found by reflection so that one added later is covered
+without editing the test.
+
+The reason is structural rather than an oversight in any one file: every route loops from surface
+1 to `LastOpticalSurface()`, which is `Count - 2`, and the real trace finishes with a flat
+transfer to a z target rather than an intersection with the image surface. The end surfaces are
+outside the loop by construction. A file can carry a curved detector, load without complaint, and
+be analysed as though the detector were flat.
+
+**Whether that is wrong depends on which end, and the image end was settled in OpticStudio.**
+
+For the IMAGE surface, **ignoring the shape in the coefficients is the convention, and that was
+measured rather than argued.** Three fixtures were run in OpticStudio on 20 September 2026 -
+`E0_infinite_flat`, `Ea_image_curved` (R = -50) and `Ed_image_flat_a2` (flat, `A2 = -0.01`, which
+is the same surface written the other way). **Its Seidel table and its FIFTHORD output are
+identical across all three, to every printed digit**, and its Seidel listing carries an `IMA` row
+of zeros. The third-order sums are a property of the LENS, referred to the paraxial image point.
+The detector is what they are telling you to choose, not an input to them.
+
+That run also cross-checked this program twice over. OpticStudio's Seidel sums match ours to every
+printed digit, and FIFTHORD matches our Buchdahl coefficients per surface and in total - 18 of 18
+on a design that had never been compared before.
+
+**What the coefficients say about a curved detector, they say the other way round.** Dividing `S3`
+and `S4` by `2 n' u'^2` turns them into the longitudinal distances from the paraxial plane to the
+sagittal and tangential foci, which is the form that answers a detector question. On `E0` those
+are 0.2930 and 0.6337 mm at full field with a Petzval radius of -80, and OpticStudio prints
+0.293001, 0.633715 and -79.9998 for the same lens. This program now prints them too - see *Field
+surfaces* in the report - along with the radius a detector would need in order to sit on the
+medial surface, and, when the file's image surface is curved, the residual between the two. That
+residual is the only place in this program that reads the image surface's shape at all.
+
+**What IS wrong is the ray trace.** A spot, an RMS radius or a fan on a curved detector has to be
+measured on that detector, and both OpticStudio and LensHH-LT intersect it; this program transfers
+to a plane. Measured on an f/12 singlet at 5 degrees with a detector curved to `R = -35`:
+**17.24 um RMS reported, 9.68 um on the detector the file describes.** Same rays, same trace; the
+only difference is the surface they are caught on. The fix is confined to the last step of
+`RealRayTrace`, which ends with a flat transfer to a z target rather than an intersection.
+
+For the OBJECT surface there is no such defence, and it is not yet settled. A curved object puts
+each field point at its own conjugate distance, which changes the aberrations rather than where
+they are measured. An object surface of `R = 25` at 10 mm off axis stands 2 mm out of its own
+vertex plane - 1% of a 200 mm conjugate - and the worst ray lands **47 um** from where this
+program puts it. Fixtures `Ee` through `Eh` exist to put that question to OpticStudio.
+
+Both numbers are measured in the tests, from the trace's own direction cosines, so the size of
+what is missing is recorded rather than described. Both tests are expected to FAIL the day end
+surfaces are implemented; each says so, and says to replace it with one requiring agreement
+rather than to retune it.
+
+**What to do about it is now two different things, not one.** The image-surface INTERSECTION in
+the real trace is a plain defect with a contained fix - the last step of `RealRayTrace` should
+meet the image surface the way every other surface is met, through the same `Intersect`, when the
+caller asks for the file's image plane rather than for the paraxial focus, which is a plane by
+definition. The object surface is the larger question, because a per-field conjugate reaches the
+coefficients as well as the rays; until it is settled, a design carrying one should be refused on
+sight rather than answered about as though the object were flat.
+
+### The end MEDIA: immersion is carried, after a defect in the seventh order was found and fixed
+
+`n = 1.01` at either end was asked for. `n = 1.30` was tested alongside it, because a formula
+missing a factor of `n'` is out by 1% at 1.01 - which could be a tolerance - and by 30% at 1.30,
+which cannot be anything else.
+
+
+**The seventh order did not survive an immersed OBJECT space, and now does.** Buchdahl's
+tertiary table parted company with Forbes' series trace by 0.24% at `n = 1.01` and by **23% at
+`n = 1.30`**, worst at `tau2`, at both conjugates, while agreeing to 2E-15 at `n = 1`. The cause
+and the fix are below; the table now agrees at every index to 2.2E-15.
+
+**Which of them was wrong was settled, not assumed.** On an infinite-conjugate system - contrived so
+that the ray inversion, which refuses finite conjugates, can reach the failing case - Forbes and
+real traced rays agree with each other to better than 1E-5 and both disagree with the table by the
+same 23%. Two independent witnesses against one implementation, which is what made it an
+accusation rather than a difference. All three now agree.
+
+**It is not the focal length convention**, which was the first suspect: `Efl` is the length scale
+the whole Buchdahl chain is normalised to and it carries the OBJECT index, `n_object/phi`.
+Substituting `1/phi` or `n'/phi` for it changes the tertiary coefficients by not one bit at either
+index - the normalisation cancels. The cause is below.
+
+**What was never affected**, and each of these was measured rather than reasoned:
+
+- **The third order, at either end.** `S1 rho^3 / (2 n' u')` predicts a traced ray as the pupil
+  shrinks at 1.00, 1.01 and 1.30 on both sides, with the residual falling by four per halving,
+  which identifies it as truncation rather than a wrong coefficient.
+- **Everything with IMAGE space immersed.** The tertiary set agrees with Forbes to 2E-12 at
+  `n' = 1.30`, and best focus predicted from the coefficients lands where the rays do.
+- **Object-space immersion at `n = 1`**, which is every design in this repository and every
+  fixture. Nothing that has ever been reported here is affected.
+
+**The fifth order is now checked under immersion on axis, and not off it.** Fitting the traced
+axial aberration as `B rho^3 + B5 rho^5 + B7 rho^7` with the ninth order carried and discarded
+puts `B` within 1E-6 of the rays, `B5` within 1.3E-4 and `B7` within 0.7 per cent - and, the
+sharper statement, puts them there by the SAME margin in air as at `n = 1.30`, which a wrong
+power of `n` could not do. That reaches the SPHERICAL part of the fifth and seventh orders only;
+the field-dependent fifth-order coefficients still have no independent reference that works at a
+finite conjugate.
+
+### The cause, found
+
+**Buchdahl's computing scheme requires its p and q rays to carry a Lagrange invariant of ONE, and
+that holds only when the object medium is air.**
+
+The pair starts, at surface 1, as
+
+    y_p = 1,  v_p = iota        y_q = P/g,  v_q = 1/g,      g = 1 - P iota
+
+and its invariant is `N_0 (v_q y_p - v_p y_q)`, which works out to **exactly `N_0`** - one when
+object space is air and not one otherwise. The scheme's coefficient formulas are not homogeneous
+in the q ray's scale: `a_p` divides by that ray combination while the field terms multiply by
+powers of it, so a pair whose invariant is not one cannot be absorbed anywhere and comes out as a
+different error in every coefficient. That is why the damage looked structureless - some tau out
+by exactly `1/N_0`, some by more, two of them changing SIGN at `N_0 = 1.30`.
+
+The code's own comment names the convention it then does not use: *"M (13.4), reduced
+OT-coordinates"*. In reduced coordinates the angle is `N u`, so `v_q = 1` means a PLAIN angle of
+`1/N_0`; the code sets the plain angle to 1. At `N_0 = 1` the two are the same line of arithmetic,
+which is why Buchdahl's own printed triplet - in air, like every other published example and every
+fixture here - validates it perfectly.
+
+**The fix is two scalings, each a no-op when `N_0 = 1`:**
+
+- the q ray's starting height and angle, divided by `N_0`, which makes the invariant one;
+- the field normalisation `hmax`, multiplied by `N_0`, because the physical chief ray's plain
+  angle is now `N_0` times the rescaled q ray's.
+
+**Measured, with both applied by hand:** the tertiary set matches Forbes' series trace to
+**1E-14** at `N_0 = 1.01` and `N_0 = 1.30`, against 1.2% and 37% before - on a single refracting
+surface, on a singlet at infinite conjugate, and on a finite-conjugate system with the stop away
+from the first surface so that `P` and `g` are both non-trivial. At `N_0 = 1` the change is
+division by exactly 1.0 and nothing moves.
+
+**It was NOT the focal length convention**, which was the first suspect and was eliminated first:
+substituting `1/phi` or `n'/phi` for `Efl` changes the tertiary coefficients by not one bit.
+
+**Applied.** Every route - the aspheric arrangement, the dual run, the increments, the Laurent
+route for a figured flat - starts its pair through `BuchdahlTableI`, so the reduction goes in at
+ONE ray start rather than four, and the dual-number arithmetic gets it by linking the same file.
+The field factor goes in at the three places `hmax` is formed. The q ray is scaled by the
+ABSOLUTE object index, because the dual run negates every index and what is wanted is the
+medium, not that run's sign.
+
+**The two macros carry the same fix, and it is measured.** `BUCH7.ZPL` and `BUCH7_ASPH.ZPL`
+transcribe this scheme and had the same ray start, the same `hmax` and therefore the same defect;
+both now divide the q ray by `n0abs` and multiply the field variable by it.
+
+Run on `Ej_object_space_n101.zmx`, whose object medium is 1.01, `BUCH7` agrees with this program
+on **all thirty-eight** coefficients - the five third-order, the twelve fifth-order, `B7` and the
+twenty tau - to every digit this program prints. Its `t5` on surface one prints 9.900989774E-01,
+which is 1/1.01, so the reduction is visibly there in the listing. And the regression is measured
+too: on `KingslakeDG`, in air, the whole of Table I is IDENTICAL to
+`macros/reference/KingslakeDG_TableI.txt`, which was recorded before any of this, and the
+eighteen totals still match this program.
+
+**Nothing in air moved.** The scaling is a division by exactly 1.0 there, and the whole suite -
+including Buchdahl's own printed table, the 586-value FIFTHORD reference and every bit-identity
+test in it - passes unchanged. On the immersed cases the tertiary set now agrees with Forbes to
+2.2E-15 at both indices and with real traced rays to 2.8E-15, where it had been out by 0.24% and
+23%.
+
+Four statements that do hold, each one that must hold of any correct implementation rather than a
+comparison against another program:
+
+- **A coefficient predicts a traced ray.** On axis the transverse aberration is
+  `S1 rho^3 / (2 n' u')`. Traced against predicted, the ratio goes to one as the pupil shrinks -
+  at 1.00, at 1.01 and at 1.30, on both the object side and the image side - and the residual
+  falls by four when the pupil is halved, which identifies it as the fifth order rather than a
+  wrong coefficient. A dropped `n'` would settle the ratio on `n'` or `1/n'` instead.
+- **The two coefficient routes carry the immersion identically.** `B = S1 / (2 n' u')` holds to
+  1E-10 relative at every index, on both conjugates. Seidel is a wave sum and Buchdahl is already
+  transverse; that conversion is exactly the factor immersion changes.
+- **The Lagrange invariant scales with the object index exactly** - the object-space rays are
+  fixed by the pupil and the field, not by the medium - and is still conserved to 1E-13 through
+  the system.
+- **The F/number is the one the numerical aperture implies**, `1/(2 n' u')`, not the geometric
+  cone alone. Every Buchdahl total is normalised to it, so a missing `n'` there would rescale all
+  of them silently.
+- **Best focus predicted from the coefficients is where the traced rays actually focus**, within
+  10%, at all three indices. That is the whole chain at once - trace, totals, defocus coupling,
+  rays - and at 1.30 a missing index anywhere in it would be a 30% error against a 10% tolerance.
+
+**One convention is now measured, and it is a genuine disagreement.** The focal length reported
+here is `n_object/phi`, which is the FRONT focal length. OpticStudio prints `1/phi`, the
+air-equivalent: on `Ej_object_space_n101.zmx` it prints 51.052799 where this program prints
+51.5635, and the ratio is exactly the object index. The two agree on every other design in this
+repository, and on every design anywhere whose object space is air, which is why this went
+unnoticed.
+
+Neither number is wrong, but only one of them is what a reader will expect. Changing ours is not
+a one-line edit: `CoefficientInversion` takes the paraxial image height as `Efl tan(theta)`, which
+is correct only for `n_object/phi`, and `ParaxialResult.FNumber` is `Efl/Epd` and would move with
+it. The COEFFICIENTS are indifferent - substituting `1/phi` changes them by not one bit - so this
+is a reporting decision and not a correctness one.
+
+
+## The stop parameter the aspheric increments were measured from
+
+**A figured system at a finite conjugate disagreed with Forbes' series trace by about 5E-5, where
+a system of spheres agrees to 5E-15.** Found 20 September 2026, immediately after the immersion
+defect and by the same check, and at first mistaken for part of it - it is not, the residual being
+the same size in air as at `n = 1.30`.
+
+`TertiaryCoefficients.Attach` builds an all-spherical run of Table I for the aspheric increments
+to be differenced against, and built it at `scheme.P` - the stop parameter the scheme DERIVES
+from the q/p ray-height ratio at the stop. The run those increments are then fed back into uses
+the paraxial entrance pupil position instead. The file's own comment says why, and says it a dozen
+lines further down:
+
+> The scheme derives p instead as the q/p ray-height ratio at the stop, which holds only while the
+> two conventions for the q ray differ by p times the p ray - an identity that fails once iota is
+> non-zero.
+
+So the reference table and the run measured against it used different pupils whenever `iota` was
+not zero. The increments are a difference of two tables, and differencing two tables built for
+different stops leaves the difference between the stops in the answer.
+
+### Why nothing saw it
+
+Three ways, and all three had to hold at once:
+
+- **On a system of spheres** `AsphericSchemeIncrements.Build` returns null and that table is never
+  used at all. Every finite-conjugate check here is on spheres.
+- **At an infinite conjugate** the two stop parameters are not merely equal but the same
+  expression - `infinite ? scheme.P : ...` - so the bug is unreachable. Every figured check here
+  has the object at infinity.
+- **With the stop on the first surface** the stop parameter is zero and the two candidates
+  coincide. That is the commonest arrangement in a small test design.
+
+`FiguredFiniteConjugateTests` now covers the combination at two stop positions, three object
+distances and one immersed object medium, against Forbes, at 1E-13 - and keeps the three
+neighbouring cases that were always right, because a fix that quietly moved one of those would be
+a worse bargain than the defect.
+
+**Nothing else moved.** At an infinite conjugate the change substitutes one expression for an
+identical one, and the whole suite passes unchanged.
+
+### The macros did not have this one, and the reason is worth keeping
+
+`BUCH7_ASPH.ZPL` needs no change. It has exactly ONE stop parameter - `stopp = p0 = epp/efl`, the
+paraxial entrance pupil position in focal lengths - and uses it for all four of stage C's passes.
+The derived q/p-height-ratio value that the C# picked up at the wrong call site does not exist
+there at all, because ZPL reads the entrance pupil position directly from the program. `BUCH7` is
+spherical-only, so it has no increments and could not have the defect either.
+
+**So the macro was right and this program was wrong**, on figured designs at a finite conjugate,
+for as long as both have existed. The cross-check that would have caught it is the one this
+repository already documents and relies on - the two implementations against each other - and it
+had only ever been run on the combinations where they agree: figured designs at infinite
+conjugate, spherical designs at finite ones.
+
+That is a second lesson beside the usual one. It is not only that a case was missing from the
+fixtures; it is that two independent implementations were being compared only where they were
+already known to agree, which is the comparison that cannot fail and therefore cannot inform.
+
+## The model glass the patcher deleted
+
+**Saving an optimised .zmx back to disk removed a MODEL GLASS, turning the element into air.**
+Found 20 September 2026, the same day and by the same means as the section above: a new fixture
+was added that sat in a place nothing had occupied before.
+
+A .zmx can name its glass out of a catalogue - `GLAS N-BK7 ...` - or state it outright as a model,
+`GLAS ___BLANK 1 0 1.6 60 ...`, whose index comes from (Nd, Vd, dPgF) rather than from a lookup.
+The reader handles both, and for a model glass it deliberately leaves `Material` BLANK, because
+`GlassCatalog` gives the model precedence and a name there would be ambiguous.
+
+`LensPatcher` then read that blank as the absence of a glass:
+
+    string material = s.Material ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(material)) file.Lines[i] = null;   // "the glass is gone"
+
+and deleted the `GLAS` line. **Nothing complained.** The patched file still parsed, still had the
+right number of surfaces, still carried the curvature the optimiser had just found, and described
+a lens with air where the glass had been.
+
+### Why nothing caught it
+
+Every .zmx fixture in this repository named a catalogue glass, so there was no model glass to
+lose. `PatchingAZmxKeepsItsEncodingAndChangesOnlyWhatMoved` took "the first .zmx in the fixture
+folder" and would have caught it the moment such a file sorted first - which is exactly how it
+surfaced, when `E0_finite_flat.zmx` was added ahead of `F1`. It failed on a line count, which is a
+poor way to learn that a lens has lost an element.
+
+### What replaced it
+
+`PatchingAZmxLeavesEveryOtherSurfaceDescribingTheSameLens` runs over EVERY .zmx fixture rather
+than the first, patches one curvature, and requires the file that comes back to describe the same
+lens: the same surface count, the same curvatures, conics and thicknesses everywhere else, and -
+the check that matters - the same RESOLVED REFRACTIVE INDEX after every surface. An index is what
+a lost glass actually costs, and no amount of line counting says it as plainly.
+
+The fix keeps the `___BLANK` name token exactly as the file wrote it and updates only the two
+model numbers, in the fields the reader takes them from.
+
 ## Which order each deformation term reaches
 
 A deformation `A_n r^n` first contributes at wave order `n`, which is transverse order `n-1`.
@@ -444,26 +763,27 @@ printed the row and said nothing, which invited the reader to assume it had gone
 
 ## What is not established
 
+
+**The FIELD-dependent fifth order under immersion, INDEPENDENTLY.** Its spherical part is
+settled: `B5` fitted off traced axial rays sits 1.3E-4 from the coefficient at n = 1 and at
+n = 1.30 alike, and the third and seventh orders are checked at either end. FIFTHORD agrees with
+this program on the nine field-dependent fifth-order coefficients at an immersed object space
+too - but that is CONSISTENCY, not proof: the macro and this program are two implementations of
+the same published method and could carry the same inherited assumption, which is exactly how the
+seventh-order defect survived in both. What is missing is a reference of different lineage - a
+ray fit or a series trace - that reaches the field-dependent fifth order at a finite conjugate.
+See *The two ends of the system* above.
+
+**A curved image surface is not read by the RAY TRACE, and a curved object surface is not read
+by anything.** The coefficients' indifference to the image surface is the convention and is
+confirmed against OpticStudio; what is not established is the rest. A spot or fan on a curved
+detector is measured on a plane here - 17.24 um reported against 9.68 um on a detector of
+R = -35 - and a curved object, whose per-field conjugate genuinely does reach the aberrations,
+is ignored outright, worth 47 um on an object of R = 25. Both sizes are measured in
+`CurvedObjectAndImageSurfaceTests`. The end MEDIA, by contrast, are carried correctly, and that
+is now tested at n = 1.01 and n = 1.30. See *The two ends of the system* above.
+
 **How far the seventh order reaches.** It is a property of the lens and not a number. Of five
 designs measured, one is described by third order alone, two need the full seventh to reach a
 per cent, one is not well described at seventh, and one is not described at all. See
 `spot-prediction.md`.
-
-**Lateral color is not reachable from these coefficients at all, and this was measured rather
-than assumed.** It is the chromatic difference of the chief ray's height, so it looks like the
-distortion terms differenced between wavelengths — but distortion coefficients are referred to
-each wavelength's OWN paraxial image plane, and lateral color is defined at one shared plane.
-Carrying a chief ray between those planes needs its ANGULAR aberration, about 11 mrad at the
-corner of the Cooke triplet, and the transverse polynomial has no angular term. The size of
-what is missing settles it: between its own focus and the shared plane that ray moves 9.4E-02
-mm, while the whole lateral color there is 4.0E-04 — a factor of two hundred. `tau20` and its
-nineteen companions cannot answer this question and no care with them will.
-
-It can be reached by developing the Forbes series to the shared plane, whose output base plane
-is an input, and that was built and measured before being discarded: exact over the inner half
-of the field, the wrong SIGN in the outer quarter at seventh order, and needing degree 7 - the
-fifteenth order - to hold the corner to ten per cent. The reason is that lateral color is a
-small residue of large cancelling terms, so what governs it is not the order but how completely
-two errors far larger than the answer cancel. It was discarded because tracing two chief rays
-gives the same figure exactly, in 4.7 microseconds against 142 milliseconds. Recorded here so
-that the next attempt starts from the measurement rather than from the idea.

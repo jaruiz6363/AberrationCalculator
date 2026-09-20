@@ -98,3 +98,47 @@ as though it were. What establishes them is Buchdahl's own printed table, closed
 surfaces that need no other program at all, this repository's inverse ray tracing, an
 independent implementation written from the book, and Forbes' series trace. See
 `docs/references.md`.
+
+## The E family: the two ENDS of the system
+
+Twelve more designs, added 20 September 2026, for a different question: what happens when the
+OBJECT surface or the IMAGE surface is not a plane, and when the object or image MEDIUM is not
+air. Every fixture above, and every lens this program had ever been checked on, is plane at both
+ends and in air at both ends, which is the same shape of blind spot the r-squared term lived in.
+
+They are all the same singlet - R = 60 / -60, 4 mm thick, model glass n = 1.6, EPD 20, one
+wavelength, image at the paraxial focus - so that ANY difference between two of them is caused by
+the one thing that differs. That also makes them the smallest designs here, which is deliberate:
+a disagreement in one of these can be chased by hand.
+
+| fixture | conjugate | what differs |
+|---|---|---|
+| E0_infinite_flat | infinite, 5 deg | baseline |
+| Ea_image_curved | infinite | image surface R = -50 |
+| Eb_image_curved_conic | infinite | image surface R = -50, k = -1 |
+| Ec_image_curved_a4a6 | infinite | image surface R = -50, A4 = 1E-04, A6 = 1E-06 |
+| Ed_image_flat_a2 | infinite | image surface FLAT with A2 = -0.01 |
+| E0_finite_flat | finite, object 200 mm, height 10 | baseline |
+| Ee_object_curved | finite | object surface R = 50 |
+| Ef_object_curved_conic | finite | object surface R = 50, k = -1 |
+| Eg_object_curved_a4a6 | finite | object surface R = 50, A4 = 1E-05, A6 = 1E-08 |
+| Eh_object_flat_a2 | finite | object surface FLAT with A2 = 0.01 |
+| Ei_image_space_n101 | infinite | last medium n = 1.01 |
+| Ej_object_space_n101 | finite | object medium n = 1.01 |
+
+**`Ea` and `Ed` are the same surface written two ways**, and so are `Ee` and `Eh`. An r-squared
+coefficient is a curvature: `A2 = -0.01` on a flat surface is vertex curvature `-0.02`, which is
+`R = -50`. The two agree term for term through `r^2` and part company only at `r^6`. A program
+that treats them differently is folding one and not the other, which is a fault worth finding and
+is exactly the fault the r-squared bug was.
+
+**What OpticStudio says about the first three.** `E0`, `Ea` and `Ed` give identical Seidel tables
+and identical FIFTHORD output, to every printed digit, with an `IMA` row of zeros - so ignoring
+the image surface in the coefficients is the convention rather than a gap, and this program does
+the same. That run also matched this program's Seidel sums digit for digit and its Buchdahl
+coefficients 18 of 18, per surface and in total. See `docs/verification.md`, *The two ends of the
+system*.
+
+**The model glass is not incidental.** These are the first .zmx fixtures here to use
+`GLAS ___BLANK`, and adding them exposed a bug that deleted it on save-back. Keep at least one
+model-glass fixture in this folder.
