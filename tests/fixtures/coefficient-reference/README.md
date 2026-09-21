@@ -73,6 +73,41 @@ lens rather than on it makes the stop parameter live as well.
 These were built as the acceptance test for a fix to another program, and kept because the
 combination they cover - figured, finite, r-squared, stop off the first surface - was in no
 fixture here either.
+
+## The H family: an r-squared term on MORE THAN ONE surface
+
+Three more, on the same optics as the G family, so `G0_finite_no_r2` is their baseline too.
+
+| fixture | surface 1 | surface 2 |
+|---|---|---|
+| G0_finite_no_r2 | no `A2` | no `A2` |
+| H1_finite_r2_second_surface | no `A2` | `A2 = -5E-05` |
+| H2_finite_r2_both_surfaces | `A2 = 1E-04` | `A2 = -5E-05` |
+| H3_finite_r2_both_as_shifted_spheres | `c = 0.0202` | `c = -0.0051` |
+
+**H1 exists to catch a fix that only reaches the first surface**, which is the natural shape of a
+half-done one: the term is picked up where the ray starts and forgotten further in. Its focal
+length is 77.7368 against the baseline's 78.0375, and its `S1` moves the other way from G1's -
+-2.7754E-03 against -3.0516E-03 - because the term is on a surface of the opposite curvature.
+
+**H2 carries one on each surface, of opposite sign**, so a program that folds the first correctly
+and the second not at all lands between H1 and H2 rather than on either.
+
+**H3 is H2 with both surfaces written as the spheres their r-squared terms make them**, each
+matched through `r^8`. H2 and H3 must give the same answer; here they agree to the last stored
+digit, per surface and in total.
+
+    H2/H3      S1                  S2                  S3
+    surf 1     -0.0145828581868    -0.00465922990209   -0.000342852591855
+    surf 2      0.0116998892083     0.00358928715771    0.00109992636639
+    TOTAL      -0.00288296897845   -0.00106994274438    0.00075707377453
+
+    EFL        77.12359458
+
+The image distance is the one that focuses G1 rather than each of these, so the image plane sits a
+little off focus here. That is deliberate and harmless: the Seidel sums do not depend on where the
+image surface is, and holding the distance fixed across the whole G and H family keeps every
+comparison between two of them a comparison of one thing.
 ## Where the numbers came from
 
 The reference values were produced by running the FIFTHORD macro (Rimmer 1962, via
