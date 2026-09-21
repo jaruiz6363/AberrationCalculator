@@ -85,6 +85,7 @@ now asserts it.
 | immersed OBJECT space against FIFTHORD | 17 of 18 to every digit the macro prints, on `Ej_object_space_n101`; `E5` differs by 8E-13, which is 1.6E-12 of the largest coefficient and at the agreement floor recorded above |
 | figured at a FINITE conjugate against Forbes | 1E-13 at two stop positions, three object distances and an immersed object medium, after the defect recorded below was fixed |
 | the analytic derivative, every design on disk | 53 designs against a central difference of their own residuals, every build |
+| the tertiary set against a different lineage | 53 designs against Forbes to better than 1E-9, and against real rays where the conjugate allows, every build |
 | the suite | over a thousand tests, and everything they read is in this repository |
 
 ## The aspheric arrangement, and how it was established
@@ -744,6 +745,36 @@ through that region is smooth, so it is not a seam between routes. It is the con
 repository already measures that design's coefficients at 0.067 per cent and allows half a per
 cent. Those designs are named individually in the sweep and held to the standard their values
 meet; every other design on disk is held to 0.02 per cent.
+
+## Every design is cross-checked against a different lineage
+
+**`CoefficientSweepTests` compares the twenty tertiary coefficients against Forbes' series trace
+on all 53 designs, and against real traced rays wherever the conjugate allows it.** Forbes
+declines none of them; the scheme and the series trace agree to better than 1E-9 relative on every
+design on disk, and to 2E-13 on most.
+
+**Lineage is the word that matters.** Buchdahl's computing scheme accumulates a table of
+per-surface quantities through an arranged recursion; Forbes' trace propagates a ray through sag
+polynomials and reads coefficients off a power series in the invariants. They share no arithmetic,
+so agreement between them is evidence about the OPTICS. Agreement between two implementations of
+the same method is evidence about transcription - and this repository has twice watched that kind
+of agreement hold while both sides were wrong.
+
+`ForbesCoefficientsTests` already made this comparison, on seven named designs, all figured at an
+infinite conjugate. That is precisely how a figured design at a FINITE conjugate went 5E-5 wrong
+without anything noticing: the pairing that could have failed was never formed. The sweep forms
+every pairing the disk affords.
+
+### The ray fit is held to what it says about itself
+
+Real rays are a third lineage and the only one that knows nothing about either series, but the
+inversion is a least squares over traced landings and carries its own noise. Measured across these
+fixtures, the disagreement runs between two and forty times the fit's OWN reported residual, so
+the bar is a hundred times it - a level every sound design clears while a coefficient that is
+actually wrong, which would be out by per cent rather than by parts in ten thousand, still fails.
+
+A fit that did not close is not a reference at all: the parabolic mirror leaves a residual of 0.75,
+and that comparison is declined rather than made against noise.
 ## The model glass the patcher deleted
 
 **Saving an optimised .zmx back to disk removed a MODEL GLASS, turning the element into air.**

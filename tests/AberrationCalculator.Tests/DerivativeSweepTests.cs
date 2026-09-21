@@ -39,23 +39,8 @@ namespace AberrationCalculator.Tests;
 /// </summary>
 public class DerivativeSweepTests
 {
-    private static string LensDir =>
-        Path.Combine(AppContext.BaseDirectory, "fixtures", "lenses");
-
-    private static string ZmxDir =>
-        Path.Combine(AppContext.BaseDirectory, "fixtures", "coefficient-reference");
-
-    /// <summary>Every design on disk, by path, in a stable order.</summary>
-    public static IEnumerable<object[]> EveryDesign()
-    {
-        foreach (string f in Directory.GetFiles(LensDir, "*.lhlt").OrderBy(f => f))
-            yield return new object[] { Path.GetFileName(f), "lenses" };
-        foreach (string f in Directory.GetFiles(ZmxDir, "*.zmx").OrderBy(f => f))
-            yield return new object[] { Path.GetFileName(f), "coefficient-reference" };
-    }
-
-    private static string PathOf(string name, string folder) =>
-        Path.Combine(folder == "lenses" ? LensDir : ZmxDir, name);
+    /// <summary>Every design on disk - the one discovery, shared with the coefficient sweep.</summary>
+    public static IEnumerable<object[]> EveryDesign() => Designs.All();
 
     // ── Variables and operands derived from the design, not assumed of it ────────────────
 
@@ -144,7 +129,7 @@ public class DerivativeSweepTests
     /// something.</para>
     /// </summary>
     private static double ToleranceFor(string name) =>
-        name.Contains("NearLimit") || name.Contains("NearFlat") ? 5e-3 : 2e-4;
+        Designs.IsNearSingular(name) ? 5e-3 : 2e-4;
 
     // ── The sweep ───────────────────────────────────────────────────────────────────────
 
@@ -176,7 +161,7 @@ public class DerivativeSweepTests
     {
         var catalog = CatalogLocator.LoadBundled();
         OpticalSystem system;
-        try { system = LensFile.Read(PathOf(name, folder), catalog); }
+        try { system = LensFile.Read(Designs.PathOf(name, folder), catalog); }
         catch (Exception e) { return "the file could not be read: " + e.Message; }
 
         if (system.LastOpticalSurface() < 1) return "no optical surfaces";
