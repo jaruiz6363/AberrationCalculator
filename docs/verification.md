@@ -636,6 +636,29 @@ a worse bargain than the defect.
 **Nothing else moved.** At an infinite conjugate the change substitutes one expression for an
 identical one, and the whole suite passes unchanged.
 
+
+### Where else the same mismatch was, and where it was not
+
+The first fix reached `Attach` only. There are two more copies of that orchestration - the Laurent
+route for a figured flat facing collimated light, and its dual-number twin, which the optimiser
+differentiates through - and both had the same two lines in the same wrong order. Both are fixed.
+Their own header says why they are not shared with `Attach`: about thirty lines of orchestration
+are repeated on purpose, and the guard against them drifting is a test that requires the same
+VALUE from both. That guard does not catch a defect the two copies SHARE, which is what this was.
+
+Two uses of the derived `scheme.P` remain, and both were measured rather than argued:
+
+- **The ninth order.** `QuaternarySpherical` builds its own Table I at `scheme.P`. The stop
+  parameter enters the scheme only through `t4` and `t5`, the q ray, and spherical aberration is
+  a p-ray quantity, so it should not matter. It does not: on a finite-conjugate design where the
+  two stop parameters genuinely differ, 0.2342 against 0.2490, the ninth-order total moves by
+  3.6E-15 on a value of 11.47 - three parts in 1E16, which is rounding.
+- **The flat-in-collimated-space detector.** It tests `t1`, `t2` and `t3`, all p-ray, with the
+  invariant used only as a non-degeneracy guard. The q ray's scale cannot reach it.
+
+`Nat/WaveFront.cs` never had the defect. It computes the stop parameter first and passes it to the
+spherical table, with a comment saying it does this "exactly as the tertiary route does it" - which
+the tertiary route had stopped doing.
 ### The macros did not have this one, and the reason is worth keeping
 
 `BUCH7_ASPH.ZPL` needs no change. It has exactly ONE stop parameter - `stopp = p0 = epp/efl`, the

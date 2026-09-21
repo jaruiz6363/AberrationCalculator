@@ -163,14 +163,23 @@ public static partial class TertiaryCoefficients
         var scheme = SAb.BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
                                                 sys.Surfaces[stop].SemiDiameter, iota);
         Stage("scheme P", new[] { ("P", scheme.P), ("PRayFinalAngle", scheme.PRayFinalAngle) });
-        var spherical = SAb.BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+
+        // The stop parameter comes FIRST, because the all-spherical table the increments are
+        // differenced against has to be built at the same pupil as the run they are fed back
+        // into. At a finite conjugate that is not scheme.P - the derived value rests on an
+        // identity a non-zero iota breaks - and building the reference at one and the run at
+        // the other leaves the difference between the two in the answer. See the same note in
+        // TertiaryCoefficients.Attach, where it cost 4.7E-5 against Forbes.
+        Laurent stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
+
+        var spherical = SAb.BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, stopParameter,
+                                                   iota: iota);
         Stage("Table I, spherical", RowsOf(spherical));
         int last = sys.LastOpticalSurface();
         var increments = SAb.AsphericSchemeIncrements.Build(b, spherical, last);
         if (increments == null) return null;
         Stage("increments", IncrementsOf(increments));
 
-        Laurent stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
         Laurent g = 1.0 - stopParameter * iota;
         Laurent lengthFactor = p.Efl / (p.N[last] * scheme.PRayFinalAngle);
         Laurent u = -(0.5 * p.Epd / p.Efl) / g;
@@ -184,7 +193,7 @@ public static partial class TertiaryCoefficients
             ? LaurentMath.Tan(maxField * Math.PI / 180.0)
             : -(p.ParaxialImageHeight / p.Magnification) / objectDistance);
 
-        var dual = SAb.AsphericSchemeIncrements.BuildDual(sys, p, n, scheme.P, iota);
+        var dual = SAb.AsphericSchemeIncrements.BuildDual(sys, p, n, stopParameter, iota);
         if (dual != null) Stage("dual increments", IncrementsOf(dual));
         if (_trace != null)
         {

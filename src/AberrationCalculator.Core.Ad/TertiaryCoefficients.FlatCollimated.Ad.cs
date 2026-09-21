@@ -110,12 +110,17 @@ public static partial class TertiaryCoefficients
 
         var scheme = SAb.BuchdahlScheme.Compute(sys.Surfaces, n, p.Efl,
                                                 sys.Surfaces[stop].SemiDiameter, iota);
-        var spherical = SAb.BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, scheme.P, iota: iota);
+        // The stop parameter comes FIRST, because the all-spherical table the increments are
+        // differenced against has to be built at the same pupil as the run they are fed back
+        // into. At a finite conjugate that is not scheme.P. See the note in
+        // TertiaryCoefficients.Attach, where the mismatch cost 4.7E-5 against Forbes.
+        DS stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
+
+        var spherical = SAb.BuchdahlTableI.Compute(sys.Surfaces, n, p.Efl, stopParameter,
+                                                   iota: iota);
         int last = sys.LastOpticalSurface();
         var increments = SAb.AsphericSchemeIncrements.Build(b, spherical, last);
         if (increments == null) return null;
-
-        DS stopParameter = infinite ? scheme.P : p.EntrancePupilPosition / p.Efl;
         DS g = 1.0 - stopParameter * iota;
         DS lengthFactor = p.Efl / (p.N[last] * scheme.PRayFinalAngle);
         DS u = -(0.5 * p.Epd / p.Efl) / g;
@@ -129,7 +134,7 @@ public static partial class TertiaryCoefficients
             ? DSMath.Tan(Lift(maxField) * Math.PI / 180.0)
             : -(p.ParaxialImageHeight / p.Magnification) / objectDistance);
 
-        var dual = SAb.AsphericSchemeIncrements.BuildDual(sys, p, n, scheme.P, iota);
+        var dual = SAb.AsphericSchemeIncrements.BuildDual(sys, p, n, stopParameter, iota);
         var raw = SAb.BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, stopParameter, increments,
                                                  iota, SAb.BuchdahlAsphericScheme.Options.Default,
                                                  dual);
