@@ -659,6 +659,33 @@ Two uses of the derived `scheme.P` remain, and both were measured rather than ar
 `Nat/WaveFront.cs` never had the defect. It computes the stop parameter first and passes it to the
 spherical table, with a comment saying it does this "exactly as the tertiary route does it" - which
 the tertiary route had stopped doing.
+
+### The NAT route, checked for both defects and clean on both
+
+`Nat/WaveFront.cs` consumes the same Table I, so it was asked the same two questions.
+
+**The stop parameter: it never had the defect.** It forms the stop parameter first and passes it
+to the all-spherical table AND to the figured run, with a comment saying it does this "exactly as
+the tertiary route does it" - which the tertiary route had stopped doing. A second part of the
+codebase already doing it the right way is independent evidence that the fix is right and not
+merely self-consistent.
+
+**The immersion: it is immune by construction, and that was measured.** The fix rescales the
+scheme's q ray by `1/N_0`, and the tertiary route compensates in its field normalisation.
+`WaveFront` converts nothing - it reads the rows straight - so the rescaling reaches its W
+coefficients uncompensated, and at `N_0 = 1.30` they genuinely are different numbers from before.
+
+That is harmless because `NormalisationBridge` FITS the scale between the W route and the Seidel
+route from the third order rather than assuming it, so an overall rescaling of the field variable
+is absorbed into the fitted `F`. And the fit checks itself: four coefficients, two unknowns, two
+free. Across twelve combinations - infinite and finite conjugate, spherical and figured, `N_0` at
+1.00, 1.01 and 1.30 - the bridge residual is at machine precision and the two free coefficients
+read back to 1E-16. A route that ASSUMED the normalisation would have failed the immersed cases
+the day the q ray was rescaled.
+
+Two other consumers of Table I were checked and need nothing: `QuaternarySpherical`, whose
+ninth-order spherical is stop-parameter invariant to 3E-16, and the flat-in-collimated-space
+detector, which reads p-ray quantities only.
 ### The macros did not have this one, and the reason is worth keeping
 
 `BUCH7_ASPH.ZPL` needs no change. It has exactly ONE stop parameter - `stopp = p0 = epp/efl`, the

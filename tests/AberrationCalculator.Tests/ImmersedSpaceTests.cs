@@ -4,6 +4,7 @@ using AberrationCalculator.Core.Aberrations;
 using AberrationCalculator.Core.Enums;
 using AberrationCalculator.Core.Models;
 using AberrationCalculator.Core.RayTrace;
+using AberrationCalculator.Core.Nat;
 using Xunit;
 
 namespace AberrationCalculator.Tests;
@@ -668,5 +669,96 @@ public class ImmersedSpaceTests
             $"n' = {nImage}: the rays put best focus at dZ = {bestAt:G6} and the coefficients "
           + $"predict {predicted:G6}. An index dropped anywhere between the sums and this plane "
           + "shows up here.");
+    }
+
+    // ── The NAT route, which consumes the same scheme ───────────────────────────────────
+
+    /// <summary>
+    /// The nodal-aberration-theory route reconciles with the Seidel sums at every end medium,
+    /// at either conjugate, figured or not.
+    ///
+    /// <para><b>Why this is here rather than with the other NAT tests.</b> The immersion fix
+    /// rescaled the scheme's q ray by <c>1/N_0</c>, and the tertiary route compensates for that
+    /// in its field normalisation. <c>WaveFront</c> takes the scheme's rows and converts nothing,
+    /// so the rescaling reaches its W coefficients uncompensated - and at <c>N_0 = 1.30</c> they
+    /// genuinely are different numbers from before.</para>
+    ///
+    /// <para><b>That is harmless, and the reason is worth stating.</b>
+    /// <see cref="NormalisationBridge"/> FITS the scale between the two routes from the
+    /// third order rather than assuming it, so an overall rescaling of the field variable is
+    /// absorbed into the fitted <c>F</c>. And the fit checks itself: four coefficients give four
+    /// ratios against two unknowns, so two are free. Those two are what this test reads back.</para>
+    ///
+    /// <para>Twelve combinations, and the bridge residual is at machine precision in every one.
+    /// A route that ASSUMED the normalisation would have failed the immersed cases the day the
+    /// q ray was rescaled.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(1.00)]
+    [InlineData(1.01)]
+    [InlineData(1.30)]
+    public void TheNatRouteReconcilesWithSeidelWhateverTheObjectMedium(double nObject)
+    {
+        foreach (bool infinite in new[] { true, false })
+        foreach (bool figured in new[] { false, true })
+        {
+            var (sys, n) = NatSystem(nObject, figured, infinite);
+            double field = infinite ? 5.0 : 10.0;
+            var p = ParaxialTrace.Trace(sys, n, field);
+
+            var wf = WaveFront.FromSystem(sys, n, p);
+            Assert.NotNull(wf);
+
+            var s = SeidelCoefficients.Compute(sys, n, n, n, p);
+            var bridge = NormalisationBridge.Fit(
+                new[] { s.TotalS1 / 8.0, s.TotalS2 / 2.0, s.TotalS3 / 2.0, s.TotalS5 / 2.0 },
+                new[] { wf!.System.W040, wf.System.W131, wf.System.W222, wf.System.W311 });
+
+            string what = $"n = {nObject}, {(infinite ? "infinite" : "finite")}, "
+                        + $"{(figured ? "figured" : "spherical")}";
+
+            Assert.True(bridge.IsUsable, $"{what}: the scale between the routes could not be fitted");
+            Assert.True(bridge.Residual < 1e-12,
+                $"{what}: the bridge's free checks disagree by {bridge.Residual:E3}. Two of the "
+              + "four coefficients are not used to fit, so this is a real check on the W route "
+              + "and not a tautology.");
+
+            // The two free ones, read back into the design's own units.
+            double s3 = bridge.WToSeidel(2, 2) * wf.System.W222 * 2.0;
+            double s5 = bridge.WToSeidel(3, 1) * wf.System.W311 * 2.0;
+            Assert.True(Math.Abs(s3 / s.TotalS3 - 1.0) < 1e-12, $"{what}: S3 from W is out");
+            Assert.True(Math.Abs(s5 / s.TotalS5 - 1.0) < 1e-12, $"{what}: S5 from W is out");
+        }
+    }
+
+    private static (OpticalSystem Sys, double[] N) NatSystem(double n0, bool figured, bool infinite)
+    {
+        var s = new OpticalSystem
+        {
+            Aperture = new Aperture(ApertureType.EPD, 16.0),
+            FieldType = infinite ? FieldType.ObjectAngle : FieldType.ObjectHeight,
+        };
+        s.Wavelengths.Add(new Wavelength(D, 1.0, true));
+        s.Fields.Add(new Field(0.0));
+        s.Fields.Add(new Field(infinite ? 5.0 : 10.0));
+        s.Surfaces.Add(new Surface { Index = 0,
+            Thickness = infinite ? double.PositiveInfinity : 200.0 });
+
+        var front = new Surface { Index = 1, Curvature = 1.0 / 60.0, Thickness = 4.0,
+                                  Material = "G", SemiDiameter = 15.0 };
+        if (figured)
+        {
+            front.Type = SurfaceType.EvenAsphere;
+            front.Conic = -0.6;
+            front.AsphericCoefficients[1] = 2.0e-7;
+        }
+        s.Surfaces.Add(front);
+
+        s.Surfaces.Add(new Surface { Index = 2, Curvature = -1.0 / 60.0, Thickness = 8.0,
+                                     SemiDiameter = 15.0 });
+        s.Surfaces.Add(new Surface { Index = 3, Thickness = 60.0, IsStop = true,
+                                     SemiDiameter = 15.0 });
+        s.Surfaces.Add(new Surface { Index = 4, Thickness = 0.0, SemiDiameter = 25.0 });
+        return (s, new[] { n0, 1.6, 1.0, 1.0, 1.0 });
     }
 }
