@@ -82,6 +82,7 @@ now asserts it.
 | the E-family fixtures against OpticStudio | Seidel 5 of 5 and FIFTHORD 18 of 18, per surface and total, on a design never compared before |
 | immersed IMAGE space, n = 1.01 and 1.30 | third order predicts traced rays, Seidel and Buchdahl agree through the immersion to 1E-10, and the tertiary set agrees with Forbes to 2E-12 |
 | immersed OBJECT space | third order right by the same checks; the seventh order agrees with Forbes and with real rays to 2.2E-15, after the defect recorded below was fixed |
+| LensHH-LT against this program, r-squared | nine fixtures, every per-surface value to every digit it prints, after the defect below was fixed in 1.0.156 |
 | immersed OBJECT space against FIFTHORD | 17 of 18 to every digit the macro prints, on `Ej_object_space_n101`; `E5` differs by 8E-13, which is 1.6E-12 of the largest coefficient and at the agreement floor recorded above |
 | figured at a FINITE conjugate against Forbes | 1E-13 at two stop positions, three object distances and an immersed object medium, after the defect recorded below was fixed |
 | the analytic derivative, every design on disk | 53 designs against a central difference of their own residuals, every build |
@@ -330,10 +331,39 @@ independent things said the same: this program's own Buchdahl route, which gives
 both descriptions, and an independent commercial implementation's Seidel analysis, run on both
 descriptions and giving `-0.001412` for each.
 
-### The same term is wrong in a third program, in a different way
+### The same term was wrong in a third program, in a different way - and is now fixed
+
+**FIXED IN LensHH-LT 1.0.156, and verified here.** The defect above is 1.0.155 and earlier. The
+candidate was checked on 21 September 2026 against nine fixtures in
+`tests/fixtures/coefficient-reference`, and passes every one:
+
+| the pair | what it asks | result |
+|---|---|---|
+| `F3` against `F8` | is the term read at all, at an infinite conjugate? | the focal length moves, 78.0375 to 77.4194 |
+| `F8` against `F9` | is the `r^4` departure measured from the right sphere? | identical, per surface and in total |
+| `G0` against `G1` | is it read at a FINITE conjugate, where `iota` is live? | the focal length moves, 78.0375 to 77.4194 |
+| `G1` against `G2` | the right sphere there? | identical |
+| `G0` against `H1` | does it reach a surface OTHER than the first? | yes, and surface 1's own contribution moves with it |
+| `G0` against `H2` | one on each surface, of opposite sign? | yes |
+| `H2` against `H3` | the right spheres, with two conversions at once? | identical |
+
+The `F9`, `G` and `H` fixtures were built for this and kept, because the combinations they cover -
+r-squared at a finite conjugate, on a surface that is not the first, on two surfaces at once - were
+in no fixture here either.
+
+**And it is not merely self-consistent.** Every per-surface Seidel value matches this program to
+every digit LensHH-LT prints, across all nine designs. Per-surface is the stronger statement:
+totals can agree through cancellation and individual surfaces cannot. `H1` is the one worth
+singling out - putting the term on the SECOND surface moved the FIRST surface's contribution too,
+which is what a curvature change downstream must do to the rays arriving there, and is a sign the
+term reaches the paraxial data rather than being patched into the sums.
+
+**What this does not cover**, and the author knows it: the real ray trace and the optimiser were
+not exercised. If the term was being dropped at import those came along with the fix; if it was
+repaired in the Seidel path alone they are untested.
 
 **Running the same one-surface-two-ways check outward found a bug in LensHH-LT's Seidel
-analysis.** That program does account for aspheric figuring in the third order - putting `A4` on a
+analysis.** That program did account for aspheric figuring in the third order - putting `A4` on a
 surface moves that surface's `S1`, `S2`, `S3` and `S5`, which is more than several programs do -
 but an r-squared coefficient reaches nothing at all. With `A2 = 1E-04` on surface 1 of the same
 lens the reported radius is unchanged, the focal length is still 100, and the Seidel sums do not
@@ -345,9 +375,10 @@ curvature, so the focal length and Petzval both moved - and only the `r^4` depar
 that sphere was wrong. There the term is dropped before the paraxial data is formed, so nothing
 downstream of it can be right either.
 
-The fault belongs to LensHH-LT and is the responsibility of that program's author, who is handling
-it in that repository. It is recorded here for two reasons: this repository's cross-check is what
-found it, and it is why LensHH-LT could not be the second opinion on the question above.
+The fault belonged to LensHH-LT and was fixed by that program's author. It is recorded here for
+three reasons: this repository's cross-check is what found it, it is why LensHH-LT could not be
+the second opinion on the question above, and the fixtures built to accept the fix are now part
+of this repository and cover combinations nothing here covered before.
 
 ### The first fix was also wrong
 
