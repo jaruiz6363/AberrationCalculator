@@ -84,6 +84,7 @@ now asserts it.
 | immersed OBJECT space | third order right by the same checks; the seventh order agrees with Forbes and with real rays to 2.2E-15, after the defect recorded below was fixed |
 | immersed OBJECT space against FIFTHORD | 17 of 18 to every digit the macro prints, on `Ej_object_space_n101`; `E5` differs by 8E-13, which is 1.6E-12 of the largest coefficient and at the agreement floor recorded above |
 | figured at a FINITE conjugate against Forbes | 1E-13 at two stop positions, three object distances and an immersed object medium, after the defect recorded below was fixed |
+| the analytic derivative, every design on disk | 53 designs against a central difference of their own residuals, every build |
 | the suite | over a thousand tests, and everything they read is in this repository |
 
 ## The aspheric arrangement, and how it was established
@@ -704,6 +705,45 @@ That is a second lesson beside the usual one. It is not only that a case was mis
 fixtures; it is that two independent implementations were being compared only where they were
 already known to agree, which is the comparison that cannot fail and therefore cannot inform.
 
+
+## Every design on disk is differentiated
+
+**`DerivativeSweepTests` takes the analytic Jacobian against a central difference of the same
+residuals, on all 53 designs in the two fixture folders.** It replaces nothing: the four
+hand-written cases in `AnalyticDerivativeTests` keep their much wider operand set, which names
+surfaces only their own design has. What the sweep adds is breadth - and the designs it reaches
+are the ones no one chose, including the whole E family, whose purpose is to sit in the awkward
+cases.
+
+**The reference is the value code itself**, evaluated on the spot. Change an aberration formula
+and the expectation moves with it; there is nothing to update and nothing that can go stale. It
+is also a DIFFERENT LINEAGE from the analytic derivative, which is the property that matters:
+every comparison between two copies of the same arithmetic is blind to a defect they share, and
+this repository watched that happen twice in one day - the two macros against the C#, and the two
+copies of the flat-collimated orchestration against each other.
+
+**A design the optimiser declines is reported, not skipped.** `EveryDesignOnDiskWasActuallyDifferentiated`
+requires ALL of them to be checked and prints the reasons for any that were not. A theory that
+skips looks exactly like a theory that passes, and this file has been caught by that before.
+
+### Two things the sweep found immediately
+
+**The step size was the fragile part, not the derivative.** One step is chosen per COLUMN, from
+the largest entry in it, which can leave it far too small for the other operands. On a figured
+FLAT the value code switches routes within 1E-13 of zero curvature, where the ordinary chain
+divides by a vanishing incidence, and a difference quotient taken across that neighbourhood
+measures the switch: a correct derivative of -0.9695 read as 2.3E+14. A failing entry is now
+re-measured over a LADDER of steps spanning six decades and accepted if any rung agrees; the
+failure prints the whole ladder, so a reader can see whether the quotient was converging on
+something else or simply thrashing.
+
+**A derivative cannot be more accurate than the value it differentiates.** On `Ladder2_FlatPlain_NearLimit`,
+a face of radius 1E10, the analytic derivative sits 0.12 per cent from the slope of the computed
+value, steady across four decades of step - so it is not a step artefact, and the value curve
+through that region is smooth, so it is not a seam between routes. It is the conditioning: this
+repository already measures that design's coefficients at 0.067 per cent and allows half a per
+cent. Those designs are named individually in the sweep and held to the standard their values
+meet; every other design on disk is held to 0.02 per cent.
 ## The model glass the patcher deleted
 
 **Saving an optimised .zmx back to disk removed a MODEL GLASS, turning the element into air.**

@@ -296,79 +296,12 @@ public class AnalyticDerivativeTests
     }
 
     /// <summary>
-    /// Compares the analytic Jacobian with a central difference of the same residuals, column
-    /// by column, and reports which operand and which variable disagreed rather than only that
-    /// something did.
+    /// Compares the analytic Jacobian with a central difference of the same residuals. The body
+    /// now lives in <see cref="JacobianCheck"/>, so that the sweep over every design on disk
+    /// runs the identical check rather than a second copy of it.
     /// </summary>
     private static void CheckJacobian(Design design, MeritFunction merit, VariableSet vars)
-    {
-        var x0 = design.Read();
-        var analytic = merit.Evaluate(true);
-        Assert.True(analytic.Ok, analytic.Failure);
-
-        int m = merit.Operands.Count;
-        int n = vars.Count;
-        Assert.True(m > 0);
-
-        // Something has to be moving, or the comparison is between two zeros.
-        double largest = 0.0;
-        for (int i = 0; i < m; i++)
-            for (int j = 0; j < n; j++)
-                largest = Math.Max(largest, Math.Abs(analytic.Jacobian[i, j]));
-        Assert.True(largest > 0.0, "the analytic Jacobian is entirely zero");
-
-        for (int j = 0; j < n; j++)
-        {
-            // The step has to leave the difference quotient inside its linear regime, and what
-            // counts as small depends entirely on the variable. A curvature lives near 0.01, a
-            // thickness near 10 and an r^4 aspheric coefficient near 1e-8; one step size cannot
-            // serve all three, and stepping A4 by 1e-7 moves the merit by four per cent, which
-            // measures a secant and not a derivative.
-            //
-            // Sizing the step so that the RESIDUALS move by about a part in a million puts every
-            // variable in the same regime whatever its units. Taking that size from the analytic
-            // column does not bias the comparison: it sets how far to probe, not what to expect
-            // there, and an analytic derivative wrong by any factor would still be caught.
-            double column = 0.0;
-            for (int i = 0; i < m; i++)
-                column = Math.Max(column, Math.Abs(analytic.Jacobian[i, j]));
-
-            double magnitude = Math.Max(Math.Abs(x0[j]), 1.0);
-            double h = column > 0.0 ? 1e-6 / column : 1e-6;
-            h = Math.Min(h, 1e-4 * magnitude);
-            h = Math.Max(h, 1e-13 * magnitude);
-
-            var plus = (double[])x0.Clone(); plus[j] += h;
-            design.Apply(plus);
-            var rp = merit.Evaluate(false);
-
-            var minus = (double[])x0.Clone(); minus[j] -= h;
-            design.Apply(minus);
-            var rm = merit.Evaluate(false);
-
-            design.Apply((double[])x0.Clone());
-
-            Assert.True(rp.Ok && rm.Ok, "the design could not be evaluated beside the start point");
-
-            for (int i = 0; i < m; i++)
-            {
-                double numeric = (rp.Residuals[i] - rm.Residuals[i]) / (2.0 * h);
-                double exact = analytic.Jacobian[i, j];
-
-                // A central difference of a quantity of size s carries an error of order
-                // s * eps^(2/3); the tolerance has to be relative to the column, not to the
-                // entry, or an entry that is legitimately near zero is held to an absolute
-                // standard nothing could meet.
-                double scale = Math.Max(Math.Abs(exact), Math.Abs(numeric));
-                double tolerance = 2e-4 * scale + 1e-7 * largest;
-
-                Assert.True(Math.Abs(exact - numeric) <= tolerance,
-                    $"d({merit.Operands[i].Label})/d({vars[j].Name}): " +
-                    $"analytic {exact:G10}, central difference {numeric:G10}, " +
-                    $"differ by {Math.Abs(exact - numeric):G4} (tolerance {tolerance:G4})");
-            }
-        }
-    }
+        => JacobianCheck.Check(design, merit, vars);
 
     /// <summary>
     /// A satisfied boundary operand costs nothing and pulls on nothing.
