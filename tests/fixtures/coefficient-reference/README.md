@@ -19,6 +19,18 @@ nothing to check.
 | F6_triplet_two_aspheres | two figured surfaces, so one induces on the other |
 | F7_conic_as_polynomial | the same surface written the other way round |
 
+**F9_r2_as_shifted_sphere is F8 written the other way, and exists to be compared with it.** The
+same physical surface: an r-squared coefficient is a curvature, so `cb = 0.02` with `A2 = 1E-04`
+is the surface of curvature `0.0202` with `A2 = 0` once the higher terms absorb the difference
+between the two spheres. Matched through `r^8`, so the pair is equivalent at the third, fifth and
+seventh orders alike - they part company only at `r^10`.
+
+The two files must give the SAME answer, and in this program they do: the same focal length to
+the digit and the same five Seidel sums to twelve figures. **No external reference is needed to
+use them.** A program that disagrees between F8 and F9 is contradicting itself, which is a
+stronger statement than disagreeing with somebody else - and it is the check that found the
+r-squared defect in this repository. See `docs/verification.md`.
+
 **F8_r2_conic_a4_a6_a8 has no reference file, and that is the point of it.** It is
 F3_conic_a4_a6_a8 with `PARM 1 = 1.0E-04` added and nothing else changed, so it carries the one
 term the seven above deliberately avoid. No FIFTHORD reference can exist for it - see the note
