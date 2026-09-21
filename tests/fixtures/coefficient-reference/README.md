@@ -42,6 +42,37 @@ The term is not a perturbation. It moves the effective focal length from 78.0375
 F/number from 3.9019 to 3.8710, `B` by three per cent and `B7` by 0.43 - so anything that drops
 it is analysing a visibly different lens.
 
+
+## The G family: the r-squared question at a FINITE conjugate
+
+Three designs, added 21 September 2026. The same optics in all three - object 400 mm away, a
+figured front surface, and the STOP behind the lens rather than on it, so the stop parameter is
+not zero - and they differ only in how the r-squared term is expressed.
+
+| fixture | surface 1 | what it asks |
+|---|---|---|
+| G0_finite_no_r2 | `c = 0.02`, no `A2` | the baseline |
+| G1_finite_r2 | the same, `A2 = 1E-04` | is the term read at all? |
+| G2_finite_r2_as_shifted_sphere | `c = 0.0202`, no `A2`, higher terms adjusted | is it read from the right sphere? |
+
+**G1 against G0** moves the focal length from 78.0375 to 77.4194 and `S1` from -3.0516E-03 to
+-3.1630E-03. A program that reports the same numbers for both is dropping the term.
+
+**G1 against G2** must give the SAME answer, because they are the same surface: an r-squared
+coefficient is a curvature, so `c = 0.02` with `A2 = 1E-04` is `c = 0.0202` with none, once the
+higher terms absorb the difference between the two spheres. Matched through `r^8`, so the pair is
+equivalent at third, fifth and seventh order and parts company only at `r^10`. In this program
+they agree to the last stored digit, per surface and in total.
+
+**Why a finite conjugate, when F8 and F9 already ask this at infinity.** Because that is where
+this repository's own defects have hidden. `iota` is non-zero only at a finite conjugate, the stop
+parameter stops being the scheme's derived value only there, and the figured-and-finite
+combination is what carried the stop-parameter defect recorded above. Putting the stop behind the
+lens rather than on it makes the stop parameter live as well.
+
+These were built as the acceptance test for a fix to another program, and kept because the
+combination they cover - figured, finite, r-squared, stop off the first surface - was in no
+fixture here either.
 ## Where the numbers came from
 
 The reference values were produced by running the FIFTHORD macro (Rimmer 1962, via
