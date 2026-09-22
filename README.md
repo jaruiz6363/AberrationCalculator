@@ -494,11 +494,13 @@ src/AberrationCalculator.Core.Series.Ad the same source, in both at once
 src/AberrationCalculator.Optimize variables, operands, PSD, Hooke-Jeeves, basin hopping
 src/AberrationCalculator.IO     one reader per format, and the .lhlt writer
 src/AberrationCalculator.Cli    abcalc - the command-line tool
+src/AberrationCalculator.Optiland  the same lens inside Optiland, through embedded Python
 catalogs/Glass                  bundled AGF glass catalogs
 docs/                           what is established and how - see the table below
 macros/                         ZPL macros that run inside OpticStudio, and their README
 tests/                          unit tests
 tools/smoke                     command-line harness used during development
+tools/setup-python.ps1          installs the embedded Python and optiland, for the cross-check
 ```
 
 ### The documents
@@ -516,6 +518,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 | [docs/distortion-prediction.md](docs/distortion-prediction.md) | Distortion from the coefficients against traced chief rays. The cleanest window onto a single coefficient there is, and what it found. |
 | [docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md) | What the aberrations do when the surfaces are not on a common axis, and where the nodes go. |
 | [docs/nat-development.md](docs/nat-development.md) | How that was built and what each stage was checked against. |
+| [docs/optiland.md](docs/optiland.md) | The Optiland cross-check: Seidel sums surface by surface, the fifth order from Optiland's own rays, three defects it found in Optiland 0.6.2, and two here, now fixed. |
 | [docs/mcp.md](docs/mcp.md) | The MCP server: what each tool exposes and what it returns. |
 | [macros/README.md](macros/README.md) | The ZPL macros - what each computes, what it refuses, and the ZPL traps they had to respect. |
 
@@ -547,6 +550,23 @@ dotnet test  tests/AberrationCalculator.Tests/AberrationCalculator.Tests.csproj
 ```
 
 .NET 8, so Windows, Linux and macOS.
+
+### Against Optiland
+
+    .\tools\setup-python.ps1        # embeddable Python + optiland, into python-embed\ (gitignored)
+
+puts [Optiland](https://github.com/HarrisonKramer/optiland) in reach of the test suite. Each design
+is built inside Optiland from the prescription this program parsed, and two things are compared:
+Optiland's Seidel sums, which agree **surface by surface to 1E-14** on every design they can be
+asked about once Optiland's opposite sign is turned; and the **fifth order**, which Optiland does
+not compute - its rays are inverted for all twelve coefficients instead, and reproduce Buchdahl's
+to between 3E-9 and 1.3E-5 on 45 designs, aspheric ones and a mirror included. The comparison
+found three defects in Optiland 0.6.2 (it ignores r² in its paraxial trace and r⁴ upward in its
+Seidel sums, and its chief ray at a finite conjugate misses the object distance) and two here,
+both since fixed: the Seidel distortion of a flat face in collimated light was lost, and the real
+ray trace did not reflect. Following the second led to a third: on a mirror the seventh order
+was NaN, and Forbes' series trace silently traced it as a refraction; both are fixed. See [docs/optiland.md](docs/optiland.md). Without the embedded
+Python those tests print `NOT RUN` and pass.
 
 ## Licence
 

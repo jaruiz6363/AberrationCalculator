@@ -107,4 +107,60 @@ public class ParabolicMirrorTests
         Assert.True(Math.Abs(left) / Math.Abs(r.Intrinsic[1].B7) > 1e-3,
             $"conic {conic}: seventh order cancelled to {left:E3}");
     }
+
+    /// <summary>
+    /// The seventh order of a mirror: finite, and what real rays say it is, in the same frame as
+    /// the third and fifth.
+    ///
+    /// <para>tau2..tau20 used to come out NaN here. <see cref="TertiaryCoefficients.Attach"/>
+    /// handed the scheme the plain indices, so the mirror was a curved surface with no index
+    /// step and no power, while the paraxial data it was scaled by said f = 100. Given the
+    /// signed ones - a reflection carried as a refraction into -n, as the paraxial trace carries
+    /// it - the scheme is finite; and with the image index taken as |N'| in the length factor, as
+    /// the fifth-order code already takes it for the F/number, it is in the same frame as the
+    /// orders below it rather than negated.</para>
+    ///
+    /// <para>The reference is real rays through the mirror, which reflect since RealRayTrace
+    /// learned to. At ten degrees every coefficient stands well clear of the ray inversion's
+    /// floor of about 1E-9; at the design's own half degree the field-dependent ones do not, and
+    /// the comparison there measures the floor rather than the scheme. All nineteen agree to
+    /// 6E-6 of the largest. tau13..tau20 are zero from the scheme, and the rays return the floor
+    /// for them.</para>
+    /// </summary>
+    [Fact]
+    public void TheSeventhOrderOfAMirrorIsFiniteAndAgreesWithRealRays()
+    {
+        const double field = 10.0;
+        var sys = Paraboloid(-1.0);
+        var n = IndexResolver.Build(sys, CatalogLocator.LoadBundled(), 0.55);
+        var p = ParaxialTrace.Trace(sys, n, field);
+        var b = BuchdahlCoefficients.Compute(sys, p);
+        TertiaryCoefficients.Attach(sys, n, p, b, field);
+
+        var rays = CoefficientInversion.Invert(sys, n, p, field);
+        Assert.NotNull(rays);
+
+        double largest = 0.0;
+        for (int k = 2; k <= 20; k++)
+        {
+            double tau = b.Totals["Tau" + k];
+            Assert.False(double.IsNaN(tau), $"tau{k} is NaN");
+            largest = Math.Max(largest, Math.Abs(tau));
+        }
+        for (int k = 2; k <= 20; k++)
+            Assert.True(Math.Abs(b.Totals["Tau" + k] - rays!.Tau[k]) < 5e-5 * largest,
+                $"tau{k}: scheme {b.Totals["Tau" + k]:E6}, rays {rays.Tau[k]:E6}");
+
+        // The third and fifth order from the same rays, so the three orders are seen to be in
+        // one frame - which Prms, multiplying them together, needs.
+        var lower = CoefficientInversion.InvertThirdAndFifth(sys, n, p, field)!;
+        foreach (var names in new[] { CoefficientInversion.ThirdOrderNames, CoefficientInversion.FifthOrderNames })
+        {
+            double big = 0.0;
+            foreach (var name in names) big = Math.Max(big, Math.Abs(b.Totals[name]));
+            foreach (var name in names)
+                Assert.True(Math.Abs(b.Totals[name] - lower.Terms[name]) < 3e-5 * big,
+                    $"{name}: Buchdahl {b.Totals[name]:E6}, rays {lower.Terms[name]:E6}");
+        }
+    }
 }

@@ -102,10 +102,15 @@ public class CoefficientSweepTests
 
         double tolerance = ToleranceFor(name);
 
+        // Forbes' series trace where it applies - it declines a mirror - and real rays where they
+        // can be inverted. A design must be held to at least one of the two.
+        bool compared = false;
         var forbes = ForbesCoefficients.Invert(system, n, p, field);
-        if (forbes == null) return "Forbes' inversion declined the design";
-
-        Compare(name, "Forbes' series trace", table, forbes.Tau, largest, tolerance);
+        if (forbes != null)
+        {
+            Compare(name, "Forbes' series trace", table, forbes.Tau, largest, tolerance);
+            compared = true;
+        }
 
         // Real rays, where they can be inverted at all. A third lineage, and the only one that
         // knows nothing about either series.
@@ -122,14 +127,19 @@ public class CoefficientSweepTests
             // while a coefficient that is actually WRONG - which would be out by per cent, not
             // by parts in ten thousand - still fails.
             //
-            // A fit that did not close is not a reference at all. The parabolic mirror leaves a
-            // residual of 0.75, and comparing against that would be comparing against noise.
+            // A fit that did not close is not a reference at all. The parabolic mirror used to
+            // leave a residual of 0.75 here - because RealRayTrace did not reflect, so the rays
+            // were not the mirror's. Now they are, it closes, and they are the mirror's only
+            // second lineage, since Forbes declines it.
             if (rays != null && !double.IsNaN(rays.Residual) && rays.Residual < 1e-2)
+            {
                 Compare(name, "real traced rays", table, rays.Tau, largest,
                         Math.Max(5e-4, 100.0 * rays.Residual));
+                compared = true;
+            }
         }
 
-        return null;
+        return compared ? null : "neither Forbes' series trace nor real rays could be compared";
     }
 
     private static void Compare(string name, string other, double[] table, double[] reference,

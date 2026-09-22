@@ -177,8 +177,50 @@ public class DerivativeSweepTests
         var probe = merit.Evaluate(true);
         if (!probe.Ok) return "the optimiser declined it: " + probe.Failure;
 
+        OffTheKink(design, merit, vars, probe);
+
         JacobianCheck.Check(design, merit, vars, name, ToleranceFor(name));
         return null;
+    }
+
+    /// <summary>
+    /// A design that images some field PERFECTLY sits on a kink of PRMSA, and is moved off it.
+    ///
+    /// <para>The parabolic mirror is the case: its axial spot is exactly zero, so an r^4 term
+    /// makes it |c A4| - a cone, with no derivative at its tip. The analytic value there is the
+    /// slope of one side, chosen by the roundoff sign of B, and a central difference averages
+    /// the two sides towards zero; neither is wrong, and no comparison between them can pass.
+    /// This sweep used to pass the mirror only because its tertiary coefficients were NaN and a
+    /// comparison with NaN never fails. So where a PRMSA case is zero and a figuring variable
+    /// sits at exactly zero, that variable is set to a small value first - A4 = 1E-9 on the
+    /// parabola - and the derivative is checked on the smooth side of the cone.</para>
+    /// </summary>
+    private static void OffTheKink(Design design, MeritFunction merit, VariableSet vars, MeritResult probe)
+    {
+        double largest = 0.0;
+        bool vanishing = false;
+        for (int i = 0; i < merit.Operands.Count; i++)
+        {
+            if (merit.Operands[i].Type != OperandType.PRMSA) continue;
+            largest = Math.Max(largest, Math.Abs(probe.Values[i]));
+        }
+        for (int i = 0; i < merit.Operands.Count; i++)
+            if (merit.Operands[i].Type == OperandType.PRMSA
+                && Math.Abs(probe.Values[i]) <= 1e-12 * largest)
+                vanishing = true;
+        if (!vanishing) return;
+
+        var x = design.Read();
+        bool moved = false;
+        for (int j = 0; j < vars.Count; j++)
+        {
+            if (!vars[j].Figures || x[j] != 0.0) continue;
+            if (vars[j].Kind == VariableKind.Conic) continue;          // a conic of 0 is a sphere, not a kink
+            x[j] = vars[j].Kind == VariableKind.Asphere4 ? 1e-9
+                 : vars[j].Kind == VariableKind.Asphere6 ? 1e-13 : 1e-17;
+            moved = true;
+        }
+        if (moved) design.Apply(x);
     }
 
     /// <summary>

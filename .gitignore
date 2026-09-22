@@ -20,3 +20,7 @@ logs/
 # Office lock files. Opening a document in Word or Excel drops a ~$name beside it;
 # it is a few hundred bytes of session state and it vanishes when the file is closed.
 ~$*
+
+# The embedded Python that tools/setup-python.ps1 installs Optiland into.
+python-embed/
+__pycache__/

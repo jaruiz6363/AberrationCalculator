@@ -7,7 +7,8 @@ namespace AberrationCalculator.Core.Aberrations;
 
 /// <summary>
 /// Recovers the seventh-order coefficients from exact ray traces, by inverting the transverse
-/// aberration polynomial. An oracle that owes nothing to the scheme it checks.
+/// aberration polynomial - and, through <see cref="InvertThirdAndFifth"/>, the third and fifth
+/// orders the same way. An oracle that owes nothing to the scheme it checks.
 ///
 /// <para><b>Why this and not a spot comparison.</b> A predicted RMS spot collapses eighteen
 /// coefficients into one number, so agreement there is an aggregate over errors that may be
@@ -96,22 +97,7 @@ public static class CoefficientInversion
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
 
-        // OBJECT AT INFINITY ONLY, and the assumption is THIS method's rather than the ray
-        // trace's. Two things below are written for a collimated object: the field is taken as
-        // tan(theta), and the paraxial part subtracted off before the fit is efl*tan(theta).
-        // Neither means anything when the object is at a finite distance, and both would fail
-        // quietly - the fit would still converge, on the wrong quantity.
-        //
-        // RealRayTrace used to refuse a finite conjugate itself, which happened to protect this
-        // method. It no longer does: the trace is conjugate-agnostic and its aiming now handles
-        // both, so the guard has to live where the assumption actually is.
-        if (!double.IsInfinity(system.Surfaces[0].Thickness)
-            && Math.Abs(system.Surfaces[0].Thickness) < 1e12)
-            throw new NotSupportedException(
-                "CoefficientInversion recovers the coefficients from rays at an object at "
-              + "infinity only. It measures the field as tan(theta) and subtracts a paraxial "
-              + "height of efl*tan(theta), neither of which holds at a finite conjugate. Use "
-              + "ForbesCoefficients.Invert, whose series trace handles either.");
+        RequireObjectAtInfinity(system);
 
         shapes ??= DefaultShapes();
         double hmax = Math.Tan(maxFieldDeg * Math.PI / 180.0);
@@ -131,6 +117,7 @@ public static class CoefficientInversion
         var rows = new List<double[]>();
         var rhs = new List<double>();
         int used = 0;
+        double frame = ImageFrameSign(system, paraxial);
 
         foreach (var sh in shapes)
         {
@@ -157,8 +144,8 @@ public static class CoefficientInversion
                 // That showed as a third-order ratio of 0.84 on tangential shapes while axial
                 // and sagittal ones - which have no paraxial term - came out at 1.0000.
                 double paraxialY = paraxial.Efl * Math.Tan(fieldDeg * Math.PI / 180.0);
-                ey.Add((s, land.Y - paraxialY));
-                ez.Add((s, land.Z));
+                ey.Add((s, frame * (land.Y - paraxialY)));
+                ez.Add((s, frame * land.Z));
             }
             if (!ok) continue;
             used++;
@@ -189,6 +176,217 @@ public static class CoefficientInversion
 
         return new Result { Tau = tau, Residual = worst / scale, Used = used };
     }
+
+    /// <summary>
+    /// The sign that turns a landing, measured in the global frame, into the frame Buchdahl's
+    /// coefficients are written in: -1 after an odd number of reflections, +1 otherwise.
+    ///
+    /// <para>His convention carries a reflection in the sign of the index, and the image-space
+    /// transverse aberration is then measured along an axis the mirror has reversed. Measured,
+    /// not assumed: on the parabola (<c>F4_parabolic_mirror</c>) every one of the seventeen
+    /// third- and fifth-order coefficients recovered from correctly reflected rays is exactly
+    /// the negative of Buchdahl's, the zeros included - a change of frame, not an error, which
+    /// would not flip all seventeen together. The ray trace keeps the global frame, as
+    /// OpticStudio and Optiland do. A multiplication by exactly one everywhere else, so no
+    /// refracting design computes a different bit.</para>
+    ///
+    /// <para>Established on one reflection. A design with two mirrors, where the rule says no
+    /// flip, is not among the fixtures.</para>
+    /// </summary>
+    private static double ImageFrameSign(OpticalSystem system, ParaxialResult paraxial) =>
+        paraxial.N[system.LastOpticalSurface()] < 0.0 ? -1.0 : 1.0;
+
+    private static void RequireObjectAtInfinity(OpticalSystem system)
+    {
+        // OBJECT AT INFINITY ONLY, and the assumption is THIS class's rather than the ray
+        // trace's. Two things are written for a collimated object: the field is taken as
+        // tan(theta), and the paraxial part subtracted off before the fit is efl*tan(theta).
+        // Neither means anything when the object is at a finite distance, and both would fail
+        // quietly - the fit would still converge, on the wrong quantity.
+        //
+        // RealRayTrace used to refuse a finite conjugate itself, which happened to protect this
+        // method. It no longer does: the trace is conjugate-agnostic and its aiming now handles
+        // both, so the guard has to live where the assumption actually is.
+        if (!double.IsInfinity(system.Surfaces[0].Thickness)
+            && Math.Abs(system.Surfaces[0].Thickness) < 1e12)
+            throw new NotSupportedException(
+                "CoefficientInversion recovers the coefficients from rays at an object at "
+              + "infinity only. It measures the field as tan(theta) and subtracts a paraxial "
+              + "height of efl*tan(theta), neither of which holds at a finite conjugate. Use "
+              + "ForbesCoefficients.Invert, whose series trace handles either.");
+    }
+
+    // ── Third and fifth order ────────────────────────────────────────────────────────────
+
+    /// <summary>One ray to trace: a field angle in degrees and a fractional pupil point.</summary>
+    public readonly record struct RayRequest(double FieldDeg, double Py, double Pz);
+
+    /// <summary>
+    /// Where each of a batch of rays lands, in the order asked. The batch form exists for a
+    /// tracer on the far side of an interop boundary - Optiland, reached through Python - which
+    /// pays per call rather than per ray: one call for the whole ladder instead of nine hundred.
+    /// </summary>
+    public delegate RealRayTrace.Landing[] BatchRaySource(IReadOnlyList<RayRequest> rays);
+
+    /// <summary>The third- and fifth-order coefficients in Rimmer's names, as reported.</summary>
+    public static readonly string[] ThirdOrderNames = { "B", "F", "C", "Pi", "E" };
+
+    public static readonly string[] FifthOrderNames =
+        { "B5", "F1", "F2", "M1", "M2", "M3", "N1", "N2", "N3", "C5", "Pi5", "E5" };
+
+    /// <summary>What <see cref="InvertThirdAndFifth"/> recovered.</summary>
+    public sealed class LowerOrders
+    {
+        /// <summary>B..E and B5..E5 filled in; everything else zero.</summary>
+        public BuchdahlTerms Terms { get; init; } = new();
+
+        /// <summary>Largest residual of each solve, relative to its data.</summary>
+        public double ResidualThird { get; init; }
+        public double ResidualFifth { get; init; }
+
+        /// <summary>Shapes that were traced successfully and used.</summary>
+        public int Used { get; init; }
+    }
+
+    /// <summary>
+    /// The third and fifth orders from real rays, by the same device <see cref="Invert"/> uses
+    /// for the seventh: scale pupil and field together, fit the odd polynomial in the scale, and
+    /// read the s^3 and s^5 coefficients off each shape instead of the s^7.
+    ///
+    /// <para>The same ladder serves all three orders, and it serves the lower ones better: the
+    /// terms they are separated from are higher in s, so the fit leans less on the tail.</para>
+    ///
+    /// <para>Nothing here depends on who traced the rays. With <paramref name="rays"/> omitted
+    /// they come from <see cref="RealRayTrace"/>; supplied, they come from anywhere, and what
+    /// comes back is still in Buchdahl's basis - which is how a second program's ray trace is
+    /// checked against this program's coefficients without a change of basis in between.</para>
+    /// </summary>
+    public static LowerOrders? InvertThirdAndFifth(OpticalSystem system, double[] indices,
+                                                   ParaxialResult paraxial, double maxFieldDeg,
+                                                   IReadOnlyList<Shape>? shapes = null,
+                                                   BatchRaySource? rays = null)
+    {
+        if (system == null) throw new ArgumentNullException(nameof(system));
+        if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
+        RequireObjectAtInfinity(system);
+
+        shapes ??= DefaultShapes();
+        double hmax = Math.Tan(maxFieldDeg * Math.PI / 180.0);
+        if (Math.Abs(hmax) < 1e-12) return null;
+
+        // The ladder and the powers are Invert's own; see the note there on why.
+        double[] scales = new double[12];
+        for (int i = 0; i < 12; i++) scales[i] = 0.6 * (i + 1) / 12.0;
+        int[] powers = { 1, 3, 5, 7, 9, 11, 13, 15 };
+
+        var requests = new List<RayRequest>(shapes.Count * scales.Length);
+        foreach (var sh in shapes)
+            foreach (double s in scales)
+                requests.Add(new RayRequest(Math.Atan(s * sh.H * hmax) * 180.0 / Math.PI,
+                                            s * sh.Rho * Math.Cos(sh.Theta),
+                                            s * sh.Rho * Math.Sin(sh.Theta)));
+
+        RealRayTrace.Landing[] landings;
+        if (rays != null)
+        {
+            landings = rays(requests);
+            if (landings == null || landings.Length != requests.Count)
+                throw new InvalidOperationException(
+                    $"The ray source returned {landings?.Length ?? 0} landings for {requests.Count} rays.");
+        }
+        else
+        {
+            landings = new RealRayTrace.Landing[requests.Count];
+            for (int i = 0; i < requests.Count; i++)
+                landings[i] = RealRayTrace.Trace(system, indices, paraxial,
+                                                 requests[i].FieldDeg, requests[i].Py, requests[i].Pz);
+        }
+
+        double frame = ImageFrameSign(system, paraxial);
+        var rows3 = new List<double[]>(); var rhs3 = new List<double>();
+        var rows5 = new List<double[]>(); var rhs5 = new List<double>();
+        int used = 0;
+
+        for (int k = 0; k < shapes.Count; k++)
+        {
+            var sh = shapes[k];
+            var ey = new List<(double S, double V)>();
+            var ez = new List<(double S, double V)>();
+            bool ok = true;
+            for (int i = 0; i < scales.Length; i++)
+            {
+                var req = requests[k * scales.Length + i];
+                var land = landings[k * scales.Length + i];
+                if (!land.Ok) { ok = false; break; }
+                double paraxialY = paraxial.Efl * Math.Tan(req.FieldDeg * Math.PI / 180.0);
+                ey.Add((scales[i], frame * (land.Y - paraxialY)));
+                ez.Add((scales[i], frame * land.Z));
+            }
+            if (!ok) continue;
+            used++;
+
+            double[] cy = OddFitAll(ey, powers);
+            double[] cz = OddFitAll(ez, powers);
+
+            // powers[1] is s^3, powers[2] is s^5.
+            AddRows(sh, ThirdOrderNames, 3, cy[1], cz[1], rows3, rhs3);
+            AddRows(sh, FifthOrderNames, 5, cy[2], cz[2], rows5, rhs5);
+        }
+
+        if (rows3.Count < ThirdOrderNames.Length || rows5.Count < FifthOrderNames.Length) return null;
+
+        var (x3, r3) = SolveWithResidual(rows3, rhs3);
+        var (x5, r5) = SolveWithResidual(rows5, rhs5);
+
+        var terms = new BuchdahlTerms();
+        for (int j = 0; j < ThirdOrderNames.Length; j++) SetTerm(terms, ThirdOrderNames[j], x3[j]);
+        for (int j = 0; j < FifthOrderNames.Length; j++) SetTerm(terms, FifthOrderNames[j], x5[j]);
+
+        return new LowerOrders { Terms = terms, ResidualThird = r3, ResidualFifth = r5, Used = used };
+    }
+
+    /// <summary>
+    /// What each named coefficient contributes to the degree-<paramref name="degree"/>
+    /// transverse aberration at one shape, as a meridional and a sagittal row.
+    /// </summary>
+    private static void AddRows(Shape sh, string[] names, int degree, double cy, double cz,
+                                List<double[]> rows, List<double> rhs)
+    {
+        var ry = new double[names.Length];
+        var rz = new double[names.Length];
+        for (int j = 0; j < names.Length; j++)
+        {
+            var unit = new BuchdahlTerms();
+            SetTerm(unit, names[j], 1.0);
+            var hi = Prms.Transverse(unit, sh.Rho, sh.Theta, sh.H, degree);
+            var lo = Prms.Transverse(unit, sh.Rho, sh.Theta, sh.H, degree - 2);
+            ry[j] = hi.Y - lo.Y;
+            rz[j] = hi.Z - lo.Z;
+
+            // Distortion, which Prms leaves out for the reason given in ModelRow: E enters the
+            // meridional error as E h^3 and E5 as E5 h^5, with no pupil dependence.
+            if (names[j] == "E" || names[j] == "E5") ry[j] += Math.Pow(sh.H, degree);
+        }
+        if (AnyNonZero(ry)) { rows.Add(ry); rhs.Add(cy); }
+        if (AnyNonZero(rz)) { rows.Add(rz); rhs.Add(cz); }
+    }
+
+    private static (double[] X, double Residual) SolveWithResidual(List<double[]> rows, List<double> rhs)
+    {
+        double[] x = LeastSquares(rows, rhs);
+        double worst = 0.0, scale = 1e-30;
+        for (int i = 0; i < rows.Count; i++)
+        {
+            double pred = 0.0;
+            for (int k = 0; k < x.Length; k++) pred += rows[i][k] * x[k];
+            worst = Math.Max(worst, Math.Abs(pred - rhs[i]));
+            scale = Math.Max(scale, Math.Abs(rhs[i]));
+        }
+        return (x, worst / scale);
+    }
+
+    private static void SetTerm(BuchdahlTerms t, string name, double value) =>
+        typeof(BuchdahlTerms).GetField(name)!.SetValue(t, value);
 
     /// <summary>
     /// What each tau contributes to the degree-seven transverse aberration at one shape.
@@ -357,6 +555,14 @@ public static class CoefficientInversion
     /// </summary>
     private static double OddFit(List<(double S, double V)> data, int[] powers, int want)
     {
+        double[] c = OddFitAll(data, powers);
+        for (int j = 0; j < powers.Length; j++) if (powers[j] == want) return c[j];
+        return 0.0;
+    }
+
+    /// <summary>Every coefficient of the same fit, in the order of <paramref name="powers"/>.</summary>
+    private static double[] OddFitAll(List<(double S, double V)> data, int[] powers)
+    {
         int m = powers.Length;
         var rows = new List<double[]>();
         var rhs = new List<double>();
@@ -367,9 +573,7 @@ public static class CoefficientInversion
             rows.Add(r);
             rhs.Add(v);
         }
-        double[] c = LeastSquares(rows, rhs);
-        for (int j = 0; j < m; j++) if (powers[j] == want) return c[j];
-        return 0.0;
+        return LeastSquares(rows, rhs);
     }
 
     /// <summary>

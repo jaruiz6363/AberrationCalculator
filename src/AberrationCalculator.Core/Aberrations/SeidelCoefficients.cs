@@ -36,12 +36,6 @@ public sealed class SeidelResult
     public double TotalCL { get; init; }
     public double TotalCT { get; init; }
 
-    /// <summary>
-    /// Surfaces where the distortion term had to be suppressed because the marginal-ray
-    /// refraction invariant A was zero there. See the note in the calculator.
-    /// </summary>
-    public int[] DistortionSuppressedAt { get; init; } = Array.Empty<int>();
-
     // ── The aspheric share of each sum ──────────────────────────────────────────────────
     //
     // The figuring's contribution ALONE, already included in S1..S5 above and repeated here
@@ -90,7 +84,10 @@ public sealed class SeidelResult
 ///   S4 = -H^2 c d(1/n)          S5 = (Abar/A)(S3 + S4)
 ///   CL = -A y d(dn/n)           CT = -Abar y d(dn/n)
 ///
-/// where d(x) is the change in x across the surface and dn = n_short - n_long.
+/// where d(x) is the change in x across the surface and dn = n_short - n_long. Where A = 0
+/// the same S5 is taken in the form with the A divided out, which is finite there:
+///
+///   S5 = -Abar^3 y d(1/n^2) + Abar ybar c (2 Abar y - A ybar) d(1/n)
 /// </summary>
 public static class SeidelCoefficients
 {
@@ -116,7 +113,6 @@ public static class SeidelCoefficients
         var a5 = new double[count];
         var s4 = new double[count]; var s5 = new double[count];
         var cl = new double[count]; var ct = new double[count];
-        var suppressed = new System.Collections.Generic.List<int>();
 
         double H = p.LagrangeInvariant;
 
@@ -148,18 +144,30 @@ public static class SeidelCoefficients
             s3[j] = -Abar * Abar * y * dUoverN;
             s4[j] = -H * H * c * dOneOverN;
 
-            // Distortion carries a 1/A. A is zero only when the marginal ray meets the
-            // surface at normal incidence, where the surface contributes no spherical,
-            // coma or astigmatism either - but the Petzval part of S5 is genuinely
-            // singular there, so it is reported as suppressed rather than as a number.
+            // Distortion as (Abar/A)(S3 + S4) carries a 1/A, and A is zero where the marginal
+            // ray meets the surface at normal incidence - a flat face in collimated light, say.
+            // The 1/A is only apparent. With u = A/n - yc on both sides, d(u/n) =
+            // A d(1/n^2) - yc d(1/n), and with H = Abar y - A ybar, Abar^2 y^2 - H^2 =
+            // A ybar (2 Abar y - A ybar); so
+            //
+            //   S5 = -Abar^3 y d(1/n^2) + Abar ybar c (2 Abar y - A ybar) d(1/n)
+            //
+            // with the A divided out exactly. It is finite everywhere. This branch used to set
+            // S5 to zero instead, which on Ladder2_FlatPlain dropped a contribution of
+            // +1.06E-3 and turned the total's sign; real rays, and the same face bent to
+            // R = 1E10, both give the finite value.
+            //
+            // The quotient form is kept wherever it is defined, so every other design computes
+            // exactly the bits it always did.
             if (Math.Abs(A) > 1e-12)
             {
                 s5[j] = (Abar / A) * (s3[j] + s4[j]);
             }
             else
             {
-                s5[j] = 0.0;
-                if (Math.Abs(s4[j]) > 1e-15) suppressed.Add(j);
+                double dOneOverN2 = 1.0 / (nAfter * nAfter) - 1.0 / (nBefore * nBefore);
+                s5[j] = -Abar * Abar * Abar * y * dOneOverN2
+                      + Abar * ybar * c * (2.0 * Abar * y - A * ybar) * dOneOverN;
             }
 
             // Aspheric figuring adds to every term except Petzval, which depends only on
@@ -227,7 +235,6 @@ public static class SeidelCoefficients
             S1 = s1, S2 = s2, S3 = s3, S4 = s4, S5 = s5, CL = cl, CT = ct,
             TotalS1 = Sum(s1), TotalS2 = Sum(s2), TotalS3 = Sum(s3), TotalS4 = Sum(s4),
             TotalS5 = Sum(s5), TotalCL = Sum(cl), TotalCT = Sum(ct),
-            DistortionSuppressedAt = suppressed.ToArray(),
             S1Aspheric = a1, S2Aspheric = a2, S3Aspheric = a3, S5Aspheric = a5,
         };
     }

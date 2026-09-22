@@ -87,6 +87,9 @@ now asserts it.
 | figured at a FINITE conjugate against Forbes | 1E-13 at two stop positions, three object distances and an immersed object medium, after the defect recorded below was fixed |
 | the analytic derivative, every design on disk | 53 designs against a central difference of their own residuals, every build |
 | the tertiary set against a different lineage | 53 designs against Forbes to better than 1E-9, and against real rays where the conjugate allows, every build |
+| Seidel against Optiland 0.6.2 | 16 designs, every surface, all five sums, to 1E-14 once its opposite sign is turned; see [optiland.md](optiland.md) |
+| fifth order from Optiland's rays | all twelve on 45 designs at infinity, aspheric and a mirror included, to between 3E-9 and 1.3E-5 of the largest - the inversion's own floor on this program's rays |
+| the seventh order on a mirror | finite since the scheme was given signed indices; all nineteen tau against reflected real rays to 6E-6 of the largest on the parabola at ten degrees; Forbes declines a mirror |
 | the suite | over a thousand tests, and everything they read is in this repository |
 
 ## The aspheric arrangement, and how it was established

@@ -329,10 +329,6 @@ public sealed class ReportWriter
         sb.AppendLine(string.Format(Inv, "{0,-5} {1,13} {2,13} {3,13} {4,13} {5,13} {6,13} {7,13}",
             "TOTAL", Sci(s.TotalS1), Sci(s.TotalS2), Sci(s.TotalS3), Sci(s.TotalS4),
             Sci(s.TotalS5), Sci(s.TotalCL), Sci(s.TotalCT)));
-        if (s.DistortionSuppressedAt.Length > 0)
-            sb.AppendLine("  note: distortion suppressed at surface(s) "
-                + string.Join(", ", s.DistortionSuppressedAt)
-                + " - the marginal ray meets them at normal incidence.");
         sb.AppendLine();
         FieldSurfaceSection(sb, s, p);
     }
@@ -989,7 +985,8 @@ public sealed class ReportWriter
         if (forbes == null)
         {
             route = "This design is FIGURED, so tau20 would ordinarily be the Forbes series trace's -\n"
-                  + "but the trace does not close on it, and the scheme's own value is used instead.\n"
+                  + "but the trace does not close on it, or declines it (it does not trace a mirror),\n"
+                  + "and the scheme's own value is used instead.\n"
                   + "That value is the aspheric arrangement of M Sec. 85, which agrees with Forbes to\n"
                   + "2E-10 or better wherever the two can both be formed; here there is nothing to\n"
                   + "compare it against, which is the whole of what this note is saying.";

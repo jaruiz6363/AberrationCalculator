@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AberrationCalculator.Core.S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AberrationCalculator.Core.Series.Ad", "src\AberrationCalculator.Core.Series.Ad\AberrationCalculator.Core.Series.Ad.csproj", "{4AA8DBAC-2DF0-47BB-8790-04BC46C23988}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AberrationCalculator.Optiland", "src\AberrationCalculator.Optiland\AberrationCalculator.Optiland.csproj", "{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -175,6 +177,18 @@ Global
 		{4AA8DBAC-2DF0-47BB-8790-04BC46C23988}.Release|x64.Build.0 = Release|Any CPU
 		{4AA8DBAC-2DF0-47BB-8790-04BC46C23988}.Release|x86.ActiveCfg = Release|Any CPU
 		{4AA8DBAC-2DF0-47BB-8790-04BC46C23988}.Release|x86.Build.0 = Release|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Debug|x64.Build.0 = Debug|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Debug|x86.Build.0 = Debug|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Release|x64.ActiveCfg = Release|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Release|x64.Build.0 = Release|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Release|x86.ActiveCfg = Release|Any CPU
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -192,5 +206,6 @@ Global
 		{343076A4-DAE0-48B4-915D-B30FF52A5D3A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{55A932BF-9FDB-4EED-85EE-2194B99FE46C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{4AA8DBAC-2DF0-47BB-8790-04BC46C23988} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{19BDE6F3-ABF8-4DE3-80B6-D938C9772D5B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

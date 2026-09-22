@@ -405,6 +405,21 @@ public static class RealRayTrace
         Scalar len = SMath.Sqrt(nx * nx + ny * ny + nz * nz);
         nx /= len; ny /= len; nz /= len;
 
+        // A mirror reflects: d' = d - 2 (d.n) n. The indices either side of it are the same
+        // medium, and Snell's law between equal indices would carry the ray straight through -
+        // which it did, until this branch, landing every ray on the parabola at the height it
+        // was launched with. The reflected ray travels towards -z; everything downstream (the
+        // intersection, the transfer by the file's negative thickness, the image plane) is
+        // written along the ray and needs nothing more.
+        if (s.IsMirror)
+        {
+            Scalar dn = dx * nx + dy * ny + dz * nz;
+            dx -= 2.0 * dn * nx;
+            dy -= 2.0 * dn * ny;
+            dz -= 2.0 * dn * nz;
+            return true;
+        }
+
         Scalar mu = nBefore / nAfter;
         Scalar cosI = -(dx * nx + dy * ny + dz * nz);
         // Normal must oppose the ray, or the geometry below picks the wrong root.

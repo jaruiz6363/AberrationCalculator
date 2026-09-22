@@ -49,6 +49,10 @@ public static class ForbesCoefficients
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
 
+        // Declined, not attempted: the series trace does not handle a reflection yet (see
+        // ForbesTrace). Every caller already reads null as "this route has nothing to say".
+        foreach (var s in system.Surfaces) if (s.IsMirror) return null;
+
         var trace = Trace(system, indices, paraxial, degree, aberrating, flatten);
 
         // How the field is measured depends on the conjugate. For an object at infinity it is
@@ -229,8 +233,17 @@ public static class ForbesCoefficients
         }
         figures.Add(new[] { lastVertex + paraxial.ParaxialFocusDistance });
 
+        // Signed, as the paraxial trace signs them: negated after an odd number of mirrors.
+        // ForbesTrace refuses a reflection - it recognises one by the index changing sign - and
+        // handed the plain indices it never saw one: the parabola went through as a refraction
+        // into the same index, the ray did not bend, and every tau came back as zero.
         var regions = new List<double>();
-        for (int i = 0; i <= last; i++) regions.Add(i < indices.Length ? indices[i] : 1.0);
+        double sign = 1.0;
+        for (int i = 0; i <= last; i++)
+        {
+            if (system.Surfaces[i].IsMirror) sign = -sign;
+            regions.Add(sign * Math.Abs(i < indices.Length ? indices[i] : 1.0));
+        }
 
         return ForbesTrace.Run(figures, regions, degree, aberrating);
     }

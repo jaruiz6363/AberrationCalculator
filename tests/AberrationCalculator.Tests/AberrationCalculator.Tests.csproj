@@ -25,6 +25,7 @@
          report builders it calls. -->
     <ProjectReference Include="..\..\src\AberrationCalculator.Cli\AberrationCalculator.Cli.csproj" />
     <ProjectReference Include="..\..\src\AberrationCalculator.Optimize\AberrationCalculator.Optimize.csproj" />
+    <ProjectReference Include="..\..\src\AberrationCalculator.Optiland\AberrationCalculator.Optiland.csproj" />
   </ItemGroup>
 
   <ItemGroup>

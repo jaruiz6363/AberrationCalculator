@@ -282,6 +282,36 @@ public static partial class TertiaryCoefficients
         return found;
     }
 
+    /// <summary>
+    /// The indices with a reflection carried in their sign, as <see cref="RayTrace.ParaxialTrace"/>
+    /// carries it: negated after an odd number of mirrors.
+    ///
+    /// <para>The scheme's recurrences take a mirror as a refraction into index -n, and nothing
+    /// else tells them a surface reflects. Handed the plain indices, a mirror is a curved surface
+    /// with no index step - no power at all, while the paraxial data it is scaled by says f = 100
+    /// on the parabola - and tau2..tau20 came out NaN there. The fifth-order code never had the
+    /// problem because it reads the signed indices from the paraxial trace.</para>
+    ///
+    /// <para>The same array comes back untouched when nothing reflects, so a refracting design
+    /// computes exactly what it always did. Signing is idempotent, which matters because some of
+    /// what is downstream re-traces from the indices it is given.</para>
+    /// </summary>
+    private static Scalar[] SignedIndices(Models.OpticalSystem system, Scalar[] indices)
+    {
+        bool anyMirror = false;
+        foreach (var s in system.Surfaces) if (s.IsMirror) { anyMirror = true; break; }
+        if (!anyMirror) return indices;
+
+        var signed = new Scalar[indices.Length];
+        Scalar sign = 1.0;
+        for (int i = 0; i < indices.Length; i++)
+        {
+            if (i < system.Surfaces.Count && system.Surfaces[i].IsMirror) sign = -sign;
+            signed[i] = sign * SMath.Abs(indices[i]);
+        }
+        return signed;
+    }
+
     public static void Attach(Models.OpticalSystem system, Scalar[] indices,
                               RayTrace.ParaxialResult paraxial, BuchdahlResult coefficients,
                               Scalar maxField)
@@ -294,6 +324,8 @@ public static partial class TertiaryCoefficients
         int stop = system.StopSurfaceIndex;
         if (stop < 0 || stop >= system.Surfaces.Count) return;
         if (SMath.Abs(coefficients.FNumber) < 1e-12) return;
+
+        indices = SignedIndices(system, indices);
 
         var scheme = BuchdahlScheme.Compute(system.Surfaces, indices, paraxial.Efl,
                                             system.Surfaces[stop].SemiDiameter,
@@ -341,8 +373,14 @@ public static partial class TertiaryCoefficients
         // v'_pk becomes one, g becomes one, and the object height over the object distance
         // becomes the tangent of the field angle.
         Scalar g = 1.0 - stopParameter * iota;
+        // |N'|, not the signed index. After an odd number of mirrors the signed image index is
+        // negative, and dividing by it turns the sign of every tau - which is exactly the trap
+        // BuchdahlCoefficients documents, and avoids, for the F/number the third and fifth orders
+        // are scaled by. Taking it signed here put the seventh order in the opposite frame from
+        // the orders below it on a mirror, and Prms multiplies them together. One whenever there
+        // is no mirror, so nothing else moves.
         Scalar lengthFactor = paraxial.Efl
-                            / (paraxial.N[system.LastOpticalSurface()] * scheme.PRayFinalAngle);
+                            / (SMath.Abs(paraxial.N[system.LastOpticalSurface()]) * scheme.PRayFinalAngle);
         Scalar u = -(0.5 * paraxial.Epd / paraxial.Efl) / g;
 
         // The field variable multiplies the q ray, and that ray is started in REDUCED
