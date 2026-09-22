@@ -146,8 +146,10 @@ approximated by the nearest thing it does understand.
 surface-type check passes it, being a Standard surface, and `GetIndex` reports the magnitude
 of the index, so nothing downstream learned that it reflects: the series trace took it as a
 refraction into the same medium and returned near-zero coefficients. `LensBridge` now refuses a
-`MIRROR` by name, and the shared trace declines one as well. (Not yet compiled at the time of
-writing - this solution builds only where `FixBinaries` has found OpticStudio.)
+`MIRROR` by name, and the shared trace declines one as well. Built and run on 22 September
+2026: on `F10_spherical_mirror.zmx` it stops with "Surface 2 is a mirror" and the reason; on
+`F3_conic_a4_a6_a8.zmx` it runs as before, all twenty tau equal to the C# program's to every
+printed digit.
 
 **A tilt or decentre on a Standard surface is NOT refused - it is not read.** Only a
 coordinate-break SURFACE is turned away. The Tilt/Decenter properties of an ordinary surface
