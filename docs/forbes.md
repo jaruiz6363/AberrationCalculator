@@ -81,9 +81,17 @@ where `S, T, V, W` are series in `p, k, u`. Then
 Transfer is (3.2)–(3.3), and is solved *recursively by order*: coefficients of degree `m+1` follow
 from those of degree `m` or less, because the argument of `f_{i+1}` is built from the series
 already known. Refraction is Snell in the form (3.4), with the surface normal from
-`df/dy = 2 y (df/dp)`, and the reflecting case handled by letting `n` change sign. Forbes also
-gives closed forms for the spherical case, (3.9)–(3.14), which are worth having as an independent
-check on the general path.
+`df/dy = 2 y (df/dp)`. Forbes also gives closed forms for the spherical case, (3.9)–(3.14), which
+are worth having as an independent check on the general path.
+
+**Mirrors are NOT supported, in this trace or in `FORBES.ZPL`.** Forbes carries a reflection by
+letting `n` change sign, but the root of (3.4) that picks the reflected cosine then has to be
+chosen explicitly, and that is not written. Both implementations DECLINE a reflecting system:
+`ForbesCoefficients.Invert` returns null and the macro stops with a message. Until September 2026
+neither did - the trace was handed unsigned indices, its own guard against a sign change never
+fired, and a mirror was traced as a refraction into the same medium, returning zeros without
+complaint (see verification.md, *Mirrors*). On a mirror the seventh order is therefore checked
+against real rays instead, which do reflect; Buchdahl's scheme is the only series route there.
 
 ## Staging, and how each stage is checked
 
@@ -126,6 +134,10 @@ own fault" cannot be put to it.
 Forbes is the second opinion, and that is a permanent job rather than a probationary one. It
 adjudicated the aspheric arrangement once; it stands ready to adjudicate the next change to it,
 and `ForbesCoefficientsTests` puts the question on every build.
+
+**Except on a mirror**, which this route declines (see *The trace* above). There the seventh
+order has no second series opinion at all - only real rays, which reflect and which it has been
+checked against on a parabola and a spherical mirror.
 
 **At the seventh order.** The division of labour above is a seventh-order one throughout, and it
 is stated that way because one order up it reverses: there is no Buchdahl route to be second to,

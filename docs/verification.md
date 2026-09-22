@@ -1024,6 +1024,11 @@ is ignored outright, worth 47 um on an object of R = 25. Both sizes are measured
 `CurvedObjectAndImageSurfaceTests`. The end MEDIA, by contrast, are carried correctly, and that
 is now tested at n = 1.01 and n = 1.30. See *The two ends of the system* above.
 
+**Forbes' series trace on a mirror: not supported.** It declines a reflecting system, here and in
+`FORBES.ZPL`, so on a mirror the seventh order has one series route, Buchdahl's, checked against
+real rays alone - on one reflection, the parabola and a spherical mirror. Two reflections are in
+no fixture. See *Mirrors* above.
+
 **How far the seventh order reaches.** It is a property of the lens and not a number. Of five
 designs measured, one is described by third order alone, two need the full seventh to reach a
 per cent, one is not well described at seventh, and one is not described at all. See
