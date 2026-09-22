@@ -101,6 +101,12 @@ public static class WaveFront
         int last = system.LastOpticalSurface();
         if (stop < 0 || stop >= system.Surfaces.Count || last < 1) return null;
 
+        // Signed after each reflection, as TertiaryCoefficients.Attach signs them. Handed the
+        // plain indices the scheme saw a mirror as a curved surface with no index step, and
+        // every coefficient of a reflecting system came back exactly zero - silently, on the
+        // telescope and the parabola alike. The same array comes back when nothing reflects.
+        indices = TertiaryCoefficients.SignedIndices(system, indices);
+
         Scalar t0 = system.Surfaces[0].Thickness;
         Scalar iota = Scalar.IsInfinity(t0) ? 0.0 : -paraxial.Efl / t0;
 

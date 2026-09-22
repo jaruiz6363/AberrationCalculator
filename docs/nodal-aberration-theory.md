@@ -306,6 +306,16 @@ published number, an internal identity, or two independent routes made to agree.
   Eqs. (C19-24) — nothing else does.
 - Fifth-order distortion's closed form against the defining sum, surface by surface, to 1e-11.
 
+**On mirrors**
+
+- Thompson's two-mirror telescope, in the published-numbers list above, is the only reflecting
+  design NAT is held to, and until September 2026 only its paraxial sigma was - by magnitude.
+  Two paths had never met a mirror and both were wrong there: the wave front coefficients came
+  out exactly zero (unsigned indices), and real-ray sigma lost the secondary (an intersection that
+  gave up after a long gap). Both are fixed. The wave front now closes against the Seidel sums on
+  the telescope to 4E-12, and real-ray sigma agrees with the paraxial one on both mirrors to 2E-5,
+  signs included. See verification.md, *Nodal aberration theory on mirrors*.
+
 **Physical invariants**
 
 - A **uniformly displaced** system is the same system about a shifted axis, so every node moves

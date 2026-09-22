@@ -354,7 +354,19 @@ public static class RealRayTrace
             // its first pass, and a plano surface whose curvature is being optimised would report
             // that bending it does not move the ray at all.
             bool converged = SMath.Abs(f) < 1e-13;
+            Scalar before = t;
             t -= f / d;
+
+            // Or it has STALLED: the correction no longer moves t at all, so no further
+            // iteration can change anything. The residual test above is absolute, and after a
+            // long gap the roundoff in z + t dz alone is larger than it - Thompson's telescope
+            // reaches its secondary 7490 mm after the primary, where the residual settles at
+            // 4E-13 and never goes under 1E-13, and every off-axis ray used to be reported as a
+            // miss after sixty-four iterations. A stalled ray is one the old test failed
+            // forever, so this changes no ray that ever converged, to the bit. The guard on f
+            // keeps it from accepting a stall far from the surface.
+            if (!converged && t == before && SMath.Abs(f) < 1e-9 * (1.0 + SMath.Abs(t)))
+                converged = true;
 
             if (converged)
             {

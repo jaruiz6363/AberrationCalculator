@@ -296,7 +296,7 @@ public static partial class TertiaryCoefficients
     /// computes exactly what it always did. Signing is idempotent, which matters because some of
     /// what is downstream re-traces from the indices it is given.</para>
     /// </summary>
-    private static Scalar[] SignedIndices(Models.OpticalSystem system, Scalar[] indices)
+    internal static Scalar[] SignedIndices(Models.OpticalSystem system, Scalar[] indices)
     {
         bool anyMirror = false;
         foreach (var s in system.Surfaces) if (s.IsMirror) { anyMirror = true; break; }

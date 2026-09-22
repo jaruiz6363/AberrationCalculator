@@ -347,4 +347,125 @@ public class ThompsonTelescopeTests
         Assert.True(after.ComaNode.Magnitude > 1e-9, "a coma overlay must move the comatic node");
     }
 
+    // ── The reflecting path, checked on the design that folds twice ─────────────────────
+
+    /// <summary>
+    /// Real rays reach the image through both mirrors, off axis as well as on it.
+    ///
+    /// <para>Until September 2026 every off-axis ray was lost at the secondary. Not for want of
+    /// reflection: the intersection's Newton iteration stopped on an ABSOLUTE residual of 1E-13,
+    /// and after the 7490 mm gap the roundoff in z + t dz alone is larger than that, so it
+    /// stalled at 4E-13 and reported a miss. The axial ray escaped only because it meets every
+    /// vertex exactly. No other design here has a gap long enough to show it.</para>
+    /// </summary>
+    [Fact]
+    public void RealRaysReachTheImageThroughBothMirrors()
+    {
+        var (sys, n, p) = Build(false);
+        double paraxial = p.Efl * Math.Tan(0.333 * Deg);
+        foreach (double field in new[] { 0.0, 0.2, 0.333 })
+            foreach (double py in new[] { -1.0, 0.0, 0.5, 1.0 })
+            {
+                var land = RealRayTrace.Trace(sys, n, p, field, py, 0.0);
+                Assert.True(land.Ok, $"field {field}, pupil {py}: the ray did not reach the image");
+            }
+
+        // The chief ray at full field lands on the paraxial image height, to within the
+        // design's distortion - five parts in a hundred thousand.
+        var chief = RealRayTrace.Trace(sys, n, p, 0.333, 0.0, 0.0);
+        Assert.True(Math.Abs(chief.Y - paraxial) < 1e-4 * paraxial, $"{chief.Y} against {paraxial}");
+    }
+
+    /// <summary>
+    /// Sigma measured from real rays agrees with the paraxial sigma - SIGNS INCLUDED, which
+    /// <see cref="TheSigmaVectorsReproduceTable5"/> cannot check, since it compares magnitudes.
+    ///
+    /// <para>The secondary used to come back as (0, 0): its real rays never arrived (see
+    /// above), and a surface with no measured incidence is left at zero. The primary, which the
+    /// rays reach before any long gap, was always right. Both now agree to 2E-5.</para>
+    /// </summary>
+    [Fact]
+    public void RealRaySigmaAgreesWithTheParaxialSigmaOnBothMirrors()
+    {
+        var (sys, n, p) = Build(true);
+        var paraxial = SigmaVector.Compute(sys, n, p);
+        var real = RealSigma.Measure(sys, n, p);
+        Assert.True(real.Aimed);
+
+        for (int j = 1; j <= 2; j++)
+        {
+            var a = paraxial.Sigma[j];
+            var b = real.Sigma[j];
+            Assert.True(b.Magnitude > 0.5 * a.Magnitude, $"surface {j}: the real-ray sigma is missing");
+            Assert.True(Math.Abs(a.X - b.X) < 2e-5 * a.Magnitude && Math.Abs(a.Y - b.Y) < 2e-5 * a.Magnitude,
+                $"surface {j}: paraxial ({a.X:F7}, {a.Y:F7}), real rays ({b.X:F7}, {b.Y:F7})");
+        }
+    }
+
+    /// <summary>
+    /// The wavefront coefficients NAT reports agree with the Seidel sums on a reflecting system.
+    ///
+    /// <para><see cref="WaveFront.FromSystem"/> handed Buchdahl's scheme the plain indices, so a
+    /// mirror was a curved surface with no index step and every coefficient of the telescope -
+    /// and of the parabola - came back EXACTLY ZERO, which the report then printed. The same
+    /// defect as the seventh order had, in a second place. With signed indices the relation
+    /// W = S A^l F^k closes as it does on the refracting fixtures: fitted on W040 and W131,
+    /// W222 and W311 are free checks, and they agree to 1E-10.</para>
+    /// </summary>
+    [Fact]
+    public void TheWavefrontCoefficientsAgreeWithTheSeidelSumsThroughBothMirrors()
+    {
+        var (sys, n, p) = Build(false);
+        var s = SeidelCoefficients.Compute(sys, n, n, n, p);
+        var wf = WaveFront.FromSystem(sys, n, p);
+        Assert.NotNull(wf);
+        Assert.True(Math.Abs(wf!.System.W040) > 0.0, "the wavefront coefficients are all zero");
+
+        var bridge = NormalisationBridge.Fit(
+            new double[] { s.TotalS1 / 8, s.TotalS2 / 2, s.TotalS3 / 2, s.TotalS5 / 2 },
+            new double[] { wf.System.W040, wf.System.W131, wf.System.W222, wf.System.W311 });
+        Assert.True(bridge.IsUsable);
+        Assert.True(bridge.Residual < 1e-10, $"the free checks disagree by {bridge.Residual}");
+    }
+
+    /// <summary>
+    /// TWO reflections restore the frame, measured rather than reasoned: the only design here
+    /// that folds twice, inverted from its own real rays and held against Buchdahl on all three
+    /// orders.
+    ///
+    /// <para>After one mirror the rays are in the opposite frame from Buchdahl's coefficients
+    /// and the inversion turns them (<c>ParabolicMirrorTests</c>); after two the image-space
+    /// index is positive again, nothing is turned, and the rays agree unturned. Taken at four
+    /// degrees rather than Thompson's third of a degree, because the seventh order's field
+    /// terms must stand above the fit's floor: the worst tau is 6E-2 of the largest at a third
+    /// of a degree, 3.6E-3 at one, 1.5E-4 at two and 1.7E-5 at four - converging, which is
+    /// what a floor does and a disagreement does not.</para>
+    /// </summary>
+    [Fact]
+    public void TwoReflectionsRestoreTheFrameInEveryOrder()
+    {
+        const double field = 4.0;
+        var sys = Telescope(false);
+        sys.Fields.Clear();
+        sys.Fields.Add(new Field { Y = field, Weight = 1 });
+        var n = IndexResolver.Build(sys, CatalogLocator.LoadBundled(), 0.55, new List<string>());
+        var p = ParaxialTrace.Trace(sys, n, field);
+        Assert.True(p.N[sys.LastOpticalSurface()] > 0, "two reflections leave a positive image index");
+
+        var b = BuchdahlCoefficients.Compute(sys, p);
+        TertiaryCoefficients.Attach(sys, n, p, b, field);
+        var lower = CoefficientInversion.InvertThirdAndFifth(sys, n, p, field)!;
+        var seventh = CoefficientInversion.Invert(sys, n, p, field)!;
+
+        var (w3, n3) = LowerOrderInversionTests.Worst(CoefficientInversion.ThirdOrderNames, b.Totals, lower.Terms);
+        var (w5, n5) = LowerOrderInversionTests.Worst(CoefficientInversion.FifthOrderNames, b.Totals, lower.Terms);
+        Assert.True(w3 < 1e-9, $"third order off by {w3:E2} at {n3}");
+        Assert.True(w5 < 1e-6, $"fifth order off by {w5:E2} at {n5}");
+
+        double largest = 0.0;
+        for (int k = 2; k <= 20; k++) largest = Math.Max(largest, Math.Abs(b.Totals["Tau" + k]));
+        for (int k = 2; k <= 20; k++)
+            Assert.True(Math.Abs(b.Totals["Tau" + k] - seventh.Tau[k]) < 1e-4 * largest,
+                $"tau{k}: Buchdahl {b.Totals["Tau" + k]:E6}, rays {seventh.Tau[k]:E6}");
+    }
 }

@@ -482,9 +482,11 @@ Working, and validated in [docs/verification.md](docs/verification.md):
   own published tables rather than against another program ([docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md))
 - **mirrors**, since 22 September 2026: the real ray trace reflects, the seventh order is
   finite and in the same frame as the third and fifth, and Forbes' series trace declines a
-  mirror rather than trace it as a refraction - four defects on the reflecting path, found by
-  the Optiland cross-check, settled against the parabola's exact answer and fixed, the macros
-  included ([docs/verification.md](docs/verification.md), *Mirrors*)
+  mirror rather than trace it as a refraction, and NAT's wave front and real-ray sigma are right
+  on a mirror - the defects on the reflecting path, found by the Optiland cross-check and by
+  asking NAT directly, settled against the parabola's exact answer and Thompson's telescope, and
+  fixed, the macros included; one reflection and two are measured
+  ([docs/verification.md](docs/verification.md), *Mirrors*)
 
 There is no GUI. The tool writes plain text and TSV files that you can read, diff and
 feed to something else.

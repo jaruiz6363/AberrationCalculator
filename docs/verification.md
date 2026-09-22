@@ -948,10 +948,11 @@ design's. The form above is now used where `A = 0`, the quotient everywhere else
 design moves a bit, and `DistortionSuppressedAt` is gone. It agrees with the quotient on the 147
 fixture surfaces where both are defined.
 
-## Mirrors: four defects, all on the reflecting path, all fixed
+## Mirrors: the defects on the reflecting path, all fixed
 
 **Everything in this program that handles a reflection was checked for the first time on
-22 September 2026, and four defects were found.** A reflection is carried as a refraction into
+22 September 2026, and five defects were found on the reflecting path - four below, the fifth in
+NAT (see *Nodal aberration theory on mirrors* further down).** A reflection is carried as a refraction into
 `-n`: the paraxial trace and the fifth-order code always did that, and nothing else did. Every
 one of the four is a place that was handed the plain indices, or divided by the signed one.
 
@@ -996,11 +997,44 @@ program on all thirty-seven to every printed digit, `RAYINV` agrees in sign on e
 and to its fit's floor, and `FORBES` declines. The runs are tabulated in
 [optiland.md](optiland.md).
 
+### Nodal aberration theory on mirrors
+
+NAT's third order was always tested on a mirror system, and against published numbers:
+Thompson's two-mirror telescope reproduces his Tables 3 and 5. But that test compares the
+magnitudes of sigma, and two other NAT paths had never been run on a mirror at all. Asked
+directly, both were wrong:
+
+| defect | what it did on a mirror |
+|---|---|
+| `WaveFront.FromSystem` - the wavefront coefficients the report's NAT sections print - was handed unsigned indices | every coefficient of the telescope, and of the parabola, came out EXACTLY ZERO, and was printed |
+| `RealRayTrace`'s intersection stopped on an ABSOLUTE residual of 1E-13 | after the telescope's 7490 mm gap the roundoff in z + t dz alone exceeds that, so every off-axis ray was reported lost at the secondary, and `RealSigma` gave the secondary sigma = (0, 0) |
+
+The second is not a reflection defect: it is a long gap, and the telescope is the only design
+with one. Neither was visible from the axis, which is the only ray that reaches every vertex
+exactly. Now `WaveFront` signs its indices as `Attach` does, and closes against the Seidel sums on
+the telescope to 4E-12 as it does on refracting lenses; and the intersection also stops when the
+Newton correction no longer moves t - a ray that stalls stalls forever, so no ray that ever
+converged moves a bit, and the whole suite holds bit for bit. Real-ray sigma now agrees with the
+paraxial sigma on both mirrors to 2E-5, SIGNS INCLUDED, which the Table 5 test could not check
+(`ThompsonTelescopeTests`).
+
+### Two reflections, measured
+
+The same telescope settles the question left open above. After two reflections the image-space
+index is positive again, so the rays are not turned - and inverted unturned they agree with
+Buchdahl on every order: third to 7.5E-12, fifth to 8E-9, seventh to 1.7E-5 of the largest tau
+at four degrees (`TwoReflectionsRestoreTheFrameInEveryOrder`). At Thompson's third of a degree
+the seventh order's field terms sit at the fit's floor; the gap falls from 6E-2 there to 1.7E-5
+at four degrees, which is a floor being outgrown.
+
 ### What is still open
 
-A reflection is established on ONE mirror. No fixture folds twice, so the rule that two
-reflections restore the frame is reasoned rather than measured. And the series trace, here and
-in `FORBES.ZPL`, still declines a mirror rather than trace one.
+The MACROS are established on one reflection only. They sign their indices through OpticStudio's
+`ISMS`, and whether that flags the mirror surface or every space after an odd number of
+reflections has not been determined: on a single mirror the two readings agree, which is why
+both mirror fixtures passed either way. The telescope, run through `BUCH7`, `BUCH7_ASPH` and
+`RAYINV`, would settle it. And the series trace, here and in `FORBES.ZPL`, still declines a mirror
+rather than trace one.
 
 ## What is not established
 
@@ -1026,8 +1060,8 @@ is now tested at n = 1.01 and n = 1.30. See *The two ends of the system* above.
 
 **Forbes' series trace on a mirror: not supported.** It declines a reflecting system, here and in
 `FORBES.ZPL`, so on a mirror the seventh order has one series route, Buchdahl's, checked against
-real rays alone - on one reflection, the parabola and a spherical mirror. Two reflections are in
-no fixture. See *Mirrors* above.
+real rays alone - on one reflection, the parabola and a spherical mirror, and on two, Thompson's
+telescope. See *Mirrors* above.
 
 **How far the seventh order reaches.** It is a property of the lens and not a number. Of five
 designs measured, one is described by third order alone, two need the full seventh to reach a
