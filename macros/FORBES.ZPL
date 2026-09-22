@@ -623,6 +623,23 @@ FOR gi = 1, nsm, 1
    NEXT
 NEXT
 
+! No mirrors. The refraction below takes INDX on each side of a surface, and INDX does
+! not carry a reflection's sign, so a mirror would be traced as a refraction into the
+! same medium: the ray would not bend and every coefficient would come out near zero,
+! with nothing to say so. Forbes carries a reflection by letting the index change sign,
+! but the root that picks the reflected cosine has to be chosen explicitly, and it is
+! not written here - the C# series trace declines a mirror for the same reason.
+mirr = 0
+FOR gi = 1, nsm, 1
+   IF (ISMS(gi)) THEN mirr = 1
+NEXT
+IF (mirr == 1)
+   PRINT "This system reflects. FORBES does not trace a mirror: it would treat it as a"
+   PRINT "refraction into the same medium and return near-zero coefficients without"
+   PRINT "complaint, so it declines instead. BUCH7_ASPH and RAYINV handle mirrors."
+   GOTO 900
+ENDIF
+
 IF (badtyp == 1)
    PRINT " "
    PRINT "FORBES carries STANDARD and EVENASPH surfaces. On any other type the"

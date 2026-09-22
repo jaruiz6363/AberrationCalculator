@@ -197,8 +197,13 @@ ENDIF
 ! applied to the totals, so the per-surface columns times this number sum to the
 ! totals row printed under them.
 pupf = VEC2(501 + nsm)
-nlast = INDX(nsm)
-IF (ISMS(nsm)) THEN nlast = -nlast
+! The image-space index's MAGNITUDE, here and in the seventh order's conversion below.
+! After an odd number of mirrors the signed index is negative, and dividing by it would
+! negate every total this macro prints - self-consistently, but in the opposite frame
+! from FIFTHORD, BUCH7_ASPH and the C# program, which all take the magnitude. Measured on
+! the parabola in C#: with the magnitude, the third, fifth and seventh orders all agree
+! with reflected real rays in one frame. (September 2026; this used the signed index.)
+nlast = ABSO(INDX(nsm))
 fnum = -0.5 / nlast / pupf
 
 ! M (13.4)'s iota: 1/l_01 in focal lengths, and the ONLY quantity in the scheme that

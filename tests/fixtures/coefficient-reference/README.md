@@ -18,6 +18,7 @@ nothing to check.
 | F5_doublet_rear_asphere | figuring behind a powered surface |
 | F6_triplet_two_aspheres | two figured surfaces, so one induces on the other |
 | F7_conic_as_polynomial | the same surface written the other way round |
+| F10_spherical_mirror | F4 as a SPHERE, at 5 degrees, behind a dummy plane - BUCH7 wants two surfaces and declines figuring, so this is the mirror it can run |
 
 **F9_r2_as_shifted_sphere is F8 written the other way, and exists to be compared with it.** The
 same physical surface: an r-squared coefficient is a curvature, so `cb = 0.02` with `A2 = 1E-04`

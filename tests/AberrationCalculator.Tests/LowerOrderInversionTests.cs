@@ -173,7 +173,11 @@ public class LowerOrderInversionTests
             if (l.Field == 0.0) continue;
             var p = l.Paraxial;
             var seidel = SeidelCoefficients.Compute(l.System, l.Indices, l.Indices, l.Indices, p);
-            double largest = Math.Max(1e-30, seidel.S5.Max(Math.Abs));
+            // Scaled by the largest contribution of ANY of the five sums: where distortion is
+            // itself zero - a mirror with the stop on it - its own largest is roundoff.
+            double largest = 1e-30;
+            foreach (var column in new[] { seidel.S1, seidel.S2, seidel.S3, seidel.S4, seidel.S5 })
+                largest = Math.Max(largest, column.Max(Math.Abs));
             for (int j = 1; j <= l.System.LastOpticalSurface(); j++)
             {
                 double n = p.N[j - 1], n1 = p.N[j];

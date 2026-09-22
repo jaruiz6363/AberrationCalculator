@@ -295,11 +295,16 @@ pupf = VEC2(501 + nsm)
 nlast = ABSO(INDX(nsm))
 fnum = -0.5 / nlast / pupf
 
-! The SIGNED image-space index, which is a different quantity and is wanted by the
-! seventh order's conversion factor 1/(N'_k v'_pk). Only the F/number takes the raw
-! one; M (31.11) takes the index as the scheme sees it, mirror sign and all.
-nlsig = INDX(nsm)
-IF (ISMS(nsm)) THEN nlsig = -nlsig
+! The seventh order's conversion factor 1/(N'_k v'_pk) takes the MAGNITUDE too. This
+! used to take the signed index, "as the scheme sees it, mirror sign and all" - and on a
+! system with an odd number of mirrors that put the seventh order in the opposite frame
+! from the third and fifth printed beside it, which the F/number above scales by the
+! magnitude. Measured on the parabola in the C# program (September 2026), which had the
+! same split: with the signed index every tau came out as minus what reflected real rays
+! give, while the third and fifth agreed with them; with the magnitude all three orders
+! agree in one frame. ROBB-style spot sums multiply the orders together, so the frame has
+! to be one frame.
+nlsig = nlast
 
 objd = THIC(0)
 finite = 0
@@ -1769,9 +1774,21 @@ PRINT "   tau1 ", tau1s
 PRINT "On a lens of spheres the two agree exactly; on a figured lens they agree to"
 PRINT "the accuracy of the arrangement, and a large disagreement is a warning."
 PRINT " "
-PRINT "FORBES.ZPL in this same folder reaches all twenty by order doubling and shares"
-PRINT "no arithmetic with the scheme above. Run it on this file and the two must"
-PRINT "agree - that is the check this macro exists to pass."
+! FORBES declines a mirror, so on a reflecting system the check to point at is RAYINV.
+anymir = 0
+FOR i = 1, nsm, 1
+   IF (ISMS(i)) THEN anymir = 1
+NEXT
+IF (anymir == 1)
+   PRINT "This system reflects, and FORBES.ZPL declines a mirror. RAYINV.ZPL recovers"
+   PRINT "the coefficients from OpticStudio's own real rays instead, sharing nothing with"
+   PRINT "the scheme above; run it on this file and the two must agree to the resolution"
+   PRINT "of its fit."
+ELSE
+   PRINT "FORBES.ZPL in this same folder reaches all twenty by order doubling and shares"
+   PRINT "no arithmetic with the scheme above. Run it on this file and the two must"
+   PRINT "agree - that is the check this macro exists to pass."
+ENDIF
 
 ! ---------------------------------------------------------------------------------
 ! srf = 1. The twenty tau surface by surface.

@@ -197,7 +197,17 @@ which carries conics and even aspheres and agrees with `FORBES.ZPL` on all twent
 seventh-order coefficients. This macro is left as the spherical routine, the one checked
 against Buchdahl's own printed numbers.
 
-Object at infinity, rotationally symmetric, sequential, no mirrors.
+Object at infinity, rotationally symmetric, sequential.
+
+**Mirrors are carried, after one change in September 2026, run in OpticStudio.** The surface loops always signed the indices through `ISMS`, so the scheme
+sees a reflection as a refraction into -n. But the F/number and the seventh order's
+conversion 1/(N'v'_pk) both took the SIGNED image-space index, so after an odd number of
+mirrors every total came out negated - consistently, but in the opposite frame from
+FIFTHORD, `BUCH7_ASPH` and the C# program. Both now take its magnitude. The fixture for it
+is `F10_spherical_mirror.zmx` (the parabola is declined here, being figured, and so would a
+lone mirror be: this macro wants two surfaces, so F10 carries a dummy plane). Run on it, it
+reproduces the C# program on all thirty-seven coefficients to every printed digit, F/number
+-2.5, and the dummy contributes exactly zero.
 
 ### An immersed object space, and the reduction it needs
 
@@ -571,6 +581,17 @@ accumulated ahead of it and every induced term is identically zero, so a fault c
 hide in the induced part.
 
 It is slow: four passes of the scheme, and a polynomial algebra under them.
+
+**Mirrors, changed in September 2026 and run in OpticStudio.** The F/number took the
+magnitude of the image-space index, as FIFTHORD does, but the seventh order's conversion
+1/(N'v'_pk) took it signed - so after an odd number of mirrors tau2..tau20 came out in the
+opposite frame from the third and fifth printed beside them. The C# program had the same
+split, and on the parabola every tau was then minus what reflected real rays give while the
+third and fifth agreed with them. Both now take the magnitude. The fixtures are
+`F4_parabolic_mirror.zmx` and `F10_spherical_mirror.zmx`. Run on both, it reproduces the C#
+program on all thirty-seven to every printed digit: on F4 the third and fifth are unchanged
+and the tau carry the signs reflected rays give, and on F10 every number equals BUCH7's. On a
+reflecting system its closing note now points at RAYINV rather than FORBES, which declines.
 
 ### Three switches, all off by default
 
@@ -1408,6 +1429,12 @@ does not appear, and the macro says so when it meets one.
 
 It is slow. Seventy-five ray shapes, each costing a few hundred series multiplies.
 
+**Mirrors are declined** (September 2026). The refraction takes `INDX` on each side, which
+carries no reflection sign, so a mirror used to be traced as a refraction into the same
+medium - no bending, near-zero coefficients, no complaint. Forbes carries a reflection by
+letting the index change sign, but the root that picks the reflected cosine has to be chosen
+explicitly and is not written; the C# series trace declines a mirror for the same reason.
+
 ### A fifth ZPL trap
 
 `FORMAT n.0 INT` **prints a zero as blank.** The first draft's monomial table came out with
@@ -1684,6 +1711,20 @@ on the path just added. Paraxial ray aiming is noted rather than refused.
 Rotationally symmetric — now checked, not assumed — and sequential. Rays that will not trace
 are dropped rather than fudged, and the count is printed; if many are lost the remaining
 shapes may not span the coefficients, and it says so.
+
+**Mirrors, changed in September 2026 and run in OpticStudio.** OpticStudio keeps one
+frame through a mirror, while Buchdahl measures the image-space transverse aberration along
+an axis each reflection reverses. So after an odd number of mirrors every landing is the
+negative of what the coefficients describe, and every recovered coefficient came out negated.
+The landings are now turned by the parity of the surfaces whose glass is `MIRROR`. A first
+version read it from the marginal ray's direction cosine after the last surface, and on F4
+that did not fire - the ray is traced with `PARAXIAL ON`, where `RAYN` is not the direction
+of travel - so the coefficients still came out negated. That is how it was found. With the
+parity counted, it agrees with BUCH7 and BUCH7_ASPH in sign on every coefficient of both mirror
+fixtures. On F10, at five degrees, the third order is exact, the fifth to 1E-6 and the seventh
+to 1-4E-3 of the largest tau - the same size as what it returns for tau13..tau20, which are
+exactly zero, so that is the fit's resolution here. On F4, at half a degree, the field-dependent
+tau sit at that floor and only tau2 and tau3 stand above it.
 
 It is **not** slow, despite the 900 real rays — those turn out to be cheap next to FORBES'
 series arithmetic, which was the opposite of what was expected.

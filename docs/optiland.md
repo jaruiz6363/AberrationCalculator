@@ -231,6 +231,87 @@ Two sweeps had been passing the mirror hollowly, because every comparison with N
   vanishes, and differentiates the mirror there - which it now does for the first time,
   real-ray operands included, since the reflection is in the differentiating build too.
 
+## The macros, which had the same mirror defects
+
+The OpticStudio macros were written by the same hands and had the same exposure, in macro form.
+`BUCH7`, `BUCH7_ASPH`, `ASPHWHERE` and `STRESS` sign their indices through `ISMS` inside the
+surface loops, so none had the NaN. But:
+
+| macro | on a system with an odd number of mirrors | change |
+|---|---|---|
+| `BUCH7_ASPH` | third and fifth scaled by \|N'\|, seventh by signed N': the seventh in the opposite frame from the orders beside it | \|N'\| for both |
+| `BUCH7` | signed N' for everything: consistent, but every total negated against FIFTHORD | \|N'\| for both |
+| `FORBES` | no `ISMS` at all: the mirror traced as a refraction into the same medium | mirrors declined |
+| `RAYINV` | OpticStudio's rays in one frame through the mirror: every coefficient negated | landings turned by the parity of `MIRROR` surfaces |
+
+`ROBB` calls `BUCH7`, and a spot is quadratic in the coefficients, so a consistent negation
+never reached it; `ASPHWHERE` and `STRESS` scale nothing into a frame.
+
+**Run in OpticStudio on 22 September 2026, and every run passed:**
+
+| fixture | macro | result |
+|---|---|---|
+| F4 | `BUCH7_ASPH` | all thirty-seven match the C# program to every printed digit; the third and fifth unchanged, the tau with the signs reflected rays give |
+| F4 | `FORBES` | declines the mirror |
+| F4 | `RAYINV` | third exact, fifth to 3E-5; the seventh at the fit's floor, as expected at half a degree |
+| F4 | `BUCH7` | declines (it wants two surfaces, and a conic) |
+| F10 | `BUCH7` | all thirty-seven to every printed digit, F/# −2.5; the dummy plane contributes exactly zero |
+| F10 | `BUCH7_ASPH` | identical to `BUCH7` on every printed digit |
+| F10 | `RAYINV` | third exact, fifth to 1E-6, seventh to 1-4E-3 of the largest τ - the size of what it returns for the τ that are exactly zero |
+| F10 | `FORBES` | declines the mirror |
+
+`RAYINV` needed a second fix during these runs. Its first version read the reflection parity
+from the marginal ray's direction cosine after the last surface; that ray is traced with
+`PARAXIAL ON`, where `RAYN` is not the direction of travel, so the flip never fired and F4 came
+back negated. It now counts the surfaces whose glass is `MIRROR`, as the C# program does.
+OpticStudio's ray fit is also about a hundred times noisier than the C# one on F10 (a few 1E-3
+against 1E-5 on the seventh order), which is resolution, not disagreement.
+
+The values, from the C# program - Buchdahl's closed form for `BUCH7` and `BUCH7_ASPH`, the ray
+inversion for `RAYINV`:
+
+`F10_spherical_mirror.zmx` - a sphere, R = −200, stop at the mirror, EPD 40, field 5°, EFL 100,
+F/# −2.5, with a dummy plane 50 mm in front: `BUCH7` needs two surfaces, and a plane in air
+changes nothing. `BUCH7`, `BUCH7_ASPH` and `RAYINV` agree with this; `FORBES` declines.
+
+| | Buchdahl | real rays | | Buchdahl | real rays |
+|---|---|---|---|---|---|
+| B | 1.000000E-01 | 1.000000E-01 | B7 | 4.625000E-05 | 4.625009E-05 |
+| F | −8.748866E-02 | −8.748866E-02 | τ2 | −1.290458E-04 | −1.290453E-04 |
+| C | 7.654266E-02 | 7.654266E-02 | τ3 | −8.858227E-05 | −8.858183E-05 |
+| Pi | −7.654266E-02 | −7.654266E-02 | τ4 | 1.817888E-04 | 1.817907E-04 |
+| E | 0 | 1E-14 | τ5 | 2.678993E-05 | 2.679213E-05 |
+| B5 | 2.250000E-03 | 2.250000E-03 | τ6 | 1.913567E-04 | 1.913516E-04 |
+| F1 | −5.030598E-03 | −5.030598E-03 | τ7 | −1.439772E-04 | −1.439780E-04 |
+| F2 | −3.062103E-03 | −3.062103E-03 | τ8 | −1.272357E-04 | −1.272344E-04 |
+| M1 | 5.357986E-03 | 5.357986E-03 | τ9 | −3.013477E-05 | −3.013630E-05 |
+| M2 | 7.654266E-04 | 7.654266E-04 | τ10 | −6.696615E-06 | −6.696287E-06 |
+| M3 | 3.061706E-03 | 3.061707E-03 | τ11 | 2.929390E-05 | 2.929219E-05 |
+| N1 | −6.696615E-04 | −6.696615E-04 | τ12 | 4.687023E-05 | 4.687382E-05 |
+| N2 | −2.678646E-03 | −2.678646E-03 | τ13..τ20 | 0 | ≤ 4E-09 |
+| N3, C5, Pi5, E5 | 0 | ≤ 1.5E-11 | | | |
+
+`F4_parabolic_mirror.zmx` - the same mirror with k = −1, field 0.5°. `BUCH7` declines (figured);
+`FORBES` declines (mirror); `BUCH7_ASPH`'s third and fifth order are unchanged and still match
+FIFTHORD, and its tau are the ones that flip sign:
+
+| | Buchdahl | | Buchdahl |
+|---|---|---|---|
+| F | −8.726868E-03 | τ2, τ3 | −1.745374E-06 |
+| C | 7.615822E-04 | τ4 | 6.092658E-07 |
+| Pi | −7.615822E-04 | τ5 | 1.523164E-07 |
+| F1, F2 | −1.745374E-04 | τ6 | 1.218532E-06 |
+| M1 | 4.569493E-05 | τ7 | −1.212936E-07 |
+| M2 | 7.615822E-06 | τ8 | −1.096628E-07 |
+| M3 | 3.046329E-05 | τ9 | −2.990802E-08 |
+| N1 | −6.646227E-07 | τ10 | −6.646227E-09 |
+| N2 | −2.658491E-06 | τ11 | 2.900037E-09 |
+| B, E, B5, N3, C5, Pi5, E5, B7 | 0 | τ12 | 4.640060E-09 |
+
+On F4, `RAYINV` should give the third and fifth to the digits above, but not the seventh: at
+half a degree the field-dependent tau sit at the ray fit's floor of a few 1E-09, and that is
+the fit's resolution, not a disagreement. F10 is the file the seventh order is checked on.
+
 ## What is not compared
 
 - **Finite conjugates**, for the fifth order: `CoefficientInversion` measures the field as

@@ -90,6 +90,7 @@ now asserts it.
 | Seidel against Optiland 0.6.2 | 16 designs, every surface, all five sums, to 1E-14 once its opposite sign is turned; see [optiland.md](optiland.md) |
 | fifth order from Optiland's rays | all twelve on 45 designs at infinity, aspheric and a mirror included, to between 3E-9 and 1.3E-5 of the largest - the inversion's own floor on this program's rays |
 | the seventh order on a mirror | finite since the scheme was given signed indices; all nineteen tau against reflected real rays to 6E-6 of the largest on the parabola at ten degrees; Forbes declines a mirror |
+| the macros on a mirror | BUCH7 and BUCH7_ASPH reproduce this program on all thirty-seven, to every printed digit, on a parabola and a spherical mirror in OpticStudio; RAYINV agrees in sign everywhere and to its fit's floor; FORBES declines - see [optiland.md](optiland.md) |
 | the suite | over a thousand tests, and everything they read is in this repository |
 
 ## The aspheric arrangement, and how it was established

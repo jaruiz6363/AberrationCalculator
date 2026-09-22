@@ -281,6 +281,25 @@ IF (ABSO(mgu) < eps)
    GOTO 900
 ENDIF
 
+! THE FRAME. Buchdahl's coefficients carry a reflection in the sign of the index, and his
+! image-space transverse aberration is measured along an axis each mirror reverses. RAYY
+! does not reverse: OpticStudio keeps one frame through a mirror. So after an odd number of
+! reflections every landing is the negative of what the coefficients describe, and every
+! recovered coefficient would come out negated - measured on the parabola in the C#
+! program, where all seventeen third- and fifth-order ones did exactly that, zeros
+! included, until the landings were turned.
+!
+! The parity is counted from the glass names: a surface whose glass is MIRROR reflects,
+! which is the test the C# program uses too. It was first read from the marginal ray's
+! direction cosine after the last surface, and on F4 that did not fire: the ray is traced
+! with PARAXIAL ON, and there RAYN is not the direction of travel. The coefficients came
+! out negated, which is how it was found. A glass name has no such ambiguity.
+fsgn = 1
+FOR fi = 1, nsm, 1
+   fglas$ = $GLASS(fi)
+   IF (SCOM(fglas$, "MIRROR") == 0) THEN fsgn = -fsgn
+NEXT
+
 ! The paraxial focus, where the axial marginal ray crosses the axis. It is the same
 ! construction at either conjugate, and it is where the rays are caught - not the
 ! image surface the file happens to carry - so that the answer does not move when
@@ -605,8 +624,8 @@ SUB shoot
          kdz = gpfd - RAYZ(nsm)
          kyy = RAYY(nsm) + kdz * RAYM(nsm) / RAYN(nsm)
          kxx = RAYX(nsm) + kdz * RAYL(nsm) / RAYN(nsm)
-         VEC1(vey + ki) = kyy - hpmax * kfr
-         VEC1(vez + ki) = kxx
+         VEC1(vey + ki) = fsgn * (kyy - hpmax * kfr)
+         VEC1(vez + ki) = fsgn * kxx
       ENDIF
    NEXT
 RETURN
