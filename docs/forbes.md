@@ -15,10 +15,11 @@ answer to check against.
 
 **It has been re-derived, and it is right.** `BuchdahlAsphericScheme` carries it, and it agrees
 with the route described in this document on all twenty tertiary coefficients to between 2E-13
-and 2E-10 on every figured design tested, a figured flat facing collimated light included. The
-real rays agree with both. The same arrangement has since been transcribed independently into
+and 2E-10 on every figured refracting design tested, a figured flat facing collimated light
+included. The real rays agree with both. (On a figured mirror this route declines - see *The
+trace* - and the reflected rays are the check.) The same arrangement has since been transcribed independently into
 `macros/BUCH7_ASPH.ZPL`, in a different language and inside OpticStudio, where it reproduces
-`FORBES.ZPL` to every digit either macro prints. See [docs/verification.md](verification.md) for what each of
+`FORBES.ZPL` to every digit either macro prints on every refracting design they were both run on. See [docs/verification.md](verification.md) for what each of
 those checks is worth. The aspheric case is not an open problem here, and neither this document
 nor its title should be read as saying it is.
 
@@ -37,7 +38,8 @@ coefficient of thirty, paper IV's quaternary spherical, on spherical surfaces on
 aspheric arrangement exists at that order at any level of completeness. Forbes' route has no
 arrangement to extend — the order is the truncation degree, figuring is ordinary coefficients in
 `f_i`, and the code does not branch — so **the property that made it a fit judge is the same one
-that makes it the only route that reaches the ninth order on a figured design at all**. What it
+that makes it the only route that reaches the ninth order on a figured refracting design at
+all** - on a figured mirror, which it declines, no route reaches it. What it
 would take, what it could be checked against and what it would not give are
 [docs/forbes-ninth-order.md](forbes-ninth-order.md). Nothing of it is implemented; the trace
 already carries the order and only the reading stops at seven.

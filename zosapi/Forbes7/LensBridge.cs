@@ -122,7 +122,8 @@ namespace AberrationCalculator.Forbes7
                     throw new InvalidOperationException(
                         "Surface " + i + " is a mirror. The Forbes series trace does not trace a " +
                         "reflection - the root that picks the reflected cosine is not written - so " +
-                        "it declines. BUCH7_ASPH.ZPL and RAYINV.ZPL handle mirrors.");
+                        "it declines. BUCH7_ASPH.ZPL and RAYINV.ZPL handle mirrors, and BUCH7.ZPL " +
+                        "does on a spherical one.");
 
                 sys.Surfaces.Add(surface);
 

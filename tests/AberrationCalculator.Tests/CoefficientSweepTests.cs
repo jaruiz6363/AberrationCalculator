@@ -25,8 +25,8 @@ namespace AberrationCalculator.Tests;
 /// sides were wrong - the two macros against the C# on an immersed object space, and the two
 /// copies of the flat-collimated orchestration against each other on a finite conjugate.</para>
 ///
-/// <para><b>Why a sweep.</b> <see cref="ForbesCoefficientsTests"/> makes this comparison on seven
-/// named designs, all of them figured at an infinite conjugate. That is how a figured design at a
+/// <para><b>Why a sweep.</b> <see cref="ForbesCoefficientsTests"/> makes this comparison on a
+/// fixed list of named designs, all of them at an infinite conjugate. That is how a figured design at a
 /// FINITE conjugate went 5E-5 wrong without anything noticing: the pairing that could have failed
 /// was never formed. This runs the comparison on whatever is on disk, so a design added for any
 /// other reason is cross-checked the day it lands.</para>
@@ -163,8 +163,9 @@ public class CoefficientSweepTests
     /// <summary>
     /// The guard against a hollow sweep: EVERY design must actually be compared.
     ///
-    /// <para>It demands all of them because, as it turns out, all of them can be: Forbes declines
-    /// none of the fifty-three. If a design is added that it cannot invert - an on-axis one has no
+    /// <para>It demands all of them because all of them can be: every design is held to at least
+    /// one lineage. Forbes declines the mirrors, and reflected real rays stand in for it there.
+    /// If a design is added that neither route can take - an on-axis one has no
     /// field variable to fit against - this fails and prints the reason, which is the moment to
     /// decide whether that design should be excluded or the route extended. A theory that quietly
     /// skipped it would look exactly like a theory that passed.</para>

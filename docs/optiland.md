@@ -131,12 +131,22 @@ r⁴ to r⁸ terms as well, but they cannot account for five orders of magnitude
 ON the first surface EPL is zero, the scale divides by zero, and every sum is NaN
 (`E0_finite_flat`; `OptilandsChiefRayAtAFiniteConjugateMissesTheObjectDistance`).
 
-Worth reporting upstream, all four, to
+Worth reporting upstream, all four - three defects and the undocumented sign convention - to
 [HarrisonKramer/optiland](https://github.com/HarrisonKramer/optiland). The two import issues
 found by RelativeIlluminationCalculator - the glass catalog, and dropped surface apertures - are
 recorded in that repository's `docs/optiland-0.6.2.md`.
 
-## What the comparison found in THIS program - all now fixed
+## Defects in THIS program that came to light during the comparison - all now fixed
+
+To be plain about what these are and are not. None of them means OpticStudio was wrong: it never
+disagreed with this program, and the only OpticStudio comparison on a mirror before this was
+FIFTHORD's third and fifth order on the parabola, which this program matched then and matches now.
+Nor was Optiland needed to find them. The mirror defects had symptoms in this repository already -
+the parabola's ray fit failing with a residual of 0.75, dismissed as noise, and its seventh order
+NaN, passed silently by two sweeps - and the flat-face one is exposed by an identity, S5 = 2 E n'u',
+that this program had every means to check and did not. They were missed because that data was not looked at critically enough.
+Optiland's rays landing 20 mm away on the parabola reinforced that something was amiss with
+reflection; that is the extent of its part.
 
 Both showed up as disagreements with Optiland, and a disagreement alone does not say which side
 is wrong. Each was settled by evidence that does not involve Optiland at all, and those tests run
@@ -196,8 +206,11 @@ while the ray trace, like OpticStudio and Optiland, keeps the global frame. The 
 multiplies the landings by the sign of the image-space index (−1 after an odd number of
 reflections, +1 otherwise, so no refracting design changes by a bit), and the parabola agrees with
 Buchdahl to 2E-10 in the third order and 1E-6 in the fifth, from this program's rays and from
-Optiland's. That rule is established on one reflection; a two-mirror design is not among the
-fixtures.
+Optiland's. That rule is established on one reflection by the parabola and on two by Thompson's
+two-mirror telescope (`ThompsonTelescopeTests.TwoReflectionsRestoreTheFrameInEveryOrder`), where the
+image-space index is positive again, nothing is turned, and all three orders agree with the rays.
+Only the OpticStudio macros remain unmeasured on two reflections (see verification.md, *What is
+still open*).
 
 **The seventh order was NaN on the mirror - fixed too, and it hid two more.** Buchdahl's
 τ2..τ20 came out NaN on the parabola, before any ray was involved. `TertiaryCoefficients.Attach`
@@ -254,7 +267,7 @@ never reached it; `ASPHWHERE` and `STRESS` scale nothing into a frame.
 | F4 | `BUCH7_ASPH` | all thirty-seven match the C# program to every printed digit; the third and fifth unchanged, the tau with the signs reflected rays give |
 | F4 | `FORBES` | declines the mirror |
 | F4 | `RAYINV` | third exact, fifth to 3E-5; the seventh at the fit's floor, as expected at half a degree |
-| F4 | `BUCH7` | declines (it wants two surfaces, and a conic) |
+| F4 | `BUCH7` | declines (F4 has one surface, and is figured) |
 | F10 | `BUCH7` | all thirty-seven to every printed digit, F/# −2.5; the dummy plane contributes exactly zero |
 | F10 | `BUCH7_ASPH` | identical to `BUCH7` on every printed digit |
 | F10 | `RAYINV` | third exact, fifth to 1E-6, seventh to 1-4E-3 of the largest τ - the size of what it returns for the τ that are exactly zero |
@@ -308,9 +321,9 @@ FIFTHORD, and its tau are the ones that flip sign:
 | N2 | −2.658491E-06 | τ11 | 2.900037E-09 |
 | B, E, B5, N3, C5, Pi5, E5, B7 | 0 | τ12 | 4.640060E-09 |
 
-On F4, `RAYINV` should give the third and fifth to the digits above, but not the seventh: at
-half a degree the field-dependent tau sit at the ray fit's floor of a few 1E-09, and that is
-the fit's resolution, not a disagreement. F10 is the file the seventh order is checked on.
+On F4, `RAYINV` gave the third order exactly and the fifth to 3E-5, but not the seventh: at half
+a degree the field-dependent tau sit at the ray fit's floor of a few 1E-08 in OpticStudio, and that
+is the fit's resolution, not a disagreement. F10 is the file the seventh order is checked on.
 
 ## What is not compared
 

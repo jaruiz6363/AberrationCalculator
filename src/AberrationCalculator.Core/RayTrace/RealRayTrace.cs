@@ -27,7 +27,7 @@ public static class RealRayTrace
     ///
     /// <para>The position is in THAT surface's own vertex frame - x sagittal, y meridional,
     /// z along the axis, so z is the sag at the point of incidence and is zero on a plane. The
-    /// direction cosines are the ones the ray carries AFTER refracting there, which is what a
+    /// direction cosines are the ones the ray carries AFTER refracting - or reflecting - there, which is what a
     /// merit function asking for an angle of emergence wants. At the image plane there is no
     /// refraction and they are simply the direction of arrival.</para>
     ///
@@ -201,7 +201,7 @@ public static class RealRayTrace
     ///
     /// <para>Indexed like <see cref="OpticalSystem.Surfaces"/>: entry 0 is the object and is
     /// never filled, entries 1 through <see cref="OpticalSystem.LastOpticalSurface"/> are the
-    /// refracting surfaces, and the final entry is the image plane. A ray that fails - misses a
+    /// refracting and reflecting surfaces, and the final entry is the image plane. A ray that fails - misses a
     /// surface, or is totally internally reflected - leaves that entry and every later one with
     /// <c>Ok</c> false, so a caller can see HOW FAR it got rather than only that it did not
     /// arrive.</para>
@@ -303,8 +303,7 @@ public static class RealRayTrace
         // which is the paraxial image only when the object is at infinity; on a 250 mm Cooke
         // triplet the two are 11.76 mm apart, and catching the rays there would be measuring a
         // defocused spot. They are equal to the bit at infinite conjugate, so this changes
-        // nothing that was previously reachable - Trace refuses a finite conjugate outright,
-        // and only TraceFrom can get here with one.
+        // nothing that was previously reachable.
         Scalar target = atParaxialFocus
             ? paraxial.ParaxialFocusDistance - system.Surfaces[last].Thickness
             : 0.0;

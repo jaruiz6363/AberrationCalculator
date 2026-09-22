@@ -180,7 +180,8 @@ higher orders neither help nor hurt. The same finding the spot gives on the same
 order a lens needs is a property of the lens.
 
 The three figured designs below are predicted from **Forbes' `tau20`**, which is what the tool
-now uses whenever any surface is figured — see the next section for why.
+now uses whenever any surface is figured and Forbes applies - it declines a mirror - see the next
+section for why.
 
 **Cooke triplet optimised with an asphere, f/5, 20°.**
 
@@ -225,7 +226,8 @@ seventh order helps, taking the RMS error across the ladder from 5.9 per cent to
 
 ## Which route the seventh order comes from, and why
 
-**Figured design: Forbes. Unfigured: either, and the scheme's own value is kept.** The tool
+**Figured design: Forbes, unless it declines - it does not trace a mirror - in which case the
+scheme's own value is used. Unfigured: either, and the scheme's own value is kept.** The tool
 decides this itself and says which it used; there is no option and nothing to choose. The
 reason is the table below.
 
@@ -295,9 +297,9 @@ specific: the trace, the conjugate, the field variable, the length conversion an
 reference are shared by all three coefficients and are exercised identically by the two that
 agree. What is left is the seventh-order **aspheric** arrangement, and nothing else.
 
-That this program's aspheric tertiary arrangement is wrong is already recorded —
-[verification.md](verification.md) says so under "what is not established", and it was established there by
-disagreement with Forbes. This is the same conclusion reached from rays, per coefficient, with
+That this program's aspheric tertiary arrangement WAS wrong was recorded in
+[verification.md](verification.md), where it was established by disagreement with Forbes; the arrangement has
+since been completed (see below). This table reached the same conclusion from rays, per coefficient, with
 no series on the other side of the comparison. It also settles which of the two routes is the
 wrong one, which a disagreement between them could not.
 
@@ -346,8 +348,9 @@ the full seventh inside four per cent, and every order improving on the last at 
 
 **On a figured design the tool uses Forbes' `tau20`, and says so.** That choice was made while
 this program's reconstruction of the aspheric tertiary gave a `tau20` the rays rejected. The
-reconstruction has since been completed and now agrees with Forbes on every figured test design,
-a figured flat facing collimated light included, so the choice changes nothing there — but the
+reconstruction has since been completed and now agrees with Forbes on every figured refracting
+test design, a figured flat facing collimated light included, so the choice changes nothing there
+(Forbes declines the mirrors, where only the rays can be set against it) — but the
 report still names the route it used. On an unfigured design the two agree to roundoff on all
 twenty and the choice is empty.
 
@@ -363,7 +366,7 @@ inside four per cent at the corner where third order is out by twenty.
 
     abcalc <lensfile> --distortion-coefficients
 
-and the MCP server offers the same as `distortion`. Both print the identical report from one
+and the MCP server offers the same as `distortion_from_coefficients`. Both print the identical report from one
 formatter, including the coefficient recovery. The finite-conjugate rows above are the
 `CookeTriplet` fixture with its object thickness changed from infinity to 250; everything else
 in this document is a fixture in `tests/fixtures/lenses` as it stands.

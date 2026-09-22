@@ -204,9 +204,8 @@ public static class DistortionPrediction
 
             // The chief ray is a straight line in object space, so the paraxial trace hands
             // over its geometry exactly: height at surface one, slope before it. Expressing
-            // it that way rather than as a field angle and a pupil fraction is what lets the
-            // same call serve both conjugates - RealRayTrace.Trace refuses a finite one,
-            // because it would have to assume the ray was collimated to know its direction.
+            // it that way rather than as a field angle and a pupil fraction gives the chief ray
+            // exactly from the paraxial trace, at either conjugate.
             var land = RealRayTrace.TraceFrom(system, indices, paraxial,
                                               0.0, pf.Ybar[1], 0.0, pf.Ubar[0], 1.0,
                                               atParaxialFocus);

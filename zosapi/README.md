@@ -17,10 +17,11 @@ checked inside OpticStudio against the Seidel analysis and FIFTHORD without trus
 anything in this repository.
 
 It applies to **spherical surfaces only**. Buchdahl gives the aspheric scheme in §85 of the
-monograph but never published the arranged table for it, and that arrangement is the one
-part of this subject with no printed answer to check against. This program has no such
-limit: a sphere, a conic and an even asphere differ only in the coefficients of one power
-series and run through identical code. A figured surface therefore also gets a third row,
+monograph but never published the arranged table for it; `BUCH7_ASPH.ZPL` now carries that
+arrangement, reconstructed, as a macro. This program reaches the same figured systems by a
+different route, sharing no arithmetic: a sphere, a conic and an even asphere differ only in
+the coefficients of one power series and run through identical code. Its own limit is mirrors,
+which it refuses (see *What it refuses*). A figured surface therefore also gets a third row,
 the part the figuring itself contributes, which the spherical scheme cannot separate
 because it never has it.
 
@@ -154,7 +155,7 @@ printed digit.
 **A tilt or decentre on a Standard surface is NOT refused - it is not read.** Only a
 coordinate-break SURFACE is turned away. The Tilt/Decenter properties of an ordinary surface
 are ignored, so a design that carries them is analysed as if centred. That is a gap, recorded
-rather than fixed because the check needs the ZOS-API and cannot be compiled from here.
+and not yet fixed: the check has not been written.
 
 Likewise an aperture that is not an entrance-pupil diameter, an image-space F/number or an
 object-space NA, and a field that is not an angle or an object height. A wrong pupil or a

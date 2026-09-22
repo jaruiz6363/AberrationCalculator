@@ -34,7 +34,8 @@ public static class ForbesReport
 
     /// <summary>
     /// Builds the report. Returns null when the coefficients cannot be separated, which happens
-    /// on a system with no field and when the series trace does not close on a design.
+    /// on a system with no field, when the series trace does not close on a design, and on a
+    /// design with a mirror, which the series trace declines.
     /// </summary>
     /// <param name="degree">
     /// Truncation of the series trace. Three is the seventh order. A higher value costs time

@@ -38,8 +38,9 @@ This matters more since stage F arrived, because the file now contains both.
 **Orders three, five and seven are spherical only *in this macro*.** A conic or an even asphere
 stops it. That is a limit of `BUCH7.ZPL`, not of the subject: `BUCH7_ASPH.ZPL` is Buchdahl's
 Sec. 85 arrangement reconstructed, it carries conics and even aspheres, and it agrees with
-`FORBES.ZPL` on all twenty seventh-order coefficients on every figured design tried. Want the
-seventh order on a figured design and you run the macro next door.
+`FORBES.ZPL` on all twenty seventh-order coefficients on every figured refracting design tried
+(FORBES declines a mirror). Want the seventh order on a figured design and you run the macro next
+door.
 
 **Stage F, the ninth order, is spherical only *in the subject*.** There is no aspheric
 arrangement at this order anywhere. Buchdahl published none — paper IV reaches quaternary
@@ -132,7 +133,7 @@ against at both conjugates.
 
 **OpticStudio's Seidel analysis and FIFTHORD are neither of those.** They are used here as
 cross-checks *a reader can repeat without trusting anything in this repository*, which is
-their whole value: two of the four stages can be confirmed without taking this macro's word
+their whole value: two of the six stages, A and B, can be confirmed without taking this macro's word
 for anything. They are not the source of the method and they are not the authority for the
 numbers. Neither computes the seventh-order set this macro exists for, so neither could be.
 
@@ -180,7 +181,7 @@ trace, *J. Opt. Soc. Am.* **73**, 782 (1983), as a C# program driving OpticStudi
 the ZOS-API. It is the better tool on a **figured** system, where this macro stops: it
 carries conics and even aspheres at all three orders and separates what the figuring itself
 contributes. This macro is the better tool everywhere else — it is one text file, it needs
-nothing installed, and two of its four stages check against OpticStudio's own analyses.
+nothing installed, and two of its six stages check against OpticStudio's own analyses.
 
 The two agree, which is the point of having both. Seventh-order spherical aberration comes
 out of this macro through Buchdahl's fifth-order working and out of FORBES7 through a power
@@ -194,10 +195,11 @@ explanation instead of returning a plausible number, and names its companion. Bu
 gives the aspheric scheme - §65-66 and (85.2)-(85.5) - but never published the arranged
 table for it. That arrangement has since been reconstructed: it is `BUCH7_ASPH.ZPL`,
 which carries conics and even aspheres and agrees with `FORBES.ZPL` on all twenty
-seventh-order coefficients. This macro is left as the spherical routine, the one checked
+seventh-order coefficients wherever FORBES applies - every refracting design; it declines a
+mirror. This macro is left as the spherical routine, the one checked
 against Buchdahl's own printed numbers.
 
-Object at infinity, rotationally symmetric, sequential.
+Either conjugate, rotationally symmetric, sequential.
 
 **Mirrors are carried, after one change in September 2026, run in OpticStudio.** The surface loops always signed the indices through `ISMS`, so the scheme
 sees a reflection as a refraction into -n. But the F/number and the seventh order's
@@ -207,7 +209,10 @@ FIFTHORD, `BUCH7_ASPH` and the C# program. Both now take its magnitude. The fixt
 is `F10_spherical_mirror.zmx` (the parabola is declined here, being figured, and so would a
 lone mirror be: this macro wants two surfaces, so F10 carries a dummy plane). Run on it, it
 reproduces the C# program on all thirty-seven coefficients to every printed digit, F/number
--2.5, and the dummy contributes exactly zero.
+-2.5, and the dummy contributes exactly zero. Established on ONE reflection: whether OpticStudio's `ISMS()` flags the mirror surface or every
+space after an odd number of reflections has not been determined, and on a single mirror the two
+readings agree. A two-mirror system has not been run through the macros; the C# program has been
+measured on one, Thompson's telescope.
 
 ### An immersed object space, and the reduction it needs
 
@@ -355,21 +360,12 @@ every non-zero entry, per surface, from the C# in this repository, and the macro
 print the same on request - set `dbg = 1` at the head of stage C. A wrong entry then
 shows up as one wrong line rather than as a wrong answer at the bottom.
 
-Built and CHECKED so far: t1 to t33 - the paraxial basis, the intrinsic primary, the
-running sums and the dagger family. Every entry agrees with the reference on all six
-surfaces of the Cooke triplet to 8.33E-17, machine precision, which is what a
-transcription of the same arithmetic should give. The Table I basis is therefore proven,
-and what follows is transcription against a known target rather than construction in the
-dark.
-
-Built and CHECKED: t1 to t98 - the paraxial basis, the primary, the secondary with its
-barred and mid forms, the accumulated secondaries and the q-side. Every entry agrees with
-the reference on all six surfaces of the Cooke triplet: t1 to t33 to 8.33E-17, t34 to t98
-to 1.39E-17. That is machine precision, which is what a faithful transcription of the
-same arithmetic gives.
-
-Still to come: the tertiary chain t99 to t155, and the per-surface intrinsic and induced
-split.
+Built and CHECKED: all of Table I, t1 to t155 - the paraxial basis, the primary, the
+secondary with its barred and mid forms, the accumulated secondaries, the q-side and the
+tertiary chain. Every entry agrees with the reference on all six surfaces of the Cooke
+triplet to machine precision (t1 to t33 to 8.33E-17, t34 to t98 to 1.39E-17), which is what a
+faithful transcription of the same arithmetic gives. The per-surface intrinsic and induced
+split is stage D. (This section once carried the build's progress notes; the build is done.)
 
 One limit taken deliberately. The barred secondary needs the lift q s, formed here as a
 product. Buchdahl Sec. 84(e) carries the powers of q on the incidences instead, which
@@ -518,6 +514,8 @@ gives.
 | F3 | **FORBES.ZPL, seventh order** | **all twenty tau identical** |
 | F6, a triplet with two figured surfaces | FIFTHORD | eighteen identical |
 | F6 | **FORBES.ZPL, seventh order** | **all twenty tau identical** |
+| F4, a parabolic mirror | the C# program, all three orders | all thirty-seven identical (22 September 2026) |
+| F10, a spherical mirror | the C# program, and BUCH7 | all thirty-seven identical to both |
 
 The FORBES comparison is the one this macro exists to pass. The two share no arithmetic
 past the paraxial trace — Buchdahl's arranged tables against an order-doubling series
@@ -553,7 +551,7 @@ figured surface, so the chief-ray height there is zero, the corrupting term is
 identically zero, and the collision wrote a harmless zero. It took a six-surface lens
 with the stop elsewhere to expose it. A ladder of fixtures is not padding.
 
-**Two more ZPL traps**, which join the five already recorded here. The bound of a `FOR`
+**Two more ZPL traps**, which join those already recorded here. The bound of a `FOR`
 may not contain a bracketed index — ZPL splits the arguments on commas before it looks
 at them, so `mon(6, m)` is torn in half and reported as a missing index, an improper
 format, and then an infinite loop. And `VEC1` to `VEC4` are all there are: writing
@@ -592,6 +590,10 @@ third and fifth agreed with them. Both now take the magnitude. The fixtures are
 program on all thirty-seven to every printed digit: on F4 the third and fifth are unchanged
 and the tau carry the signs reflected rays give, and on F10 every number equals BUCH7's. On a
 reflecting system its closing note now points at RAYINV rather than FORBES, which declines.
+Established on ONE reflection: whether OpticStudio's `ISMS()` flags the mirror surface or every
+space after an odd number of reflections has not been determined, and on a single mirror the two
+readings agree. A two-mirror system has not been run through the macros; the C# program has been
+measured on one, Thompson's telescope.
 
 ### Three switches, all off by default
 
@@ -764,9 +766,9 @@ Vignetting factors move the real rays, so they move R and the n sin(I) table but
 S. If factors are set, the `Py = +/-1` rays sit at the vignetted edge of the pupil rather
 than the full one - usually what you want, never what you expect. The macro reports it.
 
-### A fourth ZPL trap, which this macro found
+### Another ZPL trap, which this macro found
 
-The three in the BUCH7 section above all still apply. This one is new:
+Those in the BUCH7 section above all still apply. This one is new:
 
 4. **`OPEV` traces rays of its own.** It evaluates an optimization operand, and the ray
    operands trace to do it, so `RAYL`, `RAYM`, `RANX` and the rest - which report the ray
@@ -916,7 +918,8 @@ It was inverted because the natural thing to run is the macro whose answer you w
 
 Thirty-four coefficients are hard to read as a statement about image quality. One RMS
 radius is easy to read and throws away most of what they say. Printing both, truncated
-four ways, says something neither gives alone: **how much of the spot each order accounts
+four ways - with ninth-order spherical as a fifth column, below - says something neither gives
+alone: **how much of the spot each order accounts
 for**, and so whether a design is limited by aberration the third order already describes
 or by something only the seventh reaches.
 
@@ -1119,6 +1122,7 @@ That fixture is at paraxial focus, so it draws the "directly comparable" line ra
 the defocus warning - unlike the Double Gauss sample above.
 
     RMS spot RADIUS in lens units, referenced to the CENTROID, at the GAUSSIAN image plane
+    (recorded before the +B9 column was added; the four columns shown are unchanged by it)
 
          H            3rd        3rd+5th       +B7 only       full 7th
       0.00  1.740010E-002  1.433710E-002  1.378753E-002  1.378753E-002
@@ -1174,7 +1178,8 @@ Table I arranges the spherical case, so a transcription would have had no printe
 to check against.
 
 That arrangement has since been reconstructed, as `BUCH7_ASPH.ZPL`, and the two macros now
-agree on all twenty seventh-order coefficients on every figured design tried. Which makes
+agree on all twenty seventh-order coefficients on every figured refracting design tried. On a
+mirror this macro declines, and RAYINV is the check. Which makes
 this route MORE valuable rather than less: the agreement is between Buchdahl's arranged
 tables and an order-doubling series trace sharing no arithmetic past the paraxial ray, so
 each is now the other's strongest check. Before, there was nothing to check the aspheric
@@ -1435,12 +1440,12 @@ medium - no bending, near-zero coefficients, no complaint. Forbes carries a refl
 letting the index change sign, but the root that picks the reflected cosine has to be chosen
 explicitly and is not written; the C# series trace declines a mirror for the same reason.
 
-### A fifth ZPL trap
+### Another ZPL trap
 
 `FORMAT n.0 INT` **prints a zero as blank.** The first draft's monomial table came out with
 the `m = 0` row unlabelled and every zero power missing, so `p^0 k^0 u^3` read as
 `blank blank 3`. Fixed format has no such trouble. Nothing else in `macros/` prints an
-integer that can be zero, so the other three files are unaffected.
+integer that can be zero, so the other macros are unaffected.
 
 ### Expected output, CookeTriplet
 
@@ -1690,7 +1695,7 @@ trace and Buchdahl, corroborated by FIFTHORD on the eighteen it reaches):
 | the twenty tau | 6.9E-04, at `tau12` |
 
 That is the same band as the infinite-conjugate spherical run, and worst at the same
-coefficient. The mirror used for this check traces its own skew rays and shares no code with
+coefficient. The replica used for this check traces its own skew rays and shares no code with
 the ZPL or with the C#; it was itself validated against OpticStudio's own intercepts and
 direction cosines, meridional and skew, to 1E-10 before being trusted.
 
@@ -1720,8 +1725,10 @@ The landings are now turned by the parity of the surfaces whose glass is `MIRROR
 version read it from the marginal ray's direction cosine after the last surface, and on F4
 that did not fire - the ray is traced with `PARAXIAL ON`, where `RAYN` is not the direction
 of travel - so the coefficients still came out negated. That is how it was found. With the
-parity counted, it agrees with BUCH7 and BUCH7_ASPH in sign on every coefficient of both mirror
-fixtures. On F10, at five degrees, the third order is exact, the fifth to 1E-6 and the seventh
+parity counted, it agrees in sign on every coefficient with BUCH7_ASPH on both mirror fixtures,
+and with BUCH7 on F10 (BUCH7 declines the figured F4). It counts glasses rather than calling
+`ISMS`, so the question below does not arise for it - but it too has been run on one reflection
+only. On F10, at five degrees, the third order is exact, the fifth to 1E-6 and the seventh
 to 1-4E-3 of the largest tau - the same size as what it returns for tau13..tau20, which are
 exactly zero, so that is the fit's resolution here. On F4, at half a degree, the field-dependent
 tau sit at that floor and only tau2 and tau3 stand above it.
@@ -1729,14 +1736,14 @@ tau sit at that floor and only tau2 and tau3 stand above it.
 It is **not** slow, despite the 900 real rays — those turn out to be cheap next to FORBES'
 series arithmetic, which was the opposite of what was expected.
 
-### A sixth ZPL trap
+### Another ZPL trap: comments are whole-line only
 
 **Comments are whole-line only.** There is no trailing comment: a `!` after a statement does
 not start one, so the parser reads on and reports the next word as an unknown symbol. Eight
 declaration lines here carried their descriptions on the right and the macro would not run at
 all — `Syntax error: Unknown symbol SCALES`.
 
-It only surfaced now because the other four macros contain **zero** trailing comments between
+It only surfaced now because the other macros contained **zero** trailing comments between
 them; whole-line commenting had been a habit rather than a known requirement. There is an
 audit for it now, which ignores `!=` and any `!` inside a string literal.
 
@@ -1746,7 +1753,7 @@ trailing comments. They catch recurrences, not first occurrences. What has actua
 faults *before* they shipped is the numerical checking against an independent implementation,
 not the syntax auditing.
 
-### A seventh ZPL trap, and the one that has cost the most
+### A further ZPL trap, and the one that has cost the most
 
 **`INFINITY` in the lens data editor is exactly `1E10` to `THIC()`.** OpticStudio displays the
 word; ZPL hands back the sentinel. So a conjugate test written as

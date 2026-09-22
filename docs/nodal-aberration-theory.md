@@ -309,7 +309,8 @@ published number, an internal identity, or two independent routes made to agree.
 **On mirrors**
 
 - Thompson's two-mirror telescope, in the published-numbers list above, is the only reflecting
-  design NAT is held to, and until September 2026 only its paraxial sigma was - by magnitude.
+  design NAT is held to, and until September 2026 only its paraxial quantities were - the trace,
+  the optical axis ray, and sigma by magnitude.
   Two paths had never met a mirror and both were wrong there: the wave front coefficients came
   out exactly zero (unsigned indices), and real-ray sigma lost the secondary (an intersection that
   gave up after a long gap). Both are fixed. The wave front now closes against the Seidel sums on
@@ -349,7 +350,7 @@ published number, an internal identity, or two independent routes made to agree.
 - **Thompson, K. P.**, *J. Opt. Soc. Am. A* **26**, 1090 (2009); **27**, 1490 (2010); **28**, 821
   (2011) — the multinodal fifth-order trilogy, and the source of every nodal solution here.
 - **Buchdahl, H. A.**, "Optical Aberration Coefficients. VI and VII," *J. Opt. Soc. Am.* **50**,
-  534 and 539 (1960) — the W coordinates, and the wave front coefficients they produce.
+  534 and 540 (1960) — the W coordinates, and the wave front coefficients they produce.
 - **Fuerschbach, Rolland and Thompson**, "Theory of aberration fields for general optical systems
   with freeform surfaces," *Opt. Express* **22**, 26585 (2014) — the overlays.
 - **Gu, Z. et al.** (2020) — the as-built sensitivity behind `ASBLT`.

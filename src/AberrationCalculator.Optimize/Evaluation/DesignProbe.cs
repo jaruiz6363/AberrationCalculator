@@ -114,9 +114,9 @@ public sealed class DesignProbe
     /// Sec. 85 and a spherical one to Buchdahl's own published table, and it makes that choice
     /// once per evaluation out of data it has already computed - not per surface, and not inside
     /// the arithmetic. A spherical design therefore travels exactly the path it always did, bit
-    /// for bit. <see cref="SupportedDesign"/> still refuses one case before the first evaluation,
-    /// the figured flat facing collimated light, because the route that handles it exists only in
-    /// the plain-double build and would leave the derivative silently wrong here.</para>
+    /// for bit. <see cref="SupportedDesign"/> refuses no class of design: the figured flat facing
+    /// collimated light, once refused because its route existed only in the plain-double build,
+    /// now takes the differentiated series route (<c>DualSeries</c>).</para>
     /// </summary>
     public AdA.BuchdahlTerms Coefficients(int wave) => Whole(Clamp(wave)).Totals;
 

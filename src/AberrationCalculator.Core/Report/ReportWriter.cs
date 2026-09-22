@@ -988,8 +988,9 @@ public sealed class ReportWriter
                   + "but the trace does not close on it, or declines it (it does not trace a mirror),\n"
                   + "and the scheme's own value is used instead.\n"
                   + "That value is the aspheric arrangement of M Sec. 85, which agrees with Forbes to\n"
-                  + "2E-10 or better wherever the two can both be formed; here there is nothing to\n"
-                  + "compare it against, which is the whole of what this note is saying.";
+                  + "2E-10 or better wherever the two can both be formed; here Forbes offers no\n"
+                  + "comparison, which is the whole of what this note is saying. On a mirror the\n"
+                  + "rays read back below are the check.";
             return totals;
         }
 
@@ -1103,7 +1104,7 @@ public sealed class ReportWriter
     /// <summary>
     /// Third, fifth and seventh order per surface, intrinsic and induced, the seventh by the
     /// Forbes series trace. Null when the coefficients cannot be separated - a system with no
-    /// field, or a design the series does not close on.
+    /// field, a design the series does not close on, or one with a mirror, which it declines.
     /// </summary>
     public string? BuildForbesText(int degree = 3)
     {

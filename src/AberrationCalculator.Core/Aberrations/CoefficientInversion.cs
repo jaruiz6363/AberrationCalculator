@@ -190,8 +190,9 @@ public static class CoefficientInversion
     /// OpticStudio and Optiland do. A multiplication by exactly one everywhere else, so no
     /// refracting design computes a different bit.</para>
     ///
-    /// <para>Established on one reflection. A design with two mirrors, where the rule says no
-    /// flip, is not among the fixtures.</para>
+    /// <para>Established on one reflection (the parabola and the spherical mirror) and on two
+    /// (Thompson's telescope, built in <c>ThompsonTelescopeTests</c>), where the rule turns
+    /// nothing and the rays agree with Buchdahl unturned on every order.</para>
     /// </summary>
     private static double ImageFrameSign(OpticalSystem system, ParaxialResult paraxial) =>
         paraxial.N[system.LastOpticalSurface()] < 0.0 ? -1.0 : 1.0;

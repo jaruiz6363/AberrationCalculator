@@ -44,9 +44,8 @@ public sealed class OperandContext
     public bool HasSpectrum => WaveShort != WaveLong;
 
     /// <summary>
-    /// True when the object is at infinity, which is the only conjugate the real ray trace in
-    /// this repository handles. The real-ray operands refuse a finite conjugate rather than
-    /// tracing it as though collimated.
+    /// True when the object is at infinity. Informational: the real ray trace and the real-ray
+    /// operands handle either conjugate.
     /// </summary>
     public bool InfiniteConjugate { get; }
 

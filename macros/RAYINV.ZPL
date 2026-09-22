@@ -118,8 +118,9 @@
 !   noted. Ray aiming is far likelier to be on at a finite conjugate than at
 !   infinity, so this guard earns its keep mostly on the path just added.
 !
-!   Rotationally symmetric and sequential. It is SLOW: nine hundred real ray traces,
-!   and each of the seventy-five shapes then takes two eight-by-eight solves.
+!   Rotationally symmetric and sequential. It is NOT slow: nine hundred real ray traces,
+!   and each of the seventy-five shapes then takes two eight-by-eight solves, which is
+!   cheap next to FORBES' series arithmetic.
 !
 !   It is less accurate than either series route and is meant to be. A traced ray
 !   carries every order at once and the fit has to separate them, so the answer
@@ -127,7 +128,7 @@
 !   with FORBES to a few parts in ten thousand, not to machine precision - and read a
 !   disagreement at that level as the fit, not as either route being wrong.
 !
-! THE ZPL TRAPS: see macros/README.md. All five apply. In particular every loop whose
+! THE ZPL TRAPS: see macros/README.md. All of them apply. In particular every loop whose
 ! bound can fall below its start is guarded, because ZPL reports an empty range as an
 ! infinite loop rather than executing it zero times.
 ! ---------------------------------------------------------------------------------

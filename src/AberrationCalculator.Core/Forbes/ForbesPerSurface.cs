@@ -82,7 +82,7 @@ public static class ForbesPerSurface
 
     /// <summary>
     /// The per-surface breakdown, or null if the model cannot be formed - a system with no field,
-    /// as elsewhere.
+    /// as elsewhere, or one with a mirror, which the series trace declines.
     /// </summary>
     public static Breakdown? Compute(
         OpticalSystem system, double[] indices, ParaxialResult paraxial, double maxFieldDeg,

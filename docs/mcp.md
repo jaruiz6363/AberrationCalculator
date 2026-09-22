@@ -91,7 +91,8 @@ Optimises a lens against a merit function given inline as text, and reports what
 Every derivative it uses is analytic - see [docs/optimizer.md](optimizer.md) - including through
 PRMSA, the predicted spot. **Conics and even aspheres are carried**, as values and as variables
 (`CC`, `A4`, `A6`, `A8`): a figured surface takes the aspheric arrangement of Buchdahl's Sec. 85,
-which agrees with Forbes' series trace to 2E-10 or better, a spherical one takes his own
+which agrees with Forbes' series trace to 2E-10 or better on a refracting design (Forbes
+declines a mirror, where the reflected rays are the check), a spherical one takes his own
 published table bit for bit, and a figured flat in collimated light takes the same chain in
 Laurent series arithmetic, differentiated. A design is refused only when that series route cannot
 vouch for its answer. The reporting tools above are unaffected and handle figuring throughout.

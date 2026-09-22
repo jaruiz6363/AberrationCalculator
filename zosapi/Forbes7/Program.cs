@@ -25,8 +25,8 @@ namespace AberrationCalculator.Forbes7
     /// never published the arranged table for it, and that arrangement is the one part of this
     /// subject with no printed answer to check against. Forbes has no such split: a sphere, a
     /// conic and an even asphere differ only in the coefficients of one power series and run
-    /// through identical code. Neither does it have a conjugate to assume - the object plane is
-    /// simply the plane the ray is launched from.</para>
+    /// through identical code. It handles either conjugate, as BUCH7 now does - the object plane
+    /// is simply the plane the ray is launched from. It does not handle a mirror, and refuses one.</para>
     /// </summary>
     internal static class Program
     {

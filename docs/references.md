@@ -119,10 +119,11 @@ CONFIRMED. Robb Eq. (2), p.1038, names them: sigma_1..sigma_5, mu_1..mu_12, tau_
 with the distortion terms sigma_5, mu_12 and tau_20 falling at positions 5, 17 and 37.
 No longer an inference.
 
-This program supplies 18 of those 37: five primary, twelve secondary, and B7. The other
-nineteen tertiary coefficients are simply absent, which is why full-field PRMS is the
-weakest number the report prints. It is a coefficient-supply gap, not a limit of Robb's
-method.
+This program supplies all 37: five primary, twelve secondary and the twenty tertiary, B7
+among them - from Buchdahl's Table I on spherical designs and the reconstructed Sec. 85
+arrangement on figured ones. (When this note was first written it supplied 18, the other
+nineteen tertiary coefficients being absent, which was why full-field PRMS was then the weakest
+number the report printed.)
 
 What this paper provides:
 
@@ -135,7 +136,8 @@ What this paper provides:
   his own final check. That is a self-test independent of any oracle - worth having when
   transcribing a 192-entry table.
 - Seventh order has eight aberration types: the six traditionally named ones plus, in
-  Buchdahl's words, "two unnamed types". This program carries one of the eight.
+  Buchdahl's words, "two unnamed types". This program carries all eight, in the twenty tau
+  (it carried only one, B7, when this was first written).
 - A correction to the monograph: "Eqs. M (81.3) contain one (and only one) misprint. In
   fact, the product ApBF in the factor multiplying b in the equation for t5 should have a
   minus sign instead of a plus sign before it." Anyone implementing from the 1954 book
@@ -768,8 +770,9 @@ subdomain and sum the local bounds, which gives an error bound instead of a stab
 the same preference for a measured bound that the rest of this repository runs on. And their
 **step one would not be needed here**: they fit a polynomial to scattered ray-traced wavefront
 data because that is all they have, where a coefficient program knows the wavefront analytically.
-That is only an advantage if the WAVE coefficients exist, which here they do not - it needs the
-wave-aberration half recorded above, with Rayces (1964) and Nijboer (1943) both still `[wanted]`.
+That is only an advantage if the WAVE coefficients exist. Here they do to fifth order, as NAT's
+deformation and retardation coefficients (`Nat/WaveFront.cs`), though not in the Rayces/Nijboer
+form the re-normalisation would need - Rayces (1964) and Nijboer (1943) are both still `[wanted]`.
 
 ## Books that shaped the approach
 
@@ -1235,7 +1238,8 @@ functions are written down in the working notes, and need only two new theta fun
 cos4 and sin4.
 
 What remains is the VALUES of tau_2..tau_20, which is the Buchdahl (81.3) work. The two
-halves of the problem are now cleanly separated.
+halves of the problem are now cleanly separated. *(Historical: this status section records the
+work as it stood. All twenty tau have since been computed, spherical and figured.)*
 
 One finding changes the scope. Eqs. (81.3) are written in Buchdahl's own quantities -
 A, B, C and S1..S6 with their barred and p/q variants - whereas this program computes
@@ -1273,7 +1277,8 @@ Sec. 84 describes, 192 entries per surface as a linear list of formulae, and it 
 point of the paper. That replaces the largest and riskiest phase of the work with a
 transcription about a quarter the size. The trade is that Table I is spherical surfaces
 only, so seventh order would initially be valid for all-spherical designs and the report
-would have to say so.
+would have to say so. *(Since superseded: the aspheric arrangement of Sec. 85 has been
+reconstructed, and figured designs are carried too.)*
 
 Worth keeping in view, from p.753: in this triplet the large tertiary elliptical coma "is
 due not so much to that of the seventh order, but due rather to the ninth and higher

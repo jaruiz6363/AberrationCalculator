@@ -8,6 +8,8 @@
 ! STATUS: ALL FOUR STAGES, both conjugates. The truncated series ring, the
 ! trace built on it, conics and even aspheres - which is what BUCH7 cannot do and
 ! the reason this exists - and the third-, fifth- and seventh-order coefficients.
+! MIRRORS ARE DECLINED (September 2026): the trace does not carry a reflection; see
+! the note at the surface-type check.
 !
 ! The ring checks ITSELF on algebraic identities every run, before the trace, and
 ! declines to trace if any of them fails.
@@ -28,8 +30,9 @@
 !   no hat and check pass, no carrying ratio - the entire class of fault the aspheric
 !   Buchdahl arrangement is prone to cannot be expressed in this formulation.
 !
-!   So this is not a faster BUCH7. It is the route that reaches the systems BUCH7
-!   declines, and on the systems both reach they must agree, which is the check.
+!   So this is not a faster BUCH7. It is the route that reaches the refracting figured
+!   systems BUCH7 declines, and on the systems both reach they must agree, which is the
+!   check.
 !
 ! THE ONE IDEA THE WHOLE THING RESTS ON
 !
@@ -132,7 +135,7 @@
 !      transverse aberration is built as a series in the ray SCALE, its degree-3,
 !      degree-5 and degree-7 parts taken exactly, and the coefficients recovered from
 !      seventy-five ray shapes by a linear inversion.
-!      *** DONE, infinite conjugate only. Checked against the C# on a Cooke triplet:
+!      *** DONE, both conjugates (see below). Checked against the C# on a Cooke triplet:
 !      third order to 4E-14, fifth to 6E-14, seventh to 2E-13. ***
 !
 !      The solve uses the NORMAL equations where the C# uses a Householder QR. That
@@ -636,7 +639,8 @@ NEXT
 IF (mirr == 1)
    PRINT "This system reflects. FORBES does not trace a mirror: it would treat it as a"
    PRINT "refraction into the same medium and return near-zero coefficients without"
-   PRINT "complaint, so it declines instead. BUCH7_ASPH and RAYINV handle mirrors."
+   PRINT "complaint, so it declines instead. BUCH7_ASPH and RAYINV handle mirrors, and"
+   PRINT "BUCH7 does on a spherical one."
    GOTO 900
 ENDIF
 

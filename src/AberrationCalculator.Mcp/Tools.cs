@@ -181,13 +181,13 @@ internal static class Tools
           + "generates by acting on the aberration already reaching it. The seventh order is "
           + "the twenty tau, by the Forbes series trace (J. Opt. Soc. Am. 73, 782), which "
           + "handles spheres, conics and even aspheres alike and needs no ray tracer and no "
-          + "other program. Either conjugate. Ends with a cross-check: seventh-order spherical "
+          + "other program. Either conjugate; a design with a mirror is declined. Ends with a cross-check: seventh-order spherical "
           + "aberration reached by two routes sharing no code, which must agree. Use this when "
           + "asked why a design will not correct, or which surface to change - a table of "
           + "totals cannot say, and the induced column can. Readable text.",
             (w, a) => w.BuildForbesText(ForbesDegree(a)) ?? "The coefficients could not be "
-               + "separated. That happens when the system has no field, or when the series trace "
-               + "does not close on this design.",
+               + "separated. That happens when the system has no field, when the series trace "
+               + "does not close on this design, or when the design contains a mirror, which the series trace does not trace.",
             new[]
             {
                 new ArgumentSpec("degree", "integer",
@@ -216,8 +216,9 @@ internal static class Tools
           + "rays with an error bar, which is a check the predicted RMS spot cannot make. On a "
           + "FIGURED design the seventh-order term comes from the Forbes series trace, a choice "
           + "made while the scheme's aspheric arrangement was still one the rays rejected and "
-          + "kept now that the two agree, because the report names the route it used. Readable "
-          + "text.",
+          + "kept now that the two agree, because the report names the route it used - except "
+          + "where Forbes declines, as it does any mirror, when the scheme's value is used and "
+          + "named. Readable text.",
             (w, _) => w.BuildDistortionText()),
 
         new Tool("quaternary_spherical",

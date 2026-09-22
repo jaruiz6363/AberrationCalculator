@@ -95,7 +95,8 @@ a notation it does not yet speak.
 1. **No vector aberration algebra.** NAT is written in a two-dimensional vector product that is
    complex multiplication in disguise, with a conjugate whose definition is not the obvious one.
    See below.
-2. **No perturbation state.** `Surface` has no tilt and no decentre. `ZmxReader.cs` recognises
+2. **No perturbation state.** *(Superseded - `Surface` now carries tilt and decentre, driven by an
+   `.align` sidecar; see below.)* `Surface` has no tilt and no decentre. `ZmxReader.cs` recognises
    `COORDBRK` and parks its five values in `Surface.Parameters[0..4]`; `ParaxialTrace` gives the
    surface zero power and otherwise ignores it. Nothing downstream can see a misalignment.
 3. **No figure or freeform overlay on a surface.** Needed for both the Schmid (figure error) and
@@ -153,7 +154,8 @@ wrong place, and no internal check will catch it.
 ## The sigma vector
 
 `sigma_j` locates the centre of surface `j`'s aberration field in the image plane. There are two
-routes to it and this program can take only one of them today.
+routes to it and this program can take only one of them today. *(Superseded - `RealSigma` now
+takes the real-ray route as well.)*
 
 ### The paraxial route (Gu 2020, Appendix)
 
@@ -202,7 +204,8 @@ real-ray route of Thompson (2009) implements directly.
 through the centre of the stop - strikes each surface, relative to that surface's own centre of
 curvature. The paraxial expressions above are the small-perturbation limit of that. For the large
 tilts of an off-axis three-mirror or a freeform system the real-ray route is the only correct one,
-and `RealRayTrace` is already here to do it. The paper is not.
+and `RealRayTrace` is already here to do it. The paper is not. *(It has since been obtained -
+see references.md.)*
 
 ## Stage 2 is the one worth building first
 
@@ -542,10 +545,11 @@ In the order the checks are worth anything, which is this repository's usual ord
 
 ## What this would not do
 
-**No fifth-order NAT yet.** It is no longer blocked - see the section below for what is
-established and what is left - but nothing fifth order is computed anywhere in the code.
+**No fifth-order NAT yet.** *(Superseded - fifth-order NAT is implemented; see the sections
+below.)* It is no longer blocked - see the section below for what is established and what is
+left - but nothing fifth order is computed anywhere in the code.
 
-**No real-ray sigma.** The paraxial route is the small-perturbation limit. It is the right tool
+**No real-ray sigma.** *(Superseded - `RealSigma` measures it.)* The paraxial route is the small-perturbation limit. It is the right tool
 for tolerancing, which is what Stage 2 is, and the wrong one for a system with large deliberate
 tilts, which is what Stage 4's customers are.
 
@@ -1655,4 +1659,16 @@ application layer - figure error, mount error, freeform surfaces, tolerancing - 
 happens to reproduce the paraxial sigma derivation in full, which is what makes Stages 1 to 3
 implementable today. What it does not hold is Thompson's foundational 2005 paper, whose
 Appendix A defines the vector algebra every one of the six cites, and which is the authority on
-the sign question raised above.
+the sign question raised above. *(Since obtained - it is `[have]` in references.md, with an
+erratum to its Eq. (A5).)*
+
+## September 2026: NAT on mirrors
+
+NAT's third order had always been held to a mirror system - Thompson's two-mirror telescope,
+against his Tables 3 and 5 - but that test compares magnitudes, and two paths had never met a
+mirror. Asked directly, both were wrong there, and both are fixed: the wave front coefficients
+came out exactly zero (`WaveFront.FromSystem` handed Buchdahl's scheme the plain indices), and
+real-ray sigma lost the secondary (the intersection gave up after the telescope's 7490 mm gap).
+Real-ray sigma now agrees with the paraxial sigma on both mirrors to 2E-5, signs included, and
+the wave front closes against the Seidel sums on the telescope to 4E-12. The account is in
+verification.md, *Nodal aberration theory on mirrors*.

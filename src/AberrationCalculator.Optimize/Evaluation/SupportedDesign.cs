@@ -34,7 +34,8 @@ public static class SupportedDesign
         "Seventh order by BUCHDAHL's computing scheme, which is closed-form sums over the "
       + "paraxial ray data and the fastest route there is. A figured surface takes the aspheric "
       + "arrangement of his Sec. 85, which agrees with Forbes' series trace on all twenty "
-      + "tertiary coefficients to 2E-10 or better; a spherical design takes his own published "
+      + "tertiary coefficients to 2E-10 or better on a refracting design, and with reflected "
+      + "real rays on a mirror, which Forbes declines; a spherical design takes his own published "
       + "table, bit for bit as it always did; and a figured flat facing collimated light takes "
       + "the same chain in Laurent series arithmetic, differentiated, with the limit read at "
       + "e^0.";

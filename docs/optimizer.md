@@ -88,7 +88,8 @@ September 2026 that reconstruction was one the rays rejected, by up to a factor 
 refusal: descending a quantity wrong by a factor of four is not slow, it is aimed wrongly.
 
 **That arrangement is now established** — all twenty tau against Forbes' series trace to between
-2E-13 and 2E-10 on every figured design, the rays agreeing with both, and an independent
+2E-13 and 2E-10 on every figured refracting design, the rays agreeing with both, and against
+reflected real rays on a figured mirror, which Forbes declines, and an independent
 transcription in `macros/BUCH7_ASPH.ZPL` reproducing `FORBES.ZPL` inside OpticStudio. See
 [docs/verification.md](verification.md). So the optimizer carries figuring: a conic and the r^4,
 r^6 and r^8 terms are variables like any other, spelled `CC`, `A4`, `A6` and `A8`.
@@ -578,7 +579,7 @@ VAR CV 4 MIN -0.05 MAX 0.05
 PICKUP TH 2 INDEX 1 SCALE 1 OFFSET -0.1  # surface 2's thickness follows surface 1's
 ```
 
-`CV`, `TH`, `CC`, `A4`, `A6` and `A8` — see **Figuring, and the one case still refused** above.
+`CV`, `TH`, `CC`, `A4`, `A6` and `A8` — see **Figuring, and what is carried** above.
 
 **A `VAR` line merges into what is already known.** `VAR TH 2 MIN 1.0` followed by
 `VAR TH 2 MAX 25.0` leaves both limits, not the second alone. For a file this program writes the
@@ -640,8 +641,9 @@ Subtracting the Gauss-Newton diagonal from that leaves an estimate of precisely 
 dropped, and *that* — rather than a blind multiple of the identity — is what is added to the
 normal equations. D. C. Dilworth, "Pseudo-second-derivative matrix and its application to
 automatic lens design," *Applied Optics* **17**(21), 3372 (1978) - and his 1983 follow-up on the
-stabilising factor, which is the one that bears on `psd2` against `psd3`. Neither is in hand;
-both, and the rest of what the optimiser is built from, are in
+stabilising factor, which is the one that bears on `psd2` against `psd3`. Both are in hand, and
+neither has yet been read against the code; they, and the rest of what the optimiser is built
+from, are in
 [references.md](references.md#optimisation).
 
 The secant is a difference of two gradients, so both ends have to be real measurements — which is
@@ -954,15 +956,16 @@ assistant can compose one without writing a file. It writes nothing unless given
 
 ## What this does not do
 
-- **Conics and even aspheres are out of scope**, for the reason given above. The design is
-  refused before the run; the analysis side still handles them everywhere it did.
+- **A design is refused only when the series route cannot vouch for its answer** - a failure to
+  converge measured on that design, not a class of shape. Conics, even aspheres, the figured flat
+  in collimated light and mirrors are carried; see *Figuring, and what is carried*.
 - **A variable that touches a pickup is refused.** Pickups are resolved when a file is read and
   are not maintained afterwards, so optimising one end of a cemented pair would part the cement.
   Constrain the pair with operands instead.
 - **Glass moves only in the hopping.** Model glass `nd`/`Vd` are not continuous variables.
 - **PRMSA is the *predicted* spot**, and inherits the accuracy of the prediction —
-  [docs/spot-prediction.md](spot-prediction.md) measures that at a few per cent on the spherical designs this
-  optimizer accepts. On a design the series does not describe well, the optimizer will faithfully
+  [docs/spot-prediction.md](spot-prediction.md) measures that at a few per cent on a plain triplet, and much worse
+  on hard-corrected aspheric designs. On a design the series does not describe well, the optimizer will faithfully
   minimise a quantity that is not quite the spot.
 - **Semi-diameters are not re-solved.** The clear aperture used by the edge and ratio operands is
   the paraxial beam, which follows the design, but vignetting is not modelled.

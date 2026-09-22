@@ -25,14 +25,16 @@ third and fifth order**, and it had to: nothing else available computes them.
 
 **3. Inverse real ray tracing.** `CoefficientInversion` recovers coefficients from the
 landings of real traced rays, by scaling and an odd-polynomial fit. It is this repository's
-own code. Eight test files use it as their reference, including every aspheric one.
+own code. Over a dozen test files use it as their reference, including every aspheric one, and
+since September 2026 it recovers the third and fifth order the same way (`InvertThirdAndFifth`).
 
 **4. An independent implementation** of the third and fifth order, written in C++ by this
 repository's author directly from the monograph — a different lineage from the same source.
 It does not implement aspherics.
 
 **5. Forbes' series trace**, from a separate published paper with no shared code. It agrees
-with Buchdahl's scheme on all twenty tertiary coefficients to 2E-13 at both conjugates.
+with Buchdahl's scheme on all twenty tertiary coefficients to 2E-13 at both conjugates. It does not
+trace a mirror, and declines one; there the rays are the reference.
 
 **And a cross-check anyone can repeat.** An independent commercial implementation's Seidel
 analysis and the FIFTHORD macro agree with this program — 586 coefficient values across seven designs, worst residual 1.1E-12,
@@ -72,7 +74,7 @@ now asserts it.
 | what | result |
 |---|---|
 | Table I, t1–t155, per surface | matches the reference implementation to 7E-16 |
-| the twenty tau, Buchdahl against Forbes | 20 of 20 to 2E-13, both conjugates |
+| the twenty tau, Buchdahl against Forbes | 20 of 20 to 2E-13, both conjugates; Forbes declines a mirror |
 | seventh-order spherical aberration, two routes | identical to every printed digit |
 | third order against an independent Seidel analysis, finite conjugate | 30 of 30 |
 | fifth order against FIFTHORD, finite conjugate | 18 of 18 totals |
@@ -85,12 +87,12 @@ now asserts it.
 | LensHH-LT against this program, r-squared | nine fixtures, every per-surface value to every digit it prints, after the defect below was fixed in 1.0.156 |
 | immersed OBJECT space against FIFTHORD | 17 of 18 to every digit the macro prints, on `Ej_object_space_n101`; `E5` differs by 8E-13, which is 1.6E-12 of the largest coefficient and at the agreement floor recorded above |
 | figured at a FINITE conjugate against Forbes | 1E-13 at two stop positions, three object distances and an immersed object medium, after the defect recorded below was fixed |
-| the analytic derivative, every design on disk | 53 designs against a central difference of their own residuals, every build |
-| the tertiary set against a different lineage | 53 designs against Forbes to better than 1E-9, and against real rays where the conjugate allows, every build |
+| the analytic derivative, every design on disk | all 61 designs, the two mirrors included, against a central difference of their own residuals, every build; and Thompson's two-mirror telescope, built in code |
+| the tertiary set against a different lineage | all 61 designs: against Forbes to better than 1E-9 wherever Forbes applies - every design but the two mirrors - and against real rays wherever the conjugate allows, every build |
 | Seidel against Optiland 0.6.2 | 16 designs, every surface, all five sums, to 1E-14 once its opposite sign is turned; see [optiland.md](optiland.md) |
 | fifth order from Optiland's rays | all twelve on 45 designs at infinity, aspheric and a mirror included, to between 3E-9 and 1.3E-5 of the largest - the inversion's own floor on this program's rays |
 | the seventh order on a mirror | finite since the scheme was given signed indices; all nineteen tau against reflected real rays to 6E-6 of the largest on the parabola at ten degrees; Forbes declines a mirror |
-| the macros on a mirror | BUCH7 and BUCH7_ASPH reproduce this program on all thirty-seven, to every printed digit, on a parabola and a spherical mirror in OpticStudio; RAYINV agrees in sign everywhere and to its fit's floor; FORBES declines - see [optiland.md](optiland.md) |
+| the macros on a mirror | BUCH7_ASPH reproduces this program on all thirty-seven, to every printed digit, on the parabola (F4) and the spherical mirror (F10) in OpticStudio; BUCH7 does the same on F10 and declines the figured F4; RAYINV agrees in sign everywhere and to its fit's floor; FORBES declines. One reflection only - see [optiland.md](optiland.md) |
 | the suite | over a thousand tests, and everything they read is in this repository |
 
 ## The aspheric arrangement, and how it was established
@@ -145,7 +147,8 @@ variable, and reads the answer at e^0. It is used only when it vouches for itsel
 truncations agreeing, nothing below the lowest carried order, negative orders cancelled - and
 the design now agrees with Forbes to 1.2E-9, where it was 710 per cent out
 (`FlatCollimatedSeriesTests`). That was the one exception, and it is closed: there is no figured
-case left that this program declines to compute or computes differently from Forbes.
+REFRACTING case left that this program declines to compute or computes differently from Forbes. On
+a figured mirror Forbes declines, and the reflected rays are the reference (see *Mirrors*).
 
 **And it is differentiated too, which it was not at first.** The series route lived in Core alone,
 so the OPTIMISER refused such a design: in the differentiating build the call had no body and
@@ -421,7 +424,8 @@ refusal on `F8`, the original text on `F3`.
 ## The two ends of the system: the end surfaces and the end media
 
 **Everything in this repository has been checked on lenses whose object and image surfaces are
-plane and whose object and image spaces are air.** Every fixture is like that. That is the same
+plane and whose object and image spaces are air.** Every fixture was like that until the E family
+below was built for this question. That is the same
 shape of blind spot the r-squared bug lived in - a case no test happened to contain - so ten of
 them were asked about deliberately: the image surface curved, curved with a conic, curved with
 `A4` and `A6`, curved with `A2`; the same four on the object surface at finite conjugate; and
@@ -524,8 +528,8 @@ index - the normalisation cancels. The cause is below.
   which identifies it as truncation rather than a wrong coefficient.
 - **Everything with IMAGE space immersed.** The tertiary set agrees with Forbes to 2E-12 at
   `n' = 1.30`, and best focus predicted from the coefficients lands where the rays do.
-- **Object-space immersion at `n = 1`**, which is every design in this repository and every
-  fixture. Nothing that has ever been reported here is affected.
+- **Object-space immersion at `n = 1`**, which is every design in this repository except the
+  immersed E fixtures built to test it. Nothing that has ever been reported here is affected.
 
 **The fifth order is now checked under immersion on axis, and not off it.** Fitting the traced
 axial aberration as `B rho^3 + B5 rho^5 + B7 rho^7` with the ninth order carried and discarded
@@ -745,7 +749,9 @@ already known to agree, which is the comparison that cannot fail and therefore c
 ## Every design on disk is differentiated
 
 **`DerivativeSweepTests` takes the analytic Jacobian against a central difference of the same
-residuals, on all 53 designs in the two fixture folders.** It replaces nothing: the four
+residuals, on all 61 designs in the two fixture folders**, the parabolic and spherical mirrors
+included - and `TheTwoMirrorTelescopeIsDifferentiatedThroughBothMirrors` adds Thompson's
+telescope, which is built in code rather than read from a file. It replaces nothing: the four
 hand-written cases in `AnalyticDerivativeTests` keep their much wider operand set, which names
 surfaces only their own design has. What the sweep adds is breadth - and the designs it reaches
 are the ones no one chose, including the whole E family, whose purpose is to sit in the awkward
@@ -784,9 +790,11 @@ meet; every other design on disk is held to 0.02 per cent.
 ## Every design is cross-checked against a different lineage
 
 **`CoefficientSweepTests` compares the twenty tertiary coefficients against Forbes' series trace
-on all 53 designs, and against real traced rays wherever the conjugate allows it.** Forbes
-declines none of them; the scheme and the series trace agree to better than 1E-9 relative on every
-design on disk, and to 2E-13 on most.
+on every one of the 61 designs where it applies, and against real traced rays wherever the
+conjugate allows it.** Forbes declines the two mirrors on disk, the parabola and the spherical
+mirror, which are held to the reflected real rays alone; everywhere else the scheme and the series
+trace agree to better than 1E-9 relative, and to 2E-13 on most. A design must be held to at least
+one of the two, and the sweep fails if any is held to neither.
 
 **Lineage is the word that matters.** Buchdahl's computing scheme accumulates a table of
 per-surface quantities through an arranged recursion; Forbes' trace propagates a ray through sag
@@ -808,8 +816,10 @@ fixtures, the disagreement runs between two and forty times the fit's OWN report
 the bar is a hundred times it - a level every sound design clears while a coefficient that is
 actually wrong, which would be out by per cent rather than by parts in ten thousand, still fails.
 
-A fit that did not close is not a reference at all: the parabolic mirror leaves a residual of 0.75,
-and that comparison is declined rather than made against noise.
+A fit that did not close is not a reference at all, and such a comparison is declined rather than
+made against noise. The parabolic mirror once left a residual of 0.75 here - but that was the ray
+trace failing to reflect (see *Mirrors*); with reflection fixed its fit closes, and the rays are its
+only second lineage.
 ## The model glass the patcher deleted
 
 **Saving an optimised .zmx back to disk removed a MODEL GLASS, turning the element into air.**
@@ -932,16 +942,20 @@ surface's S5 to zero there and was meant to list it in `DistortionSuppressedAt` 
 ### Why nothing caught it
 
 The comment beside it said the quantity was "genuinely singular" there, so a zero read as a
-deliberate refusal rather than a wrong value. It is not singular. With `u = A/n - yc` either side
+deliberate refusal rather than a wrong value, and nobody questioned the comment. The means to do so
+was already here: `S5 = 2 E n'u'` ties the Seidel distortion to Buchdahl's E, which this program's
+own rays confirm, and on the flat design it came out -2.03 where every other design gives 2. It is
+not singular. With `u = A/n - yc` either side
 of the surface and `H = Abar y - A ybar`, the A divides out exactly:
 
     S5 = -Abar^3 y d(1/n^2) + Abar ybar c (2 Abar y - A ybar) d(1/n)
 
-### What caught it, and what settled it
+### How it came to light, and what settled it
 
-Optiland's Seidel sums, which write distortion without the 1/A and disagreed on that one design
-(see [optiland.md](optiland.md)). A disagreement does not say which side is wrong, so it was
-settled without Optiland: `S5 = 2 E n'u'` holds to six figures on every ordinary design, E on the
+It came to light when the per-surface Seidel sums were compared with Optiland's, which write
+distortion without the 1/A and disagreed on that one design (see [optiland.md](optiland.md)). A
+disagreement does not say which side is wrong, and it was settled - as it could have been found -
+without Optiland: `S5 = 2 E n'u'` holds to six figures on every ordinary design, E on the
 flat design is confirmed by this program's own real rays, and it is identical to its value with
 the face bent to R = 1E10 - as is the distortion of the real chief ray. So S5 had to be the bent
 design's. The form above is now used where `A = 0`, the quotient everywhere else so no other
@@ -950,9 +964,10 @@ fixture surfaces where both are defined.
 
 ## Mirrors: the defects on the reflecting path, all fixed
 
-**Everything in this program that handles a reflection was checked for the first time on
-22 September 2026, and five defects were found on the reflecting path - four below, the fifth in
-NAT (see *Nodal aberration theory on mirrors* further down).** A reflection is carried as a refraction into
+**Beyond the third and fifth order, nothing in this program that handles a reflection had been
+compared with another program until 22 September 2026, and five defects were found on the
+reflecting path - four below, the fifth in NAT (see *Nodal aberration theory on mirrors* further
+down).** A reflection is carried as a refraction into
 `-n`: the paraxial trace and the fifth-order code always did that, and nothing else did. Every
 one of the four is a place that was handed the plain indices, or divided by the signed one.
 
@@ -963,17 +978,38 @@ one of the four is a place that was handed the plain indices, or divided by the 
 | the same routine divided by the SIGNED image index | once finite, every tau was negated against the third and fifth order - which `Prms` multiplies together |
 | Forbes' series trace was handed unsigned indices | its own guard against reflection never fired; it traced the mirror as a refraction and returned zeros |
 
-### Why nothing caught it
+### Why nothing caught it: the data was not read critically enough
 
-Two sweeps covered the parabola and passed it every build, and both were hollow: the seventh
-order was NaN there, and a comparison with NaN is false, so no assertion could fire. The
-cross-lineage sweep had also skipped the real rays on it, because their fit left a residual of
-0.75 - which was the non-reflecting trace, taken for noise.
+**The evidence was already in this repository, and it was explained away rather than chased.**
+That is the real reason, and it is not a flattering one. The parabola is the one design whose
+answer is known exactly, and on it:
 
-### What caught it, and what settled it
+- the real-ray fit left a residual of 0.75 - and the cross-lineage sweep's own comment called
+  that "comparing against noise" and skipped it. It was the non-reflecting trace;
+- the seventh order was NaN - and two sweeps passed it every build, because a comparison with NaN
+  is false and no assertion could fire.
 
-Optiland's rays, which reflect, landing 20 mm from this program's on the parabola. Settled
-without Optiland, by the parabola itself: it images an axial point perfectly, so every axial ray
+Either one, looked at critically, leads straight to the defects. No other program was needed to
+see that a fit failing on an exact design is a finding, not noise, or that a sweep reporting a
+pass on NaN has checked nothing. That is the lesson worth keeping.
+
+**OpticStudio was never wrong here, and never disagreed with this program on a mirror.** The only
+comparison with it on a reflecting design was FIFTHORD on the parabola: eighteen values, the
+third order, the fifth and B7. This program matched them then and matches them now; the paraxial
+trace and the fifth-order code always signed the index correctly. Every one of the defects lies
+outside what FIFTHORD computes - the real ray trace, tau2 to tau20, the series trace, the NAT wave
+front - and none of those had been set against OpticStudio, or anything else, on a mirror.
+OpticStudio would have caught all of them: its ray trace reflects, and `RAYINV.ZPL` or a plain
+ray-for-ray comparison on the parabola would have shown the trace and the seventh order wrong. It
+was simply never asked.
+
+### What prompted the second look, and what settled it
+
+Embedding Optiland meant comparing ray landings on every design on disk, the parabola included,
+and its rays landed 20 mm from this program's. That reinforced that something was amiss with
+reflection - it did not find anything the symptoms above were not already showing, and Optiland is
+no more right than OpticStudio, whose rays reflect too. It was settled without Optiland, by the
+parabola itself: it images an axial point perfectly, so every axial ray
 must reach the axis, and it now does to 1E-12. With the trace right, the seventh order is held
 against reflected real rays - all nineteen tau to 6E-6 of the largest at ten degrees
 (`ParabolicMirrorTests.TheSeventhOrderOfAMirrorIsFiniteAndAgreesWithRealRays`) - and a
@@ -985,16 +1021,18 @@ fifth-order coefficients came out as exactly minus Buchdahl's, zeros included - 
 not an error: Buchdahl measures the image-space transverse aberration along an axis a reflection
 reverses, and a ray trace keeps one frame. The ray inversion turns the landings after an odd
 number of reflections, and the seventh order now takes |N'| as the fifth-order code always has.
-All three orders are in FIFTHORD's frame, which its recorded reference for the parabola pins.
+All three orders are in FIFTHORD's frame: its recorded reference for the parabola pins the third
+and fifth, and the seventh is tied to them by |N'| and by the reflected rays.
 
 ### The macros had the same four, and are fixed and run
 
 `BUCH7_ASPH` took |N'| for the third and fifth and the signed index for the seventh; `BUCH7` took
 the signed index for all of them, negating every total against FIFTHORD; `FORBES` traced a mirror
 as a refraction; `RAYINV` returned every coefficient negated. All four are fixed, and were run in
-OpticStudio on the parabola and the spherical mirror: `BUCH7` and `BUCH7_ASPH` reproduce this
-program on all thirty-seven to every printed digit, `RAYINV` agrees in sign on every coefficient
-and to its fit's floor, and `FORBES` declines. The runs are tabulated in
+OpticStudio on the parabola (F4) and the spherical mirror (F10): `BUCH7_ASPH` reproduces this
+program on all thirty-seven to every printed digit on both, `BUCH7` does the same on F10 and
+declines the figured F4, `RAYINV` agrees in sign on every coefficient and to its fit's floor, and
+`FORBES` declines. The runs are tabulated in
 [optiland.md](optiland.md).
 
 ### Nodal aberration theory on mirrors
@@ -1020,7 +1058,7 @@ paraxial sigma on both mirrors to 2E-5, SIGNS INCLUDED, which the Table 5 test c
 
 ### Two reflections, measured
 
-The same telescope settles the question left open above. After two reflections the image-space
+The same telescope settles whether the frame rule holds after two reflections. After two the image-space
 index is positive again, so the rays are not turned - and inverted unturned they agree with
 Buchdahl on every order: third to 7.5E-12, fifth to 8E-9, seventh to 1.7E-5 of the largest tau
 at four degrees (`TwoReflectionsRestoreTheFrameInEveryOrder`). At Thompson's third of a degree

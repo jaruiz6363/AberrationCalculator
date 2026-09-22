@@ -13,7 +13,8 @@
 !   term outright, because Buchdahl gives the aspheric scheme in Sec. 85 but never
 !   published the arranged table for it. That arrangement has since been reconstructed,
 !   and agrees with Forbes' order-doubling series trace to between 2E-13 and 2E-10 on
-!   every figured design it has been put to; this macro is that arrangement. BUCH7.ZPL
+!   every figured refracting design it has been put to (Forbes declines a mirror); this
+!   macro is that arrangement. BUCH7.ZPL
 !   is left exactly as it was - the spherical routine is the one checked against
 !   Buchdahl's own printed numbers, and it is not disturbed.
 !
@@ -36,8 +37,9 @@
 !        carry them with coefficient one.
 !
 !   Against Forbes' order-doubling series trace, which shares no arithmetic with it,
-!   this arrangement agrees to between 2E-13 and 2E-10 on every figured design it
-!   has been put to.
+!   this arrangement agrees to between 2E-13 and 2E-10 on every figured refracting
+!   design it has been put to. On a mirror, which Forbes declines, it has been checked
+!   against the C# program and reflected real rays instead (F4, F10).
 !
 ! HOW TO CHECK IT ON YOUR OWN LENS, AND PLEASE DO
 !
@@ -56,8 +58,10 @@
 !   own output when it finds one, rather than leaving you to discover it.
 !
 !   THE SEVENTH ORDER against FORBES.ZPL in this same folder, which reaches tau1 to
-!   tau20 by order doubling and shares no arithmetic with the scheme below. That is
-!   the only one of the three that reaches tau2 to tau20 on a figured lens.
+!   tau20 by order doubling and shares no arithmetic with the scheme below - on a
+!   refracting system. FORBES declines a mirror; there RAYINV.ZPL, from real rays, is
+!   the check, and the closing note says so. Of the three references above, FORBES is
+!   the only one that reaches tau2 to tau20 on a figured lens; RAYINV reaches them too.
 !
 !   ON A LENS OF SPHERES this macro and BUCH7.ZPL must agree entry for entry: none of
 !   the aspheric machinery is reached there, so a disagreement is a fault in this file

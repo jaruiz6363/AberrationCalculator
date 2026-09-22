@@ -33,8 +33,9 @@ namespace AberrationCalculator.Tests;
 ///
 /// <para><b>What this adds over <see cref="CoefficientInversion"/>, which came first.</b> That
 /// recovers all twenty from traced rays by scaling ray shapes and fitting an odd polynomial in
-/// the scale, and <c>ForbesCoefficientsTests</c> already uses it to establish, on nine
-/// fixtures, that Forbes agrees with rays where this program's aspheric arrangement does not.
+/// the scale, and <c>ForbesCoefficientsTests</c> used it to establish, on nine fixtures, that
+/// Forbes agreed with rays where this program's aspheric arrangement then did not. The
+/// arrangement has since been completed and agrees with both.
 /// This route is narrower: three coefficients, no basis, no least-squares solve, no model of
 /// the other seventeen, and an error bar of its own. What follows is therefore a corroboration
 /// by a second and much simpler instrument rather than a first finding - and the two agree on
@@ -193,8 +194,9 @@ public class DistortionPredictionTests
     }
 
     /// <summary>
-    /// And the Forbes series trace gets tau20 right where Buchdahl's scheme does not - on every
-    /// one of these designs, to a fraction of a per cent. Two routes, rays adjudicating.
+    /// The Forbes series trace's tau20 agrees with the rays on every one of these designs, to a
+    /// fraction of a per cent. When this was written the scheme's aspheric arrangement did not;
+    /// it now does. Two routes, rays adjudicating.
     /// </summary>
     [Theory]
     [InlineData("CookeTriplet")]

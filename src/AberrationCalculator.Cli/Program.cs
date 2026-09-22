@@ -98,9 +98,10 @@ OPTIONS
                       scheme. CONICS AND EVEN ASPHERES ARE CARRIED, as values
                       and as variables - CC, A4, A6, A8 - a figured surface
                       taking the aspheric arrangement of Sec. 85 and a
-                      spherical one Buchdahl's own table. One design is
-                      refused and named: a figured flat facing collimated
-                      light. Analysis is unaffected.
+                      spherical one Buchdahl's own table. A figured flat
+                      facing collimated light is carried too, in Laurent
+                      series arithmetic; a design is refused only when that
+                      route cannot vouch for its answer.
                       See docs/optimizer.md for the merit-function format.
       --optimize_basin_hopping
                       Search over BASINS rather than descending one: kick the design
@@ -556,8 +557,8 @@ EXIT CODES
             if (text == null)
             {
                 Console.Error.WriteLine("error: the coefficients could not be separated. That happens "
-                                      + "when the system has no field, or when the series trace does "
-                                      + "not close on this design.");
+                                      + "when the system has no field, when the series trace does "
+                                      + "not close on this design, or when the design contains a mirror, which the series trace does not trace.");
                 return 1;
             }
             Console.Write(text);

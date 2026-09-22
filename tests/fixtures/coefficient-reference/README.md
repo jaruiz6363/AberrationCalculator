@@ -1,13 +1,19 @@
 # Coefficient reference fixtures
 
-Seven small aspheric designs and the third-, fifth- and seventh-order coefficients they
-should produce: per surface, the isolated aspheric part of each surface, and the system
-totals.
+Twenty-nine small designs in three families, all purpose-built for testing and this
+repository's own:
 
-The designs are purpose-built for testing and are this repository's own. Each is a single
-wavelength (0.5875618 um), an infinite object and a non-zero field - the chief ray is traced
-at full field, so a zero field would collapse the Lagrange invariant and there would be
-nothing to check.
+- **F1 to F10** - aspheric designs and two mirrors, object at infinity. F1 to F7 carry the
+  third-, fifth- and seventh-order coefficients they should produce (`.buchdahl.json`: per
+  surface, the isolated aspheric part of each surface, and the system totals); F8, F9 and F10
+  have no reference file, for the reasons given with each.
+- **G0 to G2 and H1 to H3** - the r-squared term at a finite conjugate.
+- **The E family** - the two ENDS of the system: curved end surfaces and immersed end media.
+
+Each is a single wavelength (0.5875618 um) and a non-zero field - the chief ray is traced at
+full field, so a zero field would collapse the Lagrange invariant and there would be nothing to
+check. The F family, which the first table lists, is at infinity; the G, H and half the E
+designs are at a finite conjugate.
 
 | fixture | what it exercises |
 |---|---|
@@ -34,7 +40,7 @@ r-squared defect in this repository. See `docs/verification.md`.
 
 **F8_r2_conic_a4_a6_a8 has no reference file, and that is the point of it.** It is
 F3_conic_a4_a6_a8 with `PARM 1 = 1.0E-04` added and nothing else changed, so it carries the one
-term the seven above deliberately avoid. No FIFTHORD reference can exist for it - see the note
+term F1 to F7 deliberately avoid. No FIFTHORD reference can exist for it - see the note
 on `PARM 1` below - so `Fixtures()` never picks it up, since that enumerates the `.buchdahl.json`
 files and this design has none. It is here to be compared the other way: against Forbes, against
 real rays, and against the same file opened in OpticStudio.
@@ -68,7 +74,8 @@ they agree to the last stored digit, per surface and in total.
 **Why a finite conjugate, when F8 and F9 already ask this at infinity.** Because that is where
 this repository's own defects have hidden. `iota` is non-zero only at a finite conjugate, the stop
 parameter stops being the scheme's derived value only there, and the figured-and-finite
-combination is what carried the stop-parameter defect recorded above. Putting the stop behind the
+combination is what carried the stop-parameter defect recorded in docs/verification.md, *The
+stop parameter the aspheric increments were measured from*. Putting the stop behind the
 lens rather than on it makes the stop parameter live as well.
 
 These were built as the acceptance test for a fix to another program, and kept because the
@@ -180,7 +187,8 @@ independent implementation written from the book, and Forbes' series trace. See
 
 ## The E family: the two ENDS of the system
 
-Twelve more designs, added 20 September 2026, for a different question: what happens when the
+Thirteen more designs - twelve added 20 September 2026 and Ek on 21 September - for a different
+question: what happens when the
 OBJECT surface or the IMAGE surface is not a plane, and when the object or image MEDIUM is not
 air. Every fixture above, and every lens this program had ever been checked on, is plane at both
 ends and in air at both ends, which is the same shape of blind spot the r-squared term lived in.
@@ -204,6 +212,7 @@ a disagreement in one of these can be chased by hand.
 | Eh_object_flat_a2 | finite | object surface FLAT with A2 = 0.01 |
 | Ei_image_space_n101 | infinite | last medium n = 1.01 |
 | Ej_object_space_n101 | finite | object medium n = 1.01 |
+| Ek_figured_finite_conjugate | finite, object 200 mm, height 10 | front surface figured (k = -0.6, A4 = 2E-07, A6 = 1E-11), stop 8 mm behind the lens, EPD 16 |
 
 **`Ea` and `Ed` are the same surface written two ways**, and so are `Ee` and `Eh`. An r-squared
 coefficient is a curvature: `A2 = -0.01` on a flat surface is vertex curvature `-0.02`, which is

@@ -21,7 +21,8 @@
 !
 !   Thirty-four coefficients are hard to read as a statement about image quality. One
 !   RMS radius is easy to read and throws away most of what they say. Printing both,
-!   truncated four ways, says something neither gives alone: how much of the spot each
+!   truncated four ways plus ninth-order spherical (five columns, below), says
+!   something neither gives alone: how much of the spot each
 !   ORDER accounts for, and therefore whether the design is limited by aberration the
 !   third order already describes or by something only the seventh reaches.
 !
@@ -73,7 +74,7 @@
 !   seventh order is within 0.7 per cent on axis and about 2 per cent out to nine
 !   tenths of the field, and falls apart at the very edge - minus 13 per cent at H = 1.
 !   The third order alone is out by a quarter on axis and by more than a factor of two
-!   at the edge, which is why four columns are printed rather than one.
+!   at the edge, which is why the truncations are printed side by side rather than one.
 !
 ! THE ZPL TRAPS: see macros/README.md. Every variable here is distinct ignoring case
 ! and none collides with a built-in function name - in particular the field-count is

@@ -388,7 +388,8 @@ public static partial class TertiaryCoefficients
         // of one, which the scheme requires and which an immersed object space would otherwise
         // break. See the long note at the ray start in BuchdahlTableI. The physical chief ray's
         // plain angle is therefore N_0 times the q ray it is expressed in, and that factor
-        // belongs here. One when object space is air, which is every design in this repository.
+        // belongs here. One when object space is air, which is every design in this repository
+        // but the immersed E fixtures built to test exactly this.
         Scalar nObject = SMath.Abs(paraxial.N[0]);
         if (nObject < 1e-12) nObject = 1.0;
 

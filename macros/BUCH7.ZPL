@@ -32,7 +32,7 @@
 !   the arranged table for it, so this file does not guess at one. BUCH7_ASPH.ZPL,
 !   beside this one, IS that arrangement reconstructed, and it carries conics and even
 !   aspheres; it agrees with FORBES.ZPL on all twenty seventh-order coefficients on
-!   every figured design tried. This macro is left as the spherical routine, checked
+!   every figured refracting design tried. This macro is left as the spherical routine, checked
 !   against Buchdahl's own printed numbers. So: want the seventh order on a figured
 !   design, run BUCH7_ASPH.
 !
@@ -70,9 +70,10 @@
 !   into their own target.
 !
 ! ---------------------------------------------------------------------------------
-! FOUR STAGES: A the paraxial basis and the third order, B the fifth order with its
+! SIX STAGES: A the paraxial basis and the third order, B the fifth order with its
 ! intrinsic and induced parts separated, C Buchdahl's Table I entry by entry, D the
-! twenty tau of the seventh order with the same split. Seventh-order spherical
+! twenty tau of the seventh order with the same split, E the totals published to the
+! call buffer for ROBB.ZPL, F the ninth-order spherical (q9 = 1). Seventh-order spherical
 ! aberration appears in stage B as well as stage D, because it falls out of the block
 ! the fifth order does; the two routes agree, which is a check the reader can make
 ! without leaving the listing. Each stage was checkable against something that
@@ -105,7 +106,7 @@ wl = PWAV()
 ns = NSUR()
 nsm = ns - 1
 IF (nsm < 2)
-   PRINT "BUCH7 needs at least two optical surfaces."
+   PRINT "BUCH7 needs at least two surfaces before the image (a dummy plane will do)."
    GOTO 999
 ENDIF
 

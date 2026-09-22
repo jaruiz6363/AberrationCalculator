@@ -109,12 +109,12 @@
 !   seeing both ways: on a lens with no dummy surfaces the two lines are equal,
 !   and where they differ the reader can decide.
 !
-! THE ZPL TRAPS, THE SAME THREE AS BUCH7 - see macros/README.md. The one that
+! THE ZPL TRAPS OF BUCH7 ALL APPLY - see macros/README.md. The one that
 ! bites here is that variable names are case-insensitive, so no variable in this
 ! file is named i, cosi, magn or curv: the first would collide with the loop
 ! counter, the rest with the built-in functions COSI, MAGN and CURV.
 !
-! AND A FOURTH, WHICH THIS FILE FOUND
+! AND ANOTHER, WHICH THIS FILE FOUND
 !
 !   OPEV traces rays of its own. It evaluates an optimization operand, and the
 !   ray operands trace to do it, so RAYL, RAYM, RANX and the rest - which report

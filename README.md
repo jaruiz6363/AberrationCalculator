@@ -65,7 +65,8 @@ closed-form scheme, which is the fastest route to a seventh-order coefficient th
 surface takes the arrangement of his Sec. 85, which he never published as a table and which is
 reconstructed here. The optimizer refused every figured design until that reconstruction was
 established - it agrees with Forbes' series trace on all twenty tertiary coefficients to between
-2E-13 and 2E-10, and the rays agree with both ([docs/verification.md](docs/verification.md)) - and
+2E-13 and 2E-10 on every figured refracting design, and the rays agree with both; on a figured
+mirror, which Forbes declines, the reflected rays are the check ([docs/verification.md](docs/verification.md)) - and
 now a conic and the r^4, r^6 and r^8 terms are variables like any other, `CC`, `A4`, `A6`, `A8`.
 A spherical design takes Buchdahl's own published table exactly as before, bit for bit.
 
@@ -293,7 +294,8 @@ different changes — and which SURFACE it comes from.
 It reports both mappings, F-tan(theta) and F-theta with the exact relation between them, and
 reconciles the paraxial image plane the coefficients live at with the image surface the file
 defines, where a design program quotes. On a figured design the seventh-order term is taken
-from Forbes' series trace and the report says which route it used - a choice made while the
+from Forbes' series trace - except on a mirror, which Forbes declines, where the scheme's is used -
+and the report says which route it used - a choice made while the
 scheme's aspheric arrangement was still a reconstruction the rays rejected, and kept now that
 it is not, because the two agree there and a route the report names costs nothing.
 
@@ -306,8 +308,9 @@ arrangement while that arrangement was wrong** - `tau20` out by up to a factor o
 figured design, with the rays landing on Forbes every time the two disagreed - and it is worth
 recording that this was found by measurement rather than by inspection of the algebra. The
 arrangement has since been completed and now agrees with Forbes on all twenty tau to between
-2E-13 and 2E-10 on every figured design, a figured flat in collimated light included, and the
-rays agree with both ([docs/verification.md](docs/verification.md)). On spherical designs the two routes always
+2E-13 and 2E-10 on every figured refracting design, a figured flat in collimated light included,
+and the rays agree with both; on a figured mirror, which Forbes declines, the reflected rays are
+the check ([docs/verification.md](docs/verification.md)). On spherical designs the two routes always
 agreed, and the rays back both.
 
 ## When the surfaces are not on a common axis
@@ -381,6 +384,7 @@ light reaches it. A table of totals cannot say which surface to change; that spl
 | spherical surfaces | yes | yes, reproducing BUCH7 entry for entry | yes |
 | conics and even aspheres | declined by name | all three orders | all three orders, with the figuring separated |
 | object at infinity or finite | either | either | either |
+| mirrors | on spheres (needs two surfaces before the image; a dummy plane will do) | yes | declined by name |
 
 They share no code and agree: seventh-order spherical aberration is reached through
 Buchdahl's fifth-order working in one and through a power series in the other, and both
@@ -401,7 +405,8 @@ no other program - only the lens file:
     abcalc <lensfile> --forbes
 
 and the MCP server offers the same as `seventh_order`, so an assistant can ask for it
-directly. All three print the identical report from one formatter.
+directly. All three print the identical report from one formatter, and all three decline a design
+with a mirror: the series trace does not trace a reflection.
 
 What either of them buys over the orders already available is the section above, and
 [docs/spot-prediction.md](docs/spot-prediction.md) in full.
@@ -483,10 +488,13 @@ Working, and validated in [docs/verification.md](docs/verification.md):
 - **mirrors**, since 22 September 2026: the real ray trace reflects, the seventh order is
   finite and in the same frame as the third and fifth, and Forbes' series trace declines a
   mirror rather than trace it as a refraction, and NAT's wave front and real-ray sigma are right
-  on a mirror - the defects on the reflecting path, found by the Optiland cross-check and by
-  asking NAT directly, settled against the parabola's exact answer and Thompson's telescope, and
-  fixed, the macros included; one reflection and two are measured
-  ([docs/verification.md](docs/verification.md), *Mirrors*)
+  on a mirror. These were defects on the reflecting path, and they were missed because the data
+  was not read critically enough: the parabola's ray fit failed and was dismissed as noise, and
+  its seventh order was NaN and passed silently. OpticStudio was never wrong - FIFTHORD reaches
+  only the third and fifth order, which were always right - and Optiland's rays merely
+  reinforced that reflection was amiss. They are settled against the parabola's exact answer and
+  Thompson's telescope, and fixed, the macros included; one reflection and two are measured in this program, the macros
+  on one reflection only ([docs/verification.md](docs/verification.md), *Mirrors*)
 
 There is no GUI. The tool writes plain text and TSV files that you can read, diff and
 feed to something else.
@@ -525,7 +533,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 | [docs/distortion-prediction.md](docs/distortion-prediction.md) | Distortion from the coefficients against traced chief rays. The cleanest window onto a single coefficient there is, and what it found. |
 | [docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md) | What the aberrations do when the surfaces are not on a common axis, and where the nodes go. |
 | [docs/nat-development.md](docs/nat-development.md) | How that was built and what each stage was checked against. |
-| [docs/optiland.md](docs/optiland.md) | The Optiland cross-check: Seidel sums surface by surface, the fifth order from Optiland's own rays, three defects it found in Optiland 0.6.2, and two here, now fixed. |
+| [docs/optiland.md](docs/optiland.md) | The Optiland cross-check: Seidel sums surface by surface, the fifth order from Optiland's own rays, three defects and an unstated sign convention it found in Optiland 0.6.2, and the defects here that came to light alongside it, all fixed. |
 | [docs/mcp.md](docs/mcp.md) | The MCP server: what each tool exposes and what it returns. |
 | [macros/README.md](macros/README.md) | The ZPL macros - what each computes, what it refuses, and the ZPL traps they had to respect. |
 
@@ -569,10 +577,13 @@ asked about once Optiland's opposite sign is turned; and the **fifth order**, wh
 not compute - its rays are inverted for all twelve coefficients instead, and reproduce Buchdahl's
 to between 3E-9 and 1.3E-5 on 45 designs, aspheric ones and a mirror included. The comparison
 found three defects in Optiland 0.6.2 (it ignores r² in its paraxial trace and r⁴ upward in its
-Seidel sums, and its chief ray at a finite conjugate misses the object distance) and two here,
-both since fixed: the Seidel distortion of a flat face in collimated light was lost, and the real
-ray trace did not reflect. Following the second led to a third: on a mirror the seventh order
-was NaN, and Forbes' series trace silently traced it as a refraction; both are fixed. See [docs/optiland.md](docs/optiland.md). Without the embedded
+Seidel sums, and its chief ray at a finite conjugate misses the object distance) and a sign
+convention it does not state. Alongside it, defects in this program came to light - the Seidel
+distortion of a flat face in collimated light lost, the real ray trace not reflecting, and with it
+the rest of the reflecting path: the seventh order NaN on a mirror, Forbes' series trace tracing
+one as a refraction, NAT's wave front zero - all fixed (docs/verification.md, *Mirrors*). They were
+not Optiland's discovery: the symptoms were already in this repository and had been explained
+away, and OpticStudio, compared on a mirror only at the third and fifth order, was never wrong. See [docs/optiland.md](docs/optiland.md). Without the embedded
 Python those tests print `NOT RUN` and pass.
 
 ## Licence

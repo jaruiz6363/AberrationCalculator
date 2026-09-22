@@ -15,7 +15,7 @@ there is almost nothing left to be a second opinion *about*.
 |---|---|---|
 | Buchdahl, spherical | Table I, arranged and published | **one coefficient of thirty** — paper IV, quaternary spherical |
 | Buchdahl, figured | §85 method, arrangement re-derived here | **nothing** — no arrangement at any level of completeness |
-| Forbes | the judge | the only route there is |
+| Forbes | the judge, on a refracting system (it declines a mirror) | the only route there is, on a refracting system |
 
 The asymmetry is not an accident of what got published. Buchdahl's scheme arranges each order into
 a table of `t`-numbered entries, and the arrangement is per-order work — the tertiary needed a
@@ -25,7 +25,8 @@ coefficient in `rho^9`, the one term that survives on axis, and stops. Forbes' f
 arrangement to extend: the order is the truncation degree of the invariant ring, `f_i` already
 carries figuring as ordinary coefficients, and the code does not branch on whether a surface is
 aspheric. **The property that made it a fit judge — no special case for figuring — is the same
-property that makes it the only thing that can reach the ninth order on a figured design.**
+property that makes it the only thing that can reach the ninth order on a figured refracting
+design** (it does not trace a mirror).
 
 So the answer to "is Forbes useful for anything beyond adjudication" is that one order up it stops
 being the second opinion and becomes the first, and for twenty-nine coefficients of thirty it is
@@ -145,7 +146,7 @@ thirty-column answer, and it is the only published number this whole order can b
 
 ## What has to be built
 
-Four things, in the order they unblock each other.
+Four things, in the order they unblock each other, and a fifth that needs nothing.
 
 **1. Unfreeze the extraction degree.** `ForbesCoefficients.DegreeSeven` opens with
 `const int order = 7`, builds `ScaleSeries.S(order)`, and returns `outM[order]`. Everything in it —

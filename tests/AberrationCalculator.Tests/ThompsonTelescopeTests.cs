@@ -175,21 +175,20 @@ public class ThompsonTelescopeTests
     }
 
     /// <summary>
-    /// <b>The case this implementation does NOT yet get right, kept as the record of what is
-    /// missing.</b>
+    /// <b>A rigidly translated telescope displaces nothing.</b> This failed until <c>sigma*</c> -
+    /// the stop's own displacement - was added to the accumulation, and is kept as the acceptance
+    /// test for that term. The history:
     ///
     /// <para>A rigidly translated telescope displaces nothing - <c>RealSigmaTests</c> measures
     /// that from traced rays. The paraxial route here does not reproduce it, and the reason is
     /// now precise: the optical axis ray is defined by passing through the centre of the STOP,
     /// and when the stop itself moves the ray is displaced before it reaches any surface. This
-    /// accumulation starts the ray on axis, so it misses that term.</para>
+    /// accumulation started the ray on axis, so it missed that term.</para>
     ///
     /// <para>Thompson calls it <c>sigma*</c>, and his Fig. 11 caption records that his example
     /// was built so that "the stop is decentered with the primary mirror so that sigma* = 0" -
-    /// which is precisely why Table 5 above agrees to seven figures while this does not. The
-    /// agreement is real and the gap is real, and they are the same fact seen twice.</para>
-    ///
-    /// <para>Skipped rather than deleted: it is the acceptance test for the missing term.</para>
+    /// which is precisely why Table 5 above agreed to seven figures while this did not. With
+    /// sigma* in the accumulation it now passes.</para>
     /// </summary>
     [Fact]
     public void ARigidlyTranslatedTelescopeDisplacesNothing()
