@@ -142,6 +142,18 @@ Standard and Even Asphere surfaces. Anything else — a mirror, a coordinate bre
 type there is no series for — stops the program with the reason rather than being quietly
 approximated by the nearest thing it does understand.
 
+**A mirror was not actually refused until September 2026**, whatever the line above said. The
+surface-type check passes it, being a Standard surface, and `GetIndex` reports the magnitude
+of the index, so nothing downstream learned that it reflects: the series trace took it as a
+refraction into the same medium and returned near-zero coefficients. `LensBridge` now refuses a
+`MIRROR` by name, and the shared trace declines one as well. (Not yet compiled at the time of
+writing - this solution builds only where `FixBinaries` has found OpticStudio.)
+
+**A tilt or decentre on a Standard surface is NOT refused - it is not read.** Only a
+coordinate-break SURFACE is turned away. The Tilt/Decenter properties of an ordinary surface
+are ignored, so a design that carries them is analysed as if centred. That is a gap, recorded
+rather than fixed because the check needs the ZOS-API and cannot be compiled from here.
+
 Likewise an aperture that is not an entrance-pupil diameter, an image-space F/number or an
 object-space NA, and a field that is not an angle or an object height. A wrong pupil or a
 wrong field scales every coefficient here, and silently.

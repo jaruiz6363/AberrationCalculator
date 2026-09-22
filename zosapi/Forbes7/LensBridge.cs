@@ -33,9 +33,10 @@ namespace AberrationCalculator.Forbes7
 
         /// <summary>
         /// Refuses rather than misleads. The Forbes trace handles spheres, conics and even
-        /// aspheres at either conjugate; anything else - a mirror, a tilt, a coordinate break,
-        /// a surface type it has no series for - would silently be treated as something it is
-        /// not, so it is turned away with the reason given.
+        /// aspheres at either conjugate; a mirror, a coordinate break or a surface type it has
+        /// no series for would silently be treated as something it is not, so it is turned away
+        /// with the reason given. NOT a tilt or decentre on an ordinary surface: those
+        /// properties are not read at all, so such a design is analysed as if centred.
         /// </summary>
         internal static Read Build(IOpticalSystem zos)
         {
@@ -110,6 +111,18 @@ namespace AberrationCalculator.Forbes7
                         catch (Exception) { break; }
                     }
                 }
+
+                // A mirror is refused by name. GetIndex reports the magnitude of the index, as
+                // ZPL's INDX does, so nothing downstream would learn that the surface reflects:
+                // until September 2026 the series trace took it as a refraction into the same
+                // medium and returned near-zero coefficients. The shared trace now declines a
+                // mirror itself, but then the report comes back empty with a reason about fields
+                // and convergence, which is not the reason. This says the real one.
+                if (surface.IsMirror)
+                    throw new InvalidOperationException(
+                        "Surface " + i + " is a mirror. The Forbes series trace does not trace a " +
+                        "reflection - the root that picks the reflected cosine is not written - so " +
+                        "it declines. BUCH7_ASPH.ZPL and RAYINV.ZPL handle mirrors.");
 
                 sys.Surfaces.Add(surface);
 

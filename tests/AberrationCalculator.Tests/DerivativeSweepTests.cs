@@ -254,4 +254,36 @@ public class DerivativeSweepTests
             $"only {checkedCount} of {total} designs were differentiated. The rest were "
           + "declined:\n" + string.Join("\n", declined));
     }
+
+    /// <summary>
+    /// Thompson's telescope, differentiated through BOTH mirrors - the one design that folds
+    /// twice, and the only one with a gap long enough to have lost its off-axis rays.
+    ///
+    /// <para>It is built in code rather than read from a file, so the sweep above never sees it.
+    /// The fixes to the reflecting path live in files the differentiating build compiles too -
+    /// the reflection and the stalled intersection in RealRayTrace, the signed indices and |N'|
+    /// in TertiaryCoefficients - and this is where their DERIVATIVES are held to the values: the
+    /// real-ray operands cross the 7490 mm gap off axis, and PRMSA carries the seventh order of
+    /// a two-mirror system.</para>
+    /// </summary>
+    [Fact]
+    public void TheTwoMirrorTelescopeIsDifferentiatedThroughBothMirrors()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var system = ThompsonTelescopeTests.Telescope(false);
+        var vars = new VariableSet();
+        vars.Add(new Variable { Kind = VariableKind.Curvature, Surface = 1 });
+        vars.Add(new Variable { Kind = VariableKind.Curvature, Surface = 2 });
+        vars.Add(new Variable { Kind = VariableKind.Thickness, Surface = 1 });
+        vars.Add(new Variable { Kind = VariableKind.Conic, Surface = 1 });
+        vars.Add(new Variable { Kind = VariableKind.Conic, Surface = 2 });
+
+        var design = new Design(system, catalog, vars);
+        var merit = new MeritFunction(design);
+        merit.AddRange(OperandsFor(system));
+
+        var probe = merit.Evaluate(true);
+        Assert.True(probe.Ok, probe.Failure);
+        JacobianCheck.Check(design, merit, vars, "Thompson telescope");
+    }
 }

@@ -30,7 +30,7 @@ public class ThompsonTelescopeTests
     private const double Deg = Math.PI / 180.0;
 
     /// <summary>Table 1, with the Table 2 misalignments applied when asked for.</summary>
-    private static OpticalSystem Telescope(bool perturbed)
+    internal static OpticalSystem Telescope(bool perturbed)
     {
         var sys = new OpticalSystem();
         sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
