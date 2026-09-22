@@ -480,6 +480,11 @@ Working, and validated in [docs/verification.md](docs/verification.md):
   surfaces are not on a common axis, and where the nodes go. Driven by an `.align` sidecar
   that works the same for all six formats, and checked against Thompson's and Buchdahl's
   own published tables rather than against another program ([docs/nodal-aberration-theory.md](docs/nodal-aberration-theory.md))
+- **mirrors**, since 22 September 2026: the real ray trace reflects, the seventh order is
+  finite and in the same frame as the third and fifth, and Forbes' series trace declines a
+  mirror rather than trace it as a refraction - four defects on the reflecting path, found by
+  the Optiland cross-check, settled against the parabola's exact answer and fixed, the macros
+  included ([docs/verification.md](docs/verification.md), *Mirrors*)
 
 There is no GUI. The tool writes plain text and TSV files that you can read, diff and
 feed to something else.

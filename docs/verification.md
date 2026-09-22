@@ -917,6 +917,91 @@ still see it, so a design whose figuring lives mostly in those terms is not desc
 coefficients, however strong its aspherics look. Both ZPL macros already warned; the C# report
 printed the row and said nothing, which invited the reader to assume it had gone in.
 
+## Seidel distortion on a flat face in collimated light
+
+**`SeidelCoefficients` set the distortion of a flat refracting face in collimated light to zero,
+silently, from the day the file was written until 22 September 2026.**
+
+Distortion was computed as `S5 = (Abar/A)(S3 + S4)`. Where the marginal ray meets a surface at
+normal incidence `A = 0`, and a flat face in a parallel beam is exactly that. The code set the
+surface's S5 to zero there and was meant to list it in `DistortionSuppressedAt` - but only when
+`S4` was non-zero, and `S4` is zero on a flat. So nothing was listed and nothing was said. On
+`Ladder2_FlatPlain` the face's true contribution is +1.060E-03 and the total came out
+-5.336E-04 where it should be +5.267E-04: wrong in sign as well as size.
+
+### Why nothing caught it
+
+The comment beside it said the quantity was "genuinely singular" there, so a zero read as a
+deliberate refusal rather than a wrong value. It is not singular. With `u = A/n - yc` either side
+of the surface and `H = Abar y - A ybar`, the A divides out exactly:
+
+    S5 = -Abar^3 y d(1/n^2) + Abar ybar c (2 Abar y - A ybar) d(1/n)
+
+### What caught it, and what settled it
+
+Optiland's Seidel sums, which write distortion without the 1/A and disagreed on that one design
+(see [optiland.md](optiland.md)). A disagreement does not say which side is wrong, so it was
+settled without Optiland: `S5 = 2 E n'u'` holds to six figures on every ordinary design, E on the
+flat design is confirmed by this program's own real rays, and it is identical to its value with
+the face bent to R = 1E10 - as is the distortion of the real chief ray. So S5 had to be the bent
+design's. The form above is now used where `A = 0`, the quotient everywhere else so no other
+design moves a bit, and `DistortionSuppressedAt` is gone. It agrees with the quotient on the 147
+fixture surfaces where both are defined.
+
+## Mirrors: four defects, all on the reflecting path, all fixed
+
+**Everything in this program that handles a reflection was checked for the first time on
+22 September 2026, and four defects were found.** A reflection is carried as a refraction into
+`-n`: the paraxial trace and the fifth-order code always did that, and nothing else did. Every
+one of the four is a place that was handed the plain indices, or divided by the signed one.
+
+| defect | what it did on a mirror |
+|---|---|
+| `RealRayTrace` had no reflection | refracted between equal indices, so the ray went straight through: on the parabola every axial ray landed 10-20 mm off the axis, where the exact answer is zero |
+| the seventh order (`TertiaryCoefficients.Attach`) was handed unsigned indices | the mirror had no power in the scheme while the paraxial data said f = 100: tau2..tau20 were NaN |
+| the same routine divided by the SIGNED image index | once finite, every tau was negated against the third and fifth order - which `Prms` multiplies together |
+| Forbes' series trace was handed unsigned indices | its own guard against reflection never fired; it traced the mirror as a refraction and returned zeros |
+
+### Why nothing caught it
+
+Two sweeps covered the parabola and passed it every build, and both were hollow: the seventh
+order was NaN there, and a comparison with NaN is false, so no assertion could fire. The
+cross-lineage sweep had also skipped the real rays on it, because their fit left a residual of
+0.75 - which was the non-reflecting trace, taken for noise.
+
+### What caught it, and what settled it
+
+Optiland's rays, which reflect, landing 20 mm from this program's on the parabola. Settled
+without Optiland, by the parabola itself: it images an axial point perfectly, so every axial ray
+must reach the axis, and it now does to 1E-12. With the trace right, the seventh order is held
+against reflected real rays - all nineteen tau to 6E-6 of the largest at ten degrees
+(`ParabolicMirrorTests.TheSeventhOrderOfAMirrorIsFiniteAndAgreesWithRealRays`) - and a
+spherical mirror, `F10_spherical_mirror`, was added: its thirty-seven coefficients agree with
+reflected rays too.
+
+**The frame is one frame now.** With correctly reflected rays, all seventeen third- and
+fifth-order coefficients came out as exactly minus Buchdahl's, zeros included - a change of frame,
+not an error: Buchdahl measures the image-space transverse aberration along an axis a reflection
+reverses, and a ray trace keeps one frame. The ray inversion turns the landings after an odd
+number of reflections, and the seventh order now takes |N'| as the fifth-order code always has.
+All three orders are in FIFTHORD's frame, which its recorded reference for the parabola pins.
+
+### The macros had the same four, and are fixed and run
+
+`BUCH7_ASPH` took |N'| for the third and fifth and the signed index for the seventh; `BUCH7` took
+the signed index for all of them, negating every total against FIFTHORD; `FORBES` traced a mirror
+as a refraction; `RAYINV` returned every coefficient negated. All four are fixed, and were run in
+OpticStudio on the parabola and the spherical mirror: `BUCH7` and `BUCH7_ASPH` reproduce this
+program on all thirty-seven to every printed digit, `RAYINV` agrees in sign on every coefficient
+and to its fit's floor, and `FORBES` declines. The runs are tabulated in
+[optiland.md](optiland.md).
+
+### What is still open
+
+A reflection is established on ONE mirror. No fixture folds twice, so the rule that two
+reflections restore the frame is reasoned rather than measured. And the series trace, here and
+in `FORBES.ZPL`, still declines a mirror rather than trace one.
+
 ## What is not established
 
 
