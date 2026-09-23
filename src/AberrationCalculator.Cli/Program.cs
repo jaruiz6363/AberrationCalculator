@@ -89,9 +89,10 @@ OPTIONS
                       glass names, and conics and aspheric terms - in the file's own
                       units. Conics and aspheric terms go back into .lhlt, .zmx and
                       Optiland .json; a CODE V, OSLO or Optalix file whose figuring
-                      moved is NOT saved, and the values are in the report. For a .lhlt the variable and
-                      pickup settings are written back too; for every other format
-                      they go to the sidecar, along with the merit function.
+                      moved is NOT saved, and the values are in the report. For a
+                      .lhlt the variable and pickup settings are written back too;
+                      for every other format they go to the sidecar, along with the
+                      merit function.
 
                       The derivatives are ANALYTIC throughout -
                       every operand, including the predicted spot, is differentiated

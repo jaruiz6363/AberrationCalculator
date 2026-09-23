@@ -11,6 +11,9 @@ what may move - curvatures, thicknesses, conic constants and the r⁴, r⁶ and 
 and between what limits, it moves them to minimize the merit function you wrote, and the result
 goes back into the file it came from.
 
+**To build it and use it, start with the [user guide](docs/user-guide.md)**: installing, a first
+run, reading the report, optimising, the MCP server and the OpticStudio macros.
+
 **The merit function can be made of named aberrations rather than of rays.** Any of the
 thirty-seven coefficients is an operand, written as the name the report prints it under:
 
@@ -524,6 +527,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 
 | | what it answers |
 |---|---|
+| [docs/user-guide.md](docs/user-guide.md) | **How to build it, install it and use it**: a first run, reading the report, the other reports, optimising and basin hopping, the MCP server, the OpticStudio macros, and what to do when something goes wrong. |
 | [docs/verification.md](docs/verification.md) | **What is actually established here, by what evidence, and what is not.** The order of evidence, the standing results, and the aspheric arrangement with everything it rests on. Read this one first if you are deciding whether to trust any number this program prints. |
 | [docs/references.md](docs/references.md) | Every source the method comes from, which of them have been read, and where each piece of the implementation came from. |
 | [docs/forbes.md](docs/forbes.md) | The second, independent route to the tertiary coefficients - a Lagrangian series trace - and why a program that already had one needed another. |
