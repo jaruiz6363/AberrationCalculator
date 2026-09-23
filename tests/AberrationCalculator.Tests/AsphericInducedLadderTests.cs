@@ -20,37 +20,55 @@ namespace AberrationCalculator.Tests;
 /// stop ahead of the lens gives a real stop shift q without contributing anything itself, a
 /// plane having no power.</para>
 ///
-/// <para><b>Why it was needed.</b> The aspheric tertiary is wrong and had resisted localisation
+/// <para><b>Why it was needed.</b> The aspheric tertiary WAS wrong and had resisted localisation
 /// for a long time, because every design it had been measured on was a six-surface triplet
 /// where intrinsic and induced content are inseparable. On the ladder they separate completely.
 /// </para>
 ///
-/// <para><b>What it finds</b>, as the worst relative error over the twenty coefficients, each
-/// against itself, with Forbes' series as the reference:</para>
+/// <para><b>THE DEFECT THIS LADDER LOCATED IS FIXED.</b> The reconstruction was completed in
+/// "The sixth member by duality" (14 September 2026), and every rung below now agrees with
+/// Forbes. The table that follows is the state BEFORE that, kept because it is the evidence
+/// that located the defect and because the shape of the failure is what named the mechanism.
+/// See <c>docs/verification.md</c>, <i>The aspheric arrangement, and how it was established</i>,
+/// for the settled account.</para>
+///
+/// <para><b>What it found</b>, as the worst relative error over the twenty coefficients, each
+/// against itself, with Forbes' series as the reference - and what the same measurement reads
+/// today:</para>
 ///
 /// <code>
-///   one powered surface, spherical        no induced      none out by 1%
-///   one powered surface, r^4 figured      no induced      none
-///   one powered surface, conic figured    no induced      none
-///   two powered surfaces, spherical       induced         none
-///   two powered surfaces, figured SPHERE  induced         none
-///   two powered surfaces, r^4 on first    induced         31%,  8 of 20 out by 1%
-///   two powered surfaces, r^4 on second   induced         40%, 19 of 20
-///   three surfaces, r^4 in the middle     induced         19%, 12 of 20
+///                                                        THEN            NOW
+///   one powered surface, spherical        no induced     none out by 1%  9E-14
+///   one powered surface, r^4 figured      no induced     none            4E-12
+///   one powered surface, conic figured    no induced     none            2E-13
+///   two powered surfaces, spherical       induced        none            9E-13
+///   two powered surfaces, figured SPHERE  induced        none            2E-12
+///   two powered surfaces, r^4 on first    induced        31%,  8 of 20   4E-13
+///   two powered surfaces, r^4 on second   induced        40%, 19 of 20   5E-13
+///   three surfaces, r^4 in the middle     induced        19%, 12 of 20   9E-13
 /// </code>
 ///
-/// <para>So the INTRINSIC aspheric tertiary is not merely as good as a spherical one, it is
-/// EXACT - none of the twenty out by one per cent - and the whole error is in the induced stage.
-/// The failing cases decompose without ambiguity, because the spherical rungs are clean and the
-/// one-surface figured ones are clean: with the figuring first, a SPHERICAL surface's induced
-/// terms are built from accumulated FIGURED content; with it second, a FIGURED surface's are
-/// built from accumulated SPHERICAL content.</para>
+/// <para>The NOW column is the worst relative error over the twenty, not a percentage, and it
+/// holds across all twenty-six rungs of the ladder. The three near-degenerate rungs are the
+/// exception and are expected to be: <c>Ladder2_FlatFigured</c> reads 1.2E-9 through the
+/// Laurent route, <c>Ladder2_FiguredNearFlatRear</c> 1E-7 and
+/// <c>Ladder2_FlatPlain_NearLimit</c> 6E-7, all three limited by the designs rather than by
+/// the arrangement.</para>
 ///
-/// <para><b>A figured SPHERE is the control that names the mechanism.</b> Buchdahl's Sec. 66a
+/// <para><b>Why the failing shape was worth recording.</b> The INTRINSIC aspheric tertiary was
+/// never merely as good as a spherical one, it was EXACT - none of the twenty out by one per
+/// cent - so the whole error was in the induced stage. The failing cases decomposed without
+/// ambiguity, because the spherical rungs were clean and the one-surface figured ones were
+/// clean: with the figuring first, a SPHERICAL surface's induced terms are built from
+/// accumulated FIGURED content; with it second, a FIGURED surface's are built from accumulated
+/// SPHERICAL content. That is what sent the search to the barred q accumulation.</para>
+///
+/// <para><b>A figured SPHERE was the control that named the mechanism.</b> Buchdahl's Sec. 66a
 /// figuring has <c>8A4 + Kc^3 = 0</c>, so the figuring's PRIMARY contribution vanishes while its
-/// sixth-order content does not; those rungs push as much figuring through the induced stage as
-/// the r^4 ones and come out exact. The induced stage does not fail on figuring - it fails on
-/// the figuring's primary content.</para>
+/// sixth-order content does not; those rungs pushed as much figuring through the induced stage
+/// as the r^4 ones and came out exact even then. The induced stage did not fail on figuring -
+/// it failed on the figuring's primary content. Those rungs are still run, now as a floor
+/// rather than as a contrast.</para>
 ///
 /// <para><b>These figures are not the ones this file was written with.</b> It originally scored
 /// each error as a share of the LARGEST coefficient in the set, which is blind to exactly the
@@ -59,10 +77,13 @@ namespace AberrationCalculator.Tests;
 /// normalisation the design that does it reported as 1.7 per cent. The rungs above read 0.026,
 /// 0.112 and 12.282 per cent then. Nothing about the scheme changed; the instrument did.</para>
 ///
-/// <para>The two failing cases are deliberately NOT pinned to a number here. Freezing today's
-/// wrong values would bless them, and whoever fixes the induced stage would have to rewrite the
-/// assertion. What is asserted of them is that the fit closes, which is what makes the oracle
-/// worth believing at all.</para>
+/// <para><b>The once-failing rungs are still not pinned to a number, and that is now a gap
+/// rather than a decision.</b> While they were wrong, freezing their values would have blessed
+/// them, so <c>TheOracleIsSoundOnTheRungsWhereTheInducedStageFails</c> asserts only that the
+/// fit closes - which is what makes the oracle worth believing at all. Now that those rungs
+/// agree with Forbes to 5E-13 they could be gated like every other rung, and until they are,
+/// this file would not catch the defect coming back. <c>BuchdahlAsphericSchemeTests</c> would;
+/// the ladder is where it should be visible.</para>
 /// </summary>
 public class AsphericInducedLadderTests
 {
@@ -371,9 +392,13 @@ public class AsphericInducedLadderTests
     }
 
     /// <summary>
-    /// The two rungs where the scheme is known to be wrong. Only the soundness of the oracle is
-    /// asserted - see the class remarks for why the disagreement itself is left unpinned.
+    /// The rungs where the scheme USED to be wrong, before the reconstruction was completed.
+    /// Only the soundness of the oracle is asserted, which is all that could be asserted while
+    /// they disagreed; all three now agree with Forbes to 5E-13 and the assertion has not been
+    /// tightened to match. See the class remarks.
     /// </summary>
+    /// <remarks>The name is kept so the history stays searchable, and there are three of them,
+    /// not two as the old class remarks said.</remarks>
     [Theory]
     [InlineData("Ladder2_A4_First")]
     [InlineData("Ladder2_A4_Second")]

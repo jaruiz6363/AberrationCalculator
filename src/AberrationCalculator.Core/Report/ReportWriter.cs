@@ -953,9 +953,22 @@ public sealed class ReportWriter
     /// whichever route is trustworthy for this design, and a line saying which and why.
     ///
     /// <para><b>Figured: Forbes.</b> The Buchdahl scheme needs an aspheric tertiary
-    /// arrangement Buchdahl never published, so this program's is a reconstruction, and real
-    /// rays say it is wrong - by a factor of two on some designs. There is no reason to show a
-    /// designer a number that is known to be wrong, or to make them choose.</para>
+    /// arrangement Buchdahl never published, so this program's is a reconstruction. When this
+    /// route was chosen that reconstruction was wrong - real rays put it out by a factor of two
+    /// on some designs - and there was no reason to show a designer a number known to be wrong,
+    /// or to make them choose.</para>
+    ///
+    /// <para><b>That reason has expired, and the route is kept on a weaker one.</b> The
+    /// reconstruction was completed in "The sixth member by duality" (14 September 2026) and
+    /// now agrees with Forbes on all twenty tau to between 2E-13 and 2E-10 on every figured
+    /// design measured - see <c>docs/verification.md</c>, <i>The aspheric arrangement, and how
+    /// it was established</i>. So the substitution below no longer corrects anything: on a
+    /// figured refracting system the two values it chooses between agree to roundoff. It is
+    /// kept because Forbes' series is an expansion rather than a reconstruction and is
+    /// therefore still the better-founded of two numbers that agree, and because removing it
+    /// would move printed output for no gain. It should NOT be read as evidence that the
+    /// scheme's figured tau20 is untrustworthy; it is not, and the note printed with it says
+    /// which route was taken rather than implying a defect.</para>
     ///
     /// <para><b>Unfigured: either.</b> The two routes agree to roundoff on all twenty tau at
     /// both conjugates, so the choice is empty and the scheme's own value is kept, which

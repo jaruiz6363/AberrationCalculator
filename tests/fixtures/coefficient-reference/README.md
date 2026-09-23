@@ -185,6 +185,103 @@ surfaces that need no other program at all, this repository's inverse ray tracin
 independent implementation written from the book, and Forbes' series trace. See
 `docs/references.md`.
 
+## A third program: OSLO
+
+**Provenance.** OSLO EDU, Revision 6.6.0, run by hand on the `.len` files in this folder,
+written by LensHH-LT's OSLO exporter. Seven designs, F1 to F7. As with the FIFTHORD data
+above, neither OSLO nor anything derived from it is in this repository - what is here is the
+numerical output for designs that are ours, which is the same status as any measurement.
+
+**The raw listings are in `oslo/`**, exactly as OSLO printed them, under the names they were
+captured with:
+
+| file | OSLO command | what it carries |
+|---|---|---|
+| `F*_SEIDEL.txt` | `sei` | `SA3 CMA3 AST3 PTZ3 DIS3` = `B F C Pi E` |
+| `F*_FIFTH.txt` | `fif`, *intrinsic/transferred* | the twelve mu, split `INT` and `XFR` |
+| `F*_FIFTH_IMAGING.txt` | `fif`, *imaging* | `SA5 CMA5 AST5 PTZ5 DIS5 SA7`, `INT`+`XFR` combined |
+| `F6_FIFTH_BUCHDAHL.txt` | `fif`, *Buchdahl* | the twelve mu, `INT`+`XFR` combined |
+
+The intrinsic/transferred listing is the one to keep for any design added later: the imaging
+and Buchdahl forms carry nothing it does not, and combining the two parts is what stops a
+per-surface comparison from working. `F4` has no imaging listing - a parabola's `B7` is 2.5E-20
+and there is nothing there to compare. `F8_FIFTH.txt` is included as the evidence for the
+dropped `PARM 1` described below, and is not a reference for F8.
+
+The `.len` files carry a `// OSLO 5.10` banner. It is a hardcoded comment in the exporter and
+designates nothing - a `.len` file is a script in OSLO's command language, not a versioned
+format, and both OSLO and this repository's `OsloReader` discard `//` lines.
+
+**Reading the listings.** OSLO reports Buchdahl's twelve fifth-order mu, which are the FIFTHORD
+names regrouped. The mapping is exact, and four of the twelve are combinations:
+
+    mu1 = B5      mu4 = M1+M2    mu7 = N1+N2/2    mu10 = 5*C5+Pi5
+    mu2 = F1      mu5 = M2       mu8 = N2/2       mu11 = C5+Pi5
+    mu3 = F2      mu6 = M3       mu9 = N3         mu12 = E5
+
+Per-surface values need the reference's own scaling put back: the `.buchdahl.json` totals are
+multiplied by the f-number while the per-surface entries are not, and a figured surface carries
+its figuring in the separate `aspheric` block. So the comparison is
+
+    OSLO per-surface  =  fnum * ( surfaces[i] + aspheric[i] )
+
+and with that, OSLO's `INT` is the same quantity as the reference's per-surface entry. The
+`fif` imaging listing has `INT` and `XFR` already combined, so it compares per surface only on
+a first powered surface, where `XFR` is zero.
+
+**What agrees: 425 values, third and fifth order, per surface and in total.** Worst 2.1E-05, on
+`mu4 = M1+M2` at F6 surface 4 where the two terms cancel to a twentieth of their size; typical
+1E-07. The floor is the exporter, which writes `WV 0.58756` against the fixtures' 0.5875618 -
+differencing two OSLO runs cancels it and the agreement tightens to 7.9E-10, which is how the
+floor was identified rather than assumed.
+
+**F4 differs by one sign, and it is the f-number's.** Every non-zero coefficient at both orders
+is the exact negative of the reference. Dividing OSLO's per-surface values by the reference's
+unscaled ones gives +2.5000000000 on all of them, to ten digits, while this repository stores
+`fnum = -2.5` for that design - the reflection carried into f/#. Nothing in the arithmetic
+differs.
+
+### Where OSLO is wrong: `SA7` on a figured surface that receives induced aberration
+
+OSLO's `fif` imaging listing carries a seventh-order column, `SA7`, which is `B7`. It agrees on
+F1, F2, F3 and F7 to between 1.9E-07 and 5.2E-07, and disagrees on F5 by +3.22 per cent and on
+F6 by -3.74 per cent.
+
+The split is not by size or surface count. **It is whether a figured surface has lower-order
+aberration incident on it.** F1, F2, F3 and F7 carry their figuring on the first powered
+surface, which receives nothing; F5's is last and F6's are first and last. Splitting `B7` by
+surface shows it directly - F3's figured surface has a transferred part of 1.3E-11 and its
+total is exact, while F5's figured surface carries 1.92E-04 and F6's 7.05E-04.
+
+**The rays settle it against OSLO.** On both designs the scheme, Forbes' series trace and the
+ray inversion agree:
+
+| `B7` | scheme | Forbes | ray inversion | OSLO `SA7` |
+|---|---|---|---|---|
+| F5 | 6.5893354135E-04 | 6.5893354135E-04 | 6.5893356729E-04 | 6.801346633E-04 |
+| F6 | -1.2433949700E-03 | -1.2433949700E-03 | -1.2433950863E-03 | -1.1969513021E-03 |
+
+The inversion sits 3.9E-08 and 9.4E-08 from the scheme, with its least-squares residual at
+6.2E-07 and 3.0E-07 over 75 ray shapes - five to six orders of magnitude inside OSLO's gap. All
+twenty tau agree with Forbes on both designs to 1E-13 or better. So this is OSLO EDU 6.6.0's
+seventh-order aspheric induced term, and `B7` here is not in question. Premium was not tested
+and no claim is made about it; the failure's shape argues it is the `SA7` routine rather than
+anything about the EDU build, since a cut-down numerical core would not match 425 values to
+1E-07 and then miss one column in exactly two configurations.
+
+**F8 has no OSLO data either, for the same reason it has no FIFTHORD reference.** OSLO's
+asphere has no r^2 term, so the exporter drops `PARM 1` silently. **`F8_r2_conic_a4_a6_a8.len`
+is therefore not F8**: it is F3's surface carrying F8's image-plane aperture, and
+`oslo/F8_FIFTH.txt` is bit-identical to `oslo/F3_FIFTH.txt`. Both are kept only as the evidence
+for that, and neither says anything about the design F8 actually is. A reader who wants F8 in
+OSLO cannot have it; that is the point of the fixture.
+
+**Two internal checks the OSLO data passes on its own**, needing no reference at all. F1 and F7
+produce bit-identical output at both orders including `SA7` - the conic and its polynomial
+expansion match through r^8, and nothing in either listing can tell them apart. And F1, F2 and
+F7 are bit-identical at third order, where only the r^4 departure can be seen, while F3 differs
+from them in `SA3` alone and only on the figured surface, the stop being on it.
+
 ## The E family: the two ENDS of the system
 
 Thirteen more designs - twelve added 20 September 2026 and Ek on 21 September - for a different
