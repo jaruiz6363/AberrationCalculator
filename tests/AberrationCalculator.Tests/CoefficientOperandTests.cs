@@ -363,11 +363,12 @@ public class CoefficientOperandTests
     }
 
     /// <summary>
-    /// <b>A tertiary coefficient has no per-surface value, and asking for one is refused.</b>
-    /// The per-surface terms stop at B7 because Buchdahl's scheme reaches the twenty from totals
-    /// summed over the surfaces. Left alone it would have returned a silent zero, which reads
-    /// exactly like a surface that contributes nothing - the failure this session has met three
-    /// times and the reason the refusal is explicit.
+    /// <b>A tertiary coefficient is a system operand, and a surface is refused.</b> The report
+    /// splits the twenty by surface, as each surface's share of the total, but on a figured flat
+    /// facing collimated light a surface's own share may have no finite value, and the operand
+    /// would then return a silent zero, which reads exactly like a surface that contributes
+    /// nothing - the failure this session has met three times and the reason the refusal is
+    /// explicit.
     /// </summary>
     [Theory]
     [InlineData("Tau5")]
@@ -378,7 +379,7 @@ public class CoefficientOperandTests
         var ex = Assert.Throws<FormatException>(
             () => MeritFile.Parse(new[] { $"{name}, 1, TAR 0, 3" }));
 
-        Assert.Contains("SYSTEM coefficient", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("SYSTEM operand", ex.Message, StringComparison.Ordinal);
         Assert.Contains("B to B7", ex.Message, StringComparison.Ordinal);
     }
 

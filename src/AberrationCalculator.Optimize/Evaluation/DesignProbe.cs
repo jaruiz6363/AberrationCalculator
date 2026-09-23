@@ -134,11 +134,11 @@ public sealed class DesignProbe
     /// beside it, agreeing with nothing and summing to nothing. Scaled here, the surfaces add to
     /// the total and the three parts add to the contribution.</para>
     ///
-    /// <para><b>Tau2 to Tau20 are not here.</b> The scheme reaches the twenty from totals summed
-    /// over the surfaces rather than surface by surface, so the per-surface terms carry the
-    /// eighteen through B7 and nothing above; the parser refuses a tertiary coefficient with a
-    /// surface or a part for that reason, a silent zero being the one answer worse than a
-    /// refusal.</para>
+    /// <para><b>Tau2 to Tau20 are not here.</b> The per-surface terms do carry them, as each
+    /// surface's share of the total, but with no intrinsic, figuring or induced split and, on a
+    /// figured flat facing collimated light, as zeros; the parser refuses a tertiary coefficient
+    /// with a surface or a part for that reason, a silent zero being the one answer worse than a
+    /// refusal, and so only the eighteen through B7 are summed here.</para>
     /// </summary>
     public AdA.BuchdahlTerms SurfaceCoefficients(int wave, int surface,
                                                  Operands.CoefficientPart part)
@@ -173,8 +173,8 @@ public sealed class DesignProbe
         };
 
     /// <summary>
-    /// Adds one set of terms into another. Only the eighteen that HAVE a per-surface value are
-    /// carried; tau2 to tau20 are system quantities and are refused before they reach here.
+    /// Adds one set of terms into another. Only the eighteen through B7 are carried; tau2 to
+    /// tau20 are system operands and are refused before they reach here.
     /// </summary>
     private static void Add(AdA.BuchdahlTerms into, AdA.BuchdahlTerms? t)
     {

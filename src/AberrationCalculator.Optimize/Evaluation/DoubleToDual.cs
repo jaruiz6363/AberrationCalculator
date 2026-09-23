@@ -89,6 +89,7 @@ internal static class DoubleToDual
             Aspheric = ManyOrNull(r.Aspheric),
             FNumber = r.FNumber,
             Lagrange = r.Lagrange,
+            TertiaryUnattributed = r.TertiaryUnattributed,
         };
     }
 

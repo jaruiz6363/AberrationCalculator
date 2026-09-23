@@ -128,8 +128,9 @@ Two things worth knowing before relying on the numbers:
   field the ninth order arrives and the seventh-order series under-predicts. The report says
   this where it prints the numbers, and [spot-prediction.md](spot-prediction.md) measures it
   against traced rays.
-- **The WHICH SURFACE shares cover the third, fifth and B7 terms only.** The per-surface split
-  has no τ2-τ20, so the column need not add to 100 - on the double Gauss it adds to 91.
+- **In the BUCHDAHL / RIMMER table, τ2-τ20 read zero per surface.** They are not split into
+  intrinsic and induced parts. Each surface's *share* of them is in `<name>.surfaces.tsv` (the
+  `surface_total` rows), and the WHICH SURFACE table includes them, so its column adds to 100.
 
 The data files, all tab-separated with full precision, for a script or a spreadsheet:
 

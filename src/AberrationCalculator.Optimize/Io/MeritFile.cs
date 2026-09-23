@@ -259,18 +259,20 @@ public static class MeritFile
         // A span given only its first surface is that surface alone.
         if (surface2 == 0) surface2 = surface;
 
-        // A tertiary coefficient has neither a per-surface value nor a part. Buchdahl's scheme
-        // reaches the twenty from totals summed over the surfaces rather than surface by surface,
-        // so the per-surface terms stop at B7 - and either question would otherwise return a
-        // silent zero, which reads exactly like a surface that contributes nothing.
+        // A tertiary coefficient is a SYSTEM operand. TertiaryCoefficients.Attach does split the
+        // twenty by surface, for the report's shares, but only as each surface's part of the
+        // total: there is no intrinsic, figuring or induced split, so a part would be a silent
+        // zero, and on a figured flat facing collimated light a surface's own share has no finite
+        // value, so a surface would be too. Either reads exactly like a surface that contributes
+        // nothing.
         if (type == OperandType.ABER && coefficient != null
             && coefficient.StartsWith("Tau", StringComparison.Ordinal)
             && (surface != 0 || part != CoefficientPart.Total))
             throw new FormatException(
-                $"{coefficient} is a SYSTEM coefficient: it has no per-surface value and no "
-              + "intrinsic, figuring or induced part. Buchdahl's scheme reaches the twenty "
-              + "tertiary coefficients from totals summed over the surfaces, not surface by "
-              + "surface; the per-surface contributions run B to B7. Write "
+                $"{coefficient} is a SYSTEM operand: it takes no surface and no intrinsic, "
+              + "figuring or induced part. The report splits the tertiary coefficients by "
+              + "surface, but only as a surface's share of the total, and on a figured flat "
+              + "facing collimated light not at all; per-surface operands run B to B7. Write "
               + $"'{coefficient}, ... ' on its own for the system's value.");
 
         // There is no induced third order. A third-order contribution is built from the surface's

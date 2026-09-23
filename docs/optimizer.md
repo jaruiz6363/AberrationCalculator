@@ -367,10 +367,12 @@ multiplies only the totals by the F/number, so the scaling is applied on the way
 `ThePerSurfaceContributionsSumToTheSystemTotal` holds all eighteen to it on a spherical design
 and a figured one.
 
-**`Tau2` to `Tau20` have no per-surface value and asking for one is refused.** Buchdahl's scheme
-reaches the twenty from totals summed over the surfaces rather than surface by surface, so the
-per-surface contributions run `B` to `B7`. Left alone the answer would have been a silent zero,
-which reads exactly like a surface that contributes nothing.
+**`Tau2` to `Tau20` are system operands, and a surface or a part is refused.** The report does
+split them by surface, as each surface's share of the tertiary scheme's totals, but there is no
+intrinsic, figuring or induced split of them, and on a figured flat facing collimated light a
+surface's own share has no finite value - only the sum does. Either question would then be
+answered with a silent zero, which reads exactly like a surface that contributes nothing, so the
+per-surface operands run `B` to `B7`.
 
 
 **And the three PARTS of a contribution, which answer to different actions.** A suffix on the
@@ -406,7 +408,7 @@ Two refusals, both because the honest answer would otherwise be a silent zero:
   contribution is built from that surface's own quantities alone, so nothing earlier can act on
   it. The value would be zero on every design, which is indistinguishable from an aberration
   that has been corrected.
-- **`Tau2.IND` and the rest of the tertiary.** They have no per-surface value to be split.
+- **`Tau2.IND` and the rest of the tertiary.** They are not split into parts.
 **What this makes possible** is the question Shafer says a design is decided by and a total cannot
 be asked: not *is this design wrong* but *which surface, and is it that surface's own fault*.
 "Surface 5 should contribute no coma" is an operand, and so is "surface 5 should not be having
@@ -685,7 +687,7 @@ there?* — and that question still has an answer in both places.
 
 ### Basin hopping
 
-    --hops 300 --chains 8
+    --save results --hops 3000 --chains 8
 
 Local minimisation, a kick, local minimisation again, and a rule for whether to stay. Every local
 method finds the bottom of the valley it starts in and stops; a lens problem has a great many
@@ -886,11 +888,11 @@ in the base folder, not beside the shell.
 | `--optimize [mf]` | optimise once; optional merit-function file |
 | `--optimize_basin_hopping` | search over basins instead, one design per chain |
 | `--method lm\|psd2\|psd3\|hj` | default `psd3` |
-| `--iterations <n>` | local iterations, or iterations per hop; default 200 |
-| `--hops <n>` | hops per chain; default 300 under hopping |
-| `--chains <n>` | default 0 = one per processor |
+| `--iterations <n>` | local iterations, or iterations per hop - a cap, not a count; default 200 for a local run, 6000 per hop when hopping |
+| `--hops <n>` | hops per chain; default 3000 under hopping. Ctrl+C stops the run and keeps what every chain found |
+| `--chains <n>` | default 0 = one per PHYSICAL core, not per logical processor: two SMT threads share one core's execution units, and on a hybrid part the logical count includes efficiency cores, which hold up every hop they are given |
 | `--seed <n>` | default 1234 |
-| `--hop-sigma <s>` | size of a hop, in natural steps |
+| `--hop-sigma <s>` | size of a hop, in natural steps; default 0.001 |
 | `--initial-sigma <s>` | size of the first hop only; default 0.001, the same as `--hop-sigma` |
 | `--hop-figuring` | kick the conic and aspheric terms too; off by default, and they are optimised either way |
 | `--glass_substitution <catalogue>` | let the hopping try glasses from that catalogue |

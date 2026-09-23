@@ -121,8 +121,9 @@ internal static class ActionTools
           + "Tau2 to Tau20 at seventh. Case does not matter, and the only input any of them "
           + "takes is a SURFACE and then the wavelength - a surface number picks out that "
           + "surface's share, which adds with the others to the system total, and surface 0 "
-          + "or none means the whole system. Tau2 to Tau20 have no per-surface value and "
-          + "asking for one is refused rather than answered with a zero. A suffix takes one "
+          + "or none means the whole system. Tau2 to Tau20 are system operands only - no "
+          + "surface, no part - and asking for either is refused rather than answered with a "
+          + "zero. A suffix takes one "
           + "PART of a contribution - .INT what the surface generates itself, .FIG what its "
           + "figuring adds, .IND what the aberration reaching it induces in it - and the three "
           + "add to the whole. They answer to different actions: an intrinsic aberration is "
@@ -173,7 +174,7 @@ internal static class ActionTools
                   + "kicks the design out of its basin, re-minimises, and keeps or rejects the "
                   + "result by a Metropolis rule. Default 0, meaning a single local run."),
                 new ArgumentSpec("chains", "integer",
-                    "Independent hopping chains. Default 0 = one per processor."),
+                    "Independent hopping chains. Default 0 = one per physical core."),
                 new ArgumentSpec("seed", "integer", "Random seed for the hopping. Default 1234."),
                 new ArgumentSpec("hop_sigma", "number",
                     "The per-hop kick, in units of each variable's natural scale. Default 0.001, "

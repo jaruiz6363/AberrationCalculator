@@ -33,6 +33,25 @@ public sealed class BuchdahlTerms
 
     public BuchdahlTerms Clone() => (BuchdahlTerms)MemberwiseClone();
 
+    /// <summary>Sets tau<paramref name="k"/>, for k from 2 to 20.</summary>
+    public void SetTau(int k, Scalar value)
+    {
+        switch (k)
+        {
+            case 2: Tau2 = value; break;   case 3: Tau3 = value; break;
+            case 4: Tau4 = value; break;   case 5: Tau5 = value; break;
+            case 6: Tau6 = value; break;   case 7: Tau7 = value; break;
+            case 8: Tau8 = value; break;   case 9: Tau9 = value; break;
+            case 10: Tau10 = value; break; case 11: Tau11 = value; break;
+            case 12: Tau12 = value; break; case 13: Tau13 = value; break;
+            case 14: Tau14 = value; break; case 15: Tau15 = value; break;
+            case 16: Tau16 = value; break; case 17: Tau17 = value; break;
+            case 18: Tau18 = value; break; case 19: Tau19 = value; break;
+            case 20: Tau20 = value; break;
+            default: throw new ArgumentOutOfRangeException(nameof(k), k, "tau index is 2..20");
+        }
+    }
+
     public Scalar this[string name] => name switch
     {
         "B" => B, "F" => F, "C" => C, "Pi" => Pi, "E" => E,
@@ -94,10 +113,22 @@ public sealed class BuchdahlResult
     public BuchdahlTerms[] Induced { get; init; } = Array.Empty<BuchdahlTerms>();
 
     /// <summary>
-    /// Per-surface TOTAL: intrinsic + aspheric + induced, unscaled. Summing these over the
-    /// surfaces and multiplying by the F/number reproduces <see cref="Totals"/> exactly.
+    /// Per-surface TOTAL, unscaled. Summing these over the surfaces and multiplying by the
+    /// F/number reproduces <see cref="Totals"/> exactly.
+    ///
+    /// <para>Through B7 each is intrinsic + aspheric + induced. Tau2..tau20 are the surface's
+    /// share of the tertiary scheme's totals, set by <see cref="TertiaryCoefficients.Attach"/>;
+    /// they are NOT split into those three parts, which stay zero for them. They are zero
+    /// where <see cref="TertiaryUnattributed"/> is set.</para>
     /// </summary>
     public BuchdahlTerms[] PerSurface { get; init; } = Array.Empty<BuchdahlTerms>();
+
+    /// <summary>
+    /// True when tau2..tau20 have system totals but could not be split by surface: a figured flat
+    /// facing collimated light, where a surface's own share has no finite value and only the sum
+    /// does. The per-surface tau are then zero, and do not sum to the totals.
+    /// </summary>
+    public bool TertiaryUnattributed { get; set; }
 
     /// <summary>Image-space F/number, the factor applied to the totals.</summary>
     public Scalar FNumber { get; init; }

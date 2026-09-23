@@ -40,7 +40,7 @@ public sealed class RunSettings
     /// <summary>Basin-hopping hops per chain. Zero runs a single local optimisation.</summary>
     public int Hops { get; set; }
 
-    /// <summary>Chains. Zero means one per processor.</summary>
+    /// <summary>Chains. Zero means one per physical core.</summary>
     public int Chains { get; set; }
 
     public int Seed { get; set; } = 1234;

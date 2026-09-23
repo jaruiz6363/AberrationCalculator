@@ -25,7 +25,7 @@ public sealed class BasinHoppingOptions
     /// <summary>Hops per chain.</summary>
     public int MaxHops { get; set; } = 3000;
 
-    /// <summary>Independent chains. Zero means one per processor.</summary>
+    /// <summary>Independent chains. Zero means one per physical core.</summary>
     public int Chains { get; set; }
 
     /// <summary>

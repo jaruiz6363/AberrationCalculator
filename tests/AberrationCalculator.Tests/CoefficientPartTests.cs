@@ -225,7 +225,7 @@ public class CoefficientPartTests
         var ex = Assert.Throws<FormatException>(
             () => MeritFile.Parse(new[] { "Tau15.IND, 1, TAR 0" }));
 
-        Assert.Contains("SYSTEM coefficient", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("SYSTEM operand", ex.Message, StringComparison.Ordinal);
     }
 
     /// <summary>An unknown suffix names the three that exist.</summary>

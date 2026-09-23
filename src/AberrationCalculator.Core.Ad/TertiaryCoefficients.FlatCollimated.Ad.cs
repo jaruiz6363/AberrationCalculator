@@ -43,7 +43,7 @@ public static partial class TertiaryCoefficients
 {
     static partial void FlatCollimatedTau(Models.OpticalSystem system, Scalar[] indices,
                                           Scalar maxField, List<int> flatSurfaces,
-                                          ref Scalar[]? transverse)
+                                          ref Scalar[]? transverse, ref Scalar[]?[]? perSurface)
     {
         int savedMin = Lau.MinOrder, savedMax = Lau.MaxOrder;
         try
@@ -53,8 +53,10 @@ public static partial class TertiaryCoefficients
             // past in a division, and nothing is left at a negative order. A route that cannot
             // vouch for itself returns nothing and the caller keeps what it had.
             var wide = Run(system, indices, maxField, flatSurfaces, 32,
-                           out int underflows, out double dropped, out double negative);
-            var narrow = Run(system, indices, maxField, flatSurfaces, 24, out _, out _, out _);
+                           out int underflows, out double dropped, out double negative,
+                           out var widePer, out double widePerNegative);
+            var narrow = Run(system, indices, maxField, flatSurfaces, 24, out _, out _, out _,
+                             out var narrowPer, out _);
             if (wide == null || narrow == null) return;
 
             double largest = 0.0;
@@ -73,7 +75,24 @@ public static partial class TertiaryCoefficients
 
             bool converged = finite && largest > 0.0 && underflows == 0 && dropped < 1e-10
                              && disagreement < 1e-9 && negative < 1e-8;
-            if (converged) transverse = wide;
+            if (!converged) return;
+            transverse = wide;
+
+            // The split by surface, held to the same rule as the double route so that value and
+            // derivative always come from the same attribution: no negative orders left in any
+            // share, and the two truncations agreeing on each.
+            bool splits = widePer != null && narrowPer != null && widePerNegative < 1e-8;
+            if (splits)
+                for (int i = 0; i < widePer!.Length && splits; i++)
+                    if (widePer[i] is { } w)
+                        for (int k = 2; k <= 20; k++)
+                        {
+                            double n = narrowPer![i] is { } nw ? nw[k].Value : double.NaN;
+                            if (double.IsNaN(w[k].Value) || double.IsInfinity(w[k].Value)
+                                || double.IsNaN(w[k].Deriv) || double.IsInfinity(w[k].Deriv)
+                                || !(Math.Abs(w[k].Value - n) / largest < 1e-9)) { splits = false; break; }
+                        }
+            if (splits) perSurface = widePer;
         }
         finally
         {
@@ -85,7 +104,8 @@ public static partial class TertiaryCoefficients
     /// <summary>One pass at one truncation width. Null when the chain cannot form an answer.</summary>
     private static Scalar[]? Run(Models.OpticalSystem core, Scalar[] indices, Scalar maxField,
                                  IReadOnlyCollection<int> seeded, int window,
-                                 out int underflows, out double dropped, out double negative)
+                                 out int underflows, out double dropped, out double negative,
+                                 out Scalar[]?[]? perSurface, out double perSurfaceNegative)
     {
         Lau.MinOrder = -window;
         Lau.MaxOrder = window;
@@ -93,6 +113,8 @@ public static partial class TertiaryCoefficients
         underflows = 0;
         dropped = 0.0;
         negative = double.NaN;
+        perSurface = null;
+        perSurfaceNegative = double.NaN;
 
         var sys = ToSeries(core, seeded);
         var n = new DS[indices.Length];
@@ -135,9 +157,23 @@ public static partial class TertiaryCoefficients
             : -(p.ParaxialImageHeight / p.Magnification) / objectDistance);
 
         var dual = SAb.AsphericSchemeIncrements.BuildDual(sys, p, n, stopParameter, iota);
+        var surfaceT = new DS[sys.Surfaces.Count][];
+        var surfaceTbar = new DS[sys.Surfaces.Count][];
         var raw = SAb.BuchdahlAsphericScheme.Tau(sys.Surfaces, n, p.Efl, stopParameter, increments,
                                                  iota, SAb.BuchdahlAsphericScheme.Options.Default,
-                                                 dual);
+                                                 dual,
+                                                 (i, hat, hatBar, check, checkBar) =>
+                                                 {
+                                                     var T = new DS[11];
+                                                     var Tb = new DS[11];
+                                                     for (int m = 1; m <= 10; m++)
+                                                     {
+                                                         T[m] = hat[m] + check[m];
+                                                         Tb[m] = hatBar[m] + checkBar[m];
+                                                     }
+                                                     surfaceT[i] = T;
+                                                     surfaceTbar[i] = Tb;
+                                                 });
         var tau = SAb.TertiaryCoefficients.ToTransverse(raw, lengthFactor, u, hmax);
 
         var result = new Scalar[21];
@@ -156,9 +192,30 @@ public static partial class TertiaryCoefficients
             for (int order = tau[k].Value.LowestOrder; order < 0; order++)
                 worstNegative = Math.Max(worstNegative, Math.Abs(tau[k].Value.Coefficient(order)));
 
+        // Each surface's share, read at e^0 like the total; see the double route.
+        var shares = new Scalar[]?[sys.Surfaces.Count];
+        double worstShareNegative = 0.0;
+        for (int i = 0; i < shares.Length; i++)
+        {
+            if (surfaceT[i] == null) continue;
+            var st = SAb.TertiaryCoefficients.ToTransverse(
+                SAb.TertiaryCoefficients.AssembleTau(surfaceT[i], surfaceTbar[i]), lengthFactor, u, hmax);
+            var c = new Scalar[21];
+            for (int k = 2; k <= 20; k++)
+            {
+                if (DS.IsNaN(st[k])) { c[k] = double.NaN; continue; }
+                c[k] = Lower(st[k]);
+                for (int order = st[k].Value.LowestOrder; order < 0; order++)
+                    worstShareNegative = Math.Max(worstShareNegative, Math.Abs(st[k].Value.Coefficient(order)));
+            }
+            shares[i] = c;
+        }
+
         underflows = Lau.Underflows;
         dropped = Lau.WorstDroppedLeading;
         negative = largest > 0.0 ? worstNegative / largest : double.NaN;
+        perSurface = shares;
+        perSurfaceNegative = largest > 0.0 ? worstShareNegative / largest : double.NaN;
         return result;
     }
 

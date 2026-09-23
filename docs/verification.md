@@ -859,6 +859,39 @@ a lost glass actually costs, and no amount of line counting says it as plainly.
 The fix keeps the `___BLANK` name token exactly as the file wrote it and updates only the two
 model numbers, in the fields the reader takes them from.
 
+## The surface table that did not add up
+
+**The report's WHICH SURFACE table said "Share sums to 100%" and summed to 91 on the double
+Gauss.** Found 23 September 2026 while writing the user guide. The coefficients, PRMS and PRMSA
+were never affected; the table measured less than it said it did.
+
+The table shares out the predicted spot, which is built from all thirty-seven coefficients, using
+each surface's contribution to every one of them. The per-surface contributions stopped at B7:
+the tertiary scheme was only ever summed, so tau2 to tau20 existed as system totals and as zeros
+on every surface. Whatever they put into the spot was given to no surface - 9 per cent of it on
+the double Gauss - and the data file beside it claimed the per-surface totals "reproduce the
+transverse totals exactly", which held for everything but those nineteen.
+
+### What was done
+
+Both tertiary routes already form the totals by adding one row per surface - Table I's
+`TertiaryTotal` for spheres, the two passes of Sec. 85 for a figured design - and Table II and
+the transverse conversion that turn totals into tau are linear. So each surface's row, put through
+the same two steps, is that surface's share, and the shares add to the total by construction.
+`TertiaryCoefficients.Attach` now stores them. The figured flat in collimated light is the one
+place that is not automatic: there the answer is read off a Laurent series, and a surface's own
+row may carry negative powers that cancel only against another's, in which case it has no finite
+value of its own. Each share is held to the same test as the total - no negative orders, the two
+truncations agreeing - and if any fails nothing is split and the report shows tau2 to tau20 as a
+line of their own. No design here fails it: the split is taken on all 61 designs with a tertiary
+set, `Ladder2_FlatFigured` included.
+
+What is still not split is intrinsic against induced for tau2 to tau20, so the per-surface tau are
+surface totals only, and the tertiary coefficients remain system-only as operands.
+
+`TertiarySplitTests` holds the per-surface tau to sum to the system tau, and the shares to 100%,
+on every design on disk. The double Gauss now reads 100.0.
+
 ## The figuring the save dropped
 
 **An optimised conic or aspheric term was lost when the design was saved, in every format but

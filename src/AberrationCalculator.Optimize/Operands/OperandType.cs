@@ -155,9 +155,10 @@ public enum OperandType
     /// the total exactly, which is what lets a designer compare one surface with another and with
     /// the system. That is the question Shafer says a design is decided by and a total cannot be
     /// asked: not whether the design is wrong but WHICH SURFACE, and whether it is that surface's
-    /// own doing. <c>Tau2</c> to <c>Tau20</c> have no per-surface value - the scheme reaches them
-    /// from totals summed over the surfaces - and asking for one is refused rather than answered
-    /// with a zero.</para>
+    /// own doing. <c>Tau2</c> to <c>Tau20</c> are system operands only: the report splits them by
+    /// surface as a share of the total, but with no intrinsic, figuring or induced split, and on a
+    /// figured flat facing collimated light not at all, so a surface or a part is refused rather
+    /// than answered with a zero.</para>
     /// </summary>
     ABER,
 }

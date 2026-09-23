@@ -33,15 +33,21 @@ public static partial class TertiaryCoefficients
     /// </summary>
     static partial void FlatCollimatedTau(Models.OpticalSystem system, Scalar[] indices,
                                           Scalar maxField, List<int> flatSurfaces,
-                                          ref Scalar[]? transverse);
+                                          ref Scalar[]? transverse, ref Scalar[]?[]? perSurface);
 
     /// <summary>
     /// Computes tau1..tau20 for a system. The returned array is indexed 1..20; index 0 is
     /// unused, so the numbering matches the literature rather than being off by one.
     /// </summary>
+    /// <param name="perSurface">
+    /// Handed each surface's own tertiary totals, T1..T10 and their barred partners, indexed
+    /// 1..10 - copies of exactly what is summed into the result, so a caller can split the tau
+    /// by surface and have the parts add to the whole.
+    /// </param>
     public static Scalar[] Compute(
         IReadOnlyList<Models.Surface> surfaces, Scalar[] indices, Scalar efl, Scalar stopParameter,
-        IReadOnlyList<Scalar[]>? aspheric = null, Scalar iota = default)
+        IReadOnlyList<Scalar[]>? aspheric = null, Scalar iota = default,
+        Action<int, Scalar[], Scalar[]>? perSurface = null)
     {
         var rows = BuchdahlTableI.Compute(surfaces, indices, efl, stopParameter, aspheric,
                                           iota: iota);
@@ -49,11 +55,15 @@ public static partial class TertiaryCoefficients
         var T = new Scalar[11];
         var Tb = new Scalar[11];
         for (int i = 1; i < surfaces.Count - 1; i++)
+        {
+            perSurface?.Invoke(i, (Scalar[])rows[i].TertiaryTotal.Clone(),
+                               (Scalar[])rows[i].TertiaryTotalBar.Clone());
             for (int m = 1; m <= 10; m++)
             {
                 T[m] += rows[i].TertiaryTotal[m];
                 Tb[m] += rows[i].TertiaryTotalBar[m];
             }
+        }
 
         return AssembleTau(T, Tb);
     }
@@ -67,7 +77,7 @@ public static partial class TertiaryCoefficients
     /// totals were arrived at, so two routes that disagree about a figured surface must still
     /// agree about this.</para>
     /// </summary>
-    internal static Scalar[] AssembleTau(Scalar[] T, Scalar[] Tb)
+    public static Scalar[] AssembleTau(Scalar[] T, Scalar[] Tb)
     {
         var tau = new Scalar[21];
         tau[1] = T[1];
@@ -400,10 +410,18 @@ public static partial class TertiaryCoefficients
         // The two routines. Spheres keep Buchdahl's own arrangement, bit for bit as validated; a
         // figured system takes the Sec. 85 arrangement, which needs the dual run's increments for
         // its sixth barred q member.
+        // Each surface's own tertiary totals, kept as they are summed, so that the tau can be
+        // split by surface below. Both routes sum their surfaces into the system totals, and
+        // Table II and the transverse conversion are linear, so the parts add to the whole.
+        int count = system.Surfaces.Count;
+        var surfaceT = new Scalar[count][];
+        var surfaceTbar = new Scalar[count][];
+
         Scalar[] raw;
         if (increments == null)
         {
-            raw = Compute(system.Surfaces, indices, paraxial.Efl, stopParameter, null, iota);
+            raw = Compute(system.Surfaces, indices, paraxial.Efl, stopParameter, null, iota,
+                          (i, T, Tb) => { surfaceT[i] = T; surfaceTbar[i] = Tb; });
         }
         else
         {
@@ -414,8 +432,29 @@ public static partial class TertiaryCoefficients
                                                                     stopParameter, iota);
             raw = BuchdahlAsphericScheme.Tau(system.Surfaces, indices, paraxial.Efl, stopParameter,
                                              increments, iota, BuchdahlAsphericScheme.Options.Default,
-                                             dualIncrements);
+                                             dualIncrements,
+                                             (i, hat, hatBar, check, checkBar) =>
+                                             {
+                                                 // (85.3): a surface's total is its two passes.
+                                                 var T = new Scalar[11];
+                                                 var Tb = new Scalar[11];
+                                                 for (int m = 1; m <= 10; m++)
+                                                 {
+                                                     T[m] = hat[m] + check[m];
+                                                     Tb[m] = hatBar[m] + checkBar[m];
+                                                 }
+                                                 surfaceT[i] = T;
+                                                 surfaceTbar[i] = Tb;
+                                             });
         }
+
+        // Per surface, in the same transverse convention as the totals. No B7 substitution:
+        // tau1 is not stored per surface, the fifth-order code's own per-surface B7 being used.
+        var surfaceTau = new Scalar[]?[count];
+        for (int i = 1; i < count - 1; i++)
+            if (surfaceT[i] != null)
+                surfaceTau[i] = ToTransverse(AssembleTau(surfaceT[i], surfaceTbar[i]),
+                                             lengthFactor, u, hmax);
 
         var tau = ToTransverse(raw, lengthFactor, u, hmax, coefficients.Totals.B7);
 
@@ -434,10 +473,29 @@ public static partial class TertiaryCoefficients
             if (flat.Count > 0)
             {
                 Scalar[]? series = null;
-                FlatCollimatedTau(system, indices, maxField, flat, ref series);
+                Scalar[]?[]? seriesPerSurface = null;
+                FlatCollimatedTau(system, indices, maxField, flat, ref series, ref seriesPerSurface);
                 if (series != null)
+                {
                     for (int k = 2; k <= 20; k++) tau[k] = series[k];
+                    // Null when a surface's own share is not finite: its divergent terms cancel
+                    // only against its neighbours', and a split would print their e^0 parts as if
+                    // they meant something. Then nothing is attributed, and the report says so.
+                    surfaceTau = seriesPerSurface ?? new Scalar[]?[count];
+                    coefficients.TertiaryUnattributed = seriesPerSurface == null;
+                }
             }
+        }
+
+        // Stored unscaled, as every other per-surface coefficient is: the totals carry the
+        // F/number, so these times it sum to them.
+        for (int i = 1; i < count - 1 && i < coefficients.PerSurface.Length; i++)
+        {
+            var s = coefficients.PerSurface[i];
+            if (s == null) continue;
+            var st = surfaceTau[i];
+            for (int k = 2; k <= 20; k++)
+                s.SetTau(k, st != null ? st[k] / coefficients.FNumber : 0.0);
         }
 
         var t = coefficients.Totals;

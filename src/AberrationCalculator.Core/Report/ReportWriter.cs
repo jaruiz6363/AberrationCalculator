@@ -390,6 +390,9 @@ public sealed class ReportWriter
         sb.AppendLine("Transverse coefficients. Per-surface values are the INTRINSIC parts and are");
         sb.AppendLine("unscaled; the totals include the aspheric and induced contributions and carry");
         sb.AppendLine(string.Format(Inv, "the F/number ({0:0.####}), so they are not the column sums.", b.FNumber));
+        sb.AppendLine("Tau2 to Tau20 are not split into intrinsic and induced parts, so their");
+        sb.AppendLine("per-surface columns here read zero; each surface's share of them is in the");
+        sb.AppendLine("surface_total rows of <name>.surfaces.tsv, and in WHICH SURFACE below.");
         sb.AppendLine();
 
         string[] order = BuchdahlTerms.Names;
@@ -663,8 +666,24 @@ public sealed class ReportWriter
 
         sb.AppendLine("WHICH SURFACE IS COSTING YOU THE SPOT (full field, primary wavelength)");
         sb.AppendLine("----------------------------------------------------------------");
-        sb.AppendLine("Share sums to 100%. A negative share is a surface that is CANCELLING the");
-        sb.AppendLine("others - which is what a corrector element is for.");
+        if (b.TertiaryUnattributed)
+        {
+            // A figured flat facing collimated light: the seventh-order field terms have a
+            // system value and no finite value per surface, so what they contribute is shown as
+            // one line of its own rather than spread over the surfaces or quietly dropped.
+            sb.AppendLine("Share covers every coefficient through seventh-order spherical (B7). The");
+            sb.AppendLine("other seventh-order terms, tau2 to tau20, cannot be split by surface on this");
+            sb.AppendLine("design - a figured flat faces collimated light, and there only their sum is");
+            sb.AppendLine("finite - so their part of the spot is the last line, and with it the column");
+            sb.AppendLine("sums to 100%. A negative share is a surface that is CANCELLING the others -");
+            sb.AppendLine("which is what a corrector element is for.");
+        }
+        else
+        {
+            sb.AppendLine("Share sums to 100%, every coefficient through the seventh order included.");
+            sb.AppendLine("A negative share is a surface that is CANCELLING the others - which is what");
+            sb.AppendLine("a corrector element is for.");
+        }
         sb.AppendLine();
         sb.AppendLine("INDUCED tells you where the fix is. A surface generates aberration of its own,");
         sb.AppendLine("and it also generates more by acting on the aberration handed to it by the");
@@ -681,8 +700,13 @@ public sealed class ReportWriter
             sb.AppendLine(string.Format(Inv, "{0,-6} {1,12:0.0} {2,12:0.0%}   {3}",
                 r.Surface, r.Percent, r.InducedFraction, bar));
         }
+        double attributed = rows.Sum(x => x.Percent);
+        if (b.TertiaryUnattributed)
+            sb.AppendLine(string.Format(Inv, "{0,-6} {1,12:0.0}   {2}",
+                "tau", 100.0 - attributed, "tau2 to tau20, not split by surface"));
         sb.AppendLine(new string('-', 64));
-        sb.AppendLine(string.Format(Inv, "{0,-6} {1,12:0.0}", "TOTAL", rows.Sum(x => x.Percent)));
+        sb.AppendLine(string.Format(Inv, "{0,-6} {1,12:0.0}", "TOTAL",
+            b.TertiaryUnattributed ? 100.0 : attributed));
 
         // Individual surfaces routinely contribute far more than the finished design shows,
         // because a corrected lens works by cancellation. Percentages in the hundreds are
@@ -734,9 +758,19 @@ public sealed class ReportWriter
         Row("TOTAL", "transverse", b.Totals);
 
         sb.AppendLine();
-        sb.AppendLine("# intrinsic + aspheric + induced = surface_total, per surface, unscaled.");
+        sb.AppendLine("# intrinsic + aspheric + induced = surface_total, per surface, unscaled,");
+        sb.AppendLine("# through b7. tau2..tau20 are given in surface_total only, as each surface's");
+        sb.AppendLine("# share of the tertiary scheme's totals; they are not split into parts.");
+        if (b.TertiaryUnattributed)
+        {
+            sb.AppendLine("# On this design they are not split by surface at all - a figured flat faces");
+            sb.AppendLine("# collimated light, and a surface's own share has no finite value there, only");
+            sb.AppendLine("# the sum does - so surface_total carries zeros for them and does NOT sum to");
+            sb.AppendLine("# the tau2..tau20 totals.");
+        }
         sb.AppendLine("# Summing surface_total over the surfaces and multiplying by the F/number");
-        sb.AppendLine(string.Format(Inv, "# ({0:R}) reproduces the transverse totals exactly.", b.FNumber));
+        sb.AppendLine(string.Format(Inv, "# ({0:R}) reproduces the transverse totals exactly{1}.", b.FNumber,
+            b.TertiaryUnattributed ? ", tau2..tau20 excepted" : ""));
         return sb.ToString();
     }
 
@@ -751,9 +785,19 @@ public sealed class ReportWriter
             var trace = ParaxialTrace.Trace(_sys, n, MaxField());
             var b = Buchdahl(trace, null, n);
             string wl = c.Wave < _sys.Wavelengths.Count ? _sys.Wavelengths[c.Wave].Value.ToString("R", Inv) : "";
-            foreach (var r in ContributionAnalysis.BySurface(b, c.H))
+            var rows = ContributionAnalysis.BySurface(b, c.H);
+            foreach (var r in rows)
                 sb.AppendLine(string.Join("	", wl, Raw(c.H), r.Surface.ToString(Inv),
                     Raw(r.Share), Raw(r.Percent), Raw(r.InducedFraction)));
+
+            // tau2..tau20 where they cannot be split by surface - see the report's section.
+            if (b.TertiaryUnattributed)
+            {
+                double total = Prms.MeanSquare(b.Totals, c.H);
+                double rest = total - rows.Sum(r => r.Share);
+                sb.AppendLine(string.Join("	", wl, Raw(c.H), "tau_unattributed", Raw(rest),
+                    Raw(Math.Abs(total) > 1e-30 ? 100.0 * rest / total : 0.0), ""));
+            }
         }
         return sb.ToString();
     }
