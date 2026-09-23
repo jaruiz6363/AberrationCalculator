@@ -859,6 +859,52 @@ a lost glass actually costs, and no amount of line counting says it as plainly.
 The fix keeps the `___BLANK` name token exactly as the file wrote it and updates only the two
 model numbers, in the fields the reader takes them from.
 
+## The figuring the save dropped
+
+**An optimised conic or aspheric term was lost when the design was saved, in every format but
+`.lhlt`.** Found 23 September 2026 while writing the user guide: optimising
+`F1_conic_singlet.zmx` with the conic as the variable took CC from -0.6 to -1.4599 and PRMSA from
+0.0812 to 0.0421, and the saved `.optimised.zmx` still said `CONI -0.6`. Read back, it was the
+design that went in. The report said "Nothing. The design that came out is the one that went in",
+because it listed only radii, thicknesses and glasses, and the command exited 0.
+
+The patchers were written when curvatures, thicknesses and glasses were all the optimiser could
+move. Conics and aspheric terms became variables later and the `.lhlt` patcher learned to write
+them; the other five were never revisited, and every save-back test moved only the original three.
+
+### A second defect behind the first
+
+The Optiland reader put an even asphere's `coefficients` one power too high, starting them at r^4.
+Optiland starts them at r^2 - an even asphere built in Optiland 0.6.2 with [1e-7, 2e-11, 3e-15]
+has the sag of 1e-7 r^2 + 2e-11 r^4 + 3e-15 r^6 to twelve figures. The reader had been written to
+a hand-made fixture that Optiland itself cannot load ("Missing 'type' field"), and its test checked
+the reader against that fixture, so the two agreed with each other and with nothing else. The
+fixture is now a file Optiland wrote.
+
+### What was done
+
+- `.zmx` and Optiland `.json` now carry figuring: a conic is edited or inserted, and a sphere that
+  was figured becomes `EVENASPH` with `PARM` lines, or an Optiland `EvenAsphere`. Coefficients go
+  back in the file's own units.
+- CODE V, OSLO and OPTALIX have no figuring writer - there is no real aspheric file in any of them
+  here to check one against - so a save whose figuring moved is **refused**: nothing is written,
+  and the reason names what moved. The command line writes the optimisation report regardless
+  and exits 1; basin hopping deletes a chain checkpoint that its figuring has since outgrown; the
+  MCP server says `NOT SAVED` and why.
+- The report lists conic and `A2`..`A16` changes.
+- Checked: re-running F1 now saves `CONI -1.4598647827590203`, which reads back with PRMSA
+  0.042067. `FiguringGoesBackIntoEveryFormatThatCanCarryIt`,
+  `AZmxEvenAsphereHasItsTermsEditedInPlace`, `FiguringGoesBackInTheFilesOwnUnits`,
+  `AFormatThatCannotCarryFiguringRefusesToDropIt` and `TheReportNamesTheFiguringThatMoved` hold
+  it; `OptilandLoadsTheFiguringThisProgramSaved` has Optiland itself load a saved file and agree
+  on the sag of the figured surface to 1e-12.
+
+### Why nothing caught it
+
+Every save-back test moved a curvature, a thickness or a glass - the things the patchers wrote -
+so the tests checked the patchers against their own scope rather than against the optimiser's.
+And the one aspheric Optiland fixture had never been shown to Optiland.
+
 ## Which order each deformation term reaches
 
 A deformation `A_n r^n` first contributes at wave order `n`, which is transverse order `n-1`.

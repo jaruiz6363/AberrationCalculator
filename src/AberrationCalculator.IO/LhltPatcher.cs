@@ -26,8 +26,8 @@ namespace AberrationCalculator.Core.IO
     /// setting one has no business overwriting. This program's merit function goes to a sidecar
     /// file beside the lens instead.</para>
     ///
-    /// <para>What IS written: curvatures, thicknesses and glass names where the optimiser moved
-    /// them; the variable flags and bounds, which are the user's statement of what may move; and
+    /// <para>What IS written: curvatures, thicknesses, glass names, conics and aspheric terms
+    /// where the optimiser moved them; the variable flags and bounds, which are the user's statement of what may move; and
     /// the pickups. Nothing else.</para>
     /// </summary>
     public static class LhltPatcher

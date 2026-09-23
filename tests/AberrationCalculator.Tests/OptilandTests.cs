@@ -299,4 +299,64 @@ public class OptilandTests
         tilted.Surfaces[2].TiltX = 0.1;
         Assert.NotNull(OptilandOptic.Unsupported(tilted));
     }
+
+    // ── Save-back ───────────────────────────────────────────────────────────────────────
+
+    private static double Sag(AberrationCalculator.Core.Models.Surface s, double r)
+    {
+        double c = s.Curvature, r2 = r * r;
+        double z = c * r2 / (1.0 + Math.Sqrt(1.0 - (1.0 + s.Conic) * c * c * r2));
+        double p = r2;
+        foreach (double a in s.AsphericCoefficients) { z += a * p; p *= r2; }
+        return z;
+    }
+
+    /// <summary>
+    /// An optimised design saved into Optiland .json is a file OPTILAND loads, with the figuring
+    /// that was written. Reading it back with this program's own reader proves only that the
+    /// writer and reader agree - and they agreed for years on coefficients one power too high.
+    /// So Optiland reads it, and its sag at 6 mm is compared with the sag the design should
+    /// have. Both routes: a sphere made an asphere (the double Gauss, as Optiland wrote it) and
+    /// an even asphere edited (a singlet Optiland wrote).
+    /// </summary>
+    [Theory]
+    [InlineData("KingslakeDG.json", 3)]
+    [InlineData("AsphericSinglet.optiland.json", 1)]
+    public void OptilandLoadsTheFiguringThisProgramSaved(string name, int surface)
+    {
+        if (!Ready()) return;
+
+        var catalog = CatalogLocator.LoadBundled();
+        string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "abcalc-opt-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        try
+        {
+            string lens = System.IO.Path.Combine(Fixtures.LensDir, name);
+            var system = AberrationCalculator.Core.IO.LensFile.Read(lens, catalog);
+            var s = system.Surfaces[surface];
+            s.Conic = -0.8;
+            s.AsphericCoefficients[1] = 2.0e-6;
+            s.AsphericCoefficients[2] = -3.0e-9;
+
+            string output = System.IO.Path.Combine(dir, "saved.json");
+            AberrationCalculator.Core.IO.LensPatcher.Save(system, lens, output, catalog);
+
+            var theirs = OptilandOptic.SagsFromFile(output, 6.0);
+            _out.WriteLine($"{name} surface {surface}: Optiland reads {theirs[surface].Type}, "
+                         + $"sag {theirs[surface].Sag:G15}; wanted {Sag(s, 6.0):G15}");
+            Assert.Equal("EvenAsphere", theirs[surface].Type);
+            Assert.True(Math.Abs(theirs[surface].Sag - Sag(s, 6.0)) < 1e-12 * Math.Abs(Sag(s, 6.0)) + 1e-14,
+                "Optiland's sag of the saved surface is not the design's");
+
+            // And the surfaces nothing touched are still what they were.
+            for (int i = 1; i < system.Surfaces.Count - 1; i++)
+                if (i != surface)
+                    Assert.True(Math.Abs(theirs[i].Sag - Sag(system.Surfaces[i], 6.0)) < 1e-9,
+                        $"surface {i} changed in Optiland's reading");
+        }
+        finally
+        {
+            try { System.IO.Directory.Delete(dir, true); } catch (System.IO.IOException) { }
+        }
+    }
 }

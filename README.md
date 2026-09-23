@@ -88,9 +88,9 @@ a boundary with a gradient it cannot act on; a sigmoid's derivative vanishes *at
 variable pressed against a limit goes numb and nothing brings it back when the design later wants
 it.
 
-The report says what MOVED - surface by surface, in radii and thicknesses and glass names rather
-than in the optimizer's own variables - together with the merit it started at and the merit it
-reached, and which operand is holding whatever error is left.
+The report says what MOVED - surface by surface, in radii, thicknesses, glass names, conics and
+aspheric terms rather than in the optimizer's own variables - together with the merit it started
+at and the merit it reached, and which operand is holding whatever error is left.
 
 ### Reading and writing the settings
 
@@ -225,20 +225,20 @@ answering. An absolute path is never re-rooted.
 ### What goes back into the file
 
 An optimized design goes back **in the format it came from**, by editing that file rather than
-regenerating it: only curvatures, thicknesses and glass names change, in the file's own units,
-and everything this program does not model - solves, coatings, tolerances, somebody else's merit
+regenerating it: only curvatures, thicknesses, glass names, conics and aspheric terms change,
+in the file's own units, and everything this program does not model - solves, coatings, tolerances, somebody else's merit
 function - survives untouched. That matters more than it sounds. The .zmx reader here recognises
 twenty-three directives and a real `.zmx` has many times that, so a writer that rebuilt the file
 from what it understood would quietly delete the rest of a design.
 
 | format | reads | writes back |
 |---|---|---|
-| LensHH-LT `.lhlt` | yes | **yes**, including variables, bounds and pickups |
-| ZEMAX `.zmx` | yes | **yes** |
-| Optiland `.json` | yes | **yes** |
-| CODE V `.seq` | yes | **yes** |
-| OPTALIX `.otx` `.opt` | yes | **yes** |
-| OSLO `.len` `.osl` | yes | **yes** |
+| LensHH-LT `.lhlt` | yes | **yes**, including figuring, variables, bounds and pickups |
+| ZEMAX `.zmx` | yes | **yes**, including figuring |
+| Optiland `.json` | yes | **yes**, including figuring |
+| CODE V `.seq` | yes | **yes**, but not figuring: a design whose conic or aspheric terms moved is refused |
+| OPTALIX `.otx` `.opt` | yes | **yes**, but not figuring, as CODE V |
+| OSLO `.len` `.osl` | yes | **yes**, but not figuring, as CODE V |
 
 Every format goes back the way it came, and each one asks for something different. A `.seq`
 surface line is positional - `S radius thickness material` - so editing the radius means taking

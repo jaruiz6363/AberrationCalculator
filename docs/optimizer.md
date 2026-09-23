@@ -914,14 +914,32 @@ picked up and worked on further, and one report covers the run.
 ## Saving back
 
 The optimised design goes back **in the format it came from**, by editing that file rather than
-regenerating it. Only curvatures, thicknesses and glass names ever change, and they go back in
-the file's own units — a design opened from a file written in inches returns in inches.
+regenerating it. Only what the optimiser can move ever changes — curvatures, thicknesses, glass
+names, and conics and aspheric terms — and it goes back in the file's own units: a design opened
+from a file written in inches returns in inches, aspheric coefficients included (a coefficient of
+r^(2k+2) scales as length^-(2k+1)).
+
+**Conics and aspheric terms go back into `.lhlt`, `.zmx` and Optiland `.json` only.** A `.zmx`
+sphere that the optimiser figured becomes an `EVENASPH` with `PARM` lines; an Optiland
+`StandardGeometry` becomes an `EvenAsphere`, whose `coefficients` start at r² (measured in
+Optiland 0.6.2, and checked by having Optiland load the saved file —
+`OptilandLoadsTheFiguringThisProgramSaved`). CODE V, OSLO and OPTALIX files have no writer for
+figuring, because there is no real aspheric example of any of them here to check one against. A
+design whose figuring moved is therefore **refused** in those formats: nothing is written, the
+command exits with an error that names what moved, and the optimisation report — which lists every
+conic and aspheric change — is written anyway, so the values are not lost. To keep them in a lens
+file, start from a `.zmx` or `.lhlt` export of the design.
+
+Until September 2026 no format but `.lhlt` took figuring back, and nothing said so: an optimised
+conic singlet (F1, CC −0.6 → −1.46, predicted spot halved) saved a file that still said
+`CONI -0.6` and read back as the design that went in. See docs/verification.md, *The figuring the
+save dropped*.
 
 Editing rather than regenerating is the whole point. This program recognises twenty-three .zmx
 directives and a real `.zmx` has many times that in solves, coatings, apertures, tolerances and
 multi-configuration data; a writer that rebuilt the file from what it understood would quietly
-delete the rest of somebody's design. So the original is read, the three things the optimiser can
-move are moved, and every other byte is left alone — including the encoding and the line endings,
+delete the rest of somebody's design. So the original is read, what the optimiser moved is
+changed, and every other byte is left alone — including the encoding and the line endings,
 which for a `.zmx` are UTF-16 and CRLF. `PatchingAZmxKeepsItsEncodingAndChangesOnlyWhatMoved`
 holds it to exactly one changed line.
 
@@ -930,7 +948,7 @@ next version of the program that wrote it adds all survive being written through
 
 **Every format this reads, it writes back**: `.lhlt`, `.zmx`, Optiland `.json`, CODE V `.seq`,
 OPTALIX `.otx`/`.opt` and OSLO `.len`/`.osl`. Each needed working out separately, because each
-says the same three things differently:
+says the same things differently:
 
 | format | shape | a plane | a property with nothing to say |
 |---|---|---|---|
@@ -949,7 +967,9 @@ as a bare word, which is not valid JSON and has to be carried through a parse wi
 turned into a number.
 
 `EveryFormatCarriesTheSameMoveBackUnchanged` runs the same three edits — a curvature, a
-thickness, a glass — through all five and reads each back, which is the check that they agree.
+thickness, a glass — through all six and reads each back, which is the check that they agree;
+`FiguringGoesBackIntoEveryFormatThatCanCarryIt` does the same for a conic and aspheric terms put
+on spheres, and `AFormatThatCannotCarryFiguringRefusesToDropIt` holds the other three to refusing.
 
 The MCP server offers the same as `optimize`, taking the merit function inline as text, so an
 assistant can compose one without writing a file. It writes nothing unless given `save_to`.

@@ -174,6 +174,23 @@ public sealed class OptilandOptic
         return JsonSerializer.Serialize(spec);
     }
 
+    /// <summary>
+    /// Optiland's own reading of an Optiland .json FILE: each surface's geometry type and its
+    /// sag at height <paramref name="r"/>, in the file's units. For checking that a file this
+    /// program saved is one Optiland loads, with the figuring that was written.
+    /// </summary>
+    public static (string Type, double Sag)[] SagsFromFile(string path, double r)
+    {
+        string json = PythonSession.WithGil(() =>
+            ImportHelper().InvokeMethod("sags", new PyString(Path.GetFullPath(path)),
+                                        new PyFloat(r)).ToString() ?? "[]");
+        using var doc = JsonDocument.Parse(json);
+        var result = new List<(string, double)>();
+        foreach (var e in doc.RootElement.EnumerateArray())
+            result.Add((e.GetProperty("type").GetString() ?? "", Num(e.GetProperty("sag"))));
+        return result.ToArray();
+    }
+
     /// <summary>Imports the helper module, adding its folder to sys.path on first use.</summary>
     private static PyObject ImportHelper()
     {

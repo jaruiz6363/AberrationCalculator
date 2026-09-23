@@ -120,7 +120,7 @@ the caller has no way to check it.
 | `initial_perturb_sigma` | the kick on the **first hop only**, before the design has ever been minimised. Default 0.001, the same as `hop_sigma`. Its job is different: it breaks exact symmetry, since a design sitting on a stationary point has nowhere to go. Raise it to start from a deliberately disturbed design - useful off a skeleton, where the starting point is a guess - without making every later hop that violent |
 | `hop_figuring` | whether a hop also kicks the **conic and aspheric terms**. Default false. They are still *optimised* at every hop; this governs the random kick only. A figuring term is a nearly-linear correction the local stage refits from wherever it starts, so throwing it does not choose a different basin - it discards a figure that is about to be fitted again. Set it true to kick them anyway, which is defensible for a conic: at -1 and at 0 that is a genuinely different surface, not a small correction |
 | `glass_substitution` | name of a substitution catalogue the hopping may take glasses from, e.g. `CoreSet28` |
-| `save_to` | where to write the result. Under hopping this is a **folder**, and one design per chain goes into it. **Nothing is written without it** |
+| `save_to` | where to write the result. Under hopping this is a **folder**, and one design per chain goes into it. **Nothing is written without it**. A CODE V, OSLO or OPTALIX design whose conic or aspheric terms moved is not saved - the result says `NOT SAVED` and why, and the report above it holds the values |
 
 **The lens on disk is never modified.** A run that made the design worse costs nothing, and
 the report says so rather than handing back something nobody asked for.

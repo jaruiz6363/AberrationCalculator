@@ -79,6 +79,19 @@ public static class OptimizationReport
                 rows.Add((i, "glass",
                           beforeGlass.Length == 0 ? "air" : beforeGlass,
                           afterGlass.Length == 0 ? "air" : afterGlass, "-"));
+
+            // The figuring. Aspheric coefficients are tiny numbers (1e-7 and smaller), so the
+            // absolute floor Moved() uses for lengths would hide every one of them; they are
+            // compared relatively instead.
+            if (FiguringMoved(a.Conic, b.Conic))
+                rows.Add((i, "conic", Num(a.Conic), Num(b.Conic), FiguringPercent(a.Conic, b.Conic)));
+
+            int terms = Math.Min(a.AsphericCoefficients.Length, b.AsphericCoefficients.Length);
+            for (int k = 0; k < terms; k++)
+                if (FiguringMoved(a.AsphericCoefficients[k], b.AsphericCoefficients[k]))
+                    rows.Add((i, "A" + (2 * k + 2).ToString(CultureInfo.InvariantCulture),
+                              Num(a.AsphericCoefficients[k]), Num(b.AsphericCoefficients[k]),
+                              FiguringPercent(a.AsphericCoefficients[k], b.AsphericCoefficients[k])));
         }
 
         sb.AppendLine("WHAT CHANGED");
@@ -120,6 +133,15 @@ public static class OptimizationReport
         if (double.IsInfinity(before) != double.IsInfinity(after)) return true;
         return Math.Abs(after - before) > 1e-10 * Math.Max(1.0, Math.Abs(before));
     }
+
+    private static bool FiguringMoved(double before, double after) =>
+        before != after && Math.Abs(after - before) > 1e-12 * Math.Max(Math.Abs(before), Math.Abs(after));
+
+    // A coefficient of 3e-15 is not zero, so only an exact zero reads as "from zero".
+    private static string FiguringPercent(double before, double after) =>
+        before == 0.0 ? "from zero"
+            : ((after - before) / Math.Abs(before) * 100.0)
+              .ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture) + "%";
 
     private static string Percent(double before, double after)
     {

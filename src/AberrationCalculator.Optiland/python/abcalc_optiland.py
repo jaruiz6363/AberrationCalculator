@@ -134,3 +134,22 @@ def describe(optic) -> str:
         "chief_slope": _floats(ub)[0],
         "surfaces": len(optic.surfaces.surfaces),
     })
+
+
+def sags(path: str, r: float) -> str:
+    """Load a lens FILE with Optiland's own reader and return each surface's sag at height r.
+
+    The one place Optiland reads a file this program wrote: a save-back into Optiland .json is
+    only right if Optiland itself loads it and finds the figuring that was written.
+    """
+    import optiland.fileio as fio
+
+    optic = fio.load_optiland_file(path)
+    out = []
+    for s in optic.surfaces.surfaces:
+        g = s.geometry
+        out.append({
+            "type": type(g).__name__,
+            "sag": _floats(g.sag(np.array([0.0]), np.array([r])))[0],
+        })
+    return json.dumps(out)

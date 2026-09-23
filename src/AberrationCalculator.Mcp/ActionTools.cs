@@ -454,7 +454,10 @@ internal static class ActionTools
 
         if (designs.Count == 1)
         {
-            report += "Written: " + Save(designs[0], setup, lensPath, saveTo!, catalog) + "\n";
+            string? one = Save(designs[0], setup, lensPath, saveTo!, catalog, out string? refused);
+            if (one == null)
+                return report + "NOT SAVED - " + refused + "\n";
+            report += "Written: " + one + "\n";
             foreach (string path in Sidecar.Save(saveTo!, setup))
                 report += "         " + Path.GetFullPath(path) + "\n";
             return report;
@@ -471,7 +474,14 @@ internal static class ActionTools
                 saveTo!,
                 stem + ".chain" + (i + 1).ToString("00", CultureInfo.InvariantCulture) + extension);
 
-            report += "  " + Save(designs[i], setup, lensPath, chain, catalog) + "\n";
+            string? saved = Save(designs[i], setup, lensPath, chain, catalog, out string? refused);
+            if (saved == null)
+            {
+                report += "  chain " + (i + 1).ToString(CultureInfo.InvariantCulture)
+                        + " NOT SAVED - " + refused + "\n";
+                continue;
+            }
+            report += "  " + saved + "\n";
             foreach (string path in Sidecar.Save(chain, setup))
                 report += "  " + Path.GetFullPath(path) + "\n";
         }
@@ -484,10 +494,15 @@ internal static class ActionTools
     /// <para>A <c>.lhlt</c> carries its own statement of what may move, so the variables, bounds
     /// and pickups travel back into the lens file with the new curvatures. Every other format has
     /// nowhere to put them and gets a sidecar instead.</para>
+    ///
+    /// <para>Returns null, with the reason, when the format cannot carry what moved - an
+    /// optimised conic in a CODE V file, say. The report above already holds the values.</para>
     /// </summary>
-    private static string Save(OpticalSystem design, OptimizationSetup setup,
-                               string lensPath, string outPath, GlassCatalog? catalog)
+    private static string? Save(OpticalSystem design, OptimizationSetup setup,
+                                string lensPath, string outPath, GlassCatalog? catalog,
+                                out string? refused)
     {
+        refused = null;
         if (Sidecar.KeepsVariablesInTheLensFile(outPath))
         {
             SurfaceVariables.Write(setup.Variables, design);
@@ -495,7 +510,15 @@ internal static class ActionTools
             design.Pickups.AddRange(setup.Pickups);
         }
 
-        LensPatcher.Save(design, lensPath, outPath, catalog);
+        try
+        {
+            LensPatcher.Save(design, lensPath, outPath, catalog);
+        }
+        catch (NotSupportedException ex)
+        {
+            refused = ex.Message;
+            return null;
+        }
         return Path.GetFullPath(outPath);
     }
 

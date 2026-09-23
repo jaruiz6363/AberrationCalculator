@@ -18,8 +18,8 @@ namespace AberrationCalculator.Tests;
 /// <summary>
 /// Writing an optimised design back to the file it came from.
 ///
-/// <para>The rule is that only what the optimiser moved may change - curvatures, thicknesses and
-/// glass names - and that everything else in the file survives, including the parts this program
+/// <para>The rule is that only what the optimiser moved may change - curvatures, thicknesses,
+/// glass names, conics and aspheric terms - and that everything else in the file survives, including the parts this program
 /// has no model for. That is not a nicety: this program recognises twenty-three .zmx directives
 /// and a real .zmx has many times that, so a writer that regenerated the file from what it
 /// understood would quietly delete the rest of somebody's design.</para>
@@ -826,5 +826,170 @@ public class SaveBackTests
             else
                 Assert.Equal(system.Surfaces[i].Thickness, back.Surfaces[i].Thickness, 9);
         }
+    }
+
+    // ── Figuring ─────────────────────────────────────────────────────────────────────────
+    //
+    // Conics and aspheric terms are variables, so they are things the optimiser moves. Until
+    // September 2026 no patcher wrote them: an optimised conic singlet (F1, CC -0.6 -> -1.46,
+    // merit down 48%) saved a file that still said CONI -0.6 and read back as the design that
+    // went in, and nothing said so.
+
+    private static void SameFiguring(OpticalSystem want, OpticalSystem got)
+    {
+        Assert.Equal(want.Surfaces.Count, got.Surfaces.Count);
+        for (int i = 0; i < want.Surfaces.Count; i++)
+        {
+            Close(want.Surfaces[i].Conic, got.Surfaces[i].Conic, $"conic on surface {i}");
+            var a = want.Surfaces[i].AsphericCoefficients;
+            var b = got.Surfaces[i].AsphericCoefficients;
+            for (int k = 0; k < Math.Min(a.Length, b.Length); k++)
+                Close(a[k], b[k], $"A{2 * k + 2} on surface {i}");
+        }
+    }
+
+    private static void Close(double want, double got, string what) =>
+        Assert.True(Math.Abs(want - got) <= 1e-12 * Math.Max(Math.Abs(want), Math.Abs(got)),
+                    $"{what}: wrote {want:G17}, read back {got:G17}");
+
+    /// <summary>
+    /// A conic and aspheric terms put on SPHERES go back, in every format that can carry them.
+    /// Every surface of the double Gauss is spherical, so this is the hard case: the .zmx
+    /// surface has to become an EVENASPH with PARM lines it never had, and the Optiland one an
+    /// EvenAsphere with a coefficient list.
+    /// </summary>
+    [Theory]
+    [InlineData(".zmx")]
+    [InlineData(".json")]
+    [InlineData(".lhlt")]
+    public void FiguringGoesBackIntoEveryFormatThatCanCarryIt(string extension)
+    {
+        using var s = new Scratch();
+        string lens = s.Copy(Export(extension), "F" + extension);
+
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(lens, catalog);
+
+        system.Surfaces[1].Curvature *= 1.03;
+        system.Surfaces[2].Conic = -0.37;
+        system.Surfaces[5].AsphericCoefficients[1] = 3.1e-6;
+        system.Surfaces[5].AsphericCoefficients[2] = -4.2e-9;
+        system.Surfaces[5].AsphericCoefficients[7] = 1.5e-25;
+
+        string output = s.At("F.optimised" + extension);
+        LensPatcher.Save(system, lens, output, catalog);
+
+        var back = LensFile.Read(output, catalog);
+        SameFiguring(system, back);
+        Assert.Equal(system.Surfaces[1].Curvature, back.Surfaces[1].Curvature, 12);
+    }
+
+    /// <summary>
+    /// A surface that is already an even asphere has its terms EDITED in place, and a file
+    /// whose figuring did not move is not touched at all.
+    /// </summary>
+    [Fact]
+    public void AZmxEvenAsphereHasItsTermsEditedInPlace()
+    {
+        using var s = new Scratch();
+        string lens = s.Copy(Path.Combine(ZmxDir, "F3_conic_a4_a6_a8.zmx"), "A.zmx");
+
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(lens, catalog);
+
+        // Nothing moved: not a byte changes.
+        string same = s.At("A.same.zmx");
+        LensPatcher.Save(system, lens, same, catalog);
+        Assert.Equal(File.ReadAllBytes(lens), File.ReadAllBytes(same));
+
+        int figured = system.Surfaces.FindIndex(x => x.AsphericCoefficients[1] != 0.0);
+        Assert.True(figured > 0, "F3 should have an r^4 term");
+        system.Surfaces[figured].Conic *= 1.5;
+        system.Surfaces[figured].AsphericCoefficients[1] *= -2.0;
+
+        string output = s.At("A.optimised.zmx");
+        LensPatcher.Save(system, lens, output, catalog);
+
+        SameFiguring(system, LensFile.Read(output, catalog));
+        Assert.Equal(2, LinesThatDiffer(lens, output));
+    }
+
+    /// <summary>
+    /// The figuring goes back in the file's OWN units. A coefficient of r^(2k+2) scales as
+    /// length^-(2k+1), so a file in inches takes a very different number from the same
+    /// surface in millimetres, and getting the power wrong is invisible until the lens is made.
+    /// </summary>
+    [Fact]
+    public void FiguringGoesBackInTheFilesOwnUnits()
+    {
+        using var s = new Scratch();
+        string lens = s.Copy(Path.Combine(ZmxDir, "F3_conic_a4_a6_a8.zmx"), "I.zmx");
+        File.WriteAllText(lens, ReadUtf16(lens).Replace("UNIT MM", "UNIT IN"),
+                          new UnicodeEncoding(false, true));
+
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(lens, catalog);
+        Assert.Equal(25.4, system.FileUnitScale, 6);
+
+        int figured = system.Surfaces.FindIndex(x => x.AsphericCoefficients[1] != 0.0);
+        system.Surfaces[figured].AsphericCoefficients[1] *= 1.3;
+        system.Surfaces[figured].AsphericCoefficients[3] = 2.5e-14;
+
+        string output = s.At("I.optimised.zmx");
+        LensPatcher.Save(system, lens, output, catalog);
+        SameFiguring(system, LensFile.Read(output, catalog));
+    }
+
+    /// <summary>
+    /// CODE V, OSLO and Optalix files cannot yet take figuring back, and a save whose figuring
+    /// moved is REFUSED, with nothing written, rather than written without it - which is the
+    /// failure this whole section exists for. Figuring that did not move is no obstacle.
+    /// </summary>
+    [Theory]
+    [InlineData(".seq")]
+    [InlineData(".len")]
+    [InlineData(".otx")]
+    public void AFormatThatCannotCarryFiguringRefusesToDropIt(string extension)
+    {
+        using var s = new Scratch();
+        string lens = s.Copy(Export(extension), "N" + extension);
+
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(lens, catalog);
+        system.Surfaces[1].Curvature *= 1.03;
+
+        string fine = s.At("N.fine" + extension);
+        LensPatcher.Save(system, lens, fine, catalog);
+        Assert.True(File.Exists(fine));
+
+        system.Surfaces[2].Conic = -0.37;
+        string output = s.At("N.optimised" + extension);
+        var ex = Assert.Throws<NotSupportedException>(
+            () => LensPatcher.Save(system, lens, output, catalog));
+        Assert.Contains("surface 2", ex.Message);
+        Assert.False(File.Exists(output), "nothing may be written when the figuring cannot be");
+    }
+
+    /// <summary>
+    /// The optimisation report names the figuring that moved. It used to list only radii,
+    /// thicknesses and glasses, so a run that moved nothing but a conic reported "Nothing".
+    /// </summary>
+    [Fact]
+    public void TheReportNamesTheFiguringThatMoved()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var start = LensFile.Read(Path.Combine(ZmxDir, "F1_conic_singlet.zmx"), catalog);
+        var best = AberrationCalculator.Optimize.Evaluation.DesignCopy.Deep(start);
+        best.Surfaces[1].Conic = -1.46;
+        best.Surfaces[1].AsphericCoefficients[2] = 3e-15;
+
+        string report = OptimizationReport.Build(new AberrationCalculator.Optimize.RunOutcome
+        {
+            Best = best, Start = start, InitialMerit = 0.1, FinalMerit = 0.05,
+        }, "F1.zmx");
+
+        Assert.DoesNotContain("Nothing.", report);
+        Assert.Matches(@"\n  1\s+conic\s+-0\.6\s+-1\.46", report);
+        Assert.Matches(@"\n  1\s+A6\s+0\s+3\.000000E-15\s+from zero", report);
     }
 }

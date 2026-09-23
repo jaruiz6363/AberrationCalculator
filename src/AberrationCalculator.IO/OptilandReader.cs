@@ -144,14 +144,17 @@ namespace AberrationCalculator.Core.IO
 
                                 if (geom.TryGetProperty("coefficients", out var coeffs) && coeffs.ValueKind == JsonValueKind.Array)
                                 {
-                                    // Optiland's coefficients start at r^4; this program's
-                                    // AsphericCoefficients are indexed so that entry 0
-                                    // multiplies r^2 and entry 1 multiplies r^4. Copying
-                                    // across position for position put A4 into the r^2 slot,
-                                    // which the aberration code deliberately ignores - an r^2
-                                    // term is a change of curvature, not figuring - so the
-                                    // import succeeded and the asphericity silently vanished.
-                                    int idx = 1;
+                                    // Optiland's coefficients start at r^2, exactly as this
+                                    // program's AsphericCoefficients do, so they copy across
+                                    // position for position. MEASURED: an even asphere built in
+                                    // Optiland 0.6.2 with coefficients [1e-7, 2e-11, 3e-15] has
+                                    // the sag of 1e-7 r^2 + 2e-11 r^4 + 3e-15 r^6 to twelve
+                                    // figures, and Optiland's own writer stores the list exactly
+                                    // so. This reader used to start them at r^4, on the strength
+                                    // of a hand-written fixture that Optiland itself cannot even
+                                    // load, so every aspheric Optiland file came in one power too
+                                    // high (September 2026).
+                                    int idx = 0;
                                     foreach (var c in coeffs.EnumerateArray())
                                     {
                                         if (idx < surface.AsphericCoefficients.Length)

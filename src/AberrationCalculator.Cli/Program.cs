@@ -85,8 +85,11 @@ OPTIONS
                       from, editing that file rather than regenerating it, so that
                       everything this program does not model - solves, coatings,
                       tolerances, somebody else's merit function - survives. Only
-                      curvatures, thicknesses and glass names change, and they go
-                      back in the file's own units. For a .lhlt the variable and
+                      what the optimiser can move changes - curvatures, thicknesses,
+                      glass names, and conics and aspheric terms - in the file's own
+                      units. Conics and aspheric terms go back into .lhlt, .zmx and
+                      Optiland .json; a CODE V, OSLO or Optalix file whose figuring
+                      moved is NOT saved, and the values are in the report. For a .lhlt the variable and
                       pickup settings are written back too; for every other format
                       they go to the sidecar, along with the merit function.
 
@@ -846,6 +849,7 @@ EXIT CODES
         string chainStem = Path.GetFileNameWithoutExtension(lensPath);
         string chainExtension = Path.GetExtension(lensPath);
         var chainFiles = new System.Collections.Concurrent.ConcurrentDictionary<int, string>();
+        string? saveRefused = null;
 
         settings.OnChainBest = (chain, design, merit) =>
         {
@@ -871,6 +875,25 @@ EXIT CODES
                 // A checkpoint that cannot be written must not bring down a chain that is still
                 // searching. The next improvement writes again, and the run's own final write
                 // still happens.
+            }
+            catch (NotSupportedException ex)
+            {
+                // The format cannot carry what moved (a conic in a CODE V file, say). Every later
+                // checkpoint would be refused the same way, so the chain searches on and the
+                // reason is reported once, after the run, beside the report that holds the values.
+                // A checkpoint this chain wrote before its figuring moved is no longer its best,
+                // and a file on disk that looks like the answer and is not is worse than none.
+                saveRefused ??= ex.Message;
+                if (chainFiles.TryRemove(chain, out string? stale))
+                {
+                    try
+                    {
+                        File.Delete(stale);
+                        File.Delete(AberrationCalculator.Optimize.Io.Sidecar.MeritPathFor(stale));
+                        File.Delete(AberrationCalculator.Optimize.Io.Sidecar.VariablePathFor(stale));
+                    }
+                    catch (IOException) { }
+                }
             }
         };
 
@@ -919,6 +942,12 @@ EXIT CODES
             Console.Write(report);
             Console.WriteLine("Written:");
             foreach (string path in written) Console.WriteLine("  " + path);
+        }
+        if (saveRefused != null)
+        {
+            Console.Error.WriteLine("error: the designs were NOT saved. " + saveRefused);
+            Console.Error.WriteLine("The optimised values are in " + reportPath);
+            return 1;
         }
         return 0;
     }
@@ -1020,7 +1049,12 @@ EXIT CODES
         }
         catch (NotSupportedException ex)
         {
-            Console.Error.WriteLine("error: " + ex.Message);
+            // The design could not be written back into its format - an optimised conic in a
+            // CODE V file, say. The run is not lost with it: the report says what every value
+            // became, so it is written regardless and named.
+            string refusedReport = Write(dir, Path.GetFileName(lensPath) + ".optimisation.txt", report);
+            Console.Error.WriteLine("error: the design was NOT saved. " + ex.Message);
+            Console.Error.WriteLine("The optimised values are in " + refusedReport);
             return 1;
         }
 
