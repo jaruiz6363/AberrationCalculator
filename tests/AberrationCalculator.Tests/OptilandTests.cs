@@ -23,20 +23,13 @@ namespace AberrationCalculator.Tests;
 /// them is this program's, and is gated on its own rays in <c>LowerOrderInversionTests</c>.</para>
 ///
 /// <para>These tests need the embedded Python that <c>tools/setup-python.ps1</c> installs. A
-/// fresh clone does not have it, so they report that they did nothing rather than failing -
-/// and say so in the test output, so a green run cannot quietly mean "never ran".</para>
+/// fresh clone does not have it, so they are marked skipped, with the reason, rather than failing
+/// or passing - so the summary cannot quietly count a check that never ran.</para>
 /// </summary>
 public class OptilandTests
 {
     private readonly ITestOutputHelper _out;
     public OptilandTests(ITestOutputHelper output) { _out = output; }
-
-    private bool Ready()
-    {
-        if (PythonEnvironment.IsReady) return true;
-        _out.WriteLine("NOT RUN: " + PythonEnvironment.SetupHint);
-        return false;
-    }
 
     private static OptilandOptic Build(Loaded l) =>
         OptilandOptic.Build(l.System, l.Indices, l.Paraxial, l.Field, l.WavelengthUm);
@@ -70,10 +63,9 @@ public class OptilandTests
     /// and Optiland did not. See <c>LowerOrderInversionTests</c> for why this program, and not
     /// Optiland, was the one that was wrong.</para>
     /// </summary>
-    [Fact]
+    [OptilandFact]
     public void SeidelSumsAgreeSurfaceBySurfaceWithTheSignTurned()
     {
-        if (!Ready()) return;
         var catalog = CatalogLocator.LoadBundled();
         int count = 0;
         foreach (var d in Designs.All())
@@ -110,10 +102,9 @@ public class OptilandTests
     /// aberration is undercorrected. Welford's S1 is positive there, and so is OpticStudio's
     /// SPHA; Optiland's is negative.
     /// </summary>
-    [Fact]
+    [OptilandFact]
     public void OptilandsSeidelSignIsTheOppositeOfWelfords()
     {
-        if (!Ready()) return;
         var l = Load("Ladder1_Sphere.lhlt");
         Assert.True(l.Paraxial.Efl > 0);
         Assert.True(Seidel(l).TotalS1 > 0, "this program: S1 of a positive singlet is positive");
@@ -128,10 +119,9 @@ public class OptilandTests
     /// third order on F3 agrees with the recorded FIFTHORD reference, finds S1 changed by more
     /// than half.
     /// </summary>
-    [Fact]
+    [OptilandFact]
     public void OptilandsSeidelSumsLeaveOutTheEvenAsphereTerms()
     {
-        if (!Ready()) return;
         var f1 = Load("F1_conic_singlet.zmx");
         var f3 = Load("F3_conic_a4_a6_a8.zmx");
 
@@ -154,10 +144,9 @@ public class OptilandTests
     /// same surface written as a shifted sphere, it gets right. This is the defect FIFTHORD has,
     /// and LensHH-LT had until 1.0.156.
     /// </summary>
-    [Fact]
+    [OptilandFact]
     public void OptilandsParaxialTraceLeavesOutTheR2Term()
     {
-        if (!Ready()) return;
         var f3 = Load("F3_conic_a4_a6_a8.zmx");
         var f8 = Load("F8_r2_conic_a4_a6_a8.zmx");
         var f9 = Load("F9_r2_as_shifted_sphere.zmx");
@@ -177,10 +166,9 @@ public class OptilandTests
     /// over (object distance + EPL): on G0, 12 / 33.79 instead of 12 / 433.79. With the stop on
     /// the first surface EPL is zero, the scale divides by zero and every sum is NaN.
     /// </summary>
-    [Fact]
+    [OptilandFact]
     public void OptilandsChiefRayAtAFiniteConjugateMissesTheObjectDistance()
     {
-        if (!Ready()) return;
         var g0 = Load("G0_finite_no_r2.zmx");
         double h = g0.Field;
         double epl = g0.Paraxial.EntrancePupilPosition;
@@ -203,10 +191,9 @@ public class OptilandTests
     /// program's paraxial pupil and caught at its paraxial focus. The worst, 1.5E-8 mm, is on a
     /// Cooke triplet with aspheres, where Optiland iterates to its surface; on spheres it is 1E-14.
     /// </summary>
-    [Fact]
+    [OptilandFact]
     public void OptilandsRaysLandWhereOursDo()
     {
-        if (!Ready()) return;
         int count = 0;
         foreach (var l in Invertible(CatalogLocator.LoadBundled()))
         {
@@ -240,10 +227,9 @@ public class OptilandTests
     /// The bounds are those the inversion meets on this program's own rays; Optiland's rays
     /// meet them too, and on each design land within a few parts in a billion of the same place.
     /// </summary>
-    [Fact]
+    [OptilandFact]
     public void ThirdAndFifthOrderFromOptilandsRaysMatchBuchdahl()
     {
-        if (!Ready()) return;
         int count = 0;
         foreach (var l in Invertible(CatalogLocator.LoadBundled()))
         {
@@ -265,12 +251,11 @@ public class OptilandTests
     }
 
     /// <summary>The seventeen coefficients side by side on one design, for the record.</summary>
-    [Theory]
+    [OptilandTheory]
     [InlineData("CookeTriplet.lhlt")]
     [InlineData("F3_conic_a4_a6_a8.zmx")]
     public void CoefficientTable(string name)
     {
-        if (!Ready()) return;
         var l = Load(name);
         var optic = Build(l);
         var b = BuchdahlCoefficients.Compute(l.System, l.Paraxial).Totals;
@@ -319,12 +304,11 @@ public class OptilandTests
     /// have. Both routes: a sphere made an asphere (the double Gauss, as Optiland wrote it) and
     /// an even asphere edited (a singlet Optiland wrote).
     /// </summary>
-    [Theory]
+    [OptilandTheory]
     [InlineData("KingslakeDG.json", 3)]
     [InlineData("AsphericSinglet.optiland.json", 1)]
     public void OptilandLoadsTheFiguringThisProgramSaved(string name, int surface)
     {
-        if (!Ready()) return;
 
         var catalog = CatalogLocator.LoadBundled();
         string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "abcalc-opt-" + Guid.NewGuid().ToString("N"));
@@ -358,5 +342,26 @@ public class OptilandTests
         {
             try { System.IO.Directory.Delete(dir, true); } catch (System.IO.IOException) { }
         }
+    }
+}
+
+/// <summary>
+/// A test that needs the embedded Python: skipped, with the setup hint as the reason, when it is
+/// not there. xunit 2 decides skipping when it discovers the test, not while it runs.
+/// </summary>
+public sealed class OptilandFactAttribute : FactAttribute
+{
+    public OptilandFactAttribute()
+    {
+        if (!PythonEnvironment.IsReady) Skip = PythonEnvironment.SetupHint;
+    }
+}
+
+/// <summary>The same, for a test run once per data row.</summary>
+public sealed class OptilandTheoryAttribute : TheoryAttribute
+{
+    public OptilandTheoryAttribute()
+    {
+        if (!PythonEnvironment.IsReady) Skip = PythonEnvironment.SetupHint;
     }
 }

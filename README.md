@@ -594,7 +594,7 @@ the rest of the reflecting path: the seventh order NaN on a mirror, Forbes' seri
 one as a refraction, NAT's wave front zero - all fixed (docs/verification.md, *Mirrors*). They were
 not Optiland's discovery: the symptoms were already in this repository and had been explained
 away, and OpticStudio, compared on a mirror only at the third and fifth order, was never wrong. See [docs/optiland.md](docs/optiland.md). Without the embedded
-Python those tests print `NOT RUN` and pass.
+Python those tests are reported as skipped.
 
 ## Licence
 

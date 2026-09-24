@@ -14,8 +14,8 @@ says 0.6.1), numpy 2.5.3 and Python 3.12.8. Nothing in Optiland was modified.
     dotnet test --filter "FullyQualifiedName~Optiland"
 
 `ABCALC_PYTHON_HOME` points it at another Python that has optiland installed. Without either,
-the Optiland tests print `NOT RUN` and pass, so that a fresh clone's suite stays green without
-pretending to have checked anything.
+the Optiland tests are reported as skipped, with the reason, so that a fresh clone's suite stays
+green without counting them as checked.
 
 ## What is handed over
 

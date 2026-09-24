@@ -373,7 +373,7 @@ This downloads an embeddable Python into `python-embed\` and installs Optiland i
     dotnet test AberrationCalculator.sln --filter "FullyQualifiedName~Optiland"
 
 `ABCALC_PYTHON_HOME` points it at another Python that has Optiland installed. Without either,
-the Optiland tests print `NOT RUN` and pass. What was compared, and what it found - in both
+the Optiland tests are reported as skipped. What was compared, and what it found - in both
 programs - is in [optiland.md](optiland.md). The command-line program itself does not use
 Optiland.
 
@@ -408,7 +408,7 @@ resolved.
 | `the design was NOT saved ... writing conics and aspheric terms back into a CODE V file is not implemented` | the optimised figuring cannot go into that format; the values are in the `.optimisation.txt` report (section 7) |
 | a report or tool refuses a design, naming why | e.g. the ninth order on a figured design, or Forbes' trace on a mirror. The program refuses rather than return a number it cannot vouch for |
 | the MCP server does not appear in Claude | restart Claude after registering; check the scope (section 9) |
-| Optiland tests say `NOT RUN` | run `tools\setup-python.ps1`, or set `ABCALC_PYTHON_HOME` (section 11) |
+| Optiland tests are skipped | run `tools\setup-python.ps1`, or set `ABCALC_PYTHON_HOME` (section 11) |
 
 ## 14. Running the tests
 
