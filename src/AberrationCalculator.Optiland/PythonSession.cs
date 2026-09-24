@@ -10,8 +10,7 @@ namespace AberrationCalculator.Optiland;
 /// <para>Python cannot be restarted inside a process once shut down, so this never shuts it
 /// down: the interpreter lives as long as the program does. The lifecycle - setting
 /// <c>Runtime.PythonDLL</c> and <c>PythonEngine.PythonHome</c> before
-/// <c>PythonEngine.Initialize</c>, then releasing the GIL so other threads can take it - follows
-/// <c>PythonEngineManager</c> in the OptilandNet repository.</para>
+/// <c>PythonEngine.Initialize</c>, then releasing the GIL so other threads can take it.</para>
 /// </summary>
 public static class PythonSession
 {

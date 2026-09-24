@@ -572,7 +572,13 @@ dotnet test  tests/AberrationCalculator.Tests/AberrationCalculator.Tests.csproj
 
 ### Against Optiland
 
-    .\tools\setup-python.ps1        # embeddable Python + optiland, into python-embed\ (gitignored)
+This cross-check is optional; nothing else needs Python. Run the setup script once from the
+repository folder in PowerShell. It needs an internet connection: it downloads Python's embeddable
+package from python.org into `python-embed\` and installs Optiland into it with pip. Nothing is
+installed system-wide, and a fresh clone does not include it, because `python-embed\` is not kept
+in git.
+
+    .\tools\setup-python.ps1        # once: Python + optiland, into python-embed\
 
 puts [Optiland](https://github.com/HarrisonKramer/optiland) in reach of the test suite. Each design
 is built inside Optiland from the prescription this program parsed, and two things are compared:

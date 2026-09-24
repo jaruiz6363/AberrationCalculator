@@ -2,8 +2,7 @@
 # Downloads an embeddable Python, bootstraps pip and installs optiland into it, so that
 # abcalc's coefficients can be cross-checked against Optiland without a system Python.
 #
-# Adapted from tools/setup-python.ps1 in the OptilandNet repository, by way of the
-# RelativeIlluminationCalculator repository.
+# Adapted from tools/setup-python.ps1 in the RelativeIlluminationCalculator repository.
 #
 #   .\tools\setup-python.ps1
 #

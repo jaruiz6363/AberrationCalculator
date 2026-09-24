@@ -3,8 +3,7 @@
 [Optiland](https://github.com/HarrisonKramer/optiland) is an open-source optical design package
 in Python. It is embedded here, through Python.NET, as a second implementation to check this
 program against: `src/AberrationCalculator.Optiland`, following the embedding in
-RelativeIlluminationCalculator, which in turn follows
-[OptilandNet](https://github.com/jaruiz6363/OptilandNET).
+[RelativeIlluminationCalculator](https://github.com/jaruiz6363/RelativeIlluminationCalculator).
 
 Measured on 2026-09-22 with optiland 0.6.2, the current release (its `__version__` string still
 says 0.6.1), numpy 2.5.3 and Python 3.12.8. Nothing in Optiland was modified.
