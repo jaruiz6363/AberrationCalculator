@@ -295,7 +295,7 @@ public class SaveBackTests
         // And nothing the reader ignores was lost.
         foreach (string keyword in new[] { "VERS", "MODE", "UNIT", "GCAT", "ENPD" })
             Assert.Contains(keyword, ReadUtf16(output), StringComparison.Ordinal);
-        Assert.Equal(originalText.Length > 0, true);
+        Assert.True(originalText.Length > 0);
     }
 
     private static string ReadUtf16(string path)

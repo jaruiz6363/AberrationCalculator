@@ -148,7 +148,7 @@ public class DerivativeSweepTests
     [MemberData(nameof(EveryDesign))]
     public void EveryDesignsDerivativeMatchesItsOwnValue(string name, string folder)
     {
-        string reason = CheckOne(name, folder);
+        string? reason = CheckOne(name, folder);
         Assert.True(reason == null || reason.Length > 0,
             $"{name}: declined without saying why, which is the one outcome that is not allowed");
     }
