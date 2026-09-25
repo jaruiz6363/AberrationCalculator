@@ -10,7 +10,8 @@ namespace AberrationCalculator.Tests;
 /// An object-space NA is n sin(theta), theta the marginal ray's angle leaving the axial object
 /// point, and the entrance pupil it fills has radius z tan(theta), z the distance from the object
 /// to the pupil. The paraxial trace took NA/n itself as the slope - sin for tan - and filled a
-/// pupil 13 % small at NA 0.5 (0.12 % at 0.05); OSLO and LensHH-LT take tan.
+/// pupil 13 % small at NA 0.5 (0.12 % at 0.05); OSLO and LensHH-LT take tan, and OpticStudio
+/// reports an entrance pupil diameter of 230.9401 for the lens below (2026-09-25).
 /// </summary>
 public class ObjectSpaceNaTests
 {
