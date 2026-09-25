@@ -37,7 +37,7 @@ namespace AberrationCalculator.Core.IO
                 case ".opt": return OptalixReader.Read(path, glass);
                 case ".len":
                 case ".osl": return OsloReader.Read(path);
-                case ".json": return OptilandReader.Read(path);
+                case ".json": return OptilandReader.Read(path, glass);
                 case ".lhlt": return LhltReader.Read(path).System;
                 default:
                     throw new NotSupportedException(

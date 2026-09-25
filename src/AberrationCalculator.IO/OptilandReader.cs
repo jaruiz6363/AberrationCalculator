@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using AberrationCalculator.Core.Enums;
+using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.Models;
 
 namespace AberrationCalculator.Core.IO
@@ -12,11 +14,29 @@ namespace AberrationCalculator.Core.IO
     /// Reads Optiland .json lens files.
     /// Optiland uses JSON with non-standard Infinity/-Infinity literals.
     /// Surface positions are cumulative Z coordinates (thicknesses must be computed as deltas).
+    ///
+    /// <para>Materials are read as Optiland writes them, and as LensHH-LT writes them for it:</para>
+    /// <list type="bullet">
+    /// <item><c>Material</c>: a catalog glass, by name. Its <c>catalog</c> goes into the system's
+    /// catalog preference, ordered so that each glass resolves to its own catalog's glass.
+    /// LensHH-LT writes its catalogs prefixed <c>lenshh-</c>, which is dropped.</item>
+    /// <item><c>MaterialFile</c>: the same, named by its file, which lives in a folder named
+    /// after its catalog.</item>
+    /// <item><c>AbbeMaterial</c>: a model glass of the same nd and Vd.</item>
+    /// <item><c>IdealMaterial</c> of index other than 1: a model glass of constant index.</item>
+    /// <item>A LensHH-LT model glass (<c>MODEL_nd_Vd_dPgF</c>): that model glass.</item>
+    /// </list>
+    /// <para>Earlier versions kept only a <c>Material</c>'s name, and turned every other material
+    /// into air. What does not carry over exactly is said in <see cref="OpticalSystem.Notes"/>.</para>
     /// </summary>
     public static class OptilandReader
     {
-        public static OpticalSystem Read(string filePath)
+        /// <param name="glass">The glass catalogs, to order the catalog preference and to say
+        /// which glasses they do not have.</param>
+        public static OpticalSystem Read(string filePath, GlassCatalog? glass = null)
         {
+            var notes = new List<string>();
+            var named = new List<(int Surface, string Name, string Catalog)>();
             // Optiland JSON uses literal Infinity/-Infinity which is not valid JSON.
             // Replace with numeric placeholders before parsing.
             string rawJson = File.ReadAllText(filePath);
@@ -204,16 +224,7 @@ namespace AberrationCalculator.Core.IO
 
                         // Material (from material_post)
                         if (s.TryGetProperty("material_post", out var matPost) && matPost.ValueKind == JsonValueKind.Object)
-                        {
-                            string matType = GetString(matPost, "type", "IdealMaterial");
-                            if (matType.Equals("Material", StringComparison.OrdinalIgnoreCase) ||
-                                matType.Equals("AbbeMaterial", StringComparison.OrdinalIgnoreCase))
-                            {
-                                string name = GetString(matPost, "name", "");
-                                if (!string.IsNullOrEmpty(name))
-                                    surface.Material = name;
-                            }
-                        }
+                            ReadMaterial(matPost, surface, i, named, notes);
 
                         // Mirror: check top-level is_reflective and interaction_model.is_reflective
                         bool isReflective = GetBool(s, "is_reflective", false);
@@ -241,6 +252,19 @@ namespace AberrationCalculator.Core.IO
                 }
             }
 
+            OrderCatalogs(system, named, glass, notes);
+
+            if (glass != null)
+                foreach (var n in named)
+                    if (glass.Find(n.Name, system.GlassCatalogs) == null)
+                        notes.Add($"Surface {n.Surface}: glass {n.Name} is not in the loaded catalogs.");
+
+            if (notes.Count > 0)
+            {
+                string text = string.Join(Environment.NewLine, notes);
+                system.Notes = string.IsNullOrEmpty(system.Notes) ? text : system.Notes + Environment.NewLine + text;
+            }
+
             // Ensure at least object + image
             if (system.Surfaces.Count < 2)
             {
@@ -250,6 +274,165 @@ namespace AberrationCalculator.Core.IO
             }
 
             return system;
+        }
+
+        private static void ReadMaterial(JsonElement mat, Surface surface, int index,
+                                         List<(int Surface, string Name, string Catalog)> named, List<string> notes)
+        {
+            var inv = CultureInfo.InvariantCulture;
+            string type = GetString(mat, "type", "IdealMaterial");
+            string name = "", catalog = "";
+
+            if (type.Equals("Material", StringComparison.OrdinalIgnoreCase))
+            {
+                name = GetString(mat, "name", "");
+                catalog = GetString(mat, "catalog", "");
+            }
+            else if (type.Equals("MaterialFile", StringComparison.OrdinalIgnoreCase))
+            {
+                // A catalog's file: <catalog>/<name>.yml.
+                string file = GetString(mat, "filename", "").Replace('\\', '/');
+                name = Path.GetFileNameWithoutExtension(file);
+                catalog = Path.GetFileName(Path.GetDirectoryName(file) ?? "") ?? "";
+            }
+            else if (type.Equals("AbbeMaterial", StringComparison.OrdinalIgnoreCase))
+            {
+                double n = GetDouble(mat, "index", double.NaN), v = GetDouble(mat, "abbe", double.NaN);
+                if (n > 1.0 && v > 0.0)
+                {
+                    SetModel(surface, n, v, 0.0);
+                    notes.Add(string.Format(inv,
+                        "Surface {0}: Optiland's Abbe material nd {1}, Vd {2} is the LensHH-LT model glass of that nd and Vd; the two dispersion models differ away from the d line.",
+                        index, n, v));
+                }
+                return;
+            }
+            else if (type.Equals("IdealMaterial", StringComparison.OrdinalIgnoreCase))
+            {
+                double n = GetDouble(mat, "index", 1.0);
+                if (Math.Abs(n - 1.0) > 1e-12)
+                {
+                    SetModel(surface, n, 0.0, 0.0);   // Vd 0: a constant index
+                    notes.Add(string.Format(inv, "Surface {0}: an ideal material of index {1}, a model glass without dispersion.",
+                        index, n));
+                }
+                return;
+            }
+            else
+            {
+                notes.Add($"Surface {index}: an Optiland {type} material, not imported.");
+                return;
+            }
+
+            if (TryParseModelName(name, out double nd, out double vd, out double dPgF))
+            {
+                SetModel(surface, nd, vd, dPgF);
+                return;
+            }
+            if (string.IsNullOrEmpty(name)) return;
+
+            surface.Material = name;
+            if (!string.IsNullOrEmpty(catalog))
+            {
+                if (catalog.StartsWith("lenshh-", StringComparison.OrdinalIgnoreCase)) catalog = catalog.Substring(7);
+                named.Add((index, name, catalog));
+            }
+        }
+
+        // LensHH-LT writes a model glass for Optiland as MODEL_<nd>_<Vd>_<dPgF>.
+        private static bool TryParseModelName(string name, out double nd, out double vd, out double dPgF)
+        {
+            nd = vd = dPgF = 0.0;
+            if (!name.StartsWith("MODEL_", StringComparison.OrdinalIgnoreCase)) return false;
+            var parts = name.Substring(6).Split('_');
+            var inv = CultureInfo.InvariantCulture;
+            return parts.Length == 3
+                && double.TryParse(parts[0], NumberStyles.Float, inv, out nd)
+                && double.TryParse(parts[1], NumberStyles.Float, inv, out vd)
+                && double.TryParse(parts[2], NumberStyles.Float, inv, out dPgF)
+                && nd > 1.0;
+        }
+
+        private static void SetModel(Surface surface, double nd, double vd, double dPgF)
+        {
+            surface.Material = null;
+            surface.ModelIndexEnabled = true;
+            surface.ModelNd = nd;
+            surface.ModelVd = vd;
+            surface.ModelDPgF = dPgF;
+        }
+
+        /// <summary>
+        /// The system's catalog preference, from the catalogs the file names for its glasses.
+        /// A surface carries a glass name only, and a name resolves by the catalog order. So the
+        /// order puts each glass's own catalog ahead of any other listed catalog that also has
+        /// that name. Where two glasses ask for opposite orders, each glass that then resolves to
+        /// another catalog's glass is noted.
+        /// </summary>
+        private static void OrderCatalogs(OpticalSystem system, List<(int Surface, string Name, string Catalog)> named,
+                                          GlassCatalog? glass, List<string> notes)
+        {
+            // Optiland's catalog name to ours: the loaded catalog of that name, both halves of
+            // Corning for "corning", and otherwise the name in capitals.
+            List<string> Ours(string catalog)
+            {
+                var found = new List<string>();
+                if (glass != null)
+                    foreach (var loaded in glass.LoadedCatalogs)
+                        if (loaded.Equals(catalog, StringComparison.OrdinalIgnoreCase)
+                            || (catalog.Equals("corning", StringComparison.OrdinalIgnoreCase)
+                                && loaded.StartsWith("CORNING", StringComparison.OrdinalIgnoreCase)))
+                            found.Add(loaded);
+                if (found.Count == 0) found.Add(catalog.ToUpperInvariant());
+                return found;
+            }
+            bool Has(string catalog, string name) => glass?.Find(catalog.ToUpperInvariant() + ":" + name) != null;
+
+            var order = new List<string>();
+            foreach (var n in named)
+                foreach (var c in Ours(n.Catalog))
+                    if (!order.Contains(c, StringComparer.OrdinalIgnoreCase)) order.Add(c);
+            if (order.Count == 0) return;
+
+            if (glass != null)
+            {
+                var before = order.ToDictionary(c => c, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                                                StringComparer.OrdinalIgnoreCase);
+                foreach (var n in named)
+                {
+                    var own = Ours(n.Catalog);
+                    if (!own.Any(c => Has(c, n.Name))) continue;
+                    foreach (var other in order)
+                        if (!own.Contains(other, StringComparer.OrdinalIgnoreCase) && Has(other, n.Name))
+                            foreach (var c in own) before[other].Add(c);
+                }
+
+                // Kahn's order, the file's order breaking ties; a cycle leaves the rest in file order.
+                var sorted = new List<string>();
+                var left = new List<string>(order);
+                while (left.Count > 0)
+                {
+                    var next = left.FirstOrDefault(c => before[c].All(p => sorted.Contains(p, StringComparer.OrdinalIgnoreCase)
+                                                                         || !left.Contains(p, StringComparer.OrdinalIgnoreCase)))
+                               ?? left[0];
+                    sorted.Add(next);
+                    left.Remove(next);
+                }
+                order = sorted;
+            }
+
+            foreach (var c in order)
+                if (!system.GlassCatalogs.Contains(c, StringComparer.OrdinalIgnoreCase)) system.GlassCatalogs.Add(c);
+
+            if (glass == null) return;
+            foreach (var n in named)
+            {
+                var own = Ours(n.Catalog);
+                var got = glass.Find(n.Name, system.GlassCatalogs);
+                if (got != null && !own.Contains(got.Catalog, StringComparer.OrdinalIgnoreCase) && own.Any(c => Has(c, n.Name)))
+                    notes.Add($"Surface {n.Surface}: glass {n.Name} is {n.Catalog}'s in the file; "
+                            + $"with this lens's other glasses, the catalog order gives {got.Catalog}'s.");
+            }
         }
 
         private static string GetString(JsonElement el, string prop, string defaultValue)
