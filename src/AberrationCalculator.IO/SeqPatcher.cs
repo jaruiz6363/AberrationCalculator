@@ -39,10 +39,15 @@ namespace AberrationCalculator.Core.IO
             // as though the file had said it.
             var resolver = new CodeVGlassResolver(catalog);
 
+            // The lens as the file gave it, for the model glasses: a fictitious-glass code or a
+            // private glass the design did not change is left as the file wrote it.
+            var original = CodeVReader.Read(originalPath, catalog);
+
             // The file numbers its surfaces by the ORDER of the SO/S/SI lines, exactly as the
             // reader counts them, so the count here is the same count and the two agree without
             // either having to name an index.
             int surface = 0;
+            bool radiusMode = true;   // RDM; RDM N gives curvatures instead
 
             for (int i = 0; i < file.Lines.Count; i++)
             {
@@ -52,48 +57,112 @@ namespace AberrationCalculator.Core.IO
                 // A comment line can begin with anything, including the letter S.
                 if (line.TrimStart().StartsWith("!", StringComparison.Ordinal)) continue;
 
-                string keyword = LineEdit.Keyword(line);
-                if (keyword != "S" && keyword != "SO" && keyword != "SI") continue;
+                // Several commands can share a line, split by semicolons: a surface line is one
+                // whose first command is SO, S or SI, and only that command is edited - a CIR or
+                // STO after it is copied through.
+                int split = FirstSemicolon(line);
+                string head = split < 0 ? line : line.Substring(0, split);
+                string tail = split < 0 ? string.Empty : line.Substring(split);
+
+                foreach (var command in line.Split(';'))
+                {
+                    if (LineEdit.Keyword(command) != "RDM") continue;
+                    radiusMode = !LineEdit.Argument(command).StartsWith("N", StringComparison.OrdinalIgnoreCase);
+                }
+
+                string keyword = LineEdit.Keyword(head);
+                if (keyword != "S" && keyword != "SO" && keyword != "SI"
+                    && !System.Text.RegularExpressions.Regex.IsMatch(keyword, @"^S\d+$")) continue;
 
                 if (surface < system.Surfaces.Count)
-                    file.Lines[i] = PatchSurfaceLine(line, system.Surfaces[surface], scale,
-                                                     qualifier, resolver);
+                {
+                    var was = surface < original.Surfaces.Count ? original.Surfaces[surface] : null;
+                    file.Lines[i] = PatchSurfaceLine(head, system.Surfaces[surface], was, scale,
+                                                     radiusMode, qualifier, resolver) + tail;
+                }
                 surface++;
             }
 
             file.Write(outputPath);
         }
 
+        private static int FirstSemicolon(string line)
+        {
+            bool quoted = false;
+            for (int i = 0; i < line.Length; i++)
+            {
+                if (line[i] == '\'' || line[i] == '"') quoted = !quoted;
+                else if (line[i] == ';' && !quoted) return i;
+            }
+            return -1;
+        }
+
         /// <summary>
         /// Rewrites the radius, thickness and material of one surface line, and only those of
         /// them that actually changed.
         /// </summary>
-        private static string PatchSurfaceLine(string line, Surface s, double scale,
+        private static string PatchSurfaceLine(string line, Surface s, Surface? was, double scale,
+                                               bool radiusMode,
                                                CodeVGlassQualifier qualifier,
                                                CodeVGlassResolver resolver)
         {
             // A PLANE IS A ZERO HERE. The format has no infinity for a radius; a flat surface is
             // written as radius 0, and the reader reads any radius below its own epsilon back as
             // infinite. Writing this program's infinity into the field would produce a file
-            // neither program can read.
+            // neither program can read. In curvature mode (RDM N) the field is a curvature, and a
+            // plane is zero there too.
             string radius = double.IsInfinity(s.Radius) || double.IsNaN(s.Radius)
                 ? "0"
-                : LineEdit.Number(s.Radius / scale);
-
-            string thickness = double.IsInfinity(s.Thickness)
-                ? Infinite
-                : LineEdit.Number(s.Thickness / scale);
+                : radiusMode ? LineEdit.Number(s.Radius / scale)
+                             : LineEdit.Number(1.0 / (s.Radius / scale));
 
             string patched = line;
             patched = KeepOrReplaceNumber(patched, 0, radius);
-            patched = KeepOrReplaceNumber(patched, 1, thickness);
+
+            // An infinite distance the file already writes as infinite - 1E+20, or Code V's own
+            // 0.1E+14 - is left as it is.
+            bool alreadyInfinite = LineEdit.ArgumentAsDouble(patched, out double have, 1)
+                                   && Math.Abs(have) >= 1e9;
+            if (!(double.IsInfinity(s.Thickness) && alreadyInfinite))
+            {
+                string thickness = double.IsInfinity(s.Thickness)
+                    ? Infinite
+                    : LineEdit.Number(s.Thickness / scale);
+                patched = KeepOrReplaceNumber(patched, 1, thickness);
+            }
 
             // The material is the third field and may be absent - a line that names no material
             // is air, and a surface that has GAINED a glass needs the word written in.
-            if (!MeansTheSameGlass(LineEdit.Argument(patched, 2), s, resolver))
+            string token = LineEdit.Argument(patched, 2);
+            if (s.ModelIndexEnabled)
+            {
+                // A model glass: a fictitious-glass code, or a private glass from the file's PRV
+                // catalog. Left alone while the design has not changed it; a changed one is
+                // written as the code. (A model glass, having no name, used to be rewritten as
+                // AIR here.)
+                bool unchanged = was != null && was.ModelIndexEnabled
+                    && Math.Abs(was.ModelNd - s.ModelNd) < 1e-9 && Math.Abs(was.ModelVd - s.ModelVd) < 1e-9;
+                string? code = FictitiousGlassCode(s.ModelNd, s.ModelVd);
+                if (!unchanged && code != null)
+                    patched = LineEdit.ReplaceArgument(patched, code, 2);
+            }
+            else if (!MeansTheSameGlass(token, s, resolver))
                 patched = LineEdit.ReplaceArgument(patched, Material(s, qualifier), 2);
 
             return patched;
+        }
+
+        /// <summary>
+        /// Code V's fictitious-glass code: nd's six digits after "1.", a point, and six digits of
+        /// Vd/100 - 1.5168 / 64.17 is <c>516800.641700</c>. Null when it cannot carry the glass.
+        /// </summary>
+        private static string? FictitiousGlassCode(double nd, double vd)
+        {
+            if (nd <= 1.0 || nd >= 2.0 || vd <= 0.0 || vd >= 100.0) return null;
+            long n = (long)Math.Round((nd - 1.0) * 1e6), v = (long)Math.Round(vd * 1e4);
+            if (n >= 1_000_000 || v >= 1_000_000) return null;
+            return n.ToString("000000", CultureInfo.InvariantCulture) + "."
+                 + v.ToString("000000", CultureInfo.InvariantCulture);
         }
 
         /// <summary>
@@ -104,6 +173,7 @@ namespace AberrationCalculator.Core.IO
         /// </summary>
         private static bool MeansTheSameGlass(string token, Surface s, CodeVGlassResolver resolver)
         {
+            token = token.Trim('\'', '"');          // a quoted name is the same name
             bool isAir = !s.IsMirror && string.IsNullOrWhiteSpace(s.Material);
             if (string.IsNullOrWhiteSpace(token))
                 return isAir;                       // an absent token is air

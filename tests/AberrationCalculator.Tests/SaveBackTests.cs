@@ -579,6 +579,83 @@ public class SaveBackTests
         Assert.Equal(1, LinesThatDiffer(lens, output));
     }
 
+    // A .seq in the shape Code V saves one: several commands to a line, Code V's 0.1E+14 infinity,
+    // a fictitious glass, and a private glass from its PRV catalog.
+    private const string CodeVStyle = @"RDM;LEN       ""VERSION: 10.4""
+TITLE 'DOUBLET'
+EPD   20.0
+DIM   M
+WL    656.3 587.6 486.1
+REF   2
+YAN   0.0 5.0
+SO    0.0 0.1E+14
+S     50.0 5.0 516800.641700 ; CIR 12.5
+  STO
+S     -50.0 2.0 'LHHP'
+  ASP
+  K  -1.0
+  A  1.0E-05 ; B -2.0E-08
+S     -200.0 95.0
+SI    0.0 0.0
+PRV
+PWL 656.3 587.6 486.1
+'LHHP' 1.61 1.62 1.63
+END
+GO
+";
+
+    /// <summary>
+    /// What Code V writes has to come through an in-place save as it was: a model glass - a
+    /// fictitious-glass code or a private glass - is not a name, and was rewritten as AIR; the
+    /// CIR after a semicolon, and Code V's own spelling of infinity, are left alone; and only the
+    /// line that moved is touched.
+    /// </summary>
+    [Fact]
+    public void ACodeVSeqKeepsWhatTheDesignDidNotChange()
+    {
+        using var s = new Scratch();
+        string lens = s.At("CV.seq");
+        File.WriteAllText(lens, CodeVStyle);
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(lens, catalog);
+        Assert.True(system.Surfaces[1].ModelIndexEnabled);
+        Assert.Equal(1.0e-5, (double)system.Surfaces[2].AsphericCoefficients[1], 1e-20);   // A under ASP
+
+        system.Surfaces[3].Radius = -210.0;
+        string output = s.At("CV.optimised.seq");
+        LensPatcher.Save(system, lens, output, catalog);
+
+        string text = File.ReadAllText(output);
+        Assert.Contains("S     50.0 5.0 516800.641700 ; CIR 12.5", text, StringComparison.Ordinal);
+        Assert.Contains("S     -50.0 2.0 'LHHP'", text, StringComparison.Ordinal);
+        Assert.Contains("SO    0.0 0.1E+14", text, StringComparison.Ordinal);
+        Assert.Equal(1, LinesThatDiffer(lens, output));
+
+        // A model glass the design changed goes out as Code V's code.
+        system.Surfaces[1].ModelNd = 1.62;
+        LensPatcher.Save(system, lens, output, catalog);
+        Assert.Contains("620000.641700", File.ReadAllText(output), StringComparison.Ordinal);
+        Assert.Equal(1.62, LensFile.Read(output, catalog).Surfaces[1].ModelNd, 12);
+    }
+
+    /// <summary>In curvature mode (RDM N) the first field of a surface line is a curvature.</summary>
+    [Fact]
+    public void ACodeVSeqInCurvatureModeGetsACurvature()
+    {
+        using var s = new Scratch();
+        string lens = s.At("C.seq");
+        File.WriteAllText(lens, "RDM N\nLEN\nEPD 10\nWL 587.6\nSO 0 1e10\nS 0.02 5 516800.641700\nS 0 95\nSI 0 0\nGO\n");
+        var catalog = CatalogLocator.LoadBundled();
+        var system = LensFile.Read(lens, catalog);
+        Assert.Equal(50.0, system.Surfaces[1].Radius, 9);
+
+        system.Surfaces[1].Radius = 40.0;
+        string output = s.At("C.optimised.seq");
+        LensPatcher.Save(system, lens, output, catalog);
+        Assert.Contains("S 0.025 5 516800.641700", File.ReadAllText(output), StringComparison.Ordinal);
+        Assert.Equal(40.0, LensFile.Read(output, catalog).Surfaces[1].Radius, 9);
+    }
+
     /// <summary>
     /// A .len is a stream of commands, and a property with nothing to say is simply not written -
     /// so a plane has no RD line. Bending one means ADDING a line, in the block it belongs to.
