@@ -319,10 +319,15 @@ public static class ParaxialTrace
                 return fno > 1e-12 ? SMath.Abs(efl) / fno : 0.0;
 
             case ApertureType.ObjectSpaceNA:
-                // NA = n sin(theta); paraxially the marginal slope is NA/n, and the pupil it
-                // fills is that slope carried from the object to the entrance pupil.
+                // NA = n sin(theta), theta the marginal ray's angle leaving the axial object point,
+                // and the pupil it fills is that ray carried to the entrance pupil: radius
+                // z tan(theta). (This took NA/n itself as the slope - sin for tan - and filled a
+                // pupil 0.12 % small at NA 0.05, 13 % at NA 0.5; OSLO and LensHH-LT take tan.)
                 if (infinite) return 0.0;            // an object-space NA means nothing from infinity
-                Scalar u = system.Aperture.Value / SMath.Abs(n0 == 0.0 ? 1.0 : n0);
+                Scalar sinU = system.Aperture.Value / SMath.Abs(n0 == 0.0 ? 1.0 : n0);
+                if (sinU >= 1.0)
+                    throw new NotSupportedException($"Object-space NA {system.Aperture.Value} is not below the object-space index.");
+                Scalar u = sinU / SMath.Sqrt(1.0 - sinU * sinU);
                 return 2.0 * u * (t0 + entrancePupil);
 
             case ApertureType.EPD:
