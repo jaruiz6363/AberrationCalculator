@@ -69,9 +69,11 @@ public class FieldSurfaceTests
         var f = FieldSurfaces.Compute(l.Sys, l.S, l.P, l.Field);
 
         Assert.Equal(-79.9998, f.PetzvalRadius, 3);
-        Assert.Equal(0.122644, f.PetzvalSag, 5);
-        Assert.Equal(0.293001, f.SagittalSag, 5);
-        Assert.Equal(0.633715, f.TangentialSag, 5);
+        // To five decimals, as a tolerance: rounding both sides to five places fails a value
+        // that sits on a rounding boundary (0.6337148 against a printed 0.633715).
+        Assert.Equal(0.122644, f.PetzvalSag, 5e-6);
+        Assert.Equal(0.293001, f.SagittalSag, 5e-6);
+        Assert.Equal(0.633715, f.TangentialSag, 5e-6);
 
         // The medial surface is the mean of the two astigmatic ones, by construction.
         Assert.Equal(0.5 * (f.SagittalSag + f.TangentialSag), f.MedialSag, 12);

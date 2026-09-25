@@ -21,6 +21,7 @@ public enum DispersionFormula
     Extended = 10,
     Sellmeier5 = 11,
     Extended2 = 12,
+    Extended3 = 13,
 }
 
 /// <summary>
@@ -82,14 +83,34 @@ public class GlassData
                 return n2 > 0.0 ? Math.Sqrt(n2) : double.NaN;
             }
 
-            // Same shape as Schott with four more inverse terms.
+            // Extended: the Schott formula continued to λ⁻¹⁰ and λ⁻¹².
             case DispersionFormula.Extended:
-            case DispersionFormula.Extended2:
             {
                 if (c.Length < 8) return double.NaN;
                 double n2 = c[0] + c[1] * l2;
                 double p = l2;
-                for (int k = 2; k < Math.Min(c.Length, 10); k++) { n2 += c[k] / p; p *= l2; }
+                for (int k = 2; k < 8; k++) { n2 += c[k] / p; p *= l2; }
+                return n2 > 0.0 ? Math.Sqrt(n2) : double.NaN;
+            }
+
+            // Extended 2: the Schott formula plus λ⁴ and λ⁶ terms,
+            // n² = c0 + c1λ² + c2λ⁻² + c3λ⁻⁴ + c4λ⁻⁶ + c5λ⁻⁸ + c6λ⁴ + c7λ⁶.
+            // (This was evaluated as Extended, which is a different formula.)
+            case DispersionFormula.Extended2:
+            {
+                if (c.Length < 8) return double.NaN;
+                double n2 = c[0] + c[1] * l2 + c[2] / l2 + c[3] / (l2 * l2) + c[4] / (l2 * l2 * l2)
+                          + c[5] / (l2 * l2 * l2 * l2) + c[6] * l2 * l2 + c[7] * l2 * l2 * l2;
+                return n2 > 0.0 ? Math.Sqrt(n2) : double.NaN;
+            }
+
+            // Extended 3: n² = c0 + c1λ² + c2λ⁴ + c3λ⁻² + c4λ⁻⁴ + c5λ⁻⁶ + c6λ⁻⁸ + c7λ⁻¹⁰ + c8λ⁻¹².
+            case DispersionFormula.Extended3:
+            {
+                if (c.Length < 9) return double.NaN;
+                double n2 = c[0] + c[1] * l2 + c[2] * l2 * l2;
+                double p = l2;
+                for (int k = 3; k < 9; k++) { n2 += c[k] / p; p *= l2; }
                 return n2 > 0.0 ? Math.Sqrt(n2) : double.NaN;
             }
 
@@ -101,13 +122,14 @@ public class GlassData
             case DispersionFormula.Sellmeier5:
                 return SellmeierPairs(c, l2, 5);
 
-            // n² = 1 + K1λ²/(λ²−L1) + K2/(λ²−L2) — second term has no λ² numerator.
+            // n² = 1 + A + B1λ²/(λ² − λ1²) + B2/(λ² − λ2²), coefficients A B1 λ1 B2 λ2.
+            // (This read the coefficients as K1 L1 K2 L2 with no A and no squaring.)
             case DispersionFormula.Sellmeier2:
             {
-                if (c.Length < 4) return double.NaN;
-                double d1 = l2 - c[1], d2 = l2 - c[3];
+                if (c.Length < 5) return double.NaN;
+                double d1 = l2 - c[2] * c[2], d2 = l2 - c[4] * c[4];
                 if (Math.Abs(d1) < 1e-30 || Math.Abs(d2) < 1e-30) return double.NaN;
-                double n2 = 1.0 + c[0] * l2 / d1 + c[2] / d2;
+                double n2 = 1.0 + c[0] + c[1] * l2 / d1 + c[3] / d2;
                 return n2 > 0.0 ? Math.Sqrt(n2) : double.NaN;
             }
 

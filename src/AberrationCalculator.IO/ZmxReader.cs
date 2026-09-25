@@ -11,7 +11,166 @@ namespace AberrationCalculator.Core.IO
 {
     public static class ZmxReader
     {
-        public static OpticalSystem Read(string filePath)
+        public static OpticalSystem Read(string filePath) => Read(filePath, null);
+
+        /// <summary>
+        /// Read a .zmx file, bringing in the glasses it needs from outside this program's own
+        /// catalogs:
+        /// <list type="bullet">
+        /// <item>each OpticStudio table glass (<c>GLAS NAME.ZTG</c>) becomes a TABLE-catalog glass
+        /// or a model glass;</item>
+        /// <item>a glass from a GCAT catalog that isn't loaded has that catalog found, copied to the
+        /// user's glass folder and loaded into <paramref name="glass"/>.</item>
+        /// </list>
+        /// What was done is added to the system's notes.
+        /// </summary>
+        public static OpticalSystem Read(string filePath, Core.Glass.GlassCatalog? glass)
+        {
+            var system = ReadCore(filePath);
+            var notes = ResolveTableGlasses(system, filePath, glass);
+            if (glass != null)
+                notes.AddRange(LoadLensCatalogs(system, filePath, glass));
+            if (notes.Count > 0)
+            {
+                string text = string.Join(Environment.NewLine, notes);
+                system.Notes = string.IsNullOrEmpty(system.Notes) ? text : system.Notes + Environment.NewLine + text;
+            }
+            return system;
+        }
+
+        /// <summary>
+        /// The surfaces whose glass is an OpticStudio table glass. A table of six or more points
+        /// is fitted with the Schott formula and added to the user's TABLE catalog under the
+        /// file's name. A shorter table is fitted with a Conrady curve and becomes a model glass.
+        /// That is exact for the three-point tables OpticStudio's Code V converter writes, since a
+        /// model glass is a Conrady curve. A table that cannot be found is left named, so the
+        /// surface shows as an unresolved glass, and reported.
+        /// </summary>
+        private static List<string> ResolveTableGlasses(OpticalSystem system, string lensPath, Core.Glass.GlassCatalog? glass)
+        {
+            var notes = new List<string>();
+            var done = new Dictionary<string, Action<Surface>>(StringComparer.OrdinalIgnoreCase);
+            var inv = CultureInfo.InvariantCulture;
+
+            for (int i = 0; i < system.Surfaces.Count; i++)
+            {
+                var s = system.Surfaces[i];
+                string? mat = s.Material;
+                if (string.IsNullOrEmpty(mat) || !mat!.EndsWith(".ZTG", StringComparison.OrdinalIgnoreCase)) continue;
+
+                if (!done.TryGetValue(mat, out var apply))
+                {
+                    string? file = TableGlass.Find(mat, lensPath);
+                    if (file == null)
+                    {
+                        notes.Add($"Surface {i}: table glass {mat} not found beside the lens or in Documents\\Zemax\\Glasscat; the surface has no glass until it is.");
+                        done[mat] = _ => { };
+                        continue;
+                    }
+
+                    var points = TableGlass.Read(file);
+                    string name = Path.GetFileNameWithoutExtension(file).Replace(' ', '_').ToUpperInvariant();
+                    string range = points.Count > 0
+                        ? string.Format(inv, "{0:0.###}–{1:0.###} µm", points[0].Um, points[points.Count - 1].Um) : "";
+
+                    if (points.Count >= TableGlass.MinSchottPoints)
+                    {
+                        var (c, err) = TableGlass.FitSchott(points);
+                        UserGlassCatalog.AddSchottGlass(name, c, points[0].Um, points[points.Count - 1].Um,
+                            $"from {Path.GetFileName(file)}, {points.Count} points, fitted with the Schott formula", glass);
+                        notes.Add(string.Format(inv, "Surface {0}: table glass {1} ({2} points, {3}) added to your TABLE catalog as {4}; the Schott formula fits the table to {5:0.0e0}.",
+                            i, Path.GetFileName(file), points.Count, range, name, err));
+                        apply = surf =>
+                        {
+                            surf.Material = name;
+                            if (!system.GlassCatalogs.Contains(UserGlassCatalog.TableCatalog, StringComparer.OrdinalIgnoreCase))
+                                system.GlassCatalogs.Add(UserGlassCatalog.TableCatalog);
+                        };
+                    }
+                    else if (points.Count > 0)
+                    {
+                        var (c0, c1, c2, err) = TableGlass.FitConrady(points);
+                        var model = Core.Glass.IndexResolver.ModelFromConrady(c0, c1, c2);
+                        if (model == null)
+                        {
+                            notes.Add($"Surface {i}: table glass {Path.GetFileName(file)} could not be converted; the surface has no glass.");
+                            done[mat] = _ => { };
+                            continue;
+                        }
+                        var (nd, vd, dPgF) = model.Value;
+                        notes.Add(string.Format(inv, "Surface {0}: table glass {1} ({2} points, {3}) is too short to fit a catalog formula to, and was made a model glass (nd {4:F6}, Vd {5:F4}, ΔPgF {6:F5}){7}.",
+                            i, Path.GetFileName(file), points.Count, range, nd, vd, dPgF,
+                            err < 1e-9 ? ", which passes through every point" : string.Format(inv, " that fits the table to {0:0.0e0}", err)));
+                        apply = surf =>
+                        {
+                            surf.Material = "";
+                            surf.ModelIndexEnabled = true;
+                            surf.ModelNd = nd;
+                            surf.ModelVd = vd;
+                            surf.ModelDPgF = dPgF;
+                        };
+                    }
+                    else
+                    {
+                        notes.Add($"Surface {i}: table glass {Path.GetFileName(file)} holds no wavelength–index pairs; the surface has no glass.");
+                        done[mat] = _ => { };
+                        continue;
+                    }
+                    done[mat] = apply;
+                }
+                apply(s);
+            }
+            return notes;
+        }
+
+        /// <summary>
+        /// The catalogs on the lens's GCAT line that it needs and this program does not have. A
+        /// glass that resolves from no loaded catalog is looked for in the lens's own catalogs,
+        /// beside the lens or in OpticStudio's glass folder (Documents\Zemax\Glasscat). A catalog
+        /// that holds one is copied into the user's glass folder and loaded, so the lens opens
+        /// with it again. A catalog already loaded is never replaced, and a catalog the lens lists
+        /// but does not use is left alone.
+        /// </summary>
+        private static List<string> LoadLensCatalogs(OpticalSystem system, string lensPath, Core.Glass.GlassCatalog glass)
+        {
+            var notes = new List<string>();
+            var unresolved = system.Surfaces
+                .Select(s => s.Material)
+                .Where(m => !string.IsNullOrWhiteSpace(m)
+                            && !m!.Equals("MIRROR", StringComparison.OrdinalIgnoreCase)
+                            && !m.EndsWith(".ZTG", StringComparison.OrdinalIgnoreCase)
+                            && glass.Find(m, system.GlassCatalogs) == null)
+                .Select(m => m!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (unresolved.Count == 0) return notes;
+
+            foreach (var catalog in system.GlassCatalogs.ToList())
+            {
+                if (unresolved.Count == 0) break;
+                if (glass.LoadedCatalogs.Contains(catalog, StringComparer.OrdinalIgnoreCase)) continue;
+
+                string? file = TableGlass.FindCatalog(catalog + ".AGF", lensPath);
+                if (file == null)
+                {
+                    notes.Add($"The lens's glass catalog {catalog} was not found beside the lens or in Documents\\Zemax\\Glasscat.");
+                    continue;
+                }
+
+                var probe = new Core.Glass.GlassCatalog();
+                probe.LoadFile(file);
+                var names = probe.InCatalog(Path.GetFileNameWithoutExtension(file)).Select(g => g.Name).ToList();
+                var provides = unresolved.Where(u => names.Contains(u, StringComparer.OrdinalIgnoreCase)).ToList();
+                if (provides.Count == 0) continue;
+
+                UserGlassCatalog.AddCatalogFile(file, glass);
+                notes.Add($"Glass catalog {catalog} ({names.Count} glasses, for {string.Join(", ", provides)}) loaded from {file} and copied to your glass folder.");
+                unresolved.RemoveAll(u => provides.Contains(u, StringComparer.OrdinalIgnoreCase));
+            }
+            return notes;
+        }
+
+        private static OpticalSystem ReadCore(string filePath)
         {
             var lines = ReadFileLines(filePath);
             var system = new OpticalSystem();

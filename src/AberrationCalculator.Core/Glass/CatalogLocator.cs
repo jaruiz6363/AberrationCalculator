@@ -97,6 +97,17 @@ public static class CatalogLocator
 
         var catalog = new GlassCatalog();
         catalog.LoadFolder(dir);
+
+        // The user's own catalogs: glasses brought in with a lens (OpticStudio table glasses,
+        // catalogs a .zmx named that this program does not ship), so a lens that needed one
+        // opens with it again. After the shipped catalogs, which they never replace.
+        try { catalog.LoadFolder(UserFolder); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
         return catalog;
     }
+
+    /// <summary>The user's own glass folder: Documents\AberrationCalculator\Glass.</summary>
+    public static string UserFolder => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "AberrationCalculator", "Glass");
 }

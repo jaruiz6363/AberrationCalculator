@@ -16,7 +16,7 @@ namespace AberrationCalculator.Core.Glass;
 public static class IndexResolver
 {
     /// <summary>d, F and C lines in micrometres, for model-glass dispersion.</summary>
-    private const double LambdaD = 0.5875618, LambdaF = 0.4861327, LambdaC = 0.6562725;
+    public const double LambdaD = 0.5875618, LambdaF = 0.4861327, LambdaC = 0.6562725;
 
     /// <summary>
     /// Index after each surface at <paramref name="lambdaUm"/>. Air is 1. A mirror keeps the
@@ -176,41 +176,59 @@ public static class IndexResolver
     }
 
     /// <summary>
-    /// Index of a "model" glass given only nd, Vd and optionally the relative partial
-    /// dispersion dPgF.
+    /// Index of a model glass, given by nd, Vd and dPgF: the LensHH-LT model glass.
     ///
-    /// With Vd alone the dispersion is fixed by two points (F and C) and interpolated
-    /// linearly in 1/λ², which is the usual first approximation. dPgF adds curvature: it
-    /// says how far the glass sits off the normal line, so a quadratic term in 1/λ² is
-    /// fitted to reproduce it. Reduces to the linear form when dPgF is zero.
+    /// <code>
+    /// n(λ) = nd + (nd − 1)/Vd · [ A(λ) + P·B(λ) ],   P = 0.6438 − 0.001682·Vd + dPgF
+    /// A(λ) = −7.128490 + 4.952840/λ − 0.202244/λ^3.5
+    /// B(λ) =  8.849310 − 6.916770/λ + 0.454415/λ^3.5          (λ in µm)
+    /// </code>
+    ///
+    /// <para>The form is Conrady's dispersion formula, n = n0 + a/λ + b/λ^3.5. Its three
+    /// constants per glass come from the glass's nd, its Abbe number Vd = (nd − 1)/(nF − nC)
+    /// and its g–F partial dispersion P = (ng − nF)/(nF − nC), at d 0.5876, F 0.4861,
+    /// C 0.6563 and g 0.4358 µm. dPgF is P's deviation from the normal line of Schott's
+    /// Technical Information TIE-29, P = 0.6438 − 0.001682·Vd. It is the model LensHH-LT uses,
+    /// so a model glass gets the same index here as in LensHH-LT.</para>
+    ///
+    /// <para>(This replaced a two-point interpolation in 1/λ² with a quadratic dPgF term, which
+    /// differed from LensHH-LT.)</para>
     /// </summary>
     public static double ModelIndex(double nd, double vd, double dPgF, double lambdaUm)
     {
         if (lambdaUm <= 0.0 || nd <= 0.0) return double.NaN;
-        if (Math.Abs(vd) < 1e-9) return nd;              // no dispersion information
+        if (Math.Abs(vd) < 1e-12) return nd;             // no dispersion information
 
-        double nF_nC = (nd - 1.0) / vd;                  // principal dispersion
+        double inv = 1.0 / lambdaUm, inv35 = Math.Pow(lambdaUm, -3.5);
+        double p = ModelA0 + ModelA1 * vd + dPgF;
+        double f = (-7.128490 + 4.952840 * inv - 0.202244 * inv35)
+                 + p * (8.849310 - 6.916770 * inv + 0.454415 * inv35);
+        return nd + (nd - 1.0) / vd * f;
+    }
 
-        double x  = 1.0 / (lambdaUm * lambdaUm);
-        double xd = 1.0 / (LambdaD * LambdaD);
-        double xF = 1.0 / (LambdaF * LambdaF);
-        double xC = 1.0 / (LambdaC * LambdaC);
+    // The TIE-29 normal line, P_gF = ModelA0 + ModelA1·Vd.
+    private const double ModelA0 = 0.6438, ModelA1 = -0.001682;
 
-        // Linear in 1/λ² through (xF, nF) and (xC, nC), anchored so n(λd) = nd.
-        double slope = nF_nC / (xF - xC);
-        double n = nd + slope * (x - xd);
-
-        if (Math.Abs(dPgF) > 1e-12)
-        {
-            // dPgF is the departure of (ng − nF)/(nF − nC) from the normal line. Add a
-            // quadratic term that produces exactly that departure at the g line and
-            // vanishes at d, so nd is preserved.
-            const double LambdaG = 0.4358343;
-            double xg = 1.0 / (LambdaG * LambdaG);
-            double curv = dPgF * nF_nC / ((xg - xF) * (xg - xd));
-            n += curv * (x - xd) * (x - xF);
-        }
-
-        return n;
+    /// <summary>
+    /// The model glass whose index is exactly the Conrady curve n = c0 + c1/λ + c2/λ^3.5 (λ in
+    /// µm). The model glass is itself such a curve, and its three parameters map one-to-one onto
+    /// the curve's constants. So a table of three indices, say, is a model glass exactly. Null
+    /// when the mapping is singular. A curve with no dispersion (c1 = c2 = 0) is returned as Vd 0,
+    /// a constant index.
+    /// </summary>
+    public static (double Nd, double Vd, double DPgF)? ModelFromConrady(double c0, double c1, double c2)
+    {
+        if (c1 == 0.0 && c2 == 0.0) return (c0, 0.0, 0.0);
+        const double cA0 = -7.128490, cA1 = 4.952840, cA2 = -0.202244, cB0 = 8.849310, cB1 = -6.916770, cB2 = 0.454415;
+        double den = c2 * cB1 - c1 * cB2;
+        if (Math.Abs(den) < 1e-300) return null;
+        double p = (c1 * cA2 - c2 * cA1) / den;
+        double s1 = cA1 + p * cB1;
+        if (Math.Abs(s1) < 1e-300) return null;
+        double q = c1 / s1;
+        if (Math.Abs(q) < 1e-300) return null;
+        double nd = c0 - q * (cA0 + p * cB0);
+        double vd = (nd - 1.0) / q;
+        return (nd, vd, p - (ModelA0 + ModelA1 * vd));
     }
 }

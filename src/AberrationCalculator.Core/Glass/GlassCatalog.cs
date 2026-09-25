@@ -104,7 +104,53 @@ public class GlassCatalog
             }
         }
 
+        foreach (var g in InCatalog(catalog))
+        {
+            var note = ReconcileListed(g);
+            if (note != null && !_listedValueCorrections.Contains(note)) _listedValueCorrections.Add(note);
+        }
+
         if (!_catalogs.Contains(catalog)) _catalogs.Add(catalog);
+    }
+
+    private readonly List<string> _listedValueCorrections = new();
+
+    /// <summary>
+    /// Glasses whose listed nd/Vd disagreed with their own dispersion data, and were given the
+    /// data's values on loading. One note each.
+    /// </summary>
+    public IReadOnlyList<string> ListedValueCorrections => _listedValueCorrections;
+
+    /// <summary>
+    /// A catalog lists each glass's nd and Vd, and separately gives the dispersion data the
+    /// index is computed from, and the two can disagree. For example:
+    /// <list type="bullet">
+    /// <item>CDGM's H-TK9 lists 1.587166 / 75.90, another glass's values, while its data and its
+    /// MIL code 621603 give 1.620750 / 60.30;</item>
+    /// <item>HOYA's MC-TAF115 lists 1.777047 for data giving 1.770473.</item>
+    /// </list>
+    /// Where the data covers the d, F and C lines and differs by more than 1e-3 in nd or 0.5 in
+    /// Vd, the data wins. That passes rounding (Sumita lists Vd to one decimal) and catches a
+    /// listing that belongs to another glass. A glass whose data does not reach the visible, an
+    /// infrared or laser-line material, is left as listed.
+    /// </summary>
+    private static string? ReconcileListed(GlassData g)
+    {
+        if (g.LambdaMax <= 0 || g.LambdaMin > IndexResolver.LambdaF + 1e-6 || g.LambdaMax < IndexResolver.LambdaC - 1e-6)
+            return null;
+        double nd = g.IndexAt(IndexResolver.LambdaD);
+        double dn = g.IndexAt(IndexResolver.LambdaF) - g.IndexAt(IndexResolver.LambdaC);
+        if (!(nd > 1.0) || !(Math.Abs(dn) > 1e-12)) return null;
+        double vd = (nd - 1.0) / dn;
+        if (double.IsNaN(vd) || double.IsInfinity(vd) || vd <= 0) return null;
+        if (Math.Abs(nd - g.Nd) <= 1e-3 && Math.Abs(vd - g.Vd) <= 0.5) return null;
+
+        string note = string.Format(CultureInfo.InvariantCulture,
+            "{0}:{1}: listed nd {2:F6} / Vd {3:F2}, its dispersion data gives nd {4:F6} / Vd {5:F2}; using the data.",
+            g.Catalog, g.Name, g.Nd, g.Vd, nd, vd);
+        g.Nd = nd;
+        g.Vd = vd;
+        return note;
     }
 
     /// <summary>

@@ -31,7 +31,7 @@ namespace AberrationCalculator.Core.IO
 
             switch (Path.GetExtension(path).ToLowerInvariant())
             {
-                case ".zmx": return ZmxReader.Read(path);
+                case ".zmx": return ZmxReader.Read(path, glass);
                 case ".seq": return CodeVReader.Read(path, glass);
                 case ".otx":
                 case ".opt": return OptalixReader.Read(path, glass);
