@@ -87,6 +87,7 @@ namespace AberrationCalculator.Core.IO
                         if (parts.Length > 1 && TryParseDouble(parts[1], out double ang))
                         {
                             // Single field angle — add on-axis + this angle
+                            system.FieldType = FieldType.ObjectAngle;
                             system.Fields.Clear();
                             system.Fields.Add(new Field(0, 1.0));
                             if (ang > 0)
@@ -94,7 +95,40 @@ namespace AberrationCalculator.Core.IO
                         }
                         break;
 
+                    case "NAO":
+                        // Object-space numerical aperture: OSLO's aperture for a finite object.
+                        if (parts.Length > 1 && TryParseDouble(parts[1], out double nao))
+                            system.Aperture = new Aperture(ApertureType.ObjectSpaceNA, nao);
+                        break;
+
+                    case "OBH":
+                        // Object height: OSLO's field for a finite object.
+                        if (parts.Length > 1 && TryParseDouble(parts[1], out double obh))
+                        {
+                            system.FieldType = FieldType.ObjectHeight;
+                            system.Fields.Clear();
+                            system.Fields.Add(new Field(0, 1.0));
+                            if (Math.Abs(obh) > 0)
+                                system.Fields.Add(new Field(Math.Abs(obh), 1.0));
+                        }
+                        break;
+
+                    case "PFL":
+                        // OSLO's perfect lens: an ideal lens of this focal length. (PFM, the
+                        // magnification it is perfect at, has no counterpart: the ideal lens here
+                        // is perfect at every conjugate. OSLO's obeys the sine condition, so at
+                        // an object at infinity its cone differs slightly from this one's.)
+                        if (parts.Length > 1 && TryParseDouble(parts[1], out double pfl))
+                        {
+                            currentSurface.Type = SurfaceType.Paraxial;
+                            currentSurface.FocalLength = pfl;
+                        }
+                        break;
+
                     case "WV":
+                        // OSLO repeats the WV line before each model glass, so each one replaces
+                        // the list rather than adding to it.
+                        wavelengths.Clear();
                         for (int i = 1; i < parts.Length; i++)
                         {
                             if (TryParseDouble(parts[i], out double wl))
@@ -145,7 +179,25 @@ namespace AberrationCalculator.Core.IO
                         break;
 
                     case "GLA":
-                        if (parts.Length > 1)
+                        if (parts.Length > 3 && parts[1].Equals("MOD", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // GLA MOD <name> <n1> <n2> ...: a model glass, as OSLO writes one - its
+                            // index at each wavelength of the WV line before it.
+                            var modelIndices = new List<double>();
+                            for (int i = 3; i < parts.Length; i++)
+                                if (TryParseDouble(parts[i], out double ni))
+                                    modelIndices.Add(ni);
+                            if (modelIndices.Count > 0)
+                            {
+                                var (nd, vd) = ModelFromIndices(wavelengths, modelIndices);
+                                currentSurface.ModelIndexEnabled = true;
+                                currentSurface.ModelNd = nd;
+                                currentSurface.ModelVd = vd;
+                                currentSurface.ModelDPgF = 0.0;
+                                currentSurface.Material = "";
+                            }
+                        }
+                        else if (parts.Length > 1)
                         {
                             string glass = parts[1].Trim();
                             // OSLO prefixes some glasses with H_ (e.g., H_F5 = F5)
@@ -167,10 +219,13 @@ namespace AberrationCalculator.Core.IO
                         }
                         else if (parts.Length > 1 && TryParseDouble(parts[1], out double ap))
                         {
+                            // An aperture that is not checked does not block rays in OSLO; it
+                            // sizes the surface for drawing. Here that is an automatic semi-
+                            // diameter, which does not clip either.
                             if (ap > 0)
                             {
                                 currentSurface.SemiDiameter = ap;
-                                currentSurface.SemiDiameterMode = SemiDiameterMode.Fixed;
+                                currentSurface.SemiDiameterMode = SemiDiameterMode.Auto;
                             }
                         }
                         break;
@@ -318,19 +373,18 @@ namespace AberrationCalculator.Core.IO
 
             system.Surfaces = surfaces;
 
-            // THE REFERENCE COLOUR IS THE MIDDLE ONE, not the first.
+            // THE REFERENCE COLOUR IS THE FIRST ONE, as OSLO defines it.
             //
-            // A WV line lists the wavelengths and says nothing about which is the reference, and
-            // taking the first made the whole first-order layout come out in the F line: on the
-            // Kingslake double Gauss that reported EFL 101.5511 where every other format of the
-            // same design reports 101.308. Nothing announced it - the lens simply WAS a different
-            // lens, computed a colour away from where the designer meant.
+            // OSLO has no primary-wavelength keyword: its "Primary Wavln" is wavelength 1, and
+            // it asks for the order middle, short, long - its own default is d, F, C (Program
+            // Reference pp. 26, 123). OSLO itself traces a file that way: a Kingslake double Gauss
+            // written F, d, C traced in OSLO EDU in the F line (chief ray 24.945679 at 14 degrees,
+            // against 24.9495 in the d line).
             //
-            // A prescription is conventionally written short-to-long about a middle reference,
-            // so the middle entry is the reference when the file does not say otherwise. One
-            // wavelength is its own reference; an even count takes the lower of the two middles,
-            // which is the d line of the usual F, d, C triple read as four.
-            int primary = wavelengths.Count > 0 ? (wavelengths.Count - 1) / 2 : 0;
+            // This reader used to take the middle entry, which was right only for files written
+            // short-to-long by an exporter that did not put the primary first (LensHH-LT before
+            // 1.0.158). On a file written OSLO's way it took the F line.
+            int primary = 0;
 
             for (int i = 0; i < wavelengths.Count; i++)
             {
@@ -351,6 +405,48 @@ namespace AberrationCalculator.Core.IO
                 LensUnitConverter.ConvertToMm(system, unitScale);
 
             return system;
+        }
+
+        /// <summary>
+        /// The model glass (nd, Vd) behind OSLO's indices at the file's wavelengths. With the d, F
+        /// and C lines among them it is exact; otherwise a Cauchy fit n = A + B/λ² through the
+        /// indices gives them. A single index carries no dispersion, and is taken as nd with a Vd
+        /// so large that the index is the same at every wavelength.
+        /// </summary>
+        private static (double nd, double vd) ModelFromIndices(List<double> wavelengthsUm, List<double> n)
+        {
+            const double dLine = 0.58756, fLine = 0.48613, cLine = 0.65627;
+            int count = Math.Min(wavelengthsUm.Count, n.Count);
+            if (count < 2)
+                return (n[0], 1e6);
+
+            int Find(double target)
+            {
+                for (int i = 0; i < count; i++)
+                    if (Math.Abs(wavelengthsUm[i] - target) < 1e-4)
+                        return i;
+                return -1;
+            }
+            int id = Find(dLine), iF = Find(fLine), iC = Find(cLine);
+            if (id >= 0 && iF >= 0 && iC >= 0 && Math.Abs(n[iF] - n[iC]) > 1e-12)
+                return (n[id], (n[id] - 1.0) / (n[iF] - n[iC]));
+
+            // Least-squares Cauchy fit in x = 1/λ².
+            double sx = 0, sy = 0, sxx = 0, sxy = 0;
+            for (int i = 0; i < count; i++)
+            {
+                double x = 1.0 / (wavelengthsUm[i] * wavelengthsUm[i]);
+                sx += x; sy += n[i]; sxx += x * x; sxy += x * n[i];
+            }
+            double det = count * sxx - sx * sx;
+            if (Math.Abs(det) < 1e-300)
+                return (n[0], 1e6);
+            double bCoef = (count * sxy - sx * sy) / det;
+            double aCoef = (sy - bCoef * sx) / count;
+            double Cauchy(double lam) => aCoef + bCoef / (lam * lam);
+            double nd = Cauchy(dLine);
+            double dispersion = Cauchy(fLine) - Cauchy(cLine);
+            return (nd, Math.Abs(dispersion) > 1e-12 ? (nd - 1.0) / dispersion : 1e6);
         }
 
         /// <summary>
