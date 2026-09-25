@@ -32,8 +32,10 @@ namespace AberrationCalculator.Core.IO
             var file = PatchText.Read(originalPath);
             double scale = system.FileUnitScale > 0.0 ? system.FileUnitScale : 1.0;
             var insertions = new List<(int Index, string Text)>();
+            var map = SurfaceMap(file.Lines);
 
             int surface = -1;
+            var role = Role.Plain;
             var block = new Block();
 
             for (int i = 0; i < file.Lines.Count; i++)
@@ -46,14 +48,26 @@ namespace AberrationCalculator.Core.IO
 
                 if (keyword == "SUR")
                 {
-                    Flush(system, surface, block, i, scale, insertions);
-                    surface = LineEdit.ArgumentAsInt(line, -1);
+                    if (role == Role.Plain)
+                        Flush(system, surface, block, i, scale, insertions);
+                    int number = LineEdit.ArgumentAsInt(line, -1);
+                    (surface, role) = map.TryGetValue(number, out var m) ? m : (number, Role.Plain);
                     block = new Block();
                     continue;
                 }
 
                 if (surface < 0 || surface >= system.Surfaces.Count) continue;
                 var s = system.Surfaces[surface];
+
+                // An ideal lens is Optalix's lens module, two L surfaces the reader made one: the
+                // first holds the gap between its principal planes, which is not ours, and the
+                // second the distance on to the next surface - the ideal lens's thickness here.
+                if (role != Role.Plain)
+                {
+                    if (keyword == "THI" && role == Role.ModuleExit)
+                        file.Lines[i] = PatchThickness(line, s, scale);
+                    continue;
+                }
 
                 switch (keyword)
                 {
@@ -72,11 +86,14 @@ namespace AberrationCalculator.Core.IO
                     case "GLA":
                         block.Glass = i;
                         block.Indent ??= LineEdit.Indent(line);
-                        string material = s.IsMirror ? string.Empty : s.Material ?? string.Empty;
-                        if (string.IsNullOrWhiteSpace(material))
-                            file.Lines[i] = null;
-                        else if (!LineEdit.Argument(line).Equals(material, StringComparison.Ordinal))
-                            file.Lines[i] = LineEdit.ReplaceArgument(line, material);
+                        file.Lines[i] = PatchGlass(line, s);
+                        break;
+
+                    case "PRI":
+                        // A glass given as its index at each wavelength: this program read it as a
+                        // model glass. It has a glass, so none is added, and the indices stand.
+                        block.Glass = i;
+                        block.Indent ??= LineEdit.Indent(line);
                         break;
 
                     case "SUT":
@@ -92,10 +109,80 @@ namespace AberrationCalculator.Core.IO
                 }
             }
 
-            Flush(system, surface, block, file.Lines.Count, scale, insertions);
+            if (role == Role.Plain)
+                Flush(system, surface, block, file.Lines.Count, scale, insertions);
 
             file.InsertAll(insertions);
             file.Write(outputPath);
+        }
+
+        private enum Role { Plain, ModuleEntrance, ModuleExit }
+
+        /// <summary>
+        /// The surface each SUR number is here. The reader makes a lens module - two consecutive
+        /// SUT L surfaces - one ideal lens, so every surface after one sits a number lower than the
+        /// file's.
+        /// </summary>
+        private static Dictionary<int, (int Surface, Role Role)> SurfaceMap(IReadOnlyList<string?> lines)
+        {
+            var order = new List<(int Number, bool Module)>();
+            int current = -1;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string? line = lines[i];
+                if (line == null || line.TrimStart().StartsWith("!", StringComparison.Ordinal)) continue;
+                string keyword = LineEdit.Keyword(line);
+                if (keyword == "SUR")
+                {
+                    order.Add((LineEdit.ArgumentAsInt(line, -1), false));
+                    current = order.Count - 1;
+                }
+                else if (keyword == "SUT" && current >= 0
+                         && LineEdit.Argument(line).ToUpperInvariant().Contains('L'))
+                    order[current] = (order[current].Number, true);
+            }
+
+            var map = new Dictionary<int, (int, Role)>();
+            int merged = 0;
+            for (int k = 0; k < order.Count; k++)
+            {
+                if (order[k].Module && k + 1 < order.Count && order[k + 1].Module)
+                {
+                    map[order[k].Number] = (k - merged, Role.ModuleEntrance);
+                    map[order[k + 1].Number] = (k - merged, Role.ModuleExit);
+                    merged++;
+                    k++;
+                }
+                else
+                    map[order[k].Number] = (k - merged, Role.Plain);
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// The glass line. A catalog name is replaced when the design's differs - compared without
+        /// the quotes a private glass carries, so 'GE' stays 'GE' - and removed when the surface
+        /// became air. A model glass stands, as Optalix's fictitious-glass code, rewritten only if
+        /// the design changed its nd or Vd.
+        /// </summary>
+        private static string? PatchGlass(string line, Surface s)
+        {
+            string current = LineEdit.Argument(line);
+            if (s.ModelIndexEnabled)
+            {
+                if (!OptalixReader.TryFictitiousGlass(current, out double nd, out double vd)
+                    || (Math.Abs(nd - s.ModelNd) < 1e-9 && Math.Abs(vd - s.ModelVd) < 1e-9))
+                    return line;
+                string? code = OptalixReader.FictitiousGlassCode(s.ModelNd, s.ModelVd, s.ModelDPgF);
+                return code == null ? line : LineEdit.ReplaceArgument(line, code);
+            }
+
+            string material = s.IsMirror ? string.Empty : s.Material ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(material))
+                return current.Equals("AIR", StringComparison.OrdinalIgnoreCase) ? line : null;
+            return current.Trim('\'').Equals(material, StringComparison.Ordinal)
+                ? line
+                : LineEdit.ReplaceArgument(line, material);
         }
 
         /// <summary>
