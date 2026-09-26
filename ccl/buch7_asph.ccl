@@ -1,0 +1,984 @@
+/**********************************************************************
+* cmd buch7_asph - third- and fifth-order Buchdahl coefficients of a
+* centred system that may carry conics and even aspheres, SURFACE BY
+* SURFACE, each split into what the surface generates on its own, what
+* its figuring adds, and what was INDUCED in it by the surfaces ahead.
+*
+* Written by Javier Ruiz with Claude Code, September 2026. The OSLO
+* port of stages A and B of macros/BUCH7_ASPH.ZPL in
+* C:\GIT\AberrationCalculator, line for line; that macro and this
+* program's C# (SeidelCoefficients, BuchdahlCoefficients) are the
+* references it is checked against.
+*
+* REFERENCES
+*
+*   H. A. Buchdahl, "Optical Aberration Coefficients", Dover 1968:
+*   Secs. 41-44 (the fifth-order coefficients and their intrinsic and
+*   induced parts) and Sec. 77 (the aspheric contributions).
+*   H. A. Buchdahl, "Optical aberration coefficients. II. The tertiary
+*   intrinsic coefficients", J. Opt. Soc. Am. 48, 563 (1958).
+*
+* WHAT IT PRINTS
+*
+*   The system totals of the third order (B F C Pi E), the fifth order
+*   (B5 F1 F2 M1 M2 M3 N1 N2 N3 C5 Pi5 E5) and the seventh-order
+*   spherical B7, in transverse measure: the numbers FIFTHORD prints in
+*   OpticStudio, and OSLO's own Seidel and fifth-order sums in its units.
+*
+*   Then, with the first argument 1 (the default), every surface:
+*
+*     INTRINSIC  what the surface generates out of its own curvature,
+*                indices and the two paraxial rays arriving at it.
+*                Correcting this means bending THIS surface, or moving
+*                the glass either side of it.
+*     FIGURING   what its conic and its r^4, r^6, r^8 terms (AD, AE, AF)
+*                add. Zero on a sphere.
+*     INDUCED    what the aberration ALREADY ACCUMULATED ahead of the
+*                surface produces in it. The surface is reacting rather
+*                than offending, and a change made here to cancel it is
+*                a second wrong balancing a first.
+*
+*   There is no induced term at third order: a third-order contribution
+*   is built from the surface's own quantities alone. Each column adds
+*   down to the system total.
+*
+*   Last, one number per surface: the induced share of the fifth-order
+*   magnitude it carries. Near 0 the surface is on its own; near 1 what
+*   it carries was handed to it; above 1 the intrinsic and induced parts
+*   oppose each other and what the surface reports is the residue of a
+*   cancellation.
+*
+* RUNNING IT
+*
+*   buch7_asph               per surface, current wavelength, report file
+*   buch7_asph 0             system totals only
+*   buch7_asph 1 2           at wavelength 2
+*   buch7_asph 1 0 0         without the report file
+*
+*   The report goes to B7_REPORT (below) as well as the text window. Set
+*   it to a folder that exists; if it cannot be written, buch7_asph says
+*   so and carries on without it.
+*
+* LIMITS
+*
+*   Plane, spherical, conic and standard aspheric (AD, AE, AF) surfaces.
+*   AG, the r^10 term, cannot reach the seventh order and takes no part.
+*   Any other surface type - toric, spline, general asphere, perfect lens
+*   - is declined, because its data are not a conic and even terms.
+*   Rotationally symmetric and sequential; either conjugate; mirrors are
+*   carried in the sign of the index. The twenty seventh-order tau are
+*   not computed here.
+**********************************************************************/
+
+#define B7_REPORT  "C:/GIT/AberrationCalculator/ccl/buch7_asph.txt"
+#define B7_MAXS    64
+
+int b7_srfarg  {prompt = "Surface by surface (0 = system totals only, 1 = per surface)", lolim = 0, hilim = 1, default(noquery) = 1}
+int b7_wavarg  {prompt = "Wavelength number (0 = the current one)", lolim = 0, hilim = 10, default(noquery) = 0}
+int b7_filearg {prompt = "Also write the report file B7_REPORT (0 = no, 1 = yes)", lolim = 0, hilim = 1, default(noquery) = 1}
+
+static double b7_ns[B7_MAXS];        // index after surface i, signed by the mirror count
+static double b7_ya[B7_MAXS], b7_ua[B7_MAXS];   // basis ray, and the scratch the trace writes
+static double b7_ym[B7_MAXS], b7_um[B7_MAXS];   // marginal: height at i, slope after i
+static double b7_yc[B7_MAXS], b7_uc[B7_MAXS];   // chief
+static double b7_vfm[B7_MAXS][8];    // vertex form: curvature, conic, A4, A6, A8, figured
+static double b7_fo[B7_MAXS][61];    // per surface: the ZPL's fo(i, k), same numbering
+static int    b7_nsm;
+static int    b7_fh, b7_wf;
+static char   b7_ln[400];
+
+// One line to the text window and, if it is open, the report.
+static cmd
+b7_out()
+{
+	printf("%s\n", b7_ln);
+	if (b7_wf)
+		fprintf(b7_fh, "%s\n", b7_ln);
+}
+
+// The paraxial ray with height y1 at surface 1 and slope u0 in object space, through every
+// optical surface: b7_ya[i] its height at surface i, b7_ua[i] its slope after surface i,
+// b7_ua[0] the object-space slope. The same recurrence as ParaxialTrace.Propagate.
+static int
+b7_prop(double pr_y1, double pr_u0)
+{
+	int    pr_i;
+	double pr_om, pr_t;
+
+	b7_ua[0] = pr_u0;
+	b7_ya[0] = 0.0;
+	pr_om = b7_ns[0]*pr_u0;
+	b7_ya[1] = pr_y1;
+	for (pr_i = 1; pr_i <= b7_nsm; pr_i++)
+	{
+		pr_om = pr_om - b7_ya[pr_i]*(b7_ns[pr_i] - b7_ns[pr_i - 1])*cv[pr_i];
+		b7_ua[pr_i] = pr_om/b7_ns[pr_i];
+		if (pr_i < b7_nsm)
+		{
+			pr_t = th[pr_i];
+			b7_ya[pr_i + 1] = b7_ya[pr_i] + pr_t*b7_ua[pr_i];
+		}
+	}
+	return (0);
+}
+
+static int
+b7_run(int k_srfarg, int k_wavarg)
+{
+	int    k_i, k_j, k_uj, k_wvn, k_badtyp, k_infobj, k_anyfig, k_anyr2, k_nmir;
+	double k_sgn, k_t0, k_epup, k_efl, k_epd, k_uobj, k_yobj, k_a_st, k_b_st, k_yA, k_lag, k_n0, k_n0abs;
+	double k_pupf, k_nlast, k_fnum, k_objd, k_iota, k_fld, k_epp, k_p0;
+	double k_vcv, k_vkk, k_va2, k_va4, k_va6, k_va8, k_vc2, k_vc3, k_vc5, k_vc7, k_vk1, k_vt2, k_vt3, k_vt4, k_vv, k_vv2, k_vv3, k_vv5, k_vv7;
+
+	// the surface loop, named as in the macro with a q_ prefix
+	double q_cv, q_nb, q_na, q_kk, q_km1, q_deln;
+	double q_py, q_pu, q_pup, q_pyc, q_puc, q_pucp;
+	double q_pai, q_paip, q_paic, q_paicp;
+	double q_Pz, q_sfm, q_sfc, q_Ba, q_Fa, q_Ca, q_Bb, q_Fb, q_Cb, q_Ea, q_Eb;
+	double q_w, q_x73, q_x74, q_x75, q_x76, q_x77, q_x78, q_x42, q_x82, q_x42b, q_x82b;
+	double q_q1p, q_q2p, q_q3p, q_q4p, q_q5p, q_q6p, q_q1q, q_t1p;
+	double q_iB5, q_iF1, q_iF2, q_iM1, q_iM2, q_iM3, q_iN1, q_iN2, q_iN3, q_iC5, q_iP5, q_iE5, q_iE5b, q_iB7;
+	double q_aBa, q_aFa, q_aCa, q_aEa, q_aBb, q_aFb, q_aEb, q_afgCb;
+	double q_aB5, q_aF1, q_aF2, q_aM1, q_aM2, q_aM3, q_aN1, q_aN2, q_aN3, q_aC5, q_aP5, q_aE5, q_aE5b, q_aB7;
+	double q_conic, q_at, q_bt, q_ct, q_cv2, q_cv3, q_c1, q_c2, q_c3, q_tmp, q_c1b, q_c2b, q_c3b, q_pysq, q_pycsq;
+	double q_mm, q_la, q_lb, q_aS1p1, q_aS2p1, q_aS3p1, q_aS4p1, q_aS5p1, q_aS6p1, q_aS1q1;
+	double q_j0a, q_j0b, q_alph, q_beta, q_gamm, q_lamb, q_muu, q_nuu;
+	double q_aS1p2, q_aS2p2, q_aS3p2, q_aS4p2, q_aS5p2, q_aS6p2, q_aS1q2;
+	double q_aS1pa, q_aS2pa, q_aS3pa, q_aS4pa, q_aS5pa, q_aS6pa;
+	double q_aS1pb, q_aS2pb, q_aS3pb, q_aS4pb, q_aS5pb, q_aS6pb, q_aS1qa;
+	double q_gam1, q_gam2, q_gam3, q_tq, q_d3, q_t2q, q_lq3, q_z;
+	double q_tB5, q_tF1, q_tF2, q_tM1, q_tM2, q_tM3, q_tN1, q_tN2, q_tN3, q_tC5, q_tP5, q_tE5, q_tE5b, q_tB7;
+
+	// running sums over the surfaces already passed
+	double k_acb, k_acf, k_acc, k_ace, k_acpi, k_acbb, k_acfb, k_accb, k_aceb, k_acb5, k_ace5b;
+
+	// totals
+	double k_sumb, k_sumf, k_sumc, k_sump, k_sume, k_sB5, k_sF1, k_sF2, k_sM1, k_sM2, k_sM3, k_sN1, k_sN2, k_sN3, k_sC5, k_sP5, k_sE5, k_sB7;
+	double k_uin, k_utt, k_umt, k_ufr;
+	char   k_unote[80];
+
+	b7_nsm = ims - 1;
+	if (b7_nsm < 1)
+	{
+		sprintf(b7_ln, "buch7_asph needs at least one optical surface between object and image.");
+		b7_out();
+		return (0);
+	}
+	if (ims + 1 > B7_MAXS)
+	{
+		sprintf(b7_ln, "buch7_asph holds at most %d surfaces.", B7_MAXS - 2);
+		b7_out();
+		return (0);
+	}
+	if (k_wavarg > 0)
+		k_wvn = k_wavarg;
+	else
+		k_wvn = +wav + 1;
+
+	// ---- surface types. Declined by name rather than by reading data that are not a
+	// conic and even terms. AG cannot reach the seventh order and is said to be dropped.
+	k_badtyp = 0;
+	for (k_i = 1; k_i <= b7_nsm; k_i++)
+	{
+		if (!(srftyp[k_i] == 0 || srftyp[k_i] == 1 || srftyp[k_i] == 4 || srftyp[k_i] == 5))
+		{
+			sprintf(b7_ln, "Surface %d is of type %d (OSLO srftyp), not a plane, sphere, conic or standard asphere.", k_i, srftyp[k_i]);
+			b7_out();
+			k_badtyp = 1;
+		}
+		else if (srftyp[k_i] == 5 && asp[k_i] != 0)
+		{
+			sprintf(b7_ln, "Surface %d carries a general polynomial asphere (OSLO asp %d), not the standard AD..AG.", k_i, asp[k_i]);
+			b7_out();
+			k_badtyp = 1;
+		}
+		if (fabs(ag[k_i]) > 0.0)
+		{
+			sprintf(b7_ln, "NOTE: surface %d carries AG, the r^10 term, which cannot reach the seventh order and takes no part.", k_i);
+			b7_out();
+		}
+	}
+	if (k_badtyp)
+	{
+		sprintf(b7_ln, "buch7_asph carries plane, spherical, conic and standard aspheric surfaces. On any other");
+		b7_out();
+		sprintf(b7_ln, "type the surface data mean something other than a conic and even terms, so it declines.");
+		b7_out();
+		return (0);
+	}
+
+	// ---- the index after each surface, signed by the mirror count: after an odd number of
+	// reflections light runs toward -z, and a negated index reproduces that exactly.
+	k_sgn = 1.0;
+	k_nmir = 0;
+	b7_ns[0] = fabs(rn[0][k_wvn]);
+	for (k_i = 1; k_i <= b7_nsm; k_i++)
+	{
+		if (gltyp[k_i] == 4)
+		{
+			k_sgn = -k_sgn;
+			k_nmir++;
+			b7_ns[k_i] = k_sgn*fabs(b7_ns[k_i - 1]);
+		}
+		else
+			b7_ns[k_i] = k_sgn*fabs(rn[k_i][k_wvn]);
+	}
+
+	// ---- the two paraxial rays, exactly as ParaxialTrace launches them
+	k_infobj = 0;
+	k_t0 = fabs(th[0]);
+	if (k_t0 >= 1e10)
+	{
+		k_infobj = 1;
+		k_t0 = 0.0;
+	}
+
+	// the entrance pupil, from two basis rays: where the ray that crosses the axis at the
+	// stop came from, measured from surface 1
+	if (ast < 1 || ast > b7_nsm)
+	{
+		sprintf(b7_ln, "No aperture stop between the object and the image.");
+		b7_out();
+		return (0);
+	}
+	b7_prop(1.0, 0.0);
+	k_a_st = b7_ya[ast];
+	k_yA = b7_ns[b7_nsm]*b7_ua[b7_nsm];
+	b7_prop(0.0, 1.0);
+	k_b_st = b7_ya[ast];
+	if (fabs(k_a_st) > 1e-15)
+		k_epup = k_b_st/k_a_st;
+	else
+		k_epup = 0.0;
+	if (fabs(k_yA) < 1e-15)
+	{
+		sprintf(b7_ln, "The system has no focal length; an afocal system is not handled.");
+		b7_out();
+		return (0);
+	}
+	k_efl = -b7_ns[0]/k_yA;
+
+	// the marginal ray: from the axial object point to the edge of the entrance pupil
+	k_epd = 2.0*(+ebr);
+	if (k_infobj)
+	{
+		k_yobj = 0.5*k_epd;
+		k_uobj = 0.0;
+	}
+	else
+	{
+		k_uobj = 0.5*k_epd/(k_t0 + k_epup);
+		k_yobj = k_uobj*k_t0;
+	}
+	b7_prop(k_yobj, k_uobj);
+	for (k_i = 0; k_i <= b7_nsm; k_i++)
+	{
+		b7_ym[k_i] = b7_ya[k_i];
+		b7_um[k_i] = b7_ua[k_i];
+	}
+
+	// the chief ray: from the edge of the field through the centre of the entrance pupil.
+	// At infinity the field is ANG; at a finite object it is the object height OBH.
+	if (k_infobj)
+	{
+		k_fld = +ang;
+		k_uobj = tan(k_fld);
+		k_yobj = -k_uobj*k_epup;
+	}
+	else
+	{
+		k_fld = fabs(+obh);
+		k_uobj = -k_fld/(k_t0 + k_epup);
+		k_yobj = k_fld + k_uobj*k_t0;
+	}
+	b7_prop(k_yobj, k_uobj);
+	for (k_i = 0; k_i <= b7_nsm; k_i++)
+	{
+		b7_yc[k_i] = b7_ya[k_i];
+		b7_uc[k_i] = b7_ua[k_i];
+	}
+
+	k_n0 = b7_ns[0];
+	k_lag = k_n0*(b7_uc[0]*b7_ym[1] - b7_um[0]*b7_yc[1]);
+	k_n0abs = fabs(k_n0);
+	if (fabs(k_lag) < 1e-10)
+	{
+		sprintf(b7_ln, "The Lagrange invariant is zero. Is the field zero, or the aperture?");
+		b7_out();
+		return (0);
+	}
+
+	k_epp = k_epup;
+	k_p0 = k_epp/k_efl;
+	k_pupf = b7_um[b7_nsm];
+	k_nlast = fabs(b7_ns[b7_nsm]);
+	k_fnum = -0.5/k_nlast/k_pupf;
+	k_objd = th[0];
+	k_iota = 0.0;
+	if (!k_infobj)
+		k_iota = -k_efl/k_objd;
+
+	// ---- the vertex form. OSLO's standard asphere has no r^2 term, so the curvature and
+	// conic are the surface's own; the r^2 fold of the macro is kept for a surface that
+	// would carry one, and is never reached here.
+	k_anyfig = 0;
+	k_anyr2 = 0;
+	for (k_i = 1; k_i <= b7_nsm; k_i++)
+	{
+		k_vcv = cv[k_i];
+		k_vkk = cc[k_i];
+		k_va2 = 0.0;
+		k_va4 = ad[k_i];
+		k_va6 = ae[k_i];
+		k_va8 = af[k_i];
+		if (fabs(k_va2) > 0.0)
+		{
+			k_anyr2 = 1;
+			k_vc2 = k_vcv*k_vcv;
+			k_vc3 = k_vc2*k_vcv;
+			k_vc5 = k_vc3*k_vc2;
+			k_vc7 = k_vc5*k_vc2;
+			k_vk1 = 1.0 + k_vkk;
+			k_vt2 = k_vk1*k_vc3/8.0 + k_va4;
+			k_vt3 = k_vk1*k_vk1*k_vc5/16.0 + k_va6;
+			k_vt4 = 5.0*k_vk1*k_vk1*k_vk1*k_vc7/128.0 + k_va8;
+			k_vv = k_vcv + 2.0*k_va2;
+			k_vv2 = k_vv*k_vv;
+			k_vv3 = k_vv2*k_vv;
+			k_vv5 = k_vv3*k_vv2;
+			k_vv7 = k_vv5*k_vv2;
+			b7_vfm[k_i][1] = k_vv;
+			b7_vfm[k_i][2] = 0.0;
+			b7_vfm[k_i][3] = k_vt2 - k_vv3/8.0;
+			b7_vfm[k_i][4] = k_vt3 - k_vv5/16.0;
+			b7_vfm[k_i][5] = k_vt4 - 5.0*k_vv7/128.0;
+		}
+		else
+		{
+			b7_vfm[k_i][1] = k_vcv;
+			b7_vfm[k_i][2] = k_vkk;
+			b7_vfm[k_i][3] = k_va4;
+			b7_vfm[k_i][4] = k_va6;
+			b7_vfm[k_i][5] = k_va8;
+		}
+		b7_vfm[k_i][6] = 0.0;
+		if (fabs(b7_vfm[k_i][2]) > 1e-14 || b7_vfm[k_i][3] != 0.0 || b7_vfm[k_i][4] != 0.0 || b7_vfm[k_i][5] != 0.0)
+		{
+			b7_vfm[k_i][6] = 1.0;
+			k_anyfig = 1;
+		}
+	}
+
+	sprintf(b7_ln, "BUCH7_ASPH (OSLO) - Buchdahl coefficients, conics and even aspheres carried");
+	b7_out();
+	sprintf(b7_ln, "Wavelength             %d (%.6f um)", k_wvn, wv[k_wvn]);
+	b7_out();
+	sprintf(b7_ln, "Effective focal length %.6f", k_efl);
+	b7_out();
+	sprintf(b7_ln, "F/number               %.6f", k_fnum);
+	b7_out();
+	sprintf(b7_ln, "Lagrange invariant     %.10g", k_lag);
+	b7_out();
+	sprintf(b7_ln, "Entrance pupil         %.6f from surface 1, radius %.6f", k_epp, 0.5*k_epd);
+	b7_out();
+	sprintf(b7_ln, "Buchdahl p             %.6f", k_p0);
+	b7_out();
+	if (k_infobj)
+	{
+		sprintf(b7_ln, "Object                 at infinity, field angle %.6f deg", k_fld*180.0/pi);
+		b7_out();
+	}
+	else
+	{
+		sprintf(b7_ln, "Object distance        %.6f, object height %.6f", k_objd, k_fld);
+		b7_out();
+		sprintf(b7_ln, "Buchdahl iota          %.6f", k_iota);
+		b7_out();
+	}
+	if (k_nmir > 0)
+	{
+		sprintf(b7_ln, "Reflections            %d", k_nmir);
+		b7_out();
+	}
+	if (k_anyfig == 0)
+	{
+		sprintf(b7_ln, "Nothing is figured: every figuring row below is zero.");
+		b7_out();
+	}
+	sprintf(b7_ln, " ");
+	b7_out();
+
+	// ---- the paraxial rays, so they can be set beside OSLO's own (pxt all)
+	sprintf(b7_ln, "Paraxial rays (axial: height, slope after; chief: height, slope after)");
+	b7_out();
+	sprintf(b7_ln, " Srf            PY             PU            PYC            PUC        index after");
+	b7_out();
+	for (k_i = 0; k_i <= b7_nsm; k_i++)
+	{
+		sprintf(b7_ln, "%4d %14.8f %14.8f %14.8f %14.8f %14.8f", k_i, b7_ym[k_i], b7_um[k_i], b7_yc[k_i], b7_uc[k_i], b7_ns[k_i]);
+		b7_out();
+	}
+	sprintf(b7_ln, " ");
+	b7_out();
+
+	// ==================================================================================
+	// STAGES A and B, the direct ray-set: the third and fifth orders with Buchdahl's
+	// aspheric block of Sec. 77, and the induced corrections. (The macro runs this loop a
+	// second time on the interchanged rays for the seventh order's dual run; the totals
+	// and the per-surface split read the direct set alone.)
+	// ==================================================================================
+	k_acb = 0.0; k_acf = 0.0; k_acc = 0.0; k_ace = 0.0; k_acpi = 0.0;
+	k_acbb = 0.0; k_acfb = 0.0; k_accb = 0.0; k_aceb = 0.0; k_acb5 = 0.0; k_ace5b = 0.0;
+
+	for (k_i = 1; k_i <= b7_nsm; k_i++)
+	{
+		q_cv = b7_vfm[k_i][1];
+		q_nb = b7_ns[k_i - 1];
+		q_na = b7_ns[k_i];
+		if (fabs(q_na) < 1e-10)
+			q_na = 1.0;
+		q_kk = q_nb/q_na;
+		q_km1 = q_kk - 1.0;
+		q_deln = q_nb - q_na;
+
+		q_py = b7_ym[k_i];
+		q_pu = b7_um[k_i - 1];
+		q_pup = b7_um[k_i];
+		q_pyc = b7_yc[k_i];
+		q_puc = b7_uc[k_i - 1];
+		q_pucp = b7_uc[k_i];
+
+		q_pai = q_cv*q_py + q_pu;
+		q_paip = q_pai*q_kk;
+		q_paic = q_cv*q_pyc + q_puc;
+		q_paicp = q_paic*q_kk;
+
+		q_Pz = q_cv*q_km1*k_lag*k_lag/q_nb;
+		q_sfm = q_nb*q_km1*q_py*(q_pai + q_pup);
+		q_sfc = q_nb*q_km1*q_pyc*(q_paic + q_pucp);
+
+		q_Ba = q_sfm*q_pai*q_pai;
+		q_Fa = q_sfm*q_pai*q_paic;
+		q_Ca = q_sfm*q_paic*q_paic;
+		q_Bb = q_sfc*q_paic*q_paic;
+		q_Fb = q_sfc*q_pai*q_paic;
+		q_Cb = q_sfc*q_pai*q_pai;
+		q_Ea = q_Fb + k_lag*q_km1*q_paic*(q_pucp + q_puc);
+		q_Eb = q_Fa - k_lag*q_km1*q_pai*(q_pup + q_pu);
+
+		q_w = (q_pai*q_pai + q_paip*q_paip + q_pup*q_pup - 3.0*q_pu*q_pu)/8.0;
+		q_x73 = 3.0*q_pai*q_paip + 2.0*q_pup*q_pup - 3.0*q_pu*q_pu;
+		q_x74 = 3.0*q_pai*q_paicp + 2.0*q_pup*q_pucp - 3.0*q_pu*q_puc;
+		q_x75 = 3.0*q_paic*q_paicp + 2.0*q_pucp*q_pucp - 3.0*q_puc*q_puc;
+		q_x76 = q_pai*(3.0*q_pu - q_pup);
+		q_x77 = q_paic*(2.0*q_pu - q_pup) + q_pai*q_puc;
+		q_x78 = q_paic*(3.0*q_puc - q_pucp);
+		q_x42 = q_pyc*q_pai*(q_paic - q_puc) + q_py*q_paic*(q_pucp + q_puc);
+		q_x82 = q_pyc*q_pu*(q_paic - q_puc) - q_py*q_paicp*(q_pucp + q_puc);
+		q_x42b = q_py*q_paic*(q_pai - q_pu) + q_pyc*q_pai*(q_pup + q_pu);
+		q_x82b = q_py*q_puc*(q_pai - q_pu) - q_pyc*q_paip*(q_pup + q_pu);
+
+		q_q1p = 3.0*q_w*q_sfm*q_pai;
+		q_q2p = q_sfm*(q_paic*q_x73 + q_pai*q_x74 - q_pucp*q_x76 - q_pup*q_x77)/4.0;
+		q_q3p = q_nb*q_km1*(q_x42*q_x73 + q_x76*q_x82 + q_py*(q_pai + q_pup)*(q_pai*q_x75 - q_pup*q_x78))/4.0;
+		q_q4p = q_sfm*(q_paic*q_x74 - q_pucp*q_x77);
+		q_q5p = q_nb*q_km1*(q_x42*q_x74 + q_x77*q_x82 + q_py*(q_pai + q_pup)*(q_paic*q_x75 - q_pucp*q_x78))/4.0;
+		q_q6p = q_nb*q_km1*(q_x42*q_x75 + q_x78*q_x82)/4.0;
+		q_q1q = q_nb*q_km1*(q_x42b*q_x73 + q_x76*q_x82b)/4.0;
+		q_t1p = 10.0*q_w*q_w + q_sfm*q_pai*q_cv*(2.0*q_pup - 5.0*q_pu)/q_nb/8.0;
+
+		q_iB5 = q_pai*q_q1p;
+		q_iF1 = q_paic*q_q1p + q_pai*q_q2p;
+		q_iF2 = q_pai*q_q2p;
+		q_iM1 = 2.0*q_paic*q_q2p;
+		q_iM2 = q_pai*q_q3p;
+		q_iM3 = q_pai*q_q4p;
+		q_iN1 = q_paic*q_q3p;
+		q_iN2 = q_paic*q_q4p + 2.0*q_pai*q_q5p;
+		q_iN3 = q_pai*q_q5p;
+		q_iC5 = 0.5*q_paic*q_q5p;
+		q_iP5 = q_pai*q_q6p - 0.5*q_paic*q_q5p;
+		q_iE5 = q_paic*q_q6p;
+		q_iE5b = q_pai*q_q1q;
+		q_iB7 = q_Ba*q_t1p;
+
+		// the figuring's own share of each printed coefficient, zero on a sphere
+		q_aBa = 0.0; q_aFa = 0.0; q_aCa = 0.0; q_aEa = 0.0;
+		q_aB5 = 0.0; q_aF1 = 0.0; q_aF2 = 0.0; q_aM1 = 0.0; q_aM2 = 0.0; q_aM3 = 0.0;
+		q_aN1 = 0.0; q_aN2 = 0.0; q_aN3 = 0.0; q_aC5 = 0.0; q_aP5 = 0.0; q_aE5 = 0.0; q_aB7 = 0.0;
+
+		// ---- the aspheric figuring, M Sec. 77. Every term carries c1b, c2b or c3b and so
+		// vanishes on a sphere.
+		if (b7_vfm[k_i][6] == 1.0)
+		{
+			q_conic = b7_vfm[k_i][2];
+			q_at = b7_vfm[k_i][3];
+			q_bt = b7_vfm[k_i][4];
+			q_ct = b7_vfm[k_i][5];
+
+			q_cv2 = q_cv*q_cv;
+			q_cv3 = q_cv2*q_cv;
+			q_c1 = 8.0*q_at + q_conic*q_cv3;
+			q_c2 = 12.0*q_bt + 0.75*q_cv2*(q_cv3*q_conic*(q_conic + 2.0) - 2.0*q_c1);
+			q_tmp = q_cv3*q_conic*(q_conic*q_conic + 3.0*q_conic + 3.0) - 3.0*q_c1;
+			q_tmp = q_cv2*(5.0*q_cv2*q_tmp - 12.0*q_c2);
+			q_tmp = (-6.0*q_cv*q_c1*q_c1 + q_tmp)/8.0;
+			q_c3 = 16.0*q_ct + q_tmp;
+
+			q_c1b = q_deln*q_c1;
+			q_c2b = q_deln*q_c2;
+			q_c3b = q_deln*q_c3;
+			q_pysq = q_py*q_py;
+			q_pycsq = q_pyc*q_pyc;
+
+			q_aBa = q_c1b*q_pysq*q_pysq;
+			q_aFa = q_c1b*q_pysq*q_py*q_pyc;
+			q_aEb = q_aFa;
+			q_aCa = q_c1b*q_pysq*q_pycsq;
+			q_afgCb = q_aCa;
+			q_aEa = q_c1b*q_py*q_pycsq*q_pyc;
+			q_aFb = q_aEa;
+			q_aBb = q_c1b*q_pycsq*q_pycsq;
+
+			q_Ba = q_Ba + q_aBa;
+			q_Fa = q_Fa + q_aFa;
+			q_Ca = q_Ca + q_aCa;
+			q_Ea = q_Ea + q_aEa;
+			q_Bb = q_Bb + q_aBb;
+			q_Fb = q_Fb + q_aFb;
+			q_Cb = q_Cb + q_afgCb;
+			q_Eb = q_Eb + q_aEb;
+
+			q_mm = q_kk*k_lag/q_na;
+			q_la = (3.0*q_paip - 2.0*(1.0 - 2.0*q_kk)*q_pup)/4.0;
+			q_lb = (3.0*q_paicp - 2.0*(1.0 - 2.0*q_kk)*q_pucp)/4.0;
+
+			q_aS1p1 = q_aBa*q_la;
+			q_aS2p1 = 2.0*q_aFa*q_la + 0.5*q_c1b*q_pysq*q_py*q_mm;
+			q_aS3p1 = 2.0*q_aCa*q_la + q_c1b*q_pysq*q_pyc*q_mm;
+			q_aS4p1 = 2.0*q_aS3p1;
+			q_aS5p1 = 2.0*q_aEa*q_la + 1.5*q_c1b*q_py*q_pycsq*q_mm;
+			q_aS6p1 = q_aBb*q_la + q_c1b*q_pycsq*q_pyc*q_mm;
+			q_aS1q1 = q_aBa*q_lb - q_c1b*q_pysq*q_py*q_mm;
+
+			q_j0a = q_c2b*q_py - 0.25*q_cv*q_c1b*(3.0*q_paip - 5.0*q_pup);
+			q_j0b = q_c2b*q_pyc - 0.25*q_cv*q_c1b*(3.0*q_paicp - 5.0*q_pucp);
+
+			q_alph = 0.5*(q_pup*(q_pup - q_pai) + q_pai*(3.0*q_paip - q_pup));
+			q_beta = q_pup*(q_pucp - q_paic) + q_pai*(3.0*q_paicp - q_pucp);
+			q_gamm = 0.5*(q_pucp*(q_pucp - q_paic) + q_paic*(3.0*q_paicp - q_pucp));
+
+			q_lamb = q_alph*q_c1b + q_j0a*q_py;
+			q_muu = q_beta*q_c1b + 2.0*q_j0a*q_pyc;
+			q_nuu = q_py*q_gamm*q_c1b + q_j0a*q_pycsq;
+
+			q_aS1p2 = q_pysq*q_py*q_lamb;
+			q_aS2p2 = q_pysq*q_pyc*q_lamb + 0.5*q_pysq*q_py*q_muu;
+			q_aS3p2 = q_py*q_pycsq*q_lamb + q_pysq*q_nuu;
+			q_aS4p2 = 2.0*q_pysq*q_pyc*q_muu;
+			q_aS5p2 = 0.5*q_py*q_pycsq*q_muu + q_py*q_pyc*q_nuu;
+			q_aS6p2 = q_pycsq*q_nuu;
+			q_aS1q2 = q_pysq*(q_alph*q_c1b*q_pyc + q_j0b*q_pysq);
+
+			q_aS1pa = q_pai*q_aS1p1 + q_py*q_aS1p2;
+			q_aS2pa = q_pai*q_aS2p1 + q_py*q_aS2p2;
+			q_aS3pa = q_pai*q_aS3p1 + q_py*q_aS3p2;
+			q_aS4pa = q_pai*q_aS4p1 + q_py*q_aS4p2;
+			q_aS5pa = q_pai*q_aS5p1 + q_py*q_aS5p2;
+			q_aS6pa = q_pai*q_aS6p1 + q_py*q_aS6p2;
+
+			q_aS1pb = q_paic*q_aS1p1 + q_pyc*q_aS1p2;
+			q_aS2pb = q_paic*q_aS2p1 + q_pyc*q_aS2p2;
+			q_aS3pb = q_paic*q_aS3p1 + q_pyc*q_aS3p2;
+			q_aS4pb = q_paic*q_aS4p1 + q_pyc*q_aS4p2;
+			q_aS5pb = q_paic*q_aS5p1 + q_pyc*q_aS5p2;
+			q_aS6pb = q_paic*q_aS6p1 + q_pyc*q_aS6p2;
+
+			q_aS1qa = q_pai*q_aS1q1 + q_py*q_aS1q2;
+
+			q_aB5 = q_aS1pa;
+			q_aF1 = q_aS1pb + q_aS2pa;
+			q_aF2 = q_aS2pa;
+			q_aM1 = 2.0*q_aS2pb;
+			q_aM2 = q_aS3pa;
+			q_aM3 = q_aS4pa;
+			q_aN1 = q_aS3pb;
+			q_aN2 = q_aS4pb + 2.0*q_aS5pa;
+			q_aN3 = q_aS5pa;
+			q_aC5 = 0.5*q_aS5pb;
+			q_aP5 = q_aS6pa - 0.5*q_aS5pb;
+			q_aE5 = q_aS6pb;
+			q_aE5b = q_aS1qa;
+
+			q_iB5 = q_iB5 + q_aB5;
+			q_iF1 = q_iF1 + q_aF1;
+			q_iF2 = q_iF2 + q_aF2;
+			q_iM1 = q_iM1 + q_aM1;
+			q_iM2 = q_iM2 + q_aM2;
+			q_iM3 = q_iM3 + q_aM3;
+			q_iN1 = q_iN1 + q_aN1;
+			q_iN2 = q_iN2 + q_aN2;
+			q_iN3 = q_iN3 + q_aN3;
+			q_iC5 = q_iC5 + q_aC5;
+			q_iP5 = q_iP5 + q_aP5;
+			q_iE5 = q_iE5 + q_aE5;
+			q_iE5b = q_iE5b + q_aE5b;
+
+			q_gam1 = q_c1*q_pysq;
+			q_gam2 = q_py*q_pysq*(q_c2*q_py + 0.25*q_cv*q_c1*(q_pai + 3.0*q_pu));
+			q_tq = q_cv2*q_c1*(q_pai*(q_pai + 5.0*q_pu) - q_pu*(q_pai - 5.0*q_pu))/8.0;
+			// HALF what (77.2) prints for both c1-squared terms, and deliberately so: a
+			// parabola images infinity perfectly, so its spherical aberration must vanish
+			// at every order. It does with these values and does not with the printed ones.
+			q_tq = q_tq + q_c1*q_c1*q_py*q_pai/4.0;
+			q_gam3 = q_pysq*q_pysq*(q_tq + q_c3*q_pysq + q_cv*q_c2*q_py*(q_pai + 5.0*q_pu)/3.0);
+
+			q_d3 = q_cv*q_py*(4.0*q_cv*q_py*(q_pai + q_pu) + q_paip*(5.0*(2.0*q_pup + q_pai) + q_paip));
+			q_t2q = q_kk*q_pup*(3.0*q_pai*q_pai - 10.0*q_pu*q_pu + q_paip*(4.0*(2.0*q_pup + q_paip + q_pai) + q_pai));
+			q_d3 = q_c1*(q_gam1*q_py*(1.0 + 2.0*q_kk*q_km1) + q_d3 + q_t2q)/8.0;
+			q_d3 = q_deln*q_pysq*q_pysq*(q_c2*q_pysq*(4.0*q_paip + 3.0*q_pup*(2.0*q_kk - 1.0))/6.0 + q_d3);
+
+			q_lq3 = q_py*q_gam3*q_deln + 0.5*(q_gam1*(q_q1p + q_aS1p1) + q_gam2*q_sfm*q_pai);
+			q_aB7 = q_pai*q_d3 + q_py*q_lq3;
+			q_iB7 = q_iB7 + q_aB7;
+		}
+
+		b7_fo[k_i][1] = q_Ba;
+		b7_fo[k_i][2] = q_Fa;
+		b7_fo[k_i][3] = q_Ca;
+		b7_fo[k_i][4] = q_Pz;
+		b7_fo[k_i][5] = q_Ea;
+		b7_fo[k_i][10] = q_iB5;
+		b7_fo[k_i][11] = q_iF1;
+		b7_fo[k_i][12] = q_iF2;
+		b7_fo[k_i][13] = q_iM1;
+		b7_fo[k_i][14] = q_iM2;
+		b7_fo[k_i][15] = q_iM3;
+		b7_fo[k_i][16] = q_iN1;
+		b7_fo[k_i][17] = q_iN2;
+		b7_fo[k_i][18] = q_iN3;
+		b7_fo[k_i][19] = q_iC5;
+		b7_fo[k_i][20] = q_iP5;
+		b7_fo[k_i][21] = q_iE5;
+		b7_fo[k_i][22] = q_iB7;
+
+		// the figuring's share: slots 1 to 5 and 10 to 22 are the surface's own sphere PLUS
+		// its figuring; these separate the second part out again. No figuring term in Pi.
+		b7_fo[k_i][41] = q_aBa;
+		b7_fo[k_i][42] = q_aFa;
+		b7_fo[k_i][43] = q_aCa;
+		b7_fo[k_i][44] = q_aEa;
+		b7_fo[k_i][45] = q_aB5;
+		b7_fo[k_i][46] = q_aF1;
+		b7_fo[k_i][47] = q_aF2;
+		b7_fo[k_i][48] = q_aM1;
+		b7_fo[k_i][49] = q_aM2;
+		b7_fo[k_i][50] = q_aM3;
+		b7_fo[k_i][51] = q_aN1;
+		b7_fo[k_i][52] = q_aN2;
+		b7_fo[k_i][53] = q_aN3;
+		b7_fo[k_i][54] = q_aC5;
+		b7_fo[k_i][55] = q_aP5;
+		b7_fo[k_i][56] = q_aE5;
+		b7_fo[k_i][57] = q_aB7;
+
+		// ---- the induced corrections, from what has accumulated ahead of this surface
+		q_z = 0.5*k_acb*k_acb*(q_Pz + 3.0*q_Ca)/k_lag;
+		q_z = q_z + 3.0*(k_acb5 - k_acb*k_aceb/k_lag)*q_Fa;
+		q_z = q_z + 3.0*(0.5*k_aceb*k_aceb/k_lag - k_ace5b)*q_Ba;
+		q_z = (q_z + k_acb*(q_iF1 + q_iF2) - 5.0*k_aceb*q_iB5)/(2.0*k_lag);
+		q_tB7 = q_iB7 + q_z;
+
+		q_tB5 = q_iB5 + 1.5*(k_acb*q_Fa - k_aceb*q_Ba)/k_lag;
+
+		q_z = k_acb*(q_Pz + 4.0*q_Ca) + (5.0*k_acf - 4.0*k_aceb)*q_Fa;
+		q_z = q_z - (2.0*k_acpi + 5.0*k_accb)*q_Ba;
+		q_tF1 = q_iF1 + q_z/(2.0*k_lag);
+
+		q_z = k_acb*(q_Pz + 2.0*q_Ca) + 2.0*(2.0*k_acf - k_aceb)*q_Fa;
+		q_z = q_z - (k_acpi + 4.0*k_accb)*q_Ba;
+		q_tF2 = q_iF2 + q_z/(2.0*k_lag);
+
+		q_z = k_acb*q_Ea + (4.0*k_acf - k_aceb)*q_Ca - k_acfb*q_Ba;
+		q_z = q_z + (k_acc - 4.0*k_accb - 2.0*k_acpi)*q_Fa;
+		q_tM1 = q_iM1 + q_z/k_lag;
+
+		q_z = k_acb*q_Ea + (2.0*k_acf - k_aceb)*(q_Pz + q_Ca);
+		q_z = q_z + (3.0*k_acc - 2.0*k_accb + k_acpi)*q_Fa - 3.0*k_acfb*q_Ba;
+		q_tM2 = q_iM2 + q_z/(2.0*k_lag);
+
+		q_z = k_acf*(q_Pz + 2.0*q_Ca) - k_acfb*q_Ba + (k_acc - 2.0*k_accb)*q_Fa;
+		q_tM3 = q_iM3 + 2.0*q_z/k_lag;
+
+		q_z = 3.0*k_acf*q_Ea - (k_acpi + k_accb)*(q_Pz + q_Ca) + 2.0*(k_acc - k_accb)*q_Ca;
+		q_z = q_z + (k_ace - 2.0*k_acfb)*q_Fa - k_acbb*q_Ba;
+		q_tN1 = q_iN1 + q_z/(2.0*k_lag);
+
+		q_z = 3.0*k_acf*q_Ea + (k_acpi - k_accb + 3.0*k_acc)*(q_Pz + 3.0*q_Ca);
+		q_z = q_z - k_acbb*q_Ba;
+		q_z = q_z - (k_acpi + k_acc)*q_Ca;
+		q_z = q_z + (k_ace - 8.0*k_acfb)*q_Fa;
+		q_tN2 = q_iN2 + q_z/k_lag;
+
+		q_z = k_acf*q_Ea + (3.0*k_acc + k_acpi - k_accb)*(q_Pz + q_Ca) - k_acbb*q_Ba;
+		q_z = q_z + (k_acpi + k_acc)*q_Ca + (k_ace - 4.0*k_acfb)*q_Fa;
+		q_tN3 = q_iN3 + q_z/(2.0*k_lag);
+
+		q_z = (4.0*k_acc + k_acpi)*q_Ea - k_acfb*q_Pz + 2.0*(k_ace - 2.0*k_acfb)*q_Ca;
+		q_z = q_z - 2.0*k_acbb*q_Fa;
+		q_tC5 = q_iC5 + q_z/(4.0*k_lag);
+
+		q_z = (k_acpi - 2.0*k_acc)*q_Ea + (4.0*k_ace - k_acfb)*q_Pz;
+		q_z = q_z - 2.0*k_acbb*q_Fa;
+		q_z = q_z + 2.0*(k_ace + k_acfb)*q_Ca;
+		q_tP5 = q_iP5 + q_z/(4.0*k_lag);
+
+		q_tE5 = q_iE5 + (3.0*k_ace*q_Ea - k_acbb*(q_Pz + 3.0*q_Ca))/(2.0*k_lag);
+		q_tE5b = q_iE5b + (k_acb*(q_Pz + 3.0*q_Cb) - 3.0*k_aceb*q_Eb)/(2.0*k_lag);
+
+		b7_fo[k_i][30] = q_tB5;
+		b7_fo[k_i][31] = q_tF1;
+		b7_fo[k_i][32] = q_tF2;
+		b7_fo[k_i][33] = q_tM1;
+		b7_fo[k_i][34] = q_tM2;
+		b7_fo[k_i][35] = q_tM3;
+		b7_fo[k_i][36] = q_tN1;
+		b7_fo[k_i][37] = q_tN2;
+		b7_fo[k_i][38] = q_tN3;
+		b7_fo[k_i][39] = q_tC5;
+		b7_fo[k_i][40] = q_tP5;
+		b7_fo[k_i][23] = q_tE5;
+		b7_fo[k_i][24] = q_tB7;
+
+		k_acb = k_acb + q_Ba;
+		k_acf = k_acf + q_Fa;
+		k_acc = k_acc + q_Ca;
+		k_ace = k_ace + q_Ea;
+		k_acpi = k_acpi + q_Pz;
+		k_acbb = k_acbb + q_Bb;
+		k_acfb = k_acfb + q_Fb;
+		k_accb = k_accb + q_Cb;
+		k_aceb = k_aceb + q_Eb;
+		k_acb5 = k_acb5 + q_tB5;
+		k_ace5b = k_ace5b + q_tE5b;
+	}
+
+	// ---- system totals
+	k_sumb = 0.0; k_sumf = 0.0; k_sumc = 0.0; k_sump = 0.0; k_sume = 0.0;
+	k_sB5 = 0.0; k_sF1 = 0.0; k_sF2 = 0.0; k_sM1 = 0.0; k_sM2 = 0.0; k_sM3 = 0.0;
+	k_sN1 = 0.0; k_sN2 = 0.0; k_sN3 = 0.0; k_sC5 = 0.0; k_sP5 = 0.0; k_sE5 = 0.0; k_sB7 = 0.0;
+	for (k_i = 1; k_i <= b7_nsm; k_i++)
+	{
+		k_sumb = k_sumb + b7_fo[k_i][1];
+		k_sumf = k_sumf + b7_fo[k_i][2];
+		k_sumc = k_sumc + b7_fo[k_i][3];
+		k_sump = k_sump + b7_fo[k_i][4];
+		k_sume = k_sume + b7_fo[k_i][5];
+		k_sB5 = k_sB5 + b7_fo[k_i][30];
+		k_sF1 = k_sF1 + b7_fo[k_i][31];
+		k_sF2 = k_sF2 + b7_fo[k_i][32];
+		k_sM1 = k_sM1 + b7_fo[k_i][33];
+		k_sM2 = k_sM2 + b7_fo[k_i][34];
+		k_sM3 = k_sM3 + b7_fo[k_i][35];
+		k_sN1 = k_sN1 + b7_fo[k_i][36];
+		k_sN2 = k_sN2 + b7_fo[k_i][37];
+		k_sN3 = k_sN3 + b7_fo[k_i][38];
+		k_sC5 = k_sC5 + b7_fo[k_i][39];
+		k_sP5 = k_sP5 + b7_fo[k_i][40];
+		k_sE5 = k_sE5 + b7_fo[k_i][23];
+		k_sB7 = k_sB7 + b7_fo[k_i][24];
+	}
+
+	sprintf(b7_ln, "Third order, per surface, unconverted - multiply by the F/number for a");
+	b7_out();
+	sprintf(b7_ln, "transverse aberration in lens units, which is done for the totals.");
+	b7_out();
+	sprintf(b7_ln, " ");
+	b7_out();
+	sprintf(b7_ln, " Surf              B              F              C             Pi              E");
+	b7_out();
+	for (k_i = 1; k_i <= b7_nsm; k_i++)
+	{
+		sprintf(b7_ln, "%5d%15.6e%15.6e%15.6e%15.6e%15.6e", k_i, b7_fo[k_i][1], b7_fo[k_i][2], b7_fo[k_i][3], b7_fo[k_i][4], b7_fo[k_i][5]);
+		b7_out();
+	}
+	sprintf(b7_ln, "  SUM%15.6e%15.6e%15.6e%15.6e%15.6e", k_sumb, k_sumf, k_sumc, k_sump, k_sume);
+	b7_out();
+	sprintf(b7_ln, " ");
+	b7_out();
+
+	sprintf(b7_ln, "System totals, transverse measure");
+	b7_out();
+	sprintf(b7_ln, "   B  %15.6e   F  %15.6e   C  %15.6e", k_sumb*k_fnum, k_sumf*k_fnum, k_sumc*k_fnum);
+	b7_out();
+	sprintf(b7_ln, "   Pi %15.6e   E  %15.6e", k_sump*k_fnum, k_sume*k_fnum);
+	b7_out();
+	sprintf(b7_ln, "   B5 %15.6e   F1 %15.6e   F2 %15.6e", k_sB5*k_fnum, k_sF1*k_fnum, k_sF2*k_fnum);
+	b7_out();
+	sprintf(b7_ln, "   M1 %15.6e   M2 %15.6e   M3 %15.6e", k_sM1*k_fnum, k_sM2*k_fnum, k_sM3*k_fnum);
+	b7_out();
+	sprintf(b7_ln, "   N1 %15.6e   N2 %15.6e   N3 %15.6e", k_sN1*k_fnum, k_sN2*k_fnum, k_sN3*k_fnum);
+	b7_out();
+	sprintf(b7_ln, "   C5 %15.6e   Pi5%15.6e   E5 %15.6e", k_sC5*k_fnum, k_sP5*k_fnum, k_sE5*k_fnum);
+	b7_out();
+	sprintf(b7_ln, "   B7 %15.6e", k_sB7*k_fnum);
+	b7_out();
+	sprintf(b7_ln, " ");
+	b7_out();
+
+	if (k_srfarg == 1)
+	{
+		sprintf(b7_ln, "===============================================================================");
+		b7_out();
+		sprintf(b7_ln, "THIRD AND FIFTH ORDER, SURFACE BY SURFACE - intrinsic, figuring, induced.");
+		b7_out();
+		sprintf(b7_ln, "Transverse measure. Each column adds down to the system total printed above.");
+		b7_out();
+		sprintf(b7_ln, "===============================================================================");
+		b7_out();
+
+		for (k_i = 1; k_i <= b7_nsm; k_i++)
+		{
+			sprintf(b7_ln, " ");
+			b7_out();
+			if (b7_vfm[k_i][6] == 1.0)
+				sprintf(b7_ln, "Surface %d   (figured)", k_i);
+			else
+				sprintf(b7_ln, "Surface %d   (spherical)", k_i);
+			b7_out();
+
+			sprintf(b7_ln, "                          B              F              C             Pi              E");
+			b7_out();
+			sprintf(b7_ln, "   intrinsic  %15.6e%15.6e%15.6e%15.6e%15.6e",
+				(b7_fo[k_i][1] - b7_fo[k_i][41])*k_fnum, (b7_fo[k_i][2] - b7_fo[k_i][42])*k_fnum,
+				(b7_fo[k_i][3] - b7_fo[k_i][43])*k_fnum, b7_fo[k_i][4]*k_fnum, (b7_fo[k_i][5] - b7_fo[k_i][44])*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   figuring   %15.6e%15.6e%15.6e%15.6e%15.6e",
+				b7_fo[k_i][41]*k_fnum, b7_fo[k_i][42]*k_fnum, b7_fo[k_i][43]*k_fnum, 0.0, b7_fo[k_i][44]*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   TOTAL      %15.6e%15.6e%15.6e%15.6e%15.6e",
+				b7_fo[k_i][1]*k_fnum, b7_fo[k_i][2]*k_fnum, b7_fo[k_i][3]*k_fnum, b7_fo[k_i][4]*k_fnum, b7_fo[k_i][5]*k_fnum);
+			b7_out();
+
+			sprintf(b7_ln, "                         B5             F1             F2             M1             M2");
+			b7_out();
+			sprintf(b7_ln, "   intrinsic  %15.6e%15.6e%15.6e%15.6e%15.6e",
+				(b7_fo[k_i][10] - b7_fo[k_i][45])*k_fnum, (b7_fo[k_i][11] - b7_fo[k_i][46])*k_fnum,
+				(b7_fo[k_i][12] - b7_fo[k_i][47])*k_fnum, (b7_fo[k_i][13] - b7_fo[k_i][48])*k_fnum,
+				(b7_fo[k_i][14] - b7_fo[k_i][49])*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   figuring   %15.6e%15.6e%15.6e%15.6e%15.6e",
+				b7_fo[k_i][45]*k_fnum, b7_fo[k_i][46]*k_fnum, b7_fo[k_i][47]*k_fnum, b7_fo[k_i][48]*k_fnum, b7_fo[k_i][49]*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   induced    %15.6e%15.6e%15.6e%15.6e%15.6e",
+				(b7_fo[k_i][30] - b7_fo[k_i][10])*k_fnum, (b7_fo[k_i][31] - b7_fo[k_i][11])*k_fnum,
+				(b7_fo[k_i][32] - b7_fo[k_i][12])*k_fnum, (b7_fo[k_i][33] - b7_fo[k_i][13])*k_fnum,
+				(b7_fo[k_i][34] - b7_fo[k_i][14])*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   TOTAL      %15.6e%15.6e%15.6e%15.6e%15.6e",
+				b7_fo[k_i][30]*k_fnum, b7_fo[k_i][31]*k_fnum, b7_fo[k_i][32]*k_fnum, b7_fo[k_i][33]*k_fnum, b7_fo[k_i][34]*k_fnum);
+			b7_out();
+
+			sprintf(b7_ln, "                         M3             N1             N2             N3             C5");
+			b7_out();
+			sprintf(b7_ln, "   intrinsic  %15.6e%15.6e%15.6e%15.6e%15.6e",
+				(b7_fo[k_i][15] - b7_fo[k_i][50])*k_fnum, (b7_fo[k_i][16] - b7_fo[k_i][51])*k_fnum,
+				(b7_fo[k_i][17] - b7_fo[k_i][52])*k_fnum, (b7_fo[k_i][18] - b7_fo[k_i][53])*k_fnum,
+				(b7_fo[k_i][19] - b7_fo[k_i][54])*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   figuring   %15.6e%15.6e%15.6e%15.6e%15.6e",
+				b7_fo[k_i][50]*k_fnum, b7_fo[k_i][51]*k_fnum, b7_fo[k_i][52]*k_fnum, b7_fo[k_i][53]*k_fnum, b7_fo[k_i][54]*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   induced    %15.6e%15.6e%15.6e%15.6e%15.6e",
+				(b7_fo[k_i][35] - b7_fo[k_i][15])*k_fnum, (b7_fo[k_i][36] - b7_fo[k_i][16])*k_fnum,
+				(b7_fo[k_i][37] - b7_fo[k_i][17])*k_fnum, (b7_fo[k_i][38] - b7_fo[k_i][18])*k_fnum,
+				(b7_fo[k_i][39] - b7_fo[k_i][19])*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   TOTAL      %15.6e%15.6e%15.6e%15.6e%15.6e",
+				b7_fo[k_i][35]*k_fnum, b7_fo[k_i][36]*k_fnum, b7_fo[k_i][37]*k_fnum, b7_fo[k_i][38]*k_fnum, b7_fo[k_i][39]*k_fnum);
+			b7_out();
+
+			sprintf(b7_ln, "                        Pi5             E5             B7");
+			b7_out();
+			sprintf(b7_ln, "   intrinsic  %15.6e%15.6e%15.6e",
+				(b7_fo[k_i][20] - b7_fo[k_i][55])*k_fnum, (b7_fo[k_i][21] - b7_fo[k_i][56])*k_fnum,
+				(b7_fo[k_i][22] - b7_fo[k_i][57])*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   figuring   %15.6e%15.6e%15.6e",
+				b7_fo[k_i][55]*k_fnum, b7_fo[k_i][56]*k_fnum, b7_fo[k_i][57]*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   induced    %15.6e%15.6e%15.6e",
+				(b7_fo[k_i][40] - b7_fo[k_i][20])*k_fnum, (b7_fo[k_i][23] - b7_fo[k_i][21])*k_fnum,
+				(b7_fo[k_i][24] - b7_fo[k_i][22])*k_fnum);
+			b7_out();
+			sprintf(b7_ln, "   TOTAL      %15.6e%15.6e%15.6e",
+				b7_fo[k_i][40]*k_fnum, b7_fo[k_i][23]*k_fnum, b7_fo[k_i][24]*k_fnum);
+			b7_out();
+		}
+
+		// one number per surface: the induced share of the fifth-order magnitude it
+		// carries, summed over the coefficients so that no one of them decides it. A ratio
+		// of sums of magnitudes, deliberately: two induced terms of opposite sign are still
+		// two induced terms.
+		sprintf(b7_ln, " ");
+		b7_out();
+		sprintf(b7_ln, "Induced share of the fifth order carried by each surface.");
+		b7_out();
+		sprintf(b7_ln, " ");
+		b7_out();
+		sprintf(b7_ln, " Surf    induced/total   what it means");
+		b7_out();
+		for (k_i = 1; k_i <= b7_nsm; k_i++)
+		{
+			k_uin = 0.0;
+			k_utt = 0.0;
+			for (k_uj = 10; k_uj <= 22; k_uj++)
+			{
+				k_umt = b7_fo[k_i][k_uj + 20];
+				if (k_uj == 21)
+					k_umt = b7_fo[k_i][23];
+				if (k_uj == 22)
+					k_umt = b7_fo[k_i][24];
+				k_uin = k_uin + fabs(k_umt - b7_fo[k_i][k_uj]);
+				k_utt = k_utt + fabs(k_umt);
+			}
+			k_ufr = 0.0;
+			if (k_utt > 0.0)
+				k_ufr = k_uin/k_utt;
+			strcpy(k_unote, "mixed");
+			if (k_ufr < 0.1)
+				strcpy(k_unote, "its own doing - the fault, if there is one, is here");
+			if (k_ufr > 0.9)
+				strcpy(k_unote, "mostly induced - look upstream");
+			if (k_ufr > 1.1)
+				strcpy(k_unote, "induced exceeds the total - the two are cancelling here");
+			sprintf(b7_ln, "%5d%16.4f   %s", k_i, k_ufr, k_unote);
+			b7_out();
+		}
+		sprintf(b7_ln, " ");
+		b7_out();
+	}
+
+	return (0);
+}
+
+cmd
+buch7_asph(int b7_srfarg, int b7_wavarg, int b7_filearg)
+{
+	b7_wf = 0;
+	if (b7_filearg)
+	{
+		b7_fh = fopen(B7_REPORT, "wt");
+		if (b7_fh > 0)
+			b7_wf = 1;
+		else
+			printf("buch7_asph: cannot write %s; carrying on without the report file.\n", B7_REPORT);
+	}
+	b7_run(b7_srfarg, b7_wavarg);
+	if (b7_wf)
+	{
+		fclose(b7_fh);
+		b7_wf = 0;
+		printf("Report written to %s\n", B7_REPORT);
+	}
+}

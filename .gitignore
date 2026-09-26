@@ -24,3 +24,4 @@ logs/
 # The embedded Python that tools/setup-python.ps1 installs Optiland into.
 python-embed/
 __pycache__/
+ccl/buch7_asph.txt
