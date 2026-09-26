@@ -12,7 +12,7 @@ and between what limits, it moves them to minimize the merit function you wrote,
 goes back into the file it came from.
 
 **To build it and use it, start with the [user guide](docs/user-guide.md)**: installing, a first
-run, reading the report, optimising, the MCP server and the OpticStudio macros.
+run, reading the report, optimising, the MCP server, the OpticStudio macros and the OSLO version.
 
 **The merit function can be made of named aberrations rather than of rays.** Any of the
 thirty-seven coefficients is an operand, written as the name the report prints it under:
@@ -419,6 +419,21 @@ files**: `AberrationCalculator.sln` is .NET 8, and `ForbesAberrationCalculatorZO
 is .NET Framework, which is what the ZOS-API requires — so `dotnet build` and
 `dotnet test` need the solution named.
 
+## For OSLO users
+
+`ccl/buch7_asph.ccl` is `BUCH7_ASPH.ZPL` for OSLO: the same third-, fifth- and seventh-order
+coefficients, per surface, computed inside OSLO on OSLO's own lens data. Each surface's third
+order, fifth order and B7 are split into intrinsic, figuring and induced, and the twenty
+seventh-order tau are given surface by surface. It takes spheres, conics and OSLO's standard
+asphere (AD, AE, AF), mirrors, either conjugate, and up to 16 surfaces; OSLO EDU is enough.
+
+Copy it into OSLO's `private\ccl` folder, compile it (**Tools > Compile CCL**) and type
+`buch7_asph` with a lens open. Everything past the lens data is translated from the ZPL macro
+statement for statement by `tools/zpl2ccl`, so the arithmetic is the macro's own. On a figured
+triplet, a parabolic mirror and a double Gauss of spheres it agrees with this program to the last
+printed digit, per surface and in total. See [ccl/README.md](ccl/README.md) and section 11 of
+the [user guide](docs/user-guide.md).
+
 ## Formats it reads and writes
 
 | Program | Extension |
@@ -516,9 +531,11 @@ src/AberrationCalculator.Optiland  the same lens inside Optiland, through embedd
 catalogs/Glass                  bundled AGF glass catalogs
 docs/                           what is established and how - see the table below
 macros/                         ZPL macros that run inside OpticStudio, and their README
+ccl/                            buch7_asph.ccl, BUCH7_ASPH for OSLO, its README and reference output
 tests/                          unit tests
 tools/smoke                     command-line harness used during development
 tools/setup-python.ps1          installs the embedded Python and optiland, for the cross-check
+tools/zpl2ccl                   translates BUCH7_ASPH.ZPL into the CCL, and checks a run of it
 ```
 
 ### The documents
@@ -527,7 +544,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 
 | | what it answers |
 |---|---|
-| [docs/user-guide.md](docs/user-guide.md) | **How to build it, install it and use it**: a first run, reading the report, the other reports, optimising and basin hopping, the MCP server, the OpticStudio macros, and what to do when something goes wrong. |
+| [docs/user-guide.md](docs/user-guide.md) | **How to build it, install it and use it**: a first run, reading the report, the other reports, optimising and basin hopping, the MCP server, the OpticStudio macros, the OSLO version, and what to do when something goes wrong. |
 | [docs/verification.md](docs/verification.md) | **What is actually established here, by what evidence, and what is not.** The order of evidence, the standing results, and the aspheric arrangement with everything it rests on. Read this one first if you are deciding whether to trust any number this program prints. |
 | [docs/references.md](docs/references.md) | Every source the method comes from, which of them have been read, and where each piece of the implementation came from. |
 | [docs/forbes.md](docs/forbes.md) | The second, independent route to the tertiary coefficients - a Lagrangian series trace - and why a program that already had one needed another. |
@@ -540,6 +557,7 @@ Each answers one question, and they are meant to be read on their own rather tha
 | [docs/optiland.md](docs/optiland.md) | The Optiland cross-check: Seidel sums surface by surface, the fifth order from Optiland's own rays, three defects and an unstated sign convention it found in Optiland 0.6.2, and the defects here that came to light alongside it, all fixed. |
 | [docs/mcp.md](docs/mcp.md) | The MCP server: what each tool exposes and what it returns. |
 | [macros/README.md](macros/README.md) | The ZPL macros - what each computes, what it refuses, and the ZPL traps they had to respect. |
+| [ccl/README.md](ccl/README.md) | `buch7_asph.ccl` in OSLO: installing and running it, its limits, how it is built from the ZPL macro, and how it was checked. |
 
 The method is not original work: it is Buchdahl's aberration coefficients in Rimmer's
 notation, Robb's analytic integration of them into a spot size, and Rosete-Aguilar and
