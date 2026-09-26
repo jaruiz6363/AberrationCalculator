@@ -398,8 +398,20 @@ Each run is also added to the end of a report file, `ccl\buch7_asph.txt` in this
 
 It takes at most 16 surfaces between object and image. On the test lenses it agrees with this
 program to the last printed digit, so a lens opened in both gives the same coefficients.
-[ccl/README.md](../ccl/README.md) has the details: the limits, how the file is built from the ZPL
-macro, and how it was checked.
+
+For a lens of spheres the folder also holds `buch7.ccl`, the OSLO version of `BUCH7.ZPL`. Install
+it the same way and type `buch7`, or `buch7 1` to add the ninth-order spherical aberration. On
+spheres it gives the same coefficients as `buch7_asph`, and adds:
+
+- the twenty seventh-order tau split into intrinsic and induced, per surface and for the system;
+- the ninth-order spherical aberration per surface, intrinsic and total;
+- Buchdahl's Table I entry by entry.
+
+It declines a lens with a conic or an aspheric term; use `buch7_asph` for those. Its report goes to
+`ccl\buch7.txt`.
+
+[ccl/README.md](../ccl/README.md) has the details for both files: the limits, how they are built
+from the ZPL macros, and how they were checked.
 
 ## 12. Checking against Optiland (optional)
 
