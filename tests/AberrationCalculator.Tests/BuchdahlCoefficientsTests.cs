@@ -423,4 +423,67 @@ public class BuchdahlCoefficientsTests
             () => BuchdahlCoefficients.Compute(sys, ParaxialTrace.Trace(sys, n, 0.0)));
         Assert.Contains("no aperture", ex.Message);
     }
+
+    /// <summary>
+    /// A lens with a field whose stop is imaged at infinity in object space. The chief ray used
+    /// to be aimed at an entrance pupil found as bStop/aStop, which such a lens does not have;
+    /// with aStop zero it fell back to a pupil at surface 1, and every field term was built on a
+    /// chief ray through the wrong point. Now it is found as the ray through the stop's centre,
+    /// parallel to the axis in object space - and the coefficients join up with those of the
+    /// same lens with its stop moved a micrometre, where the old aim was fine.
+    /// </summary>
+    [Fact]
+    public void AStopImagedAtInfinityGetsAChiefRayParallelToTheAxis()
+    {
+        var n = new[] { 1.0, 1.5, 1.0, 1.0, 1.0 };
+        var bare = new OpticalSystem { Aperture = new Aperture(ApertureType.EPD, 10.0) };
+        bare.Wavelengths.Add(new Wavelength(0.5875618, 1.0, true));
+        bare.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+        bare.Surfaces.Add(new Surface { Index = 1, Curvature = 0.02, Thickness = 6.0, Material = "GLASS", IsStop = true });
+        bare.Surfaces.Add(new Surface { Index = 2, Curvature = -0.005, Thickness = 0.0 });
+        bare.Surfaces.Add(new Surface { Index = 3, Thickness = 0.0 });
+        double bfl = ParaxialTrace.Trace(bare, new[] { 1.0, 1.5, 1.0, 1.0 }, 0.0).Bfl;
+
+        OpticalSystem Lens(double stopDistance, FieldType fieldType)
+        {
+            var sys = new OpticalSystem { Aperture = new Aperture(ApertureType.ObjectSpaceNA, 0.05), FieldType = fieldType };
+            sys.Wavelengths.Add(new Wavelength(0.5875618, 1.0, true));
+            sys.Fields.Add(new Field(0.0));
+            sys.Fields.Add(new Field(5.0));
+            sys.Surfaces.Add(new Surface { Index = 0, Thickness = 150.0 });
+            sys.Surfaces.Add(new Surface { Index = 1, Curvature = 0.02, Thickness = 6.0, Material = "GLASS" });
+            sys.Surfaces.Add(new Surface { Index = 2, Curvature = -0.005, Thickness = stopDistance });
+            sys.Surfaces.Add(new Surface { Index = 3, Thickness = 170.0 - stopDistance, IsStop = true });
+            sys.Surfaces.Add(new Surface { Index = 4, Thickness = 0.0 });
+            return sys;
+        }
+
+        var exact = ParaxialTrace.Trace(Lens(bfl, FieldType.ObjectHeight), n, 5.0);
+        var near = ParaxialTrace.Trace(Lens(bfl + 1e-3, FieldType.ObjectHeight), n, 5.0);
+
+        Assert.True(Math.Abs(exact.Ubar[0]) < 1e-12, $"chief ray slope in object space {exact.Ubar[0]:G6}, should be parallel");
+        Assert.True(Math.Abs(exact.Ybar[3]) < 1e-9, $"chief ray height at the stop {exact.Ybar[3]:G6}, should be zero");
+        Assert.Equal(5.0, exact.Ybar[1], 9);
+
+        // The stop moved off the focal point by 1 and then 0.1 micrometre: the coefficients must
+        // close on the telecentric ones, the gap shrinking with the distance. (A fixed tolerance
+        // would not do: distortion moves by 1E-4 of itself for the first micrometre.)
+        var a = BuchdahlCoefficients.Compute(Lens(bfl, FieldType.ObjectHeight), exact).Totals;
+        var b1 = BuchdahlCoefficients.Compute(Lens(bfl + 1e-3, FieldType.ObjectHeight), near).Totals;
+        var b2 = BuchdahlCoefficients.Compute(Lens(bfl + 1e-4, FieldType.ObjectHeight),
+                                              ParaxialTrace.Trace(Lens(bfl + 1e-4, FieldType.ObjectHeight), n, 5.0)).Totals;
+        foreach (string c in new[] { "B", "F", "C", "Pi", "E", "B5", "F1", "M1", "N1", "E5", "B7" })
+        {
+            double gap1 = Math.Abs(a[c] - b1[c]), gap2 = Math.Abs(a[c] - b2[c]);
+            Assert.True(gap1 <= 1e-3 * Math.Abs(a[c]) + 1e-15,
+                $"{c}: {a[c]:R} with the stop at the focal point, {b1[c]:R} a micrometre past it");
+            Assert.True(gap2 <= 0.2 * gap1 + 1e-12 * Math.Abs(a[c]) + 1e-15,
+                $"{c}: the gap should shrink with the distance - {gap1:G3} at 1 um, {gap2:G3} at 0.1 um");
+        }
+
+        // An angle cannot be a field there: no chief ray leaves at one and passes the stop.
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => ParaxialTrace.Trace(Lens(bfl, FieldType.ObjectAngle), n, 2.0));
+        Assert.Contains("imaged at infinity", ex.Message);
+    }
 }

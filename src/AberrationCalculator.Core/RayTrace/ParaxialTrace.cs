@@ -203,18 +203,32 @@ public static class ParaxialTrace
             yMarg = uMarg * t0;
         }
 
-        // Chief ray: from the edge of the field through the centre of the entrance pupil.
+        // Chief ray: from the edge of the field through the centre of the stop. A ray leaving
+        // surface 1 at height y1 with object-space slope u0 is y1*A + u0*B, so it crosses the
+        // axis at the stop when y1*aStop + u0*bStop = 0. Solved in that form, with no division
+        // by aStop, it holds when the stop is imaged at infinity in object space (aStop = 0):
+        // the chief ray is then parallel to the axis there. It used to be aimed at an entrance
+        // pupil found as bStop/aStop, which such a lens does not have, and fell back to one at
+        // surface 1 - a chief ray through the wrong point, and every field term built on it.
+        bool pupilAtInfinity = SMath.Abs(aStop) <= 1e-12 * SMath.Abs(bStop);
         Scalar yChief, uChief;
         if (!infinite && system.FieldType == FieldType.ObjectHeight)
         {
-            Scalar objectToPupil = t0 + entrancePupil;
-            uChief = SMath.Abs(objectToPupil) > 1e-15 ? -field / objectToPupil : 0.0;
+            Scalar denominator = t0 * aStop + bStop;
+            uChief = SMath.Abs(denominator) > 1e-15 * (SMath.Abs(t0 * aStop) + SMath.Abs(bStop))
+                ? -field * aStop / denominator
+                : 0.0;
             yChief = field + uChief * t0;
         }
         else
         {
             uChief = SMath.Tan(field * SMath.PI / 180.0);
-            yChief = -uChief * entrancePupil;
+            if (pupilAtInfinity && uChief != 0.0)
+                throw new InvalidOperationException(
+                    "The stop is imaged at infinity in object space, so every chief ray is parallel "
+                    + "to the axis there and none leaves at a field angle. Give the field as an object "
+                    + "height, or move the stop.");
+            yChief = pupilAtInfinity ? 0.0 : -uChief * bStop / aStop;
         }
 
         var marginal = Propagate(system, ns, yMarg, uMarg, count - 1);
@@ -245,7 +259,9 @@ public static class ParaxialTrace
         // Deriving it from the traced chief ray would lose it on a design whose only field
         // is on axis, where that ray is identically zero - so it comes from a pupil ray of
         // unit slope aimed through the stop, which exists whatever the fields are.
-        var pupilRay = Propagate(system, ns, -entrancePupil, 1.0, last);
+        // Through the stop's centre by the same combination as the chief ray, so that it exists
+        // when the stop is imaged at infinity in object space too.
+        var pupilRay = Propagate(system, ns, bStop, -aStop, last);
         Scalar exitPupil = SMath.Abs(pupilRay.U[last]) > 1e-15
             ? -pupilRay.Y[last] / pupilRay.U[last]
             : Scalar.PositiveInfinity;
