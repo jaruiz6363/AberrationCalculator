@@ -331,6 +331,10 @@ public static partial class TertiaryCoefficients
         if (paraxial == null) throw new ArgumentNullException(nameof(paraxial));
         if (coefficients == null) throw new ArgumentNullException(nameof(coefficients));
 
+        // With no field, tau2..tau20 all multiply a power of it and are exactly zero, which is
+        // what BuchdahlCoefficients already set. (Run anyway they came out as -0.)
+        if (coefficients.OnAxisOnly) return;
+
         int stop = system.StopSurfaceIndex;
         if (stop < 0 || stop >= system.Surfaces.Count) return;
         if (SMath.Abs(coefficients.FNumber) < 1e-12) return;

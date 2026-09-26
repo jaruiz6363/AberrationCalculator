@@ -318,4 +318,109 @@ public class BuchdahlCoefficientsTests
         Assert.True(Math.Abs(plain - bent) > 1e-6,
             $"an r^2 term must change the power: {plain:F6} against {bent:F6}");
     }
+
+    /// <summary>
+    /// A lens with no field: the chief ray and the Lagrange invariant are zero, and the induced
+    /// fifth- and seventh-order terms, which divide by the invariant, were 0/0 - NaN in the B5
+    /// and B7 totals (an on-axis Ross doublet exported to OSLO). Spherical aberration does not
+    /// depend on the field, so every design must give the same B, B5 and B7 with its field
+    /// removed as with it; and with no field, every field-dependent coefficient is exactly zero.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Designs.All), MemberType = typeof(Designs))]
+    public void WithNoFieldTheSphericalSeriesIsUnchangedAndTheRestIsZero(string name, string folder)
+    {
+        if (Designs.IsNearSingular(name)) return;
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = LensFile.Read(Designs.PathOf(name, folder), catalog);
+        int pw = sys.PrimaryWavelengthIndex < 0 ? 0 : sys.PrimaryWavelengthIndex;
+        var n = IndexResolver.Build(sys, catalog, sys.Wavelengths[pw].Value);
+        double field = 0;
+        foreach (var f in sys.Fields) if (Math.Abs(f.Y) > Math.Abs(field)) field = f.Y;
+        if (field == 0) return;
+
+        var withField = BuchdahlCoefficients.Compute(sys, ParaxialTrace.Trace(sys, n, field)).Totals;
+        var none = BuchdahlCoefficients.Compute(sys, ParaxialTrace.Trace(sys, n, 0.0));
+
+        Assert.True(none.OnAxisOnly);
+        foreach (string c in new[] { "B", "B5", "B7" })
+        {
+            double a = withField[c], b = none.Totals[c];
+            Assert.False(double.IsNaN(b), $"{name}: {c} is NaN with no field");
+            Assert.True(Math.Abs(a - b) <= 1e-9 * Math.Max(Math.Abs(a), 1e-12),
+                $"{name}: {c} is {a:R} with the field and {b:R} without it");
+        }
+        foreach (string c in BuchdahlTerms.Names)
+            if (c != "B" && c != "B5" && c != "B7")
+                Assert.Equal(0.0, (double)none.Totals[c]);
+    }
+
+    /// <summary>
+    /// The chief ray of a lens with no field is the ray that crosses the axis at the stop, built
+    /// from the two basis rays rather than aimed from a field angle, so it exists even where the
+    /// stop is imaged at infinity in object space and the chief ray is parallel to the axis. Put
+    /// the stop at a singlet's rear focal point and the spherical series must not move, because
+    /// spherical aberration does not depend on where the stop is.
+    /// </summary>
+    [Fact]
+    public void WithNoFieldAStopImagedAtInfinityGivesTheSameSphericalSeries()
+    {
+        static OpticalSystem Singlet(double stopDistance)
+        {
+            var sys = new OpticalSystem { Aperture = new Aperture(ApertureType.ObjectSpaceNA, 0.05) };
+            sys.Wavelengths.Add(new Wavelength(0.5875618, 1.0, true));
+            sys.Fields.Add(new Field(0.0));
+            sys.Surfaces.Add(new Surface { Index = 0, Thickness = 150.0 });
+            sys.Surfaces.Add(new Surface { Index = 1, Curvature = 0.02, Thickness = 6.0, Material = "GLASS",
+                                           IsStop = stopDistance == 0, Type = SurfaceType.EvenAsphere });
+            sys.Surfaces[1].AsphericCoefficients[1] = -2e-6;
+            sys.Surfaces.Add(new Surface { Index = 2, Curvature = -0.005, Thickness = stopDistance == 0 ? 170.0 : stopDistance });
+            sys.Surfaces.Add(new Surface { Index = 3, Thickness = stopDistance == 0 ? 0.0 : 170.0 - stopDistance,
+                                           IsStop = stopDistance != 0 });
+            sys.Surfaces.Add(new Surface { Index = 4, Thickness = 0.0 });
+            return sys;
+        }
+
+        var n = new[] { 1.0, 1.5, 1.0, 1.0, 1.0 };
+        var onLens = Singlet(0);
+        // The rear focal point: where a ray arriving parallel to the axis crosses it, measured on
+        // the bare lens so that it is from the lens's back surface.
+        var bare = new OpticalSystem { Aperture = new Aperture(ApertureType.EPD, 10.0) };
+        bare.Wavelengths.Add(new Wavelength(0.5875618, 1.0, true));
+        bare.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+        bare.Surfaces.Add(new Surface { Index = 1, Curvature = 0.02, Thickness = 6.0, Material = "GLASS", IsStop = true });
+        bare.Surfaces.Add(new Surface { Index = 2, Curvature = -0.005, Thickness = 0.0 });
+        bare.Surfaces.Add(new Surface { Index = 3, Thickness = 0.0 });
+        double bfl = ParaxialTrace.Trace(bare, new[] { 1.0, 1.5, 1.0, 1.0 }, 0.0).Bfl;
+        var telecentric = Singlet(bfl);
+
+        var pl = ParaxialTrace.Trace(onLens, n, 0.0);
+        var pt = ParaxialTrace.Trace(telecentric, n, 0.0);
+        var chief = ParaxialTrace.UnitInvariantChiefRay(telecentric, n, pt.Y, pt.U);
+        Assert.NotNull(chief);
+        Assert.True(Math.Abs(chief!.Value.Ubar[0]) < 1e-12 * Math.Abs(chief.Value.Ybar[1]),
+            "with the stop at the rear focal point the chief ray is parallel to the axis in object space");
+        Assert.True(Math.Abs(chief.Value.Ybar[3]) < 1e-12 * Math.Abs(chief.Value.Ybar[1]), "and crosses it at the stop");
+
+        var a = BuchdahlCoefficients.Compute(onLens, pl).Totals;
+        var b = BuchdahlCoefficients.Compute(telecentric, pt).Totals;
+        foreach (string c in new[] { "B", "B5", "B7" })
+        {
+            Assert.False(double.IsNaN(b[c]), $"{c} is NaN");
+            Assert.True(Math.Abs(a[c] - b[c]) <= 1e-9 * Math.Abs(a[c]),
+                $"{c}: {a[c]:R} with the stop on the lens, {b[c]:R} at its focal point");
+        }
+    }
+
+    /// <summary>A lens with no field and no aperture has no invariant at all, and says so.</summary>
+    [Fact]
+    public void WithNoFieldAndNoApertureTheCoefficientsRefuseWithAReason()
+    {
+        var sys = OneAsphere(0.02, 0.0, 0.0);
+        sys.Aperture = new Aperture(ApertureType.EPD, 0.0);
+        var n = new[] { 1.0, 1.5, 1.0, 1.0 };
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => BuchdahlCoefficients.Compute(sys, ParaxialTrace.Trace(sys, n, 0.0)));
+        Assert.Contains("no aperture", ex.Message);
+    }
 }

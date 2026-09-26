@@ -1413,6 +1413,17 @@ bs_run(int n_q9arg, int n_wavarg)
 		sprintf(bs_ln, "Reflections            %d", n_nmir);
 		bs_out();
 	}
+	// A lens with no field: OSLO traces its chief ray at a slope of 1e-6 instead. B, B5 and
+	// B7 do not depend on the field and are right; everything else is for that made-up field.
+	if (fabs(n_uobj) < 1e-5)
+	{
+		sprintf(bs_ln, "WARNING: the field is OSLO's minimum (chief-ray slope %.1e), not a field of", n_uobj);
+		bs_out();
+		sprintf(bs_ln, "this lens. Only B, B5 and B7 mean anything; every field-dependent coefficient");
+		bs_out();
+		sprintf(bs_ln, "below is for that minimum field, and is zero for the lens itself.");
+		bs_out();
+	}
 	sprintf(bs_ln, " ");
 	bs_out();
 

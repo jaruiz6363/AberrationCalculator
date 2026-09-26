@@ -1265,6 +1265,11 @@ public sealed class ReportWriter
                         + "symmetric systems; a tilt or decentre is read but not applied.");
                 break;
             }
+        if (MaxField() == 0.0)
+            notes.Add("This design has no field, only an on-axis point. Only the spherical series "
+                    + "B, B5, B7 is non-zero; every field-dependent coefficient is exactly zero. "
+                    + "(OSLO, given no field, traces a chief ray of slope 1E-6 and prints small "
+                    + "field-dependent values for it; its B, B5, B7 agree with these.)");
         if (p.InvariantDrift > 1e-9)
             notes.Add($"Lagrange invariant drifts by {p.InvariantDrift:0.0E+00} - the paraxial trace "
                     + "is not self-consistent on this system.");

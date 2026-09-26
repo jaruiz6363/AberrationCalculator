@@ -37,6 +37,10 @@ public class ReportWriterTests : IDisposable
         z.AppendLine("WAVM 2 0.5876 1.0");
         z.AppendLine("WAVM 3 0.6563 1.0");
         z.AppendLine("PWAV 2");
+        // A field, or every field-dependent coefficient is zero and the sections that name them
+        // are empty. (Without one they used to come out NaN, and still had rows.)
+        z.AppendLine("FTYP 0 0 2");
+        z.AppendLine("YFLN 0 5");
         z.AppendLine("SURF 0");
         z.AppendLine("  TYPE STANDARD");
         z.AppendLine("  CURV 0");

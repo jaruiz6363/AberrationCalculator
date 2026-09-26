@@ -135,6 +135,12 @@ public sealed class BuchdahlResult
 
     /// <summary>The optical invariant used throughout.</summary>
     public Scalar Lagrange { get; init; }
+
+    /// <summary>
+    /// True for a lens with no field. Only the spherical series B, B5, B7 is then non-zero;
+    /// every field-dependent coefficient is exactly zero, set rather than computed.
+    /// </summary>
+    public bool OnAxisOnly { get; init; }
 }
 
 /// <summary>
@@ -190,6 +196,9 @@ public static class BuchdahlCoefficients
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (p == null) throw new ArgumentNullException(nameof(p));
+
+        if (ChiefRayIsZero(p))
+            return OnAxisOnly(system, p, ignoredR2Surfaces);
 
         int count = system.Surfaces.Count;
         int last = system.LastOpticalSurface();
@@ -571,6 +580,80 @@ public static class BuchdahlCoefficients
             FNumber = fnum,
             Lagrange = lagrange,
         };
+    }
+
+    private static bool ChiefRayIsZero(ParaxialResult p)
+    {
+        for (int i = 0; i < p.Ybar.Length; i++)
+            if (p.Ybar[i] != 0.0) return false;
+        for (int i = 0; i < p.Ubar.Length; i++)
+            if (p.Ubar[i] != 0.0) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// A lens with no field: the chief ray is zero everywhere, and so is the Lagrange invariant
+    /// the induced fifth- and seventh-order terms divide by. Evaluated as they stand those
+    /// terms are 0/0, and NaN spread into the B5 and B7 totals.
+    ///
+    /// <para>Both limits are exact and neither needs a field. Every field-dependent
+    /// coefficient is zero: there is no field for it to multiply. The spherical series B, B5,
+    /// B7 does not depend on the chief ray at all - in each induced term the chief ray enters
+    /// the numerator and the invariant to the same power, so its size cancels. So those three
+    /// are computed with the ray that crosses the axis at the stop, scaled to a Lagrange invariant
+    /// of one - a normalisation, not a field: no angle or height is invented - and everything
+    /// else is set to zero rather than evaluated.</para>
+    ///
+    /// <para>This is deliberately not OSLO's way. OSLO, given a field of zero, traces a chief ray
+    /// of slope 1e-6 instead, which gets the same B, B5, B7 but reports its field-dependent
+    /// coefficients at a field the lens does not have - numbers such as F = 4e-8 or
+    /// tau20 = -2e-43 that look like results and are not. Nothing small is traced here.</para>
+    /// </summary>
+    private static BuchdahlResult OnAxisOnly(OpticalSystem system, ParaxialResult p,
+                                             System.Collections.Generic.List<int>? ignoredR2Surfaces)
+    {
+        // The marginal ray stays the caller's; only the chief ray is supplied.
+        var chief = ParaxialTrace.UnitInvariantChiefRay(system, p.N, p.Y, p.U);
+        if (chief == null)
+            throw new InvalidOperationException(
+                "This lens has no field, and its marginal ray crosses the axis at the stop - it has "
+                + "no aperture - so there is no Lagrange invariant to form the fifth- and "
+                + "seventh-order coefficients with. Check the aperture.");
+        var withChief = new ParaxialResult
+        {
+            Y = p.Y, U = p.U, N = p.N,
+            Ybar = chief.Value.Ybar, Ubar = chief.Value.Ubar,
+            LagrangeInvariant = 1.0,
+        };
+        var r = Compute(system, withChief, ignoredR2Surfaces);
+
+        foreach (var t in r.Intrinsic) KeepSpherical(t);
+        foreach (var t in r.Aspheric) if (t != null) KeepSpherical(t);
+        foreach (var t in r.Induced) KeepSpherical(t);
+        foreach (var t in r.PerSurface) KeepSpherical(t);
+        KeepSpherical(r.Totals);
+
+        return new BuchdahlResult
+        {
+            Intrinsic = r.Intrinsic,
+            Aspheric = r.Aspheric,
+            Induced = r.Induced,
+            PerSurface = r.PerSurface,
+            Totals = r.Totals,
+            FNumber = r.FNumber,
+            Lagrange = p.LagrangeInvariant,
+            OnAxisOnly = true,
+        };
+    }
+
+    /// <summary>Zeroes every coefficient that multiplies a power of the field, and the chief-ray sums.</summary>
+    private static void KeepSpherical(BuchdahlTerms t)
+    {
+        t.F = 0.0; t.C = 0.0; t.Pi = 0.0; t.E = 0.0;
+        t.F1 = 0.0; t.F2 = 0.0; t.M1 = 0.0; t.M2 = 0.0; t.M3 = 0.0;
+        t.N1 = 0.0; t.N2 = 0.0; t.N3 = 0.0; t.C5 = 0.0; t.Pi5 = 0.0; t.E5 = 0.0;
+        for (int k = 2; k <= 20; k++) t.SetTau(k, 0.0);
+        t.E5b = 0.0; t.Bb = 0.0; t.Fb = 0.0; t.Cb = 0.0; t.Eb = 0.0;
     }
 
     private static Scalar Coef(Surface s, int index) =>

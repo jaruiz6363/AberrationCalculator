@@ -337,6 +337,61 @@ public static class ParaxialTrace
     }
 
     /// <summary>
+    /// A chief ray for a lens that has no field: the paraxial ray that crosses the axis at the
+    /// stop, scaled so that its Lagrange invariant with the given marginal ray is exactly one.
+    ///
+    /// <para>No field angle or object height is involved, so none is invented. The ray is the
+    /// combination of the two basis rays that is zero at the stop, which exists for every lens -
+    /// including one whose stop is imaged at infinity in object space, where the chief ray is
+    /// parallel to the axis and no entrance-pupil position could be used to aim it. Its scale is
+    /// a normalisation, the one the tertiary coefficients already use, not a field.</para>
+    ///
+    /// <para>Null when there is no such ray to be had: when the marginal ray itself crosses the
+    /// axis at the stop, which is a lens with no aperture, and the invariant is zero for every
+    /// ray.</para>
+    /// </summary>
+    /// <param name="n">Index after each surface, signed or not; it is signed here as in <see cref="Trace"/>.</param>
+    /// <param name="yMarginal">Marginal-ray heights, as <see cref="ParaxialResult.Y"/>.</param>
+    /// <param name="uMarginal">Marginal-ray slopes, as <see cref="ParaxialResult.U"/>.</param>
+    public static (Scalar[] Ybar, Scalar[] Ubar)? UnitInvariantChiefRay(
+        OpticalSystem system, Scalar[] n, Scalar[] yMarginal, Scalar[] uMarginal)
+    {
+        if (system == null) throw new ArgumentNullException(nameof(system));
+        int count = system.Surfaces.Count;
+        if (count < 2 || n.Length < count || yMarginal.Length < 2 || uMarginal.Length < 1) return null;
+
+        var ns = new Scalar[count];
+        Scalar sign = 1.0;
+        for (int i = 0; i < count; i++)
+        {
+            if (system.Surfaces[i].IsMirror) sign = -sign;
+            ns[i] = sign * SMath.Abs(n[i]);
+        }
+
+        int last = system.LastOpticalSurface();
+        int stop = system.StopSurfaceIndex;
+        if (stop < 1 || stop > last) stop = last;
+
+        // y1*A + u0*B is zero at the stop when (y1, u0) = (B's height there, -A's height there).
+        var basisA = Propagate(system, ns, 1.0, 0.0, last);
+        var basisB = Propagate(system, ns, 0.0, 1.0, last);
+        var ray = Propagate(system, ns, basisB.Y[stop], -basisA.Y[stop], count - 1);
+
+        Scalar h = ns[0] * (ray.U[0] * yMarginal[1] - uMarginal[0] * ray.Y[1]);
+        Scalar scale = SMath.Abs(ns[0]) * (SMath.Abs(ray.U[0] * yMarginal[1]) + SMath.Abs(uMarginal[0] * ray.Y[1]));
+        if (Scalar.IsNaN(h) || Scalar.IsInfinity(h) || !(SMath.Abs(h) > 1e-12 * scale)) return null;
+
+        var ybar = new Scalar[count];
+        var ubar = new Scalar[count];
+        for (int i = 0; i < count; i++)
+        {
+            ybar[i] = ray.Y[i] / h;
+            ubar[i] = ray.U[i] / h;
+        }
+        return (ybar, ubar);
+    }
+
+    /// <summary>
     /// Runs the paraxial recurrence from object space through surface
     /// <paramref name="through"/>, starting from a ray at height <paramref name="y1"/> on
     /// the first surface with object-space slope <paramref name="u0"/>.
