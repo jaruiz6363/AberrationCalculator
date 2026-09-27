@@ -542,14 +542,14 @@ namespace AberrationCalculator.Core.IO
         /// <summary>
         /// The model glass (nd, Vd) behind indices at the file's wavelengths: exact with the d, F and
         /// C lines among them, otherwise from a Cauchy fit n = A + B/λ²; a single index is taken as
-        /// nd with a Vd so large the index is the same at every wavelength.
+        /// nd with Vd 0, the model glass's own "no dispersion": the same index at every wavelength.
         /// </summary>
         private static (double nd, double vd) ModelFromIndices(List<double> wavelengthsUm, List<double> n)
         {
             const double dLine = 0.58756, fLine = 0.48613, cLine = 0.65627;
             int count = Math.Min(wavelengthsUm.Count, n.Count);
             if (count < 2)
-                return (n[0], 1e6);
+                return (n[0], 0.0);
             int Find(double target)
             {
                 for (int i = 0; i < count; i++)

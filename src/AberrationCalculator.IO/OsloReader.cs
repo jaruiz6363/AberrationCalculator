@@ -410,15 +410,17 @@ namespace AberrationCalculator.Core.IO
         /// <summary>
         /// The model glass (nd, Vd) behind OSLO's indices at the file's wavelengths. With the d, F
         /// and C lines among them it is exact; otherwise a Cauchy fit n = A + B/λ² through the
-        /// indices gives them. A single index carries no dispersion, and is taken as nd with a Vd
-        /// so large that the index is the same at every wavelength.
+        /// indices gives them. A single index carries no dispersion, and is taken as nd with Vd 0,
+        /// the model glass's own "no dispersion": the same index at every wavelength, exactly. (A Vd
+        /// of 1e6 was used, which still disperses: the index came back 1e-7 off at the lens's own
+        /// wavelength.)
         /// </summary>
         internal static (double nd, double vd) ModelFromIndices(List<double> wavelengthsUm, List<double> n)
         {
             const double dLine = 0.58756, fLine = 0.48613, cLine = 0.65627;
             int count = Math.Min(wavelengthsUm.Count, n.Count);
             if (count < 2)
-                return (n[0], 1e6);
+                return (n[0], 0.0);
 
             int Find(double target)
             {
