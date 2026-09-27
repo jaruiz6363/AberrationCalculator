@@ -210,9 +210,11 @@ internal static class ActionTools
                   + "catalogues a design is read through: a search free to pick from every "
                   + "vendor at once settles on glasses nobody stocks."),
                 new ArgumentSpec("save_to", "string",
-                    "Where to write the optimised lens, in the format it was read from. Under "
-                  + "basin hopping this is a FOLDER, and one design per chain is written into "
-                  + "it. Nothing is written without this."),
+                    "Where to write the optimised lens. With the extension it was read with, that "
+                  + "file is edited and everything else in it kept; with another (.zmx .seq .len "
+                  + ".otx .json .lhlt) a whole lens is written in that format. Under basin hopping "
+                  + "this is a FOLDER, and one design per chain is written into it, in the format "
+                  + "read. Nothing is written without this."),
                 new ArgumentSpec("glass_dir", "string",
                     "Optional folder of .agf catalogs instead of the bundled ones."),
             },
@@ -455,10 +457,11 @@ internal static class ActionTools
 
         if (designs.Count == 1)
         {
-            string? one = Save(designs[0], setup, lensPath, saveTo!, catalog, out string? refused);
+            string? one = Save(designs[0], setup, lensPath, saveTo!, catalog, out string? refused, out var notes);
             if (one == null)
                 return report + "NOT SAVED - " + refused + "\n";
             report += "Written: " + one + "\n";
+            foreach (string note in notes) report += note + "\n";
             foreach (string path in Sidecar.Save(saveTo!, setup))
                 report += "         " + Path.GetFullPath(path) + "\n";
             return report;
@@ -475,7 +478,7 @@ internal static class ActionTools
                 saveTo!,
                 stem + ".chain" + (i + 1).ToString("00", CultureInfo.InvariantCulture) + extension);
 
-            string? saved = Save(designs[i], setup, lensPath, chain, catalog, out string? refused);
+            string? saved = Save(designs[i], setup, lensPath, chain, catalog, out string? refused, out _);
             if (saved == null)
             {
                 report += "  chain " + (i + 1).ToString(CultureInfo.InvariantCulture)
@@ -501,9 +504,10 @@ internal static class ActionTools
     /// </summary>
     private static string? Save(OpticalSystem design, OptimizationSetup setup,
                                 string lensPath, string outPath, GlassCatalog? catalog,
-                                out string? refused)
+                                out string? refused, out IReadOnlyList<string> notes)
     {
         refused = null;
+        notes = Array.Empty<string>();
         if (Sidecar.KeepsVariablesInTheLensFile(outPath))
         {
             SurfaceVariables.Write(setup.Variables, design);
@@ -513,7 +517,8 @@ internal static class ActionTools
 
         try
         {
-            LensPatcher.Save(design, lensPath, outPath, catalog);
+            // Its own format is edited; another is written whole, with a note of what did not go across.
+            notes = LensSave.Save(design, lensPath, outPath, catalog);
         }
         catch (NotSupportedException ex)
         {

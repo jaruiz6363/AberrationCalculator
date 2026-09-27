@@ -263,7 +263,7 @@ step size to tune.
 | Option | Result |
 |---|---|
 | (none) | written beside the lens as `<name>.optimised.<ext>`; the original is untouched |
-| `--saveas <path>` | written there |
+| `--saveas <path>` | written there - in another format if the extension names one (`.zmx .seq .len .otx .json .lhlt`) |
 | `--save` | **overwrites** the lens that was read |
 
 The optimisation report is also written, as `<lens>.optimisation.txt`. The design is saved by

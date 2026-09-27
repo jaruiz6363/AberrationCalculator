@@ -152,7 +152,9 @@ OPTIONS
       --save          Overwrite the lens that was read with the optimised design.
       --save <folder> Under --optimize_basin_hopping, the folder to write the
                       designs into - one per chain, plus their settings.
-      --saveas <path> Write the optimised design somewhere new.
+      --saveas <path> Write the optimised design somewhere new. In the format read,
+                      the file is edited; with another extension (.zmx .seq .len
+                      .otx .json .lhlt) a whole lens is written in that format.
                       With none of these, the original is left alone and the result
                       is written beside it as <name>.optimised.<ext>.
       --screen [h]    Report whether this design would test the aspheric seventh-order
@@ -867,7 +869,7 @@ EXIT CODES
                     design.Pickups.AddRange(setup.Pickups);
                 }
 
-                AberrationCalculator.Core.IO.LensPatcher.Save(design, lensPath, path, catalog);
+                AberrationCalculator.Core.IO.LensSave.Save(design, lensPath, path, catalog);
                 if (chainFiles.TryAdd(chain, path))
                     AberrationCalculator.Optimize.Io.Sidecar.Save(path, setup);
             }
@@ -1046,7 +1048,10 @@ EXIT CODES
 
         try
         {
-            AberrationCalculator.Core.IO.LensPatcher.Save(outcome.Best, lensPath, lensOut, catalog);
+            // Into its own format, the file is edited; into another, a whole lens is written, and
+            // the note says what did not go across.
+            foreach (string note in AberrationCalculator.Core.IO.LensSave.Save(outcome.Best, lensPath, lensOut, catalog))
+                Console.WriteLine(note);
         }
         catch (NotSupportedException ex)
         {

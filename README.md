@@ -200,10 +200,14 @@ Commands may be followed by a run in the same invocation:
 
     abcalc lens.zmx VAR "CV 1" VAR "CV 2" --optimize --save
     abcalc lens.zmx --optimize --saveas better.zmx
+    abcalc lens.zmx --optimize --saveas better.len     # the same, written as OSLO
     abcalc lens.zmx --optimize_basin_hopping --glass_substitution CoreSet28 --save runs/
 
 Nothing is overwritten unless overwriting is asked for by name: with neither `--save` nor
-`--saveas` the result is written beside the original as `<name>.optimised.<ext>`. Basin hopping
+`--saveas` the result is written beside the original as `<name>.optimised.<ext>`. Saved in the
+format it was read, the file is edited and everything else in it kept; `--saveas` with another
+extension writes a whole lens in that format, carrying what this program models - see
+[docs/optimizer.md](docs/optimizer.md#saving-back). Basin hopping
 lands its chains in different valleys and so produces one design **per chain** - it is refused
 without a folder rather than keeping the lowest merit and discarding the rest.
 

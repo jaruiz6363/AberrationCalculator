@@ -915,7 +915,19 @@ picked up and worked on further, and one report covers the run.
 
 ## Saving back
 
-The optimised design goes back **in the format it came from**, by editing that file rather than
+**Into another format.** `--saveas better.len` on a design read from `better.zmx` writes a whole
+new OSLO lens - and likewise for any of `.zmx`, `.seq`, `.len`, `.otx`, Optiland `.json` and
+`.lhlt`. That cannot be an edit, since the target has never seen the rest of the original, so it
+carries what this program models: surfaces, glasses, conics and aspheric terms, aperture, fields
+and wavelengths, each in the target's own terms (an OSLO lens gets its primary wavelength first
+and, at a finite object, NAO and OBH; a glass Code V does not ship becomes a private glass). What
+only the original format holds - solves, coatings, tolerances, configurations - does not go across,
+and the save says so. A design the target cannot carry is refused, not written as another lens:
+CODE V, OSLO and OPTALIX have no r² aspheric term. (This went through the editor whatever the
+output was called, so a ZEMAX design saved "as" `out.len` became ZEMAX text in a file named for
+OSLO.)
+
+**Into the same format**, the optimised design goes back by editing the file rather than
 regenerating it. Only what the optimiser can move ever changes — curvatures, thicknesses, glass
 names, and conics and aspheric terms — and it goes back in the file's own units: a design opened
 from a file written in inches returns in inches, aspheric coefficients included (a coefficient of
