@@ -37,15 +37,35 @@ namespace AberrationCalculator.Core.IO
             {
                 string text = reader.ReadToEnd();
                 file._encoding = reader.CurrentEncoding;
-                file._newline = text.Contains("\r\n") ? "\r\n" : "\n";
                 file._trailingNewline = text.EndsWith("\n", StringComparison.Ordinal);
 
-                var split = text.Split(new[] { file._newline }, StringSplitOptions.None);
+                // SPLIT ON EVERY LINE END, WHICHEVER IT IS. A file can carry both - one written
+                // by one tool and edited by another - and this used to take the file's ending
+                // from whether it held a single CRLF, then split on that alone: every LF-only
+                // line stayed glued to its neighbours inside one "line", its keyword was never
+                // seen, and a save edited nothing and still said it had written the design. The
+                // readers split on either, so the lens read correctly and nothing looked wrong
+                // (September 2026, a patent example built by hand: 12 CRLF, 62 LF). The file is
+                // written back with the ending most of its lines had.
+                var split = text.Split('\n');
                 int count = split.Length;
                 // Split leaves an empty tail for a file ending in a newline; that is the
                 // newline, not a line, and re-adding it on write would grow the file.
                 if (file._trailingNewline && count > 0 && split[count - 1].Length == 0) count--;
-                for (int i = 0; i < count; i++) file.Lines.Add(split[i]);
+                int crlf = 0, lf = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    string line = split[i];
+                    bool ended = i < split.Length - 1;          // the last piece had no line end
+                    if (line.EndsWith("\r", StringComparison.Ordinal))
+                    {
+                        line = line.Substring(0, line.Length - 1);
+                        if (ended) crlf++;
+                    }
+                    else if (ended) lf++;
+                    file.Lines.Add(line);
+                }
+                file._newline = crlf >= lf && crlf > 0 ? "\r\n" : "\n";
             }
 
             // A BYTE ORDER MARK IS PART OF THE FILE, AND SO IS ITS ABSENCE. The reader is asked
