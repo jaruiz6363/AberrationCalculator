@@ -2,7 +2,10 @@ using System;
 using System.IO;
 using System.Linq;
 using AberrationCalculator.Core.Enums;
+using AberrationCalculator.Core.Glass;
 using AberrationCalculator.Core.IO;
+using AberrationCalculator.Core.Models;
+using AberrationCalculator.Core.RayTrace;
 using Xunit;
 
 namespace AberrationCalculator.Tests;
@@ -65,6 +68,139 @@ SUT S
 CUY 0.0000000000000
 THI 0.000000000
 ";
+
+    // A Mangin mirror as Optalix writes one (Telescopes/43-84_Mangin-mirror.otx): the mirror is the
+    // back of the glass, and its GLA names the medium the reflected light goes on in - the glass.
+    private const string Mangin = @"VERS 11.82
+RAIM  2
+EPD  20.0000
+WL   0.5875618
+WTW  100
+REF    1
+FTYP    1
+NFLD    1
+FLD    1   0.000000000       0.000000000      100  1        0
+SUR   0
+  SUT S
+  CUY 0.0000000000000
+  THI  0.1000000000E+21
+SUR   1
+  SUT S
+  CUY -0.2000000000000E-02
+  THI   10.00000000
+  GLA N-BK7
+  STO
+SUR   2
+  SUT SM
+  CUY -0.4000000000000E-02
+  THI  -10.00000000
+  GLA N-BK7
+SUR   3
+  SUT S
+  CUY -0.2000000000000E-02
+  THI  -100.0000000
+SUR   4
+  SUT S
+  CUY 0.0000000000000
+  THI 0.000000000
+";
+
+    /// <summary>The same Mangin mirror, built here: the reflection a plain mirror, inside the glass.</summary>
+    private static OpticalSystem ManginByHand()
+    {
+        var sys = new OpticalSystem { Aperture = new Aperture(ApertureType.EPD, 20.0) };
+        sys.Wavelengths.Add(new Wavelength(0.5875618, 1.0, true));
+        sys.Fields.Add(new Field(0.0));
+        sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+        sys.Surfaces.Add(new Surface { Index = 1, Curvature = -0.002, Thickness = 10.0, Material = "N-BK7", IsStop = true });
+        sys.Surfaces.Add(new Surface { Index = 2, Curvature = -0.004, Thickness = -10.0, Material = "MIRROR" });
+        sys.Surfaces.Add(new Surface { Index = 3, Curvature = -0.002, Thickness = -100.0 });
+        sys.Surfaces.Add(new Surface { Index = 4 });
+        return sys;
+    }
+
+    private static double Power(OpticalSystem sys)
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var n = IndexResolver.Build(sys, catalog, 0.5875618, new System.Collections.Generic.List<string>());
+        return ParaxialTrace.Trace(sys, n, 0.0).Power;
+    }
+
+    /// <summary>A mirror with a glass named on it is still a mirror: the glass is the medium it is in.</summary>
+    [Fact]
+    public void AManginMirrorIsAMirrorInGlass()
+    {
+        string path = Temp(Mangin);
+        try
+        {
+            var sys = OptalixReader.Read(path);
+            Assert.True(sys.Surfaces[2].IsMirror);
+            Assert.Equal("N-BK7", sys.Surfaces[1].Material);
+            Assert.True(string.IsNullOrEmpty(sys.Surfaces[3].Material));
+            Assert.Equal(Power(ManginByHand()), Power(sys), 12);
+            Assert.NotEqual(0.0, Power(sys));
+        }
+        finally { File.Delete(path); }
+    }
+
+    /// <summary>
+    /// A mirror inside glass is written with that glass on it, as Optalix writes one: left off, as it
+    /// was, Optalix put the reflected light in air - every ghost reflected inside a lens came out
+    /// with the wrong focal length. A mirror in air has none.
+    /// </summary>
+    [Fact]
+    public void AMirrorInGlassIsWrittenWithItsGlass()
+    {
+        string path = Path.ChangeExtension(Temp(""), ".otx");
+        try
+        {
+            var sys = ManginByHand();
+            OptalixWriter.Write(sys, path, CatalogLocator.LoadBundled());
+            var lines = File.ReadAllLines(path).Select(l => l.Trim()).ToList();
+            int mirror = lines.IndexOf("SUT SM");
+            int next = lines.FindIndex(mirror, l => l.StartsWith("SUR"));
+            Assert.Contains("GLA N-BK7", lines.GetRange(mirror, next - mirror));
+
+            var back = OptalixReader.Read(path);
+            Assert.True(back.Surfaces[2].IsMirror);
+            Assert.Equal(Power(sys), Power(back), 12);
+
+            // A model glass: the mirror carries its fictitious-glass code too.
+            sys.Surfaces[1].Material = null;
+            sys.Surfaces[1].ModelIndexEnabled = true;
+            sys.Surfaces[1].ModelNd = 1.5168;
+            sys.Surfaces[1].ModelVd = 64.17;
+            OptalixWriter.Write(sys, path, CatalogLocator.LoadBundled());
+            Assert.Equal(2, File.ReadAllLines(path).Count(l => l.Trim() == "GLA 5168.6417"));
+            Assert.Equal(Power(sys), Power(OptalixReader.Read(path)), 12);
+
+            // In air, nothing.
+            sys.Surfaces[1].ModelIndexEnabled = false;
+            OptalixWriter.Write(sys, path, CatalogLocator.LoadBundled());
+            Assert.DoesNotContain(File.ReadAllLines(path), l => l.Trim().StartsWith("GLA"));
+        }
+        finally { File.Delete(path); }
+    }
+
+    /// <summary>Saving a Mangin design back into its file keeps the glass on the mirror.</summary>
+    [Fact]
+    public void SavingAManginMirrorKeepsItsGlass()
+    {
+        string path = Temp(Mangin);
+        string output = Path.ChangeExtension(Temp(""), ".otx");
+        try
+        {
+            var sys = OptalixReader.Read(path);
+            sys.Surfaces[2].Curvature = -0.0041;
+            LensPatcher.Save(sys, path, output);
+            var back = OptalixReader.Read(output);
+            Assert.Equal(-0.0041, back.Surfaces[2].Curvature, 12);
+            Assert.True(back.Surfaces[2].IsMirror);
+            Assert.Equal(2, File.ReadAllLines(output).Count(l => l.Trim() == "GLA N-BK7"));
+            Assert.Equal(Power(sys), Power(back), 12);
+        }
+        finally { File.Delete(path); File.Delete(output); }
+    }
 
     private static string Temp(string text)
     {

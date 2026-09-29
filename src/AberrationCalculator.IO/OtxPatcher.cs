@@ -86,7 +86,10 @@ namespace AberrationCalculator.Core.IO
                     case "GLA":
                         block.Glass = i;
                         block.Indent ??= LineEdit.Indent(line);
-                        file.Lines[i] = PatchGlass(line, s);
+                        // A mirror's glass is the medium it sits in: the design's glass there.
+                        file.Lines[i] = s.IsMirror
+                            ? (Medium(system, surface) is { } medium ? PatchGlass(line, medium) : null)
+                            : PatchGlass(line, s);
                         break;
 
                     case "PRI":
@@ -234,8 +237,16 @@ namespace AberrationCalculator.Core.IO
                     insertions.Add((at, indent + "THI " + LineEdit.Number(s.Thickness / scale)));
             }
 
-            if (block.Glass < 0 && !s.IsMirror && !string.IsNullOrWhiteSpace(s.Material))
-                insertions.Add((at, indent + "GLA " + s.Material));
+            var glass = s.IsMirror ? Medium(system, surface) : s;
+            if (block.Glass < 0 && glass != null && !glass.ModelIndexEnabled && !string.IsNullOrWhiteSpace(glass.Material))
+                insertions.Add((at, indent + "GLA " + glass.Material));
+        }
+
+        /// <summary>The surface whose glass is the medium a mirror sits in; null for air.</summary>
+        private static Surface? Medium(OpticalSystem system, int mirror)
+        {
+            int j = OptalixWriter.MediumSurface(system, mirror);
+            return j >= 0 ? system.Surfaces[j] : null;
         }
 
         private static bool IsInfinite(string argument) =>

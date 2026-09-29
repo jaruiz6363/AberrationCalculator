@@ -110,7 +110,11 @@ namespace AberrationCalculator.Core.IO
                 sb.AppendLine($"  SUT {(figured ? "A" : "S")}{(s.IsMirror ? "M" : "")}");
                 sb.AppendLine(string.Format(inv, "  CUY {0:E16}", s.Curvature));
                 sb.AppendLine(string.Format(inv, "  THI {0:E16}", thi));
+                // A mirror names the medium the light goes on in after it, which is the one it came
+                // in: glass, for a mirror inside an element (a Mangin mirror, a ghost reflected
+                // inside a lens). Left out, Optalix puts the reflected light in air.
                 if (!s.IsMirror) Material(sb, s, i, w, system);
+                else if (MediumSurface(system, i) is int m and >= 0) Material(sb, system.Surfaces[m], m, w, system);
                 if (s.IsStop) sb.AppendLine("  STO");
                 Apertures(sb, s);
                 if (!string.IsNullOrWhiteSpace(s.Comment))
@@ -131,6 +135,17 @@ namespace AberrationCalculator.Core.IO
             }
 
             System.IO.File.WriteAllText(filePath, sb.ToString());
+        }
+
+        /// <summary>
+        /// The surface whose material is the medium a mirror at <paramref name="i"/> sits in: the
+        /// last surface before it that is not a mirror itself. -1 when there is none.
+        /// </summary>
+        internal static int MediumSurface(OpticalSystem system, int i)
+        {
+            int j = i - 1;
+            while (j >= 0 && system.Surfaces[j].IsMirror) j--;
+            return j;
         }
 
         private static string Weight(double w) =>
