@@ -92,4 +92,53 @@ END  5
         Assert.Equal(0.58756, dFirst.Wavelengths[dFirst.PrimaryWavelengthIndex].Value, 5);
         Assert.Equal(0.48613, fFirst.Wavelengths[fFirst.PrimaryWavelengthIndex].Value, 5);
     }
+
+    [Theory]
+    [InlineData("ANG -10", FieldType.ObjectAngle)]
+    [InlineData("OBH -10", FieldType.ObjectHeight)]
+    public void ANegativeFieldIsReadBySize(string fieldLine, FieldType type)
+    {
+        // A negative ANG used to be dropped altogether, leaving only the on-axis field.
+        var sys = WithFile(OslosOwnFile.Replace("OBH  10.0", fieldLine), OsloReader.Read);
+        Assert.Equal(type, sys.FieldType);
+        Assert.Equal(new[] { 0.0, 10.0 }, sys.Fields.Select(f => f.Y).ToArray());
+    }
+
+    [Fact]
+    public void AFieldAngleAtAFiniteObjectGoesOutAsTheObjectPointsHeight()
+    {
+        // OSLO's OBH is the object point's y: where the real trace starts the chief ray. A +10
+        // degree field aims it up at the entrance pupil - from below the axis when the pupil is
+        // after the object, from ABOVE when it lies before it - as in this lens with the object at
+        // 200, its pupil being 608 before surface 1. Both sides are checked.
+        double near = FieldAngleGoesOutAsTheObjectPointsHeight(200.0);
+        double far = FieldAngleGoesOutAsTheObjectPointsHeight(1000.0);
+        Assert.True(near > 0 && far < 0, $"OBH {near} at 200 and {far} at 1000");
+    }
+
+    private static double FieldAngleGoesOutAsTheObjectPointsHeight(double objectDistance)
+    {
+        var sys = WithFile(OslosOwnFile, OsloReader.Read);
+        sys.Surfaces[0].Thickness = objectDistance;
+        sys.FieldType = FieldType.ObjectAngle;
+        sys.Fields.Clear();
+        sys.Fields.Add(new AberrationCalculator.Core.Models.Field(0, 1.0));
+        sys.Fields.Add(new AberrationCalculator.Core.Models.Field(10, 1.0));
+        string path = Path.Combine(Path.GetTempPath(), $"oslo_{Guid.NewGuid():N}.len");
+        try
+        {
+            OsloWriter.Write(sys, path, AberrationCalculator.Core.Glass.CatalogLocator.LoadBundled());
+            string line = File.ReadAllLines(path).Select(l => l.Trim()).First(l => l.StartsWith("OBH "));
+            double obh = double.Parse(line.Substring(4), System.Globalization.CultureInfo.InvariantCulture);
+            // Where the real trace starts the chief ray of that field (RealRayTrace.ObjectHeight).
+            var catalog = AberrationCalculator.Core.Glass.CatalogLocator.LoadBundled();
+            var n = AberrationCalculator.Core.Glass.IndexResolver.Build(sys, catalog, sys.Wavelengths[sys.PrimaryWavelengthIndex].Value);
+            var p = AberrationCalculator.Core.RayTrace.ParaxialTrace.Trace(sys, n, 10.0);
+            double expected = -Math.Tan(10.0 * Math.PI / 180.0) * (p.EntrancePupilPosition + sys.Surfaces[0].Thickness);
+            Assert.True(Math.Abs(expected) > 1.0);
+            Assert.Equal(expected, obh, 6);
+            return obh;
+        }
+        finally { File.Delete(path); }
+    }
 }

@@ -74,11 +74,16 @@ namespace AberrationCalculator.Core.IO
         public double EntrancePupilDiameter() =>
             _system.Aperture.Type == ApertureType.EPD ? _system.Aperture.Value : Paraxial().Epd;
 
-        /// <summary>Object to entrance pupil, for an object at a finite distance.</summary>
-        public double ObjectToPupil()
+        /// <summary>
+        /// Object to entrance pupil, for an object at a finite distance: its size, or - signed - as
+        /// the real trace takes it to place a field angle's object point (negative when the pupil
+        /// lies before the object).
+        /// </summary>
+        public double ObjectToPupil(bool signed = false)
         {
             var p = Paraxial();
-            double d = Math.Abs(p.EntrancePupilPosition + _system.Surfaces[0].Thickness);
+            double d = p.EntrancePupilPosition + _system.Surfaces[0].Thickness;
+            if (!signed) d = Math.Abs(d);
             if (_system.TelecentricObjectSpace || double.IsInfinity(p.EntrancePupilPosition))
                 throw new InvalidOperationException(
                     $"A telecentric object space has no finite entrance pupil to state this aperture or field with in {_format}; "

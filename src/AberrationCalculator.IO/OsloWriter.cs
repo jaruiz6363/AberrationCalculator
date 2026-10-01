@@ -67,9 +67,15 @@ namespace AberrationCalculator.Core.IO
                 double nao = system.Aperture.Type == ApertureType.ObjectSpaceNA
                     ? system.Aperture.Value
                     : Math.Abs(w.IndicesAt(w.PrimaryUm)[0]) * Math.Sin(Math.Atan(w.EntrancePupilDiameter() / 2.0 / w.ObjectToPupil()));
+                // OSLO's OBH is the object point's y (checked in OSLO 6.6: OBH 10, 100 before a
+                // singlet, sends the chief ray down through the stop to an image at y = -9.5). A
+                // field angle here aims the chief ray UP at the pupil, from an object BELOW the
+                // axis (RealRayTrace), so the height is negative - positive only when the pupil
+                // lies before the object. (This wrote +|d| tan(angle): the object on the wrong
+                // side, every image in OSLO mirrored.)
                 double obh = system.FieldType == FieldType.ObjectHeight
                     ? maxField
-                    : w.ObjectToPupil() * Math.Tan(maxField * Math.PI / 180.0);
+                    : -w.ObjectToPupil(signed: true) * Math.Tan(maxField * Math.PI / 180.0);
                 sb.AppendLine(string.Format(inv, "NAO {0:R}", nao));
                 sb.AppendLine(string.Format(inv, "OBH {0:R}", obh));
             }
