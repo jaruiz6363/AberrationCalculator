@@ -54,8 +54,8 @@ public sealed class StopAimer
 
     /// <param name="crossing">How a launched ray is carried to the stop.</param>
     /// <param name="stopHeight">
-    /// The paraxial marginal ray's height at the stop, signed: the length a target coordinate of
-    /// 1 stands for. Must not be zero.
+    /// The stop's radius, signed like the marginal ray's height there: the length a target
+    /// coordinate of 1 stands for. Must not be zero.
     /// </param>
     public StopAimer(StopCrossing crossing, double stopHeight)
     {
@@ -65,7 +65,7 @@ public sealed class StopAimer
         StopHeight = stopHeight;
     }
 
-    /// <summary>The paraxial marginal ray's height at the stop, signed.</summary>
+    /// <summary>The stop's radius, signed: the length a target coordinate of 1 stands for.</summary>
     public double StopHeight { get; }
 
     /// <summary>
@@ -74,8 +74,13 @@ public sealed class StopAimer
     /// of tracing to the image.
     /// </summary>
     /// <param name="stop">The stop surface; the system's own (<see cref="OpticalSystem.StopSurfaceIndex"/>) if negative.</param>
+    /// <param name="radius">
+    /// What a target coordinate of 1 stands for: the paraxial marginal ray's height at the stop,
+    /// or where the real axial marginal ray crosses it, so that on axis an aimed ray is the ray
+    /// launched at the same pupil coordinates. The paraxial height is used if the real ray fails.
+    /// </param>
     public static StopAimer ForSystem(OpticalSystem system, double[] indices, ParaxialResult paraxial,
-                                      int stop = -1)
+                                      int stop = -1, StopRadius radius = StopRadius.ParaxialMarginal)
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -103,7 +108,10 @@ public sealed class StopAimer
             catch (InvalidOperationException) { return null; }
         }
 
-        return new StopAimer(Crossing, paraxial.Y[stop]);
+        double height = paraxial.Y[stop];
+        if (radius == StopRadius.RealAxialMarginal && Crossing(0.0, 1.0, 0.0) is (double y, _) && y != 0.0)
+            height = y;
+        return new StopAimer(Crossing, height);
     }
 
     /// <summary>
@@ -213,4 +221,13 @@ public sealed class StopAimer
 
     // double.IsFinite is not in netstandard2.0.
     private static bool IsFinite(double v) => !double.IsNaN(v) && !double.IsInfinity(v);
+}
+
+/// <summary>What a stop coordinate of 1 stands for, when rays are aimed at the real stop.</summary>
+public enum StopRadius
+{
+    /// <summary>The paraxial marginal ray's height at the stop.</summary>
+    ParaxialMarginal,
+    /// <summary>Where the real axial marginal ray crosses the stop.</summary>
+    RealAxialMarginal,
 }
