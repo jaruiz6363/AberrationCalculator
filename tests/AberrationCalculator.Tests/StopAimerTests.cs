@@ -66,7 +66,7 @@ public class StopAimerTests
     public void WithTheRealAxialRadiusAnAxialRayIsUnaimed()
     {
         var (system, n, p, _) = DoubleGauss();
-        var aimer = StopAimer.ForSystem(system, n, p, radius: StopRadius.RealAxialMarginal);
+        var aimer = StopAimer.ForSystem(system, n, p, stopHeight: StopAimer.RealAxialHeight(system, n, p));
         Assert.Equal(5.1467147, aimer.StopHeight, 6);
         var (py, pz) = aimer.Launch(0.0, 1.0, 0.0)!.Value;
         Assert.Equal(1.0, py, 8);

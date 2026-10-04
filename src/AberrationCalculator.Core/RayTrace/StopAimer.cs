@@ -18,8 +18,9 @@ namespace AberrationCalculator.Core.RayTrace;
 /// <para>The answer is a launch point in the same coordinates <see cref="RealRayTrace.Trace"/>
 /// takes - fractions of the paraxial entrance pupil's radius - so an aimed ray is traced exactly
 /// as an unaimed one is, from the point found here. The target is in the stop's own frame, as a
-/// fraction of the PARAXIAL marginal ray's height there, signed: a target of (1, 0) is the ray
-/// through the stop where the paraxial marginal ray crosses it.</para>
+/// fraction of <see cref="StopHeight"/>, signed - by default the PARAXIAL marginal ray's height
+/// there, so that a target of (1, 0) is the ray through the stop where the paraxial marginal ray
+/// crosses it.</para>
 ///
 /// <para><b>The method.</b> Newton's, on the map from launch point to stop crossing, which is
 /// smooth and nearly linear: the inverse Jacobian of the chief ray starts every search, Broyden's
@@ -74,13 +75,31 @@ public sealed class StopAimer
     /// of tracing to the image.
     /// </summary>
     /// <param name="stop">The stop surface; the system's own (<see cref="OpticalSystem.StopSurfaceIndex"/>) if negative.</param>
-    /// <param name="radius">
-    /// What a target coordinate of 1 stands for: the paraxial marginal ray's height at the stop,
-    /// or where the real axial marginal ray crosses it, so that on axis an aimed ray is the ray
-    /// launched at the same pupil coordinates. The paraxial height is used if the real ray fails.
+    /// <param name="stopHeight">
+    /// What a target coordinate of 1 stands for, signed; the paraxial marginal ray's height at the
+    /// stop if null. <see cref="RealAxialHeight"/> gives the real stop's.
     /// </param>
     public static StopAimer ForSystem(OpticalSystem system, double[] indices, ParaxialResult paraxial,
-                                      int stop = -1, StopRadius radius = StopRadius.ParaxialMarginal)
+                                      int stop = -1, double? stopHeight = null)
+    {
+        var crossing = ToStop(system, indices, paraxial, ref stop);
+        return new StopAimer(crossing, stopHeight ?? paraxial.Y[stop]);
+    }
+
+    /// <summary>
+    /// Where the real axial marginal ray - launched at the rim of the paraxial entrance pupil -
+    /// crosses the stop, signed: the radius of the stop the beam actually fills. Aimed at this
+    /// radius, an axial ray is the ray launched at the same pupil coordinates, so aiming changes
+    /// nothing on axis. Zemax OpticStudio's real ray aiming scales the stop so, by the primary
+    /// wavelength's ray, for every wavelength. Null if the ray does not get there.
+    /// </summary>
+    public static double? RealAxialHeight(OpticalSystem system, double[] indices, ParaxialResult paraxial, int stop = -1)
+    {
+        var crossing = ToStop(system, indices, paraxial, ref stop);
+        return crossing(0.0, 1.0, 0.0) is (double y, _) && y != 0.0 ? y : null;
+    }
+
+    private static StopCrossing ToStop(OpticalSystem system, double[] indices, ParaxialResult paraxial, ref int stop)
     {
         if (system == null) throw new ArgumentNullException(nameof(system));
         if (indices == null) throw new ArgumentNullException(nameof(indices));
@@ -88,30 +107,26 @@ public sealed class StopAimer
         if (stop < 0) stop = system.StopSurfaceIndex;
         if (stop < 1 || stop > system.LastOpticalSurface())
             throw new ArgumentException("The system has no stop among its optical surfaces.", nameof(stop));
+        int at = stop;
 
         // The lens as far as the stop, and a plane behind it that serves as the image. The
         // surfaces are the lens's own, shared rather than copied.
-        var surfaces = system.Surfaces.Take(stop + 1).Append(new Surface { Thickness = 0.0 }).ToList();
+        var surfaces = system.Surfaces.Take(at + 1).Append(new Surface { Thickness = 0.0 }).ToList();
         var toStop = new OpticalSystem { FieldType = system.FieldType, Surfaces = surfaces };
-        var toStopN = indices.Take(stop + 1).Append(indices[stop]).ToArray();
+        var toStopN = indices.Take(at + 1).Append(indices[at]).ToArray();
 
-        (double Y, double X)? Crossing(double field, double py, double pz)
+        return (field, py, pz) =>
         {
             try
             {
                 var hits = RealRayTrace.TraceRecord(toStop, toStopN, paraxial, field, py, pz,
                                                     atParaxialFocus: false);
-                for (int i = 1; i <= stop; i++)
+                for (int i = 1; i <= at; i++)
                     if (!hits[i].Ok) return null;
-                return (hits[stop].Y, hits[stop].X);
+                return (hits[at].Y, hits[at].X);
             }
             catch (InvalidOperationException) { return null; }
-        }
-
-        double height = paraxial.Y[stop];
-        if (radius == StopRadius.RealAxialMarginal && Crossing(0.0, 1.0, 0.0) is (double y, _) && y != 0.0)
-            height = y;
-        return new StopAimer(Crossing, height);
+        };
     }
 
     /// <summary>
@@ -221,13 +236,4 @@ public sealed class StopAimer
 
     // double.IsFinite is not in netstandard2.0.
     private static bool IsFinite(double v) => !double.IsNaN(v) && !double.IsInfinity(v);
-}
-
-/// <summary>What a stop coordinate of 1 stands for, when rays are aimed at the real stop.</summary>
-public enum StopRadius
-{
-    /// <summary>The paraxial marginal ray's height at the stop.</summary>
-    ParaxialMarginal,
-    /// <summary>Where the real axial marginal ray crosses the stop.</summary>
-    RealAxialMarginal,
 }
