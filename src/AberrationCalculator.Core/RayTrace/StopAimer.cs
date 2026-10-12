@@ -190,10 +190,15 @@ public sealed class StopAimer
         var direct = AimFrom(field, 0.0, 0.0, null);
         if (direct != null || field == 0.0) return direct;
 
+        // Out to 40 pupil radii in quarters, then further in coarser steps: at 80 degrees a fisheye's
+        // chief ray starts nearly 60 radii out.
         var reached = new System.Collections.Generic.List<(double Ly, double Sy, double Sx)>();
-        const double reach = 40.0, step = 0.25;
-        for (double ly = -reach; ly <= reach; ly += step)
-            if (_crossing(field, ly, 0.0) is (double sy, double sx)) reached.Add((ly, sy, sx));
+        foreach (var (reach, step) in new[] { (40.0, 0.25), (160.0, 1.0), (640.0, 4.0) })
+        {
+            for (double ly = -reach; ly <= reach; ly += step)
+                if (_crossing(field, ly, 0.0) is (double sy, double sx)) reached.Add((ly, sy, sx));
+            if (reached.Count > 0) break;
+        }
 
         // Nearest the centre first; a ray at the very edge of what passes has no Jacobian, so the
         // nearest that has one is the base.
