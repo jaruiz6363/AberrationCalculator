@@ -78,10 +78,15 @@ public class Surface
     /// Tilt about the x axis, in RADIANS. A tilt about x swings the surface in the y-z
     /// meridian, so it pairs with <see cref="DecenterY"/> - see the note on
     /// <see cref="IsPerturbed"/>.
+    ///
+    /// <para><b>The opposite sign to OpticStudio's.</b> A surface with TiltX = θ traces as
+    /// OpticStudio traces it between coordinate breaks tilting about x by −θ (checked ray by ray
+    /// on 2026-10-12). The y tilt and both decentres agree in sign. The frame also turns about y
+    /// before x, which is OpticStudio's coordinate-break order 1, not its order 0.</para>
     /// </summary>
     public Scalar TiltX { get; set; }
 
-    /// <summary>Tilt about the y axis, in RADIANS.</summary>
+    /// <summary>Tilt about the y axis, in RADIANS. The same sign as OpticStudio's.</summary>
     public Scalar TiltY { get; set; }
 
     /// <summary>
