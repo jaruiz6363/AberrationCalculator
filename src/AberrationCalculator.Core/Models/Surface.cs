@@ -56,14 +56,23 @@ public class Surface
     // ── Perturbation ─────────────────────────────────────────────────────────────────
     // How this surface sits relative to the mechanical axis. Zero for every surface of an
     // aligned design, which is what a lens file normally describes, so nothing downstream
-    // changes unless something sets these. Nodal aberration theory is the only consumer:
-    // the paraxial trace is a rotationally symmetric construction and does not read them.
+    // changes unless something sets these. The real ray trace traces the surface in its own
+    // frame (LocalFrame), and nodal aberration theory reads the decentres and tilts; the
+    // paraxial trace is a rotationally symmetric construction and does not read them.
 
     /// <summary>Decentre along x, in lens units.</summary>
     public Scalar DecenterX { get; set; }
 
     /// <summary>Decentre along y, in lens units.</summary>
     public Scalar DecenterY { get; set; }
+
+    /// <summary>
+    /// Displacement of the vertex along the axis, in lens units, applied with the other two
+    /// decentres before the tilt. Nothing beyond this surface moves - the next surface is still
+    /// <see cref="Thickness"/> from this one's nominal vertex - which is what an element tilted
+    /// about a pivot needs: each of its vertices swings off the axis and along it.
+    /// </summary>
+    public Scalar DecenterZ { get; set; }
 
     /// <summary>
     /// Tilt about the x axis, in RADIANS. A tilt about x swings the surface in the y-z
@@ -116,7 +125,7 @@ public class Surface
     /// breaks that equivalence and because a tolerance budget quotes them separately.</para>
     /// </summary>
     public bool IsPerturbed =>
-        DecenterX != 0.0 || DecenterY != 0.0 || TiltX != 0.0 || TiltY != 0.0;
+        DecenterX != 0.0 || DecenterY != 0.0 || DecenterZ != 0.0 || TiltX != 0.0 || TiltY != 0.0;
 
     public bool IsMirror => !string.IsNullOrEmpty(Material)
                             && Material!.Equals("MIRROR", StringComparison.OrdinalIgnoreCase);
