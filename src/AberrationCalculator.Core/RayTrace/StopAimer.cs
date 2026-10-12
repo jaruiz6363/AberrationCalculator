@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using AberrationCalculator.Core.Models;
 
@@ -48,12 +49,7 @@ public sealed class StopAimer
     /// and the inverse of the Jacobian there - launch point against stop crossing - which starts
     /// every other ray's search.
     /// </summary>
-    private sealed record Aim(double Y0, double X0, double Iyy, double Iyx, double Ixy, double Ixx)
-    {
-        /// <summary>Where the base ray crosses the stop: the centre, unless no ray reaches the centre.</summary>
-        public double Ty { get; init; }
-        public double Tx { get; init; }
-    }
+    private sealed record Aim(double Y0, double X0, double Iyy, double Iyx, double Ixy, double Ixx);
 
     private readonly StopCrossing _crossing;
     private readonly ConcurrentDictionary<double, Aim?> _aims = new();
@@ -135,9 +131,9 @@ public sealed class StopAimer
     }
 
     /// <summary>
-    /// Whether any ray of this field reaches the stop - false when none can be found, in which
-    /// case <see cref="Launch"/> and <see cref="Predict"/> return null for every target. A field
-    /// whose rays reach only part of the stop can be aimed; <see cref="Launch"/> is null for the rest.
+    /// Whether any ray of this field reaches the stop's centre - false when the chief ray itself
+    /// cannot be found, in which case <see cref="Launch"/> and <see cref="Predict"/> return null
+    /// for every target.
     /// </summary>
     public bool CanAim(double fieldDeg) => _aims.GetOrAdd(fieldDeg, AimAt) != null;
 
@@ -151,8 +147,8 @@ public sealed class StopAimer
         var aim = _aims.GetOrAdd(fieldDeg, AimAt);
         if (aim == null) return null;
         double ty = stopY * StopHeight, tx = stopX * StopHeight;
-        double ly = aim.Y0 + aim.Iyy * (ty - aim.Ty) + aim.Iyx * (tx - aim.Tx);
-        double lx = aim.X0 + aim.Ixy * (ty - aim.Ty) + aim.Ixx * (tx - aim.Tx);
+        double ly = aim.Y0 + aim.Iyy * ty + aim.Iyx * tx;
+        double lx = aim.X0 + aim.Ixy * ty + aim.Ixx * tx;
         return Solve(fieldDeg, ty, tx, ly, lx, aim);
     }
 
@@ -167,59 +163,44 @@ public sealed class StopAimer
         var aim = _aims.GetOrAdd(fieldDeg, AimAt);
         if (aim == null) return null;
         double ty = stopY * StopHeight, tx = stopX * StopHeight;
-        return (aim.Y0 + aim.Iyy * (ty - aim.Ty) + aim.Iyx * (tx - aim.Tx), aim.X0 + aim.Ixy * (ty - aim.Ty) + aim.Ixx * (tx - aim.Tx));
+        return (aim.Y0 + aim.Iyy * ty + aim.Iyx * tx, aim.X0 + aim.Ixy * ty + aim.Ixx * tx);
     }
 
     /// <summary>
-    /// The chief ray's launch point at one field, and the Jacobian there; null if no ray of the
-    /// field reaches the stop at all.
+    /// The chief ray's launch point at one field, and the Jacobian there; null if no ray reaches
+    /// the stop's centre.
     ///
     /// <para>The search starts at the centre of the paraxial pupil, which is close for most lenses.
     /// At a wide angle in a retrofocus lens - a fisheye, a wide-angle camera lens - the real
-    /// entrance pupil has moved far forward, the ray to the stop's centre starts several paraxial
-    /// pupil radii out, and often there is none: the lower half of the stop is vignetted by the
-    /// front elements, and only rays through its upper part pass. So when the centre cannot be
-    /// reached, launch points along the meridian are scanned for rays that do reach the stop; the
-    /// one that crosses nearest the centre is the start of a search for the centre, and if that
-    /// fails too, the base every other ray of the field is aimed from (<see cref="Aim.Ty"/>).
-    /// <see cref="Launch"/> then finds the rays of the stop that are reachable and returns null
-    /// for the rest, as for any vignetted pencil.</para>
+    /// entrance pupil has moved far forward and the chief ray starts many paraxial pupil radii out
+    /// (nearly 60 at 80 degrees in a 160-degree fisheye), while the ray from the paraxial pupil's
+    /// centre misses the front elements, leaving nowhere to start. Only then are launch points
+    /// along the meridian scanned for rays that reach the stop, out to 40 radii in quarters and
+    /// then further in coarser steps, and the search for the centre started again from those
+    /// crossing nearest it. A field whose chief ray the first search finds is aimed exactly as
+    /// before, and a field whose stop centre no ray reaches is still one that cannot be aimed.</para>
     /// </summary>
     private Aim? AimAt(double field)
     {
-        var direct = AimFrom(field, 0.0, 0.0, null);
+        var direct = AimFrom(field, 0.0, 0.0);
         if (direct != null || field == 0.0) return direct;
 
-        // Out to 40 pupil radii in quarters, then further in coarser steps: at 80 degrees a fisheye's
-        // chief ray starts nearly 60 radii out.
-        var reached = new System.Collections.Generic.List<(double Ly, double Sy, double Sx)>();
+        var reached = new List<(double Ly, double Sy)>();
         foreach (var (reach, step) in new[] { (40.0, 0.25), (160.0, 1.0), (640.0, 4.0) })
         {
             for (double ly = -reach; ly <= reach; ly += step)
-                if (_crossing(field, ly, 0.0) is (double sy, double sx)) reached.Add((ly, sy, sx));
+                if (_crossing(field, ly, 0.0) is (double sy, double _)) reached.Add((ly, sy));
             if (reached.Count > 0) break;
         }
-
-        // Nearest the centre first; a ray at the very edge of what passes has no Jacobian, so the
-        // nearest that has one is the base.
-        foreach (var (bly, bsy, bsx) in reached.OrderBy(r => Math.Abs(r.Sy)).Take(8))
-        {
-            var centre = AimFrom(field, bly, 0.0, null);
-            if (centre != null) return centre;
-            var j = Jacobian(field, bly, 0.0);
-            if (j != null) return j with { Y0 = bly, X0 = 0.0, Ty = bsy, Tx = bsx };
-        }
+        foreach (var (ly, _) in reached.OrderBy(r => Math.Abs(r.Sy)).Take(8))
+            if (AimFrom(field, ly, 0.0) is { } aim) return aim;
         return null;
     }
 
-    /// <summary>
-    /// The chief ray at <paramref name="field"/> searched for from (<paramref name="ly"/>,
-    /// <paramref name="lx"/>), with the inverse Jacobian there, or <paramref name="fallback"/>'s
-    /// if it cannot be taken at that point; and the Jacobian at the answer.
-    /// </summary>
-    private Aim? AimFrom(double field, double ly, double lx, Aim? fallback)
+    /// <summary>The chief ray searched for from (<paramref name="ly"/>, <paramref name="lx"/>), and the Jacobian at it.</summary>
+    private Aim? AimFrom(double field, double ly, double lx)
     {
-        var start = Jacobian(field, ly, lx) ?? fallback;
+        var start = Jacobian(field, ly, lx);
         if (start == null) return null;
         var chief = Solve(field, 0.0, 0.0, ly, lx, start);
         if (chief is not (double y0, double x0)) return null;

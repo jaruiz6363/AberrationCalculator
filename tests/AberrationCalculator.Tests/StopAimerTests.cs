@@ -142,17 +142,20 @@ public class StopAimerTests
         Assert.Equal(7.0, aimer.Launch(70.0, 0.8, 0.0)!.Value.Py, 9);
     }
 
+    /// <summary>
+    /// The contract callers rely on: a field is aimable only if a ray reaches the stop's CENTRE, and
+    /// then Predict is first order about the chief ray. GhostAnalysis launches paraxially where
+    /// CanAim is false and takes foci from rays Predict puts a whisker from the chief ray; a
+    /// field aimed from some other ray broke its focus crossings (2026-10-12).
+    /// </summary>
     [Fact]
-    public void AFieldThatReachesOnlyPartOfTheStopIsAimedAtThatPart()
+    public void AFieldWhoseStopCentreNoRayReachesCannotBeAimed()
     {
         // Rays start passing at 6.5 radii, which cross the stop 5 mm up: its centre is vignetted.
         var aimer = Retrofocus(6.5);
-        Assert.True(aimer.CanAim(80.0));
-        Assert.Null(aimer.Launch(80.0, 0.0, 0.0));
-        var upper = aimer.Launch(80.0, 0.8, 0.2);
-        Assert.NotNull(upper);
-        Assert.Equal(7.0, upper!.Value.Py, 9);
-        Assert.Equal(0.25, upper.Value.Pz, 9);
+        Assert.False(aimer.CanAim(80.0));
+        Assert.Null(aimer.Launch(80.0, 0.8, 0.0));
+        Assert.Null(aimer.Predict(80.0, 0.0, 0.0));
     }
 
     [Fact]
