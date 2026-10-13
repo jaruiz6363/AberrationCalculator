@@ -487,6 +487,12 @@ as air.
 - **Nodal aberration theory** - third and fifth order, for a design whose surfaces are not on
   a common axis: where each surface's aberration field has been displaced to, where the nodes
   of the system's field are, and what the fifth order does to the third.
+- **Geometric MTF** - by Kidger's direct summation over real rays (*Fundamental Optical
+  Design*, section 4.5.3), sagittal and tangential, one wavelength or all weighted, times a
+  perfect lens's MTF whose cutoff follows the beam off axis and through vignetting, as
+  LensHH-LT does. A library call, `GeometricMtf.Compute`; a caller with its own ray aiming and
+  apertures passes its own tracer. Rays sit at the centres of Kidger's equal-area cells, which
+  converges in 15 rings to 0.003; LensHH-LT's rings on the cell edges agree once converged.
 
 ## Status
 
