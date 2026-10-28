@@ -88,6 +88,35 @@ public class LensWriterTests : IDisposable
     }
 
     /// <summary>
+    /// A glass name with small letters goes into a .zmx in capitals, which is how OpticStudio writes
+    /// its own files and the only form it resolved in testing (GLAS K-LaSFn9 left the glass unfound,
+    /// GLAS K-LASFN9 did not); and the capitalised name still reads back as the same catalog glass.
+    /// </summary>
+    [Fact]
+    public void ZmxWritesGlassNamesInCapitals()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = new OpticalSystem { Aperture = new Aperture(Core.Enums.ApertureType.EPD, 10.0) };
+        sys.GlassCatalogs.Add("SUMITA");
+        sys.Wavelengths.Add(new Wavelength(0.5875618, 1.0, true));
+        sys.Fields.Add(new Field(0.0));
+        sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+        sys.Surfaces.Add(new Surface { Index = 1, Radius = 50.0, Thickness = 5.0, Material = "K-LaSFn9", IsStop = true });
+        sys.Surfaces.Add(new Surface { Index = 2, Radius = -50.0, Thickness = 40.0 });
+        sys.Surfaces.Add(new Surface { Index = 3 });
+
+        string path = Path.Combine(_dir, "mixedcase.zmx");
+        ZmxWriter.Write(sys, path);
+
+        Assert.Contains("GLAS K-LASFN9 ", File.ReadAllText(path));
+        var back = ZmxReader.Read(path, catalog);
+        var glass = catalog.Find(back.Surfaces[1].Material, back.GlassCatalogs);
+        Assert.NotNull(glass);
+        Assert.Equal("SUMITA", glass!.Catalog);
+        Assert.Equal(Analyse(sys, catalog).Efl, Analyse(back, catalog).Efl, 12);
+    }
+
+    /// <summary>
     /// OSLO reads a number standing as a word in the LEN NEW name as the surface count and refuses
     /// the file, so numbers are dropped - again after cutting the name to 32 characters, which can
     /// leave a new one at the end (Ross Optical's doublets: "... DIA; 100.00MM EFL" cut to "... DIA; 1").
