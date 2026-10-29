@@ -165,6 +165,12 @@ namespace AberrationCalculator.Core.IO
 
                 if (s.HasMarginalRaySolve)
                     sb.AppendLine("CALLBACK  1");
+
+                // The image surface has air on both sides, so OSLO's automatic drawing takes it for
+                // a dummy surface and leaves it out ("drawn unless it is a dummy surface", OSLO
+                // reference, surface appearance in lens drawings); DRW ON draws it always.
+                if (i == system.Surfaces.Count - 1)
+                    sb.AppendLine("  DRW ON");
             }
 
             if (wavelengths.Count > 0)

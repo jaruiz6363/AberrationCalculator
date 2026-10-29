@@ -184,6 +184,7 @@ public class LensWriterTests : IDisposable
         OsloWriter.Write(sys, path, catalog);
         var lines = File.ReadAllLines(path);
         int end = Array.FindIndex(lines, l => l.StartsWith("END"));
+        Assert.Equal("  DRW ON", lines[end - 3]);   // the image surface, drawn though it is a dummy
         Assert.Equal(new[]
         {
             "DLNF  3",
