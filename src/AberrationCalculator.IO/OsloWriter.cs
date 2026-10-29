@@ -175,8 +175,34 @@ namespace AberrationCalculator.Core.IO
                 sb.AppendLine("WW  " + string.Join(" ", wavelengths.Select(x => x.Weight.ToString("G", inv))));
             }
             sb.AppendLine($"END {system.Surfaces.Count - 1}");
+
+            // Lens drawing operating conditions, after END as OSLO 6.6 saves them. A .len has no
+            // field points set (OSLO did not save one it was given), so the lens's fields reach OSLO
+            // only here, as the drawing fans; without them OSLO draws its defaults: one fan of 3
+            // axial rays and chief rays alone, too few to see a fast lens's beams. Each field gets
+            // DrawingRays rays across the whole pupil, every value written, none left to OSLO's
+            // defaults. DLFP is the fraction of the full field, which for field angles is the
+            // ratio of tangents (OSLO's object height goes with tan); for object heights, of heights.
+            // The array index counts from 0, as in OSLO's own file:
+            //     DLNR  0 15 / DLNR  1 15 / DLFP  1 0.3333 / DLMN  1 -1.0 / DLMX  1 1.0 / DLNR  2 15
+            // DLLS draws through the image surface; OSLO's default stops one surface short of it.
+            for (int i = 0; i < system.Fields.Count; i++)
+            {
+                double y = Math.Abs(system.Fields[i].Y);
+                double frac = maxField == 0 ? 0.0
+                    : system.FieldType == FieldType.ObjectHeight ? y / maxField
+                    : Math.Tan(y * Math.PI / 180.0) / Math.Tan(maxField * Math.PI / 180.0);
+                sb.AppendLine(string.Format(inv, "DLNR  {0} {1}", i, DrawingRays));
+                sb.AppendLine(string.Format(inv, "DLFP  {0} {1:0.0####}", i, frac));
+                sb.AppendLine(string.Format(inv, "DLMN  {0} -1.0", i));
+                sb.AppendLine(string.Format(inv, "DLMX  {0} 1.0", i));
+            }
+            sb.AppendLine($"DLLS  {system.Surfaces.Count - 1}");
             System.IO.File.WriteAllText(filePath, sb.ToString());
         }
+
+        /// <summary>Rays in each lens drawing fan written for OSLO.</summary>
+        public const int DrawingRays = 15;
 
         // The magnification a perfect lens is perfect at: m = n u / (n' u') across it, from the
         // axial ray of the paraxial trace.

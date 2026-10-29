@@ -161,6 +161,41 @@ public class LensWriterTests : IDisposable
         Assert.Equal(note, back.Notes!.Replace("\n", " "));
     }
 
+    /// <summary>
+    /// A .len has no field points set, so the fields go to OSLO as lens drawing fans, in the form
+    /// OSLO 6.6 saves them after END (index from 0): 15 rays across the whole pupil from each field,
+    /// at the fraction of the full field that OSLO's tan-based object height gives (30 deg of 60 is
+    /// tan 30 / tan 60 = 1/3), and DLLS so the image surface is drawn too. The lens still reads back.
+    /// </summary>
+    [Fact]
+    public void OsloDrawsFifteenRaysFromEveryFieldAndTheImageSurface()
+    {
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = new OpticalSystem { Title = "fans", Aperture = new Aperture(Core.Enums.ApertureType.EPD, 7.0) };
+        sys.Wavelengths.Add(new Wavelength(0.55, 1.0, true));
+        foreach (var a in new[] { 0.0, 30.0, 60.0 }) sys.Fields.Add(new Field(a));
+        sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+        sys.Surfaces.Add(new Surface { Index = 1, Radius = 9.0, Thickness = 5.0, Material = "N-BK7" });
+        sys.Surfaces.Add(new Surface { Index = 2, Thickness = 5.0, Material = "N-BK7", IsStop = true });
+        sys.Surfaces.Add(new Surface { Index = 3, Radius = -9.0, Thickness = 10.0 });
+        sys.Surfaces.Add(new Surface { Index = 4, Radius = -14.0 });
+
+        string path = Path.Combine(_dir, "fans.len");
+        OsloWriter.Write(sys, path, catalog);
+        var lines = File.ReadAllLines(path);
+        int end = Array.FindIndex(lines, l => l.StartsWith("END"));
+        Assert.Equal(new[]
+        {
+            "DLNR  0 15", "DLFP  0 0.0", "DLMN  0 -1.0", "DLMX  0 1.0",
+            "DLNR  1 15", "DLFP  1 0.33333", "DLMN  1 -1.0", "DLMX  1 1.0",
+            "DLNR  2 15", "DLFP  2 1.0", "DLMN  2 -1.0", "DLMX  2 1.0",
+            "DLLS  4",
+        }, lines.Skip(end + 1).ToArray());
+
+        var back = OsloReader.Read(path);
+        Assert.Equal(Analyse(sys, catalog).Efl, Analyse(back, catalog).Efl, 10);
+    }
+
     [Fact]
     public void OsloKeepsAtMostNineNotesAndCutsALongTitle()
     {
