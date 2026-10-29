@@ -127,4 +127,46 @@ public class LensWriterTests : IDisposable
     [InlineData("12 34", "Untitled")]
     public void TheOsloNameHasNoNumberInIt(string title, string expected) =>
         Assert.Equal(expected, OsloWriter.LenName(title));
+
+    /// <summary>
+    /// OSLO refuses a system note longer than 80 characters and stops loading the file ("Error at
+    /// sno_: system note: Argument can not contain more than 80 chars"; OSLO EDU, 2026-10-29). The
+    /// note here is the 140-character one that MonoSearch export failed on. Notes are wrapped at
+    /// words into notes 2 to 9, and the words all come back when the file is read.
+    /// </summary>
+    [Fact]
+    public void OsloNotesAreAtMost80Characters()
+    {
+        const string note = "MonoSearch (Stamenov, Agurok, Ford, Appl. Opt. 51, 7648 (2012)). Outer OHARA:S-LAH79, " +
+                            "inner SUMITA:K-LaSFn9. dPhi2 = 0.00686.";
+        var catalog = CatalogLocator.LoadBundled();
+        var sys = new OpticalSystem { Title = "Monocentric rank 1: S-LAH79 / K-LaSFn9, f=12, F/1.71", Notes = note };
+        sys.Aperture = new Aperture(Core.Enums.ApertureType.EPD, 7.0);
+        sys.Wavelengths.Add(new Wavelength(0.55, 1.0, true));
+        sys.Fields.Add(new Field(0.0));
+        sys.Surfaces.Add(new Surface { Index = 0, Thickness = double.PositiveInfinity });
+        sys.Surfaces.Add(new Surface { Index = 1, Radius = 50.0, Thickness = 5.0, Material = "N-BK7", IsStop = true });
+        sys.Surfaces.Add(new Surface { Index = 2, Radius = -50.0, Thickness = 40.0 });
+        sys.Surfaces.Add(new Surface { Index = 3 });
+
+        string path = Path.Combine(_dir, "notes.len");
+        OsloWriter.Write(sys, path, catalog);
+
+        var sno = File.ReadAllLines(path).Where(l => l.StartsWith("SNO")).ToList();
+        Assert.Equal(3, sno.Count);
+        foreach (var l in sno)
+            Assert.True(l.Substring(l.IndexOf('"') + 1).TrimEnd('"').Length <= OsloWriter.NoteLength, l);
+        var back = OsloReader.Read(path);
+        Assert.Equal(sys.Title, back.Title);
+        Assert.Equal(note, back.Notes!.Replace("\n", " "));
+    }
+
+    [Fact]
+    public void OsloKeepsAtMostNineNotesAndCutsALongTitle()
+    {
+        var notes = OsloWriter.SystemNotes(new string('T', 100) + " end", string.Join("\n", Enumerable.Repeat("line", 20)));
+        Assert.Equal(9, notes.Count);
+        Assert.Equal(new string('T', 80), notes[0]);
+        Assert.All(notes, n => Assert.True(n.Length <= OsloWriter.NoteLength));
+    }
 }

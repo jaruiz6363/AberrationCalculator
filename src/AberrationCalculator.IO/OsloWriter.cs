@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -38,16 +39,9 @@ namespace AberrationCalculator.Core.IO
             sb.AppendLine("// Exported from AberrationCalculator");
             string title = string.IsNullOrEmpty(system.Title) ? "Untitled" : system.Title;
             sb.AppendLine($"LEN NEW \"{LenName(title)}\"");
-            sb.AppendLine($"SNO1 \"{title.Replace("\"", "'")}\"");
-            if (!string.IsNullOrEmpty(system.Notes))
-            {
-                int slot = 2;
-                foreach (var line in system.Notes.Replace("\r\n", "\n").Split('\n'))
-                {
-                    if (slot > 10) break;   // OSLO keeps nine more note lines
-                    sb.AppendLine($"SNO{slot++} \"{line.Replace("\"", "'")}\"");
-                }
-            }
+            var notes = SystemNotes(title, system.Notes);
+            for (int i = 0; i < notes.Count; i++)
+                sb.AppendLine($"SNO{i + 1} \"{notes[i]}\"");
             if (!string.IsNullOrWhiteSpace(system.Designer))
                 sb.AppendLine($"DES \"{system.Designer.Replace("\"", "'")}\"");
             sb.AppendLine("UNI 1.0");
@@ -192,6 +186,52 @@ namespace AberrationCalculator.Core.IO
             double uPrime = p.N[s] * p.U[s];
             if (Math.Abs(uPrime) < 1e-300) return 1e7;   // imaged at infinity; OSLO caps it there
             return p.N[s - 1] * p.U[s - 1] / uPrime;
+        }
+
+        /// <summary>The longest system note OSLO accepts. A longer one stops the file loading:
+        /// "Error at sno_: system note: Argument can not contain more than 80 chars" (OSLO EDU,
+        /// 2026-10-29, on a MonoSearch export whose second note was 140 characters).</summary>
+        public const int NoteLength = 80;
+
+        /// <summary>
+        /// The SNO lines: the title in note 1, cut at a word to <see cref="NoteLength"/>, then the
+        /// notes wrapped at words to that length in notes 2 to 9. OSLO has ten notes and reserves
+        /// the tenth for its lens database, so anything past note 9 is dropped. Double quotes,
+        /// which would end the note, become single ones.
+        /// </summary>
+        public static List<string> SystemNotes(string title, string? notes)
+        {
+            var lines = new List<string> { Wrap(title.Replace("\"", "'"))[0] };
+            if (!string.IsNullOrEmpty(notes))
+                foreach (var line in notes.Replace("\r\n", "\n").Split('\n'))
+                    lines.AddRange(Wrap(line.Replace("\"", "'")));
+            return lines.Take(9).ToList();
+
+            // Words longer than a note are cut where the note ends.
+            static List<string> Wrap(string text)
+            {
+                var result = new List<string>();
+                var current = new StringBuilder();
+                foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var w = word;
+                    while (w.Length > NoteLength)
+                    {
+                        if (current.Length > 0) { result.Add(current.ToString()); current.Clear(); }
+                        result.Add(w.Substring(0, NoteLength));
+                        w = w.Substring(NoteLength);
+                    }
+                    if (current.Length > 0 && current.Length + 1 + w.Length > NoteLength)
+                    {
+                        result.Add(current.ToString());
+                        current.Clear();
+                    }
+                    if (current.Length > 0) current.Append(' ');
+                    current.Append(w);
+                }
+                if (current.Length > 0 || result.Count == 0) result.Add(current.ToString());
+                return result;
+            }
         }
 
         /// <summary>
