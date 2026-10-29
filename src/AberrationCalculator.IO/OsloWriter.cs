@@ -186,6 +186,9 @@ namespace AberrationCalculator.Core.IO
             // The array index counts from 0, as in OSLO's own file:
             //     DLNR  0 15 / DLNR  1 15 / DLFP  1 0.3333 / DLMN  1 -1.0 / DLMX  1 1.0 / DLNR  2 15
             // DLLS draws through the image surface; OSLO's default stops one surface short of it.
+            // DLNF first: OSLO loads a .len with two drawing fans, and refused DLNR/DLFP/DLMN/DLMX for
+            // index 2 ("Error at line 45: DLNR  2 15", OSLO EDU, 2026-10-29) until there are three.
+            sb.AppendLine($"DLNF  {system.Fields.Count}");
             for (int i = 0; i < system.Fields.Count; i++)
             {
                 double y = Math.Abs(system.Fields[i].Y);

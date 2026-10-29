@@ -186,6 +186,7 @@ public class LensWriterTests : IDisposable
         int end = Array.FindIndex(lines, l => l.StartsWith("END"));
         Assert.Equal(new[]
         {
+            "DLNF  3",
             "DLNR  0 15", "DLFP  0 0.0", "DLMN  0 -1.0", "DLMX  0 1.0",
             "DLNR  1 15", "DLFP  1 0.33333", "DLMN  1 -1.0", "DLMX  1 1.0",
             "DLNR  2 15", "DLFP  2 1.0", "DLMN  2 -1.0", "DLMX  2 1.0",
