@@ -165,7 +165,8 @@ public class LensWriterTests : IDisposable
     /// A .len has no field points set, so the fields go to OSLO as lens drawing fans, in the form
     /// OSLO 6.6 saves them after END (index from 0): 15 rays across the whole pupil from each field,
     /// at the fraction of the full field that OSLO's tan-based object height gives (30 deg of 60 is
-    /// tan 30 / tan 60 = 1/3), and DLLS so the image surface is drawn too. The lens still reads back.
+    /// tan 30 / tan 60 = 1/3), the rays drawn to the image surface (DLRS 3) and that surface drawn
+    /// (DRW ON), as OSLO saved them once set by hand (OSLO EDU, 2026-10-29). The lens still reads back.
     /// </summary>
     [Fact]
     public void OsloDrawsFifteenRaysFromEveryFieldAndTheImageSurface()
@@ -187,11 +188,10 @@ public class LensWriterTests : IDisposable
         Assert.Equal("  DRW ON", lines[end - 3]);   // the image surface, drawn though it is a dummy
         Assert.Equal(new[]
         {
-            "DLNF  3",
+            "DLRS 3", "DLNF  3",
             "DLNR  0 15", "DLFP  0 0.0", "DLMN  0 -1.0", "DLMX  0 1.0",
             "DLNR  1 15", "DLFP  1 0.33333", "DLMN  1 -1.0", "DLMX  1 1.0",
             "DLNR  2 15", "DLFP  2 1.0", "DLMN  2 -1.0", "DLMX  2 1.0",
-            "DLLS  4",
         }, lines.Skip(end + 1).ToArray());
 
         var back = OsloReader.Read(path);

@@ -191,9 +191,14 @@ namespace AberrationCalculator.Core.IO
             // ratio of tangents (OSLO's object height goes with tan); for object heights, of heights.
             // The array index counts from 0, as in OSLO's own file:
             //     DLNR  0 15 / DLNR  1 15 / DLFP  1 0.3333 / DLMN  1 -1.0 / DLMX  1 1.0 / DLNR  2 15
-            // DLLS draws through the image surface; OSLO's default stops one surface short of it.
+            // DLRS 3 draws the rays to the image surface, the last of OSLO's four image-space-rays
+            // options (from 0: final distance, wavefront, last drawn surface, image surface), as OSLO
+            // saved it. The default, a final distance, ends every ray on one plane, so beams off
+            // axis run past a curved image; and only with the rays drawn to it is the image surface
+            // drawn (DRW ON, on that surface).
             // DLNF first: OSLO loads a .len with two drawing fans, and refused DLNR/DLFP/DLMN/DLMX for
             // index 2 ("Error at line 45: DLNR  2 15", OSLO EDU, 2026-10-29) until there are three.
+            sb.AppendLine("DLRS 3");
             sb.AppendLine($"DLNF  {system.Fields.Count}");
             for (int i = 0; i < system.Fields.Count; i++)
             {
@@ -206,7 +211,6 @@ namespace AberrationCalculator.Core.IO
                 sb.AppendLine(string.Format(inv, "DLMN  {0} -1.0", i));
                 sb.AppendLine(string.Format(inv, "DLMX  {0} 1.0", i));
             }
-            sb.AppendLine($"DLLS  {system.Surfaces.Count - 1}");
             System.IO.File.WriteAllText(filePath, sb.ToString());
         }
 
